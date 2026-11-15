@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V1.0</title>
+<title>Untitled Armies — V1.1</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -35,27 +35,101 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 .sword-label{color:#f7d69b}
 @media(max-width:620px){.info{flex-wrap:wrap;gap:7px}.info .tip{max-width:none;display:flex;gap:6px}.small-btn{padding:7px 11px}.overlay-top{gap:5px}.pill{font-size:9px;padding:5px 7px}.bottom-note{bottom:12px}}
 @media(max-width:400px){#rangeBadge{display:none}.info{font-size:10px}.info .tip{max-width:none}}
+
+/* V1.1: a landscape viewport into a larger battlefield. */
+html,body{height:100%;overflow:hidden}
+body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
+.app{height:100%;max-height:none;width:min(1450px,100%);gap:7px;min-height:0}
+.board{flex:1;height:auto;min-height:0;position:relative}
+#field{cursor:grab}#field:active{cursor:grabbing}
+#minimap{position:absolute;left:91px;bottom:12px;z-index:3;width:150px;height:85px;border:1px solid #8fbaa088;border-radius:9px;background:#142a22e8;box-shadow:0 3px 16px #0007;cursor:crosshair;touch-action:none}
+.map-guide{position:absolute;z-index:3;bottom:101px;left:92px;font:700 9px system-ui;letter-spacing:.06em;color:#daefda;background:#15271fdc;border-radius:4px;padding:3px 6px;pointer-events:none}
+.formation-anchor{position:relative;display:grid;place-items:center}
+.formation-anchor.is-hidden{display:none}
+.formation-menu{position:absolute;left:calc(100% + 3px);top:50%;transform:translateY(-50%);width:174px;height:178px;z-index:10;pointer-events:auto;filter:drop-shadow(0 3px 9px #0009)}
+.formation-menu.is-hidden{display:none}
+.formation-option{position:absolute;min-width:73px;height:38px;padding:4px 7px;border:1px solid #719b7e;background:#1b3c30f0;color:#f0f8e7;border-radius:19px;font:800 11px/1 system-ui;cursor:pointer;touch-action:none;box-shadow:0 3px 10px #0007}
+.formation-option[data-form="line"]{left:3px;top:2px}
+.formation-option[data-form="wedge"]{left:90px;top:40px}
+.formation-option[data-form="block"]{left:90px;top:101px}
+.formation-option[data-form="column"]{left:3px;top:140px}
+.formation-option.hover,.formation-option:focus-visible{background:#3d7956;border-color:#d9f5a9;outline:2px solid #b9ebad;outline-offset:1px}
+.formation-option.chosen{color:#b7f8c2;border-color:#8cd9a8}
+#formationBtn .dot{color:#b6f3ce}
+#formationBtn[aria-expanded="true"] .dot{background:#315e49;border-color:#a3e5af}
+#rotateNotice{display:none;position:fixed;inset:0;z-index:100;background:#0c1915;color:#e8f6e5;align-items:center;justify-content:center;flex-direction:column;gap:14px;padding:25px;text-align:center}
+#rotateNotice .rotate-icon{font-size:56px;line-height:1}
+#rotateNotice p{margin:0;color:#bcd6c6;max-width:280px}
+@media(orientation:portrait){#rotateNotice{display:flex}}
+@media(max-height:630px){
+ body{padding:0}
+ .app{width:100%;height:100dvh;gap:0}
+ .top{padding:4px 11px 3px}
+ .brand h1{font-size:14px}
+ .brand p{font-size:9px}
+ .emblem{width:28px;height:28px;font-size:16px}
+ .build{padding:5px 8px;font-size:10px}
+ .board{border-radius:0;border-left:0;border-right:0;min-height:0;height:auto;flex:1}
+ .rail{width:62px;padding:4px;gap:6px}
+ .right{width:70px}
+ .orders{gap:3px}
+ .dot{width:40px;height:40px;font-size:18px}
+ .control{min-width:50px;font-size:9px;gap:2px}
+ .overlay-top{top:5px;max-width:calc(100% - 142px)}
+ .pill{font-size:9px;padding:4px 7px}
+ .bottom-note{bottom:8px;font-size:10px;padding:5px 7px;max-width:calc(100% - 350px)}
+ .info{padding:4px 9px;font-size:10px;gap:6px;flex-wrap:nowrap;line-height:1.2}
+ .info .tip{display:flex;flex-shrink:0;max-width:none;gap:4px}
+ .small-btn{padding:5px 7px;font-size:10px}
+ #minimap{left:69px;bottom:8px;width:129px;height:70px}
+ .map-guide{left:70px;bottom:82px;font-size:8px}
+ .formation-option{height:34px;font-size:10px;min-width:68px}
+ .formation-menu{height:166px;width:160px}
+ .formation-option[data-form="line"]{left:2px;top:2px}
+ .formation-option[data-form="wedge"]{left:85px;top:37px}
+ .formation-option[data-form="block"]{left:85px;top:94px}
+ .formation-option[data-form="column"]{left:2px;top:131px}
+}
+@media(max-height:410px){.orders{gap:1px}.dot{width:35px;height:35px}.control{font-size:8px}.bottom-note{display:none}.map-guide{display:none}}
 </style>
 </head>
 <body>
 <div class="app">
   <header class="top">
     <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Discipline · Stamina · Sword combat</p></div></div>
-    <div class="build" aria-label="Version 1.0">V1.0</div>
+    <div class="build" aria-label="Version 1.1">V1.1</div>
   </header>
-  <main class="board" id="board" aria-label="Battlefield grid with twenty-five soldier dots">
+  <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
     <canvas id="field"></canvas>
-    <div class="overlay-top" aria-live="polite"><span class="pill"><span class="light"></span><span id="count">25 SOLDIERS</span></span><span class="pill dim" id="status">IDLE</span><span class="pill dim" id="rangeBadge">⚔ 3 CELLS</span></div>
-    <aside class="rail left"><button class="control" type="button" id="select" aria-pressed="false" aria-label="Select all soldiers"><span class="dot" aria-hidden="true">◎</span><span id="select-label">Select</span></button></aside>
+    <canvas id="minimap" width="180" height="102" aria-label="Battlefield minimap: touch or click to pan"></canvas>
+    <div class="map-guide">DRAG MAP TO PAN · TAP TO MOVE</div>
+    <div class="overlay-top" aria-live="polite"><span class="pill"><span class="light"></span><span id="count">50 SOLDIERS</span></span><span class="pill dim" id="status">IDLE</span><span class="pill dim" id="rangeBadge">⚔ 3 CELLS</span></div>
+    <aside class="rail left">
+  <button class="control" type="button" id="select" aria-pressed="false" aria-label="Select all soldiers"><span class="dot" aria-hidden="true">◎</span><span id="select-label">Select</span></button>
+  <div class="formation-anchor is-hidden" id="formationAnchor">
+   <button class="control" type="button" id="formationBtn" aria-label="Press and slide toward a formation" aria-expanded="false" aria-controls="formationMenu"><span class="dot" aria-hidden="true">◇</span><span>Formation</span></button>
+   <div class="formation-menu is-hidden" id="formationMenu" role="group" aria-label="Choose a formation">
+    <button class="formation-option" type="button" data-form="line">Line</button>
+    <button class="formation-option" type="button" data-form="wedge">Wedge</button>
+    <button class="formation-option" type="button" data-form="block">Block</button>
+    <button class="formation-option" type="button" data-form="column">Column</button>
+   </div>
+  </div>
+ </aside>
     <aside class="rail right"><div class="orders is-hidden" id="orders">
       <button class="control attack" id="attack" type="button" aria-label="Attack: advance"><span class="dot" aria-hidden="true">⚔</span><span>Attack</span></button>
       <button class="control defend" id="defend" type="button" aria-label="Defend: reform and hold"><span class="dot" aria-hidden="true">⬡</span><span>Defend</span></button>
       <button class="control stop" id="stop" type="button" aria-label="Stop all soldiers"><span class="dot" aria-hidden="true">■</span><span>Stop</span></button>
       <button class="control retreat" id="retreat" type="button" aria-label="Retreat to left side"><span class="dot" aria-hidden="true">↶</span><span>Retreat</span></button>
     </div></aside>
-    <div class="bottom-note" id="hint" aria-live="polite">Select your army to give orders</div>
+    <div class="bottom-note" id="hint" aria-live="polite">Select your army · swipe to explore the battlefield</div>
   </main>
-  <footer class="info"><span><strong id="friendlyCount">25 / 25</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">25 / 25</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
+  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
+</div>
+<div id="rotateNotice" role="status" aria-live="polite">
+ <div class="rotate-icon" aria-hidden="true">↻</div>
+ <strong>UNTITLED ARMIES · LANDSCAPE MODE</strong>
+ <p>Rotate your phone sideways to play on the wider battlefield.</p>
 </div>
 <script>
 (()=>{
