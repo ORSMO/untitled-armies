@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0e1816">
+<title>Untitled Armies — V0.3</title>
+<style>
+:root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
+body{display:flex;justify-content:center;align-items:center;padding:clamp(10px,2vw,28px)}
+.app{width:min(1100px,100%);display:flex;flex-direction:column;gap:13px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 4px}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}.emblem{width:37px;height:37px;display:grid;place-items:center;border:1px solid #567663;border-radius:10px;background:#182c25;font-size:20px;color:#c7f3bf}.brand h1{margin:0;font-size:clamp(15px,2vw,21px);letter-spacing:.13em;font-weight:800}.brand p{margin:2px 0 0;color:var(--muted);font-size:11px;letter-spacing:.16em;text-transform:uppercase}.build{border:1px solid #6d997b;padding:7px 11px;border-radius:99px;white-space:nowrap;font:800 12px/1.1 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.1em;color:#c5f6c6;background:#223d32}
+.board{position:relative;min-height:390px;height:min(68dvh,640px);overflow:hidden;border-radius:18px;border:1px solid #395347;background:#22342c;box-shadow:0 23px 60px #0008;isolation:isolate}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.board:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#07130a66 0%,transparent 25%,transparent 74%,#07130a66 100%);pointer-events:none}
+.rail{position:absolute;top:0;bottom:0;z-index:2;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:11px;padding:9px;width:80px}
+.left{left:0}.right{right:0;width:88px}.orders{display:flex;flex-direction:column;gap:9px;align-items:center;transition:opacity .2s,transform .2s}.orders.is-hidden{opacity:0;pointer-events:none;transform:translateX(9px)}
+.control{border:0;background:transparent;padding:0;color:#d9e9d8;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:58px;font:700 10px/1.3 system-ui,sans-serif;letter-spacing:.07em;text-shadow:0 1px 4px #000;text-transform:uppercase}
+.dot{display:grid;place-items:center;width:52px;height:52px;border:1px solid #74917e;border-radius:50%;background:#1c3129dc;box-shadow:0 2px 12px #0005,inset 0 0 0 3px #ffffff09;font-size:22px;transition:transform .15s,background .15s,border-color .15s}.control:active .dot{transform:scale(.91)}.control:focus-visible .dot{outline:3px solid #e1ff9e;outline-offset:3px}
+.control[aria-pressed="true"] .dot,.control.active .dot{border-color:#a5facc;background:#2a6150;box-shadow:0 0 0 3px #9dfab12a,0 0 19px #7ce9a149}
+.attack .dot{color:#ffe8a4}.defend .dot{color:#bcf9e2}.stop .dot{color:#ffc5ab}.retreat .dot{color:#c7defc}
+.control.attack.active .dot{background:#6c4b28}.control.stop.active .dot{background:#654c3f}.control.retreat.active .dot{background:#304f67}
+.overlay-top{position:absolute;top:15px;left:50%;transform:translateX(-50%);z-index:2;pointer-events:none;display:flex;gap:9px;max-width:calc(100% - 154px);justify-content:center}
+.pill{display:flex;align-items:center;gap:6px;white-space:nowrap;padding:7px 10px;border:1px solid #92b29a66;border-radius:25px;background:#11241ecf;backdrop-filter:blur(6px);font-size:11px;letter-spacing:.07em;font-weight:700}.light{display:block;width:7px;height:7px;border-radius:50%;background:#9ee5ba;box-shadow:0 0 9px #9ee5ba}.pill.dim{color:#bdc9bf}
+.bottom-note{position:absolute;z-index:2;bottom:14px;left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100% - 154px);border:1px solid #738b7777;border-radius:8px;background:#0b1a15b8;color:#def2da;padding:8px 11px;pointer-events:none;font-size:12px;text-align:center}
+.info{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#9eb4a9;font-size:12px;padding:0 4px}.info strong{color:#dbf4df}.divider{opacity:.5;margin:0 6px}
+@media(max-width:620px){body{padding:0;align-items:stretch}.app{gap:0;min-height:100dvh}.top{padding:15px 13px 13px}.brand h1{font-size:16px}.brand p{font-size:10px}.board{border-radius:0;border-left:0;border-right:0;height:calc(100dvh - 166px);min-height:360px}.rail{width:64px;padding:5px}.right{width:68px}.dot{width:47px;height:47px;font-size:19px}.control{min-width:52px;font-size:9px}.overlay-top{top:12px;max-width:calc(100% - 128px)}.pill{font-size:10px;padding:6px 8px}.bottom-note{max-width:calc(100% - 134px);font-size:10px}.info{padding:12px 14px;line-height:1.5;font-size:11px}.info .tip{max-width:55%}}
+@media(max-width:350px){.dot{width:43px;height:43px}.rail{width:58px}.right{width:58px}.bottom-note{font-size:9px}.pill{font-size:9px}}
+@media(prefers-reduced-motion:reduce){.dot{transition:none}}
+
+.small-btn{background:#1e332c;border:1px solid #56816b;color:#dff7dc;border-radius:9px;padding:7px 9px;cursor:pointer;font:700 11px system-ui}
+.small-btn:active{background:#33583e}
+.sword-label{color:#f7d69b}
+@media(max-width:620px){.info{flex-wrap:wrap;gap:7px}.info .tip{max-width:none;display:flex;gap:6px}.small-btn{padding:7px 11px}.overlay-top{gap:5px}.pill{font-size:9px;padding:5px 7px}.bottom-note{bottom:12px}}
+@media(max-width:400px){#rangeBadge{display:none}.info{font-size:10px}.info .tip{max-width:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Discipline · Stress · Sword combat</p></div></div>
+    <div class="build" aria-label="Version 0.3">V0.3</div>
+  </header>
+  <main class="board" id="board" aria-label="Battlefield grid with twenty-five soldier dots">
+    <canvas id="field"></canvas>
+    <div class="overlay-top" aria-live="polite"><span class="pill"><span class="light"></span><span id="count">25 SOLDIERS</span></span><span class="pill dim" id="status">IDLE</span><span class="pill dim" id="rangeBadge">⚔ 2 CELLS</span></div>
+    <aside class="rail left"><button class="control" type="button" id="select" aria-pressed="false" aria-label="Select all soldiers"><span class="dot" aria-hidden="true">◎</span><span id="select-label">Select</span></button></aside>
+    <aside class="rail right"><div class="orders is-hidden" id="orders">
+      <button class="control attack" id="attack" type="button" aria-label="Attack: advance"><span class="dot" aria-hidden="true">⚔</span><span>Attack</span></button>
+      <button class="control defend" id="defend" type="button" aria-label="Defend: reform and hold"><span class="dot" aria-hidden="true">⬡</span><span>Defend</span></button>
+      <button class="control stop" id="stop" type="button" aria-label="Stop all soldiers"><span class="dot" aria-hidden="true">■</span><span>Stop</span></button>
+      <button class="control retreat" id="retreat" type="button" aria-label="Retreat to left side"><span class="dot" aria-hidden="true">↶</span><span>Retreat</span></button>
+    </div></aside>
+    <div class="bottom-note" id="hint" aria-live="polite">Select your army to give orders</div>
+  </main>
+  <footer class="info"><span><strong id="friendlyCount">25 / 25</strong> &nbsp; soldiers <span class="divider">·</span> Stress <strong id="stressLabel">12%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
+</div>
+<script>
+(()=>{
+'use strict';
+const canvas=document.querySelector('#field'),board=document.querySelector('#board');
+const ctx=canvas.getContext('2d');
+const ui={select:document.querySelector('#select'),label:document.querySelector('#select-label'),orders:document.querySelector('#orders'),status:document.querySelector('#status'),hint:document.querySelector('#hint'),mode:document.querySelector('#mode'),count:document.querySelector('#count'),remaining:document.querySelector('#friendlyCount'),stress:document.querySelector('#stressLabel')};
+const orderButtons=['attack','defend','stop','retreat'].map(id=>document.getElementById(id));
+let W=0,H=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],slashes=[],marker=null,nextId=0;
+const rnd=i=>{const x=Math.sin(i*127.1+91.7)*43758.5453;return x-Math.floor(x)};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const cell=12,reach=cell*2; // Exactly two battlefield grid squares (24px) from center to center.
+const gap=()=>clamp(W/17,23,29);
+function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74,W*.65,W-90),y:H*.51};}
+function formation(team,cx,cy){const d=gap(),n=team==='friend'?5:4;return Array.from({length:n*n},(_,i)=>({x:clamp(cx+(i%n-(n-1)/2)*d,15,W-15),y:clamp(cy+(Math.floor(i/n)-(n-1)/2)*d,22,H-22)}));}
+function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);return {id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,stress:Math.round(5+rnd(i+101)*17),hp:3,maxHp:3,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:rnd(i+16)*.8,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,hitFlash:0};}
+function populate(){nextId=0;const a=home('friend'),b=home('foe');friends=formation('friend',a.x,a.y).map((p,i)=>create('friend',i,p));foes=formation('foe',b.x,b.y).map((p,i)=>create('foe',i,p));slashes=[];selected=false;mode='idle';marker=null;updateUI();}
+function members(team){return team==='friend'?friends:foes;}
+function opponents(s){return s.team==='friend'?foes:friends;}
+function living(list){return list.filter(s=>!s.dead&&!s.broken&&!s.routed);}
+function nearest(s,list){let pick=null,best=1e8;for(const e of list){if(e.dead||e.broken||e.routed)continue;const d=Math.hypot(e.x-s.x,e.y-s.y);if(d<best){pick=e;best=d;}}return {target:pick,dist:best};}
+function setFormation(cx,cy){const p=formation('friend',cx,cy);friends.forEach((s,i)=>{if(!s.broken&&!s.dead){s.anchorX=p[i].x;s.anchorY=p[i].y;}});}
+function setMode(m){if(!selected)return;mode=m;marker=null;
+ if(m==='defend'){const alive=living(friends);const x=alive.reduce((a,s)=>a+s.x,0)/Math.max(alive.length,1),y=alive.reduce((a,s)=>a+s.y,0)/Math.max(alive.length,1);setFormation(x||home('friend').x,y||H*.5);}
+ if(m==='stop'){friends.forEach(s=>{if(!s.broken&&!s.dead){s.anchorX=s.x;s.anchorY=s.y;}});}
+ if(m==='retreat'){const h=home('friend');setFormation(Math.max(103,h.x*.57),H*.51);}
+ updateUI();}
+function avgStress(){const live=friends.filter(s=>!s.dead&&!s.routed);return live.length?Math.round(live.reduce((a,s)=>a+s.stress,0)/live.length):0;}
+function updateUI(){ui.select.setAttribute('aria-pressed',selected?'true':'false');ui.label.textContent=selected?'Deselect':'Select';ui.orders.classList.toggle('is-hidden',!selected);ui.status.textContent=mode.toUpperCase();orderButtons.forEach(b=>b.classList.toggle('active',selected&&b.id===mode));const alive=friends.filter(s=>!s.dead&&!s.routed).length,broken=friends.filter(s=>s.broken&&!s.routed).length;
+ ui.count.textContent=alive+' SOLDIERS';ui.remaining.textContent=alive+' / 25';ui.stress.textContent=avgStress()+'%';
+ let status=({idle:'Troops are restless — discipline controls cohesion',attack:'Attacking with swords (range: 2 grid squares)',defend:'Holding formation and fighting nearby enemies',stop:'Standing still (panic can override orders)',retreat:'Ordered retreat toward your side',move:'Marching to your chosen position'}[mode]||'');
+ if(broken)status=broken+' soldier'+(broken>1?'s are':' is')+' panicking and fleeing!';
+ ui.hint.textContent=status;ui.mode.textContent=({idle:'Idle',attack:'Attack',defend:'Defend',stop:'Stop',retreat:'Retreat',move:'Move'}[mode]||'Idle');
+}
+ui.select.addEventListener('click',()=>{selected=!selected;if(selected){mode='stop';friends.forEach(s=>{s.anchorX=s.x;s.anchorY=s.y;});}else{mode='idle';}updateUI()});
+orderButtons.forEach(b=>b.addEventListener('click',()=>setMode(b.id)));
+canvas.addEventListener('pointerdown',e=>{if(!selected)return;const r=canvas.getBoundingClientRect(),x=clamp(e.clientX-r.left,95,W-85),y=clamp(e.clientY-r.top,39,H-43);mode='move';setFormation(x,y);marker={x,y,when:t};updateUI()});
+document.querySelector('#stressTest').addEventListener('click',()=>{for(const s of friends){if(!s.dead&&!s.broken){const frontline=s.id%5===4; s.stress=clamp(s.stress+(frontline?54+rnd(s.id+Math.floor(t)*3)*10:5),0,100);}}updateUI()});
+document.querySelector('#reset').addEventListener('click',populate);
+function panic(s){if(s.broken||s.dead)return;s.broken=true;s.decision=0;for(const n of members(s.team)){if(n===s||n.dead||n.broken)continue;const d=Math.hypot(n.x-s.x,n.y-s.y);if(d<80)n.stress=clamp(n.stress+21*(1-n.disc/160)*(1-d/100),0,100);} }
+function hit(attacker,target){if(target.dead||attacker.dead||attacker.broken||target.broken)return;
+ const dist=Math.hypot(target.x-attacker.x,target.y-attacker.y);if(dist>reach)return;
+ attacker.cooldown=.8+(1-attacker.disc/100)*.28;target.hp--;target.hitFlash=.32;target.stress=clamp(target.stress+23,0,100);
+ attacker.stress=clamp(attacker.stress+3,0,100);const angle=Math.atan2(target.y-attacker.y,target.x-attacker.x);slashes.push({x:attacker.x,y:attacker.y,a:angle,life:.22,team:attacker.team});
+ if(target.hp<=0){target.dead=true;target.stress=100;for(const n of members(target.team)){if(n.dead||n.broken)continue;const d=Math.hypot(n.x-target.x,n.y-target.y);if(d<88)n.stress=clamp(n.stress+17*(1-d/100),0,100);}}
+}
+function approach(s,x,y,dt,mult=1){const dx=x-s.x,dy=y-s.y,dist=Math.hypot(dx,dy);if(dist<.45)return;const n=Math.min(dist,s.speed*mult*dt);s.x+=dx/dist*n;s.y+=dy/dist*n;s.facing=dx>=0?1:-1;}
+// Soldiers occupy physical space. Separate living soldiers after movement, even
+// if both teams or multiple soldiers try to reach exactly the same spot.
+// Giving panicking and undisciplined soldiers more yield keeps disciplined
+// formations a little steadier without allowing any bodies to overlap.
+function separateSoldiers(){
+ const all=[...friends,...foes].filter(s=>!s.dead&&!s.routed);
+ const minDistance=20.7, minSq=minDistance*minDistance;
+ for(let pass=0;pass<4;pass++){
+  for(let i=0;i<all.length;i++){
+   const a=all[i];
+   for(let j=i+1;j<all.length;j++){
+    const b=all[j];let dx=b.x-a.x,dy=b.y-a.y;
+    let sq=dx*dx+dy*dy;
+    if(sq>=minSq)continue;
+    if(sq<.000001){const angle=(a.id*73+b.id*151)*.33;dx=Math.cos(angle);dy=Math.sin(angle);sq=1;}
+    const dist=Math.sqrt(sq),push=(minDistance-dist+.005);
+    const ya=(a.broken?2:1.05-a.disc*.003);
+    const yb=(b.broken?2:1.05-b.disc*.003);
+    const wa=ya/(ya+yb),wb=yb/(ya+yb);
+    const nx=dx/dist,ny=dy/dist;
+    a.x-=nx*push*wa;a.y-=ny*push*wa;
+    b.x+=nx*push*wb;b.y+=ny*push*wb;
+   }
+  }
+  // Keep normal soldiers inside the battlefield; fleeing troops can leave it.
+  for(const s of all){if(!s.broken){s.x=clamp(s.x,11,W-11);s.y=clamp(s.y,11,H-11);}}
+ }
+}
+function step(dt){
+ for(const s of [...friends,...foes]){
+  if(s.dead||s.routed)continue;s.cooldown-=dt;s.decision-=dt;s.hitFlash=Math.max(0,s.hitFlash-dt);
+  const rivals=opponents(s),{target,dist}=nearest(s,rivals);
+  if(s.broken){s.stress=100;const edge=s.team==='friend'?-35:W+35;approach(s,edge,clamp(s.y+Math.sin(t*3+s.phase)*8,18,H-18),dt,2.1);if(s.x< -12||s.x>W+12)s.routed=true;continue;}
+  if(dist<100)s.stress=clamp(s.stress+dt*(dist<reach*1.5?6:1.6),0,100);
+  else s.stress=clamp(s.stress-dt*(2.0+s.disc/55),0,100);
+  // Individual breaking thresholds: a disciplined soldier resists stress longer.
+  const breakingPoint=55+s.disc*.39+rnd(s.id+23)*6;
+  if(s.stress>breakingPoint){panic(s);continue;}
+  const player=s.team==='friend',command=player?mode:'attack';
+  if(s.decision<=0){s.decision=.65+rnd(s.id+Math.floor(t*1.7))*1.2;
+   const steadiness=s.disc/100,unease=s.stress/100;
+   const drift=(1-steadiness)*9+unease*17;
+   if(command!=='stop'&&command!=='retreat'&&command!=='attack'){
+     s.tx=clamp(s.anchorX+(rnd(s.id+Math.floor(t*5)+300)-.5)*drift*2,16,W-16);
+     s.ty=clamp(s.anchorY+(rnd(s.id+Math.floor(t*5)+600)-.5)*drift*2,15,H-15);
+   }
+  }
+  let moveX=s.tx,moveY=s.ty,pace=1;
+  if(command==='stop'){moveX=s.x;moveY=s.y;}
+  else if(command==='retreat'){moveX=s.anchorX;moveY=s.anchorY;pace=1.45;}
+  else if(command==='attack'){
+    if(target&&dist>reach*.83){
+      // Stay nearer to the soldier's formation slot until the enemy is near.
+      const cohesion=s.disc/100*(1-s.stress/140);const offsetX=(s.anchorX-home(s.team).x)*cohesion*.65,offsetY=(s.anchorY-home(s.team).y)*cohesion*.75;
+      moveX=target.x+offsetX+(s.team==='friend'?-reach*.70:reach*.70);moveY=target.y+offsetY;pace=1.20;
+    }else{moveX=s.x;moveY=s.y;}
+  }
+  else if(command==='defend'||command==='move'||command==='idle'){moveX=s.tx;moveY=s.ty;}
+  const disciplineControl=.42+s.disc/160;
+  if(command!=='stop')approach(s,moveX,moveY,dt,pace*disciplineControl);
+  // All fighting soldiers carry swords. Attacks connect only within exactly two cells.
+  if(command!=='retreat'&&command!=='stop'&&target&&s.cooldown<=0&&Math.hypot(target.x-s.x,target.y-s.y)<=reach)hit(s,target);
+ }
+ separateSoldiers();
+ for(const effect of slashes)effect.life-=dt;slashes=slashes.filter(e=>e.life>0);
+}
+function background(){ctx.fillStyle='#203b30';ctx.fillRect(0,0,W,H);const grad=ctx.createLinearGradient(0,0,W,H);grad.addColorStop(0,'#355746');grad.addColorStop(.45,'#29483a');grad.addColorStop(1,'#244538');ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+ ctx.beginPath();for(let x=.5;x<=W;x+=cell){ctx.moveTo(x,0);ctx.lineTo(x,H)}for(let y=.5;y<=H;y+=cell){ctx.moveTo(0,y);ctx.lineTo(W,y)}ctx.lineWidth=.7;ctx.strokeStyle='#c3e2b22a';ctx.stroke();
+ ctx.strokeStyle='#d9f5cd24';ctx.setLineDash([3,8]);ctx.beginPath();ctx.moveTo(W*.5,0);ctx.lineTo(W*.5,H);ctx.stroke();ctx.setLineDash([]);
+ ctx.fillStyle='#bdffb508';for(let i=0;i<65;i++)ctx.fillRect((i*137.3+21)%W,(i*283.7+37)%H,1.5,2);
+}
+function drawUnit(s){if(s.routed)return;const bob=s.dead?0:Math.sin(t*2.5+s.phase)*.28,x=s.x,y=s.y+bob;
+ if(s.dead){ctx.fillStyle='#101f1ac0';ctx.beginPath();ctx.ellipse(x,y+3,8,4,.4,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ba9d92a6';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-4,y-4);ctx.lineTo(x+4,y+4);ctx.moveTo(x+4,y-4);ctx.lineTo(x-4,y+4);ctx.stroke();return;}
+ if(selected&&s.team==='friend'){ctx.beginPath();ctx.arc(x,y,13,0,2*Math.PI);ctx.lineWidth=1.4;ctx.strokeStyle=s.broken?'#ffb28b':'#d2ffe0c2';ctx.stroke();}
+ if(s.broken){ctx.strokeStyle='#ff795e';ctx.lineWidth=1.9;ctx.beginPath();ctx.arc(x,y,14,0,2*Math.PI);ctx.stroke();}
+ const stress=s.stress/100;
+ ctx.beginPath();ctx.ellipse(x,y+7,8,3.3,0,0,Math.PI*2);ctx.fillStyle='#06161188';ctx.fill();
+ ctx.beginPath();ctx.arc(x,y,9.6,0,2*Math.PI);ctx.fillStyle=s.hitFlash>0?'#fff0b0':(s.broken?'#ed9b63':s.team==='friend'? (stress>.6?'#e1c064':stress>.3?'#9cc978':'#61d8a6'):(stress>.65?'#e6ad63':'#e47b74'));ctx.fill();ctx.strokeStyle=s.team==='friend'?'#ddffe1':'#ffe1da';ctx.lineWidth=1.2;ctx.stroke();
+ ctx.fillStyle='#ffffff40';ctx.beginPath();ctx.arc(x-2.5,y-3,2.7,0,2*Math.PI);ctx.fill();
+ // Small sword hilt and blade: every active soldier is visibly equipped.
+ ctx.save();ctx.translate(x+s.facing*8,y-1);ctx.rotate(s.facing*.52);ctx.strokeStyle='#f1d2a2';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,4);ctx.lineTo(0,-2);ctx.stroke();ctx.strokeStyle='#eff5ee';ctx.lineWidth=1.7;ctx.beginPath();ctx.moveTo(0,-2);ctx.lineTo(0,-8);ctx.stroke();ctx.restore();
+ // Thin stress arc makes each soldier's personal stress legible.
+ if(s.stress>12){ctx.beginPath();ctx.arc(x,y,12,-Math.PI/2,-Math.PI/2+stress*2*Math.PI);ctx.strokeStyle=s.stress>70?'#f16d53':'#e6c368';ctx.lineWidth=2;ctx.stroke();}
+ if(s.hp<3&&!s.broken){ctx.fillStyle='#101c18';ctx.fillRect(x-10,y-17,20,3);ctx.fillStyle=s.team==='friend'?'#99e99d':'#f6a4a2';ctx.fillRect(x-10,y-17,20*s.hp/3,3);}
+}
+function draw(){if(!W)return;background();if(marker){const age=t-marker.when;if(age<1.3){ctx.beginPath();ctx.arc(marker.x,marker.y,14+age*11,0,2*Math.PI);ctx.strokeStyle='rgba(211,255,218,'+(1-age/1.3)*.6+')';ctx.lineWidth=2;ctx.stroke();}else marker=null;}
+ // Selection means selected soldiers are highlighted, but never hides their stats or swords.
+ for(const s of foes)drawUnit(s);for(const s of friends)drawUnit(s);
+ for(const sl of slashes){ctx.save();ctx.translate(sl.x,sl.y);ctx.rotate(sl.a);ctx.strokeStyle=sl.team==='friend'?'rgba(252,242,185,'+(sl.life/.22)+')':'rgba(255,181,159,'+(sl.life/.22)+')';ctx.lineWidth=2.6;ctx.beginPath();ctx.arc(0,0,reach,Math.PI*1.65,Math.PI*.33);ctx.stroke();ctx.restore();}
+}
+function resize(){const prevW=W,prevH=H,b=board.getBoundingClientRect();W=Math.max(220,b.width);H=Math.max(320,b.height);const dpr=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);if(!friends.length)populate();else if(prevW&&prevH){for(const s of [...friends,...foes]){s.x=s.x/prevW*W;s.y=s.y/prevH*H;s.tx=s.tx/prevW*W;s.ty=s.ty/prevH*H;s.anchorX=s.anchorX/prevW*W;s.anchorY=s.anchorY/prevH*H;}}draw();}
+function frame(ts){if(!last)last=ts;const dt=Math.min((ts-last)/1000,.040);last=ts;t+=dt;step(dt);draw();if(Math.floor(t*4)!==Math.floor((t-dt)*4))updateUI();requestAnimationFrame(frame)}
+window.addEventListener('resize',resize,{passive:true});if('ResizeObserver' in window)new ResizeObserver(resize).observe(board);resize();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
