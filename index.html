@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V0.4</title>
+<title>Untitled Armies — V0.5</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -41,7 +41,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 <div class="app">
   <header class="top">
     <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Discipline · Stress · Sword combat</p></div></div>
-    <div class="build" aria-label="Version 0.4">V0.4</div>
+    <div class="build" aria-label="Version 0.5">V0.5</div>
   </header>
   <main class="board" id="board" aria-label="Battlefield grid with twenty-five soldier dots">
     <canvas id="field"></canvas>
@@ -68,17 +68,52 @@ let W=0,H=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],slashes=[],
 const rnd=i=>{const x=Math.sin(i*127.1+91.7)*43758.5453;return x-Math.floor(x)};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const cell=12,reach=cell*2; // Exactly two battlefield grid squares (24px) from center to center.
- // V0.4: stress is mostly driven by combat and losses rather than passive proximity.
+ // V0.5: stress is mostly driven by combat and losses rather than passive proximity.
  const stressBalance={takenHit:10,givenHit:1,allyKilled:8,panicSpread:7,closeThreat:1.3,nearThreat:.25,recovery:5.5,breakingBase:68,disciplineResistance:.28};
 const gap=()=>clamp(W/17,23,29);
 function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74,W*.65,W-90),y:H*.51};}
 function formation(team,cx,cy){const d=gap(),n=team==='friend'?5:4;return Array.from({length:n*n},(_,i)=>({x:clamp(cx+(i%n-(n-1)/2)*d,15,W-15),y:clamp(cy+(Math.floor(i/n)-(n-1)/2)*d,22,H-22)}));}
-function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);return {id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,stress:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:rnd(i+16)*.8,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,hitFlash:0};}
+function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);return {id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,stress:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:rnd(i+16)*.8,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,escapeAngle:0,hitFlash:0};}
 function populate(){nextId=0;const a=home('friend'),b=home('foe');friends=formation('friend',a.x,a.y).map((p,i)=>create('friend',i,p));foes=formation('foe',b.x,b.y).map((p,i)=>create('foe',i,p));slashes=[];selected=false;mode='idle';marker=null;updateUI();}
 function members(team){return team==='friend'?friends:foes;}
 function opponents(s){return s.team==='friend'?foes:friends;}
 function living(list){return list.filter(s=>!s.dead&&!s.broken&&!s.routed);}
-function nearest(s,list){let pick=null,best=1e8;for(const e of list){if(e.dead||e.broken||e.routed)continue;const d=Math.hypot(e.x-s.x,e.y-s.y);if(d<best){pick=e;best=d;}}return {target:pick,dist:best};}
+function chooseTarget(s){
+  let best=null,bestScore=Infinity,bestDistance=Infinity;
+  for(const e of opponents(s)){
+   if(e.dead||e.broken||e.routed)continue;
+   const dist=Math.hypot(e.x-s.x,e.y-s.y);
+   const score=dist-(dist<=reach?25:0)-(e.id===s.targetId?13:0)-(e.targetId===s.id?8:0)-(e.hp===1?3:0);
+   if(score<bestScore){best=e;bestScore=score;bestDistance=dist;}
+  }
+  s.targetId=best?best.id:null;
+  return {target:best,dist:bestDistance};
+ }
+ function faceToward(s,x,y){const dx=x-s.x,dy=y-s.y;if(dx*dx+dy*dy>.01)s.faceAngle=Math.atan2(dy,dx);}
+ // For panic, compare escape lanes; prioritize moving to safety without crossing enemy positions.
+ function fleeFromEnemies(s,dt){
+  const side=s.team==='friend'?-1:1;
+  const threats=opponents(s).filter(e=>!e.dead&&!e.broken&&!e.routed);
+  const lanes=[0,-.35,.35,-.7,.7,-1.05,1.05,-1.36,1.36];
+  let best=0,bestScore=-Infinity;
+  for(const angle of lanes){
+   const dx=side*Math.cos(angle),dy=Math.sin(angle);
+   const aheadX=s.x+dx*55,aheadY=s.y+dy*55;
+   let score=dx*side*18-Math.abs(angle-s.escapeAngle)*2.5;
+   if(aheadY<17||aheadY>H-17)score-=100+2*Math.abs(aheadY-clamp(aheadY,17,H-17));
+   for(const e of threats){
+    const near=Math.hypot(s.x+dx*25-e.x,s.y+dy*25-e.y);
+    const far=Math.hypot(aheadX-e.x,aheadY-e.y);
+    score-=Math.max(0,90-near)*.48+Math.max(0,90-far)*.62;
+   }
+   if(score>bestScore){bestScore=score;best=angle;}
+  }
+  s.escapeAngle=best;
+  const dx=side*Math.cos(best),dy=Math.sin(best);
+  approach(s,s.x+dx*100,s.y+dy*100,dt,1.95);
+  s.faceAngle=Math.atan2(dy,dx);
+  if(s.x< -12||s.x>W+12)s.routed=true;
+ }
 function setFormation(cx,cy){const p=formation('friend',cx,cy);friends.forEach((s,i)=>{if(!s.broken&&!s.dead){s.anchorX=p[i].x;s.anchorY=p[i].y;}});}
 function setMode(m){if(!selected)return;mode=m;marker=null;
  if(m==='defend'){const alive=living(friends);const x=alive.reduce((a,s)=>a+s.x,0)/Math.max(alive.length,1),y=alive.reduce((a,s)=>a+s.y,0)/Math.max(alive.length,1);setFormation(x||home('friend').x,y||H*.5);}
@@ -97,7 +132,7 @@ orderButtons.forEach(b=>b.addEventListener('click',()=>setMode(b.id)));
 canvas.addEventListener('pointerdown',e=>{if(!selected)return;const r=canvas.getBoundingClientRect(),x=clamp(e.clientX-r.left,95,W-85),y=clamp(e.clientY-r.top,39,H-43);mode='move';setFormation(x,y);marker={x,y,when:t};updateUI()});
 document.querySelector('#stressTest').addEventListener('click',()=>{for(const s of friends){if(!s.dead&&!s.broken){const frontline=s.id%5===4; s.stress=clamp(s.stress+(frontline?94+rnd(s.id+Math.floor(t)*3)*6:6),0,100);}}updateUI()});
 document.querySelector('#reset').addEventListener('click',populate);
-function panic(s){if(s.broken||s.dead)return;s.broken=true;s.decision=0;for(const n of members(s.team)){if(n===s||n.dead||n.broken)continue;const d=Math.hypot(n.x-s.x,n.y-s.y);if(d<80)n.stress=clamp(n.stress+stressBalance.panicSpread*(1-n.disc/160)*(1-d/100),0,100);} }
+function panic(s){if(s.broken||s.dead)return;s.broken=true;s.targetId=null;s.escapeAngle=0;s.decision=0;for(const n of members(s.team)){if(n===s||n.dead||n.broken)continue;const d=Math.hypot(n.x-s.x,n.y-s.y);if(d<80)n.stress=clamp(n.stress+stressBalance.panicSpread*(1-n.disc/160)*(1-d/100),0,100);} }
 function hit(attacker,target){if(target.dead||attacker.dead||attacker.broken||target.broken)return;
  const dist=Math.hypot(target.x-attacker.x,target.y-attacker.y);if(dist>reach)return;
  attacker.cooldown=.8+(1-attacker.disc/100)*.28;target.hp--;target.hitFlash=.32;target.stress=clamp(target.stress+stressBalance.takenHit,0,100);
@@ -136,8 +171,8 @@ function separateSoldiers(){
 function step(dt){
  for(const s of [...friends,...foes]){
   if(s.dead||s.routed)continue;s.cooldown-=dt;s.decision-=dt;s.hitFlash=Math.max(0,s.hitFlash-dt);
-  const rivals=opponents(s),{target,dist}=nearest(s,rivals);
-  if(s.broken){s.stress=100;const edge=s.team==='friend'?-35:W+35;approach(s,edge,clamp(s.y+Math.sin(t*3+s.phase)*8,18,H-18),dt,2.1);if(s.x< -12||s.x>W+12)s.routed=true;continue;}
+  if(s.broken){s.stress=100;fleeFromEnemies(s,dt);continue;}
+  const {target,dist}=chooseTarget(s);
   if(dist<reach*1.5)s.stress=clamp(s.stress+dt*stressBalance.closeThreat,0,100);
   else if(dist<72)s.stress=clamp(s.stress+dt*stressBalance.nearThreat,0,100);
   else s.stress=clamp(s.stress-dt*(stressBalance.recovery+s.disc/100),0,100);
@@ -167,7 +202,9 @@ function step(dt){
   const disciplineControl=.42+s.disc/160;
   if(command!=='stop')approach(s,moveX,moveY,dt,pace*disciplineControl);
   // All fighting soldiers carry swords. Attacks connect only within exactly two cells.
-  if(command!=='retreat'&&command!=='stop'&&target&&s.cooldown<=0&&Math.hypot(target.x-s.x,target.y-s.y)<=reach)hit(s,target);
+  if(target)faceToward(s,target.x,target.y);
+   else faceToward(s,moveX,moveY);
+   if(command!=='retreat'&&command!=='stop'&&target&&s.cooldown<=0&&Math.hypot(target.x-s.x,target.y-s.y)<=reach)hit(s,target);
  }
  separateSoldiers();
  for(const effect of slashes)effect.life-=dt;slashes=slashes.filter(e=>e.life>0);
@@ -186,7 +223,10 @@ function drawUnit(s){if(s.routed)return;const bob=s.dead?0:Math.sin(t*2.5+s.phas
  ctx.beginPath();ctx.arc(x,y,9.6,0,2*Math.PI);ctx.fillStyle=s.hitFlash>0?'#fff0b0':(s.broken?'#ed9b63':s.team==='friend'? (stress>.6?'#e1c064':stress>.3?'#9cc978':'#61d8a6'):(stress>.65?'#e6ad63':'#e47b74'));ctx.fill();ctx.strokeStyle=s.team==='friend'?'#ddffe1':'#ffe1da';ctx.lineWidth=1.2;ctx.stroke();
  ctx.fillStyle='#ffffff40';ctx.beginPath();ctx.arc(x-2.5,y-3,2.7,0,2*Math.PI);ctx.fill();
  // Small sword hilt and blade: every active soldier is visibly equipped.
- ctx.save();ctx.translate(x+s.facing*8,y-1);ctx.rotate(s.facing*.52);ctx.strokeStyle='#f1d2a2';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,4);ctx.lineTo(0,-2);ctx.stroke();ctx.strokeStyle='#eff5ee';ctx.lineWidth=1.7;ctx.beginPath();ctx.moveTo(0,-2);ctx.lineTo(0,-8);ctx.stroke();ctx.restore();
+ ctx.save();ctx.translate(x,y);ctx.rotate(s.faceAngle);
+  ctx.fillStyle='#f4ffe1';ctx.beginPath();ctx.arc(7,0,2.3,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#f1d2a2';ctx.lineWidth=2.1;ctx.beginPath();ctx.moveTo(12,-4);ctx.lineTo(12,4);ctx.stroke();
+  ctx.strokeStyle='#eff5ee';ctx.lineWidth=2.2;ctx.beginPath();ctx.moveTo(8,0);ctx.lineTo(21,0);ctx.stroke();ctx.restore();
  // Thin stress arc makes each soldier's personal stress legible.
  if(s.stress>12){ctx.beginPath();ctx.arc(x,y,12,-Math.PI/2,-Math.PI/2+stress*2*Math.PI);ctx.strokeStyle=s.stress>70?'#f16d53':'#e6c368';ctx.lineWidth=2;ctx.stroke();}
  if(s.hp<3&&!s.broken){ctx.fillStyle='#101c18';ctx.fillRect(x-10,y-17,20,3);ctx.fillStyle=s.team==='friend'?'#99e99d':'#f6a4a2';ctx.fillRect(x-10,y-17,20*s.hp/3,3);}
