@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V0.9</title>
+<title>Untitled Armies — V1.0</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -40,8 +40,8 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Discipline · Stress · Sword combat</p></div></div>
-    <div class="build" aria-label="Version 0.9">V0.9</div>
+    <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Discipline · Stamina · Sword combat</p></div></div>
+    <div class="build" aria-label="Version 1.0">V1.0</div>
   </header>
   <main class="board" id="board" aria-label="Battlefield grid with twenty-five soldier dots">
     <canvas id="field"></canvas>
@@ -55,14 +55,14 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     </div></aside>
     <div class="bottom-note" id="hint" aria-live="polite">Select your army to give orders</div>
   </main>
-  <footer class="info"><span><strong id="friendlyCount">25 / 25</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">25 / 25</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
+  <footer class="info"><span><strong id="friendlyCount">25 / 25</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">25 / 25</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
 </div>
 <script>
 (()=>{
 'use strict';
 const canvas=document.querySelector('#field'),board=document.querySelector('#board');
 const ctx=canvas.getContext('2d');
-const ui={select:document.querySelector('#select'),label:document.querySelector('#select-label'),orders:document.querySelector('#orders'),status:document.querySelector('#status'),hint:document.querySelector('#hint'),mode:document.querySelector('#mode'),count:document.querySelector('#count'),remaining:document.querySelector('#friendlyCount'),enemyCount:document.querySelector('#enemyCount'),stress:document.querySelector('#stressLabel')};
+const ui={select:document.querySelector('#select'),label:document.querySelector('#select-label'),orders:document.querySelector('#orders'),status:document.querySelector('#status'),hint:document.querySelector('#hint'),mode:document.querySelector('#mode'),count:document.querySelector('#count'),remaining:document.querySelector('#friendlyCount'),enemyCount:document.querySelector('#enemyCount'),stress:document.querySelector('#stressLabel'),stamina:document.querySelector('#staminaLabel')};
 const orderButtons=['attack','defend','stop','retreat'].map(id=>document.getElementById(id));
 let W=0,H=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],slashes=[],marker=null,nextId=0;
 const rnd=i=>{const x=Math.sin(i*127.1+91.7)*43758.5453;return x-Math.floor(x)};
@@ -72,10 +72,16 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  const maxTurnRate=3.7; // Radians per second; no instant snapping of the sword or facing marker.
  // V0.6: stress is mostly driven by combat and losses rather than passive proximity.
  const stressBalance={takenHit:10,givenHit:1,allyKilled:8,panicSpread:7,closeThreat:1.3,nearThreat:.25,recovery:5.5,breakingBase:68,disciplineResistance:.28};
+ // Two attack styles share the same three-cell range. Heavy hits cost more
+ // stamina, deal two damage, and have longer recovery than quick light hits.
+ const attackStyles={
+  light:{cost:10,damage:1,cooldown:.68,stress:8,effect:.20},
+  heavy:{cost:29,damage:2,cooldown:1.36,stress:18,effect:.34}
+ };
 const gap=()=>clamp(W/17,23,29);
 function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74,W*.65,W-90),y:H*.51};}
 function formation(team,cx,cy){const d=gap(),n=5;return Array.from({length:n*n},(_,i)=>({x:clamp(cx+(i%n-(n-1)/2)*d,15,W-15),y:clamp(cy+(Math.floor(i/n)-(n-1)/2)*d,22,H-22)}));}
-function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);return {id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:rnd(i+16)*.8,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,escapeAngle:0,hitFlash:0};}
+function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);return {id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,stamina:100,maxStamina:100,recoveryDelay:0,attackCount:0,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:1.5+rnd(i+16)*1.3,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,escapeAngle:0,hitFlash:0};}
 function populate(){nextId=0;const a=home('friend'),b=home('foe');friends=formation('friend',a.x,a.y).map((p,i)=>create('friend',i,p));foes=formation('foe',b.x,b.y).map((p,i)=>create('foe',i,p));slashes=[];selected=false;mode='idle';marker=null;updateUI();}
 // Enemy reinforcements enter at the right edge in the least crowded lane.
 function respawnEnemy(s){
@@ -155,8 +161,9 @@ function setMode(m){if(!selected)return;mode=m;marker=null;
  if(m==='retreat'){const h=home('friend');setFormation(Math.max(103,h.x*.57),H*.51);}
  updateUI();}
 function avgStress(){const live=foes.filter(s=>!s.dead&&!s.routed);return live.length?Math.round(live.reduce((a,s)=>a+s.stress,0)/live.length):0;}
+ function avgStamina(){const active=friends.filter(s=>!s.dead&&!s.routed);return active.length?Math.round(active.reduce((a,s)=>a+s.stamina,0)/active.length):0;}
 function updateUI(){ui.select.setAttribute('aria-pressed',selected?'true':'false');ui.label.textContent=selected?'Deselect':'Select';ui.orders.classList.toggle('is-hidden',!selected);ui.status.textContent=mode.toUpperCase();orderButtons.forEach(b=>b.classList.toggle('active',selected&&b.id===mode));const alive=friends.filter(s=>!s.dead&&!s.routed).length,broken=friends.filter(s=>s.broken&&!s.routed).length;
- ui.count.textContent=alive+' SOLDIERS';ui.remaining.textContent=alive+' / 25';ui.enemyCount.textContent=foes.filter(s=>!s.dead&&!s.routed).length+' / 25';ui.stress.textContent=avgStress()+'%';
+ ui.count.textContent=alive+' SOLDIERS';ui.remaining.textContent=alive+' / 25';ui.enemyCount.textContent=foes.filter(s=>!s.dead&&!s.routed).length+' / 25';ui.stress.textContent=avgStress()+'%';ui.stamina.textContent=avgStamina()+'%';
  let status=({idle:'Troops are restless — discipline controls cohesion',attack:'Attacking with swords (range: 3 grid squares)',defend:'Holding formation and fighting nearby enemies',stop:'Standing still (your troops cannot panic)',retreat:'Ordered retreat toward your side',move:'Marching to your chosen position'}[mode]||'');
  if(broken)status=broken+' soldier'+(broken>1?'s are':' is')+' panicking and fleeing!';
  ui.hint.textContent=status;ui.mode.textContent=({idle:'Idle',attack:'Attack',defend:'Defend',stop:'Stop',retreat:'Retreat',move:'Move'}[mode]||'Idle');
@@ -167,13 +174,26 @@ canvas.addEventListener('pointerdown',e=>{if(!selected)return;const r=canvas.get
 document.querySelector('#stressTest').addEventListener('click',()=>{for(const s of foes){if(!s.dead&&!s.broken){const frontline=foes.indexOf(s)%5===0; s.stress=clamp(s.stress+(frontline?94+rnd(s.id+Math.floor(t)*3)*6:6),0,100);}}updateUI()});
 document.querySelector('#reset').addEventListener('click',populate);
 function panic(s){if(s.team==='friend'||s.broken||s.dead)return;s.broken=true;s.targetId=null;s.escapeAngle=0;s.decision=0;for(const n of members(s.team)){if(n===s||n.dead||n.broken)continue;const d=Math.hypot(n.x-s.x,n.y-s.y);if(d<80)n.stress=clamp(n.stress+stressBalance.panicSpread*(1-n.disc/160)*(1-d/100),0,100);} }
-function hit(attacker,target){if(target.dead||attacker.dead||attacker.broken||target.broken)return;
+function hit(attacker,target){
+ if(target.dead||attacker.dead||attacker.broken||target.broken)return;
  const dist=Math.hypot(target.x-attacker.x,target.y-attacker.y);if(dist>reach)return;
- attacker.cooldown=.8+(1-attacker.disc/100)*.28;
- // Friendly soldiers may be struck visually, but never take damage or stress.
- if(target.team==='foe'){target.hp--;target.stress=clamp(target.stress+stressBalance.takenHit,0,100);}
- target.hitFlash=.32;
- if(attacker.team==='foe')attacker.stress=clamp(attacker.stress+stressBalance.givenHit,0,100);const angle=Math.atan2(target.y-attacker.y,target.x-attacker.x);slashes.push({x:attacker.x,y:attacker.y,a:angle,life:.22,team:attacker.team});
+ // Soldiers mix in heavy blows every few swings when they have the stamina.
+ const heavy=attacker.stamina>=52&&(attacker.attackCount+attacker.id)%3===0;
+ const type=heavy?'heavy':'light',style=attackStyles[type];
+ if(attacker.stamina<style.cost)return; // Exhaustion: recover before swinging again.
+ attacker.attackCount++;
+ attacker.stamina=clamp(attacker.stamina-style.cost,0,attacker.maxStamina);
+ attacker.recoveryDelay=type==='heavy'?.78:.42;
+ attacker.cooldown=style.cooldown+(1-attacker.disc/100)*.22;
+ // Your soldiers remain immortal and stress-free, including against heavy hits.
+ if(target.team==='foe'){
+  target.hp-=style.damage;
+  target.stress=clamp(target.stress+style.stress,0,100);
+ }
+ target.hitFlash=type==='heavy'?.42:.25;
+ if(attacker.team==='foe')attacker.stress=clamp(attacker.stress+stressBalance.givenHit,0,100);
+ const angle=Math.atan2(target.y-attacker.y,target.x-attacker.x);
+ slashes.push({x:attacker.x,y:attacker.y,a:angle,life:style.effect,duration:style.effect,type,team:attacker.team});
  if(target.team==='foe'&&target.hp<=0){
   target.dead=true;target.stress=100;
   for(const n of foes){
@@ -216,6 +236,9 @@ function separateSoldiers(){
 function step(dt){
  for(const s of [...friends,...foes]){
   if(s.dead||s.routed)continue;s.cooldown-=dt;s.decision-=dt;s.hitFlash=Math.max(0,s.hitFlash-dt);
+  // Stamina restores while not recovering from a swing; movement uses some.
+  s.recoveryDelay=Math.max(0,s.recoveryDelay-dt);
+  if(s.recoveryDelay===0)s.stamina=clamp(s.stamina+dt*7.4,0,s.maxStamina);
   if(s.broken){s.stress=100;fleeFromEnemies(s,dt);if(s.routed&&s.team==='foe')respawnEnemy(s);continue;}
   const {target,dist}=chooseTarget(s);
   if(s.team==='foe'){
@@ -226,9 +249,10 @@ function step(dt){
    if(s.stress>breakingPoint){panic(s);continue;}
   }else{s.stress=0;}
   const player=s.team==='friend',command=player?mode:'attack';
-  if(s.decision<=0){s.decision=.65+rnd(s.id+Math.floor(t*1.7))*1.2;
+  if(s.decision<=0){s.decision=1.7+rnd(s.id+Math.floor(t*.8))*1.6;
    const steadiness=s.disc/100,unease=s.stress/100;
-   const drift=(1-steadiness)*9+unease*17;
+   // Less wandering and fewer direction changes; stress still disrupts ranks.
+   const drift=(1-steadiness)*2.9+unease*5.2;
    if(command!=='stop'&&command!=='retreat'&&command!=='attack'){
      s.tx=clamp(s.anchorX+(rnd(s.id+Math.floor(t*5)+300)-.5)*drift*2,16,W-16);
      s.ty=clamp(s.anchorY+(rnd(s.id+Math.floor(t*5)+600)-.5)*drift*2,15,H-15);
@@ -246,7 +270,10 @@ function step(dt){
   }
   else if(command==='defend'||command==='move'||command==='idle'){moveX=s.tx;moveY=s.ty;}
   const disciplineControl=.42+s.disc/160;
-  if(command!=='stop')approach(s,moveX,moveY,dt,pace*disciplineControl);
+  const fatiguePace=.76+.24*(s.stamina/s.maxStamina);
+  const oldX=s.x,oldY=s.y;
+  if(command!=='stop')approach(s,moveX,moveY,dt,pace*disciplineControl*fatiguePace);
+  s.stamina=clamp(s.stamina-Math.hypot(s.x-oldX,s.y-oldY)*.048,0,s.maxStamina);
   // All fighting soldiers carry swords. Attacks connect only within exactly three cells.
   updateFacing(s,target,target?Math.hypot(target.x-s.x,target.y-s.y):Infinity,dt);
    if(command!=='retreat'&&command!=='stop'&&target&&s.cooldown<=0&&Math.hypot(target.x-s.x,target.y-s.y)<=reach)hit(s,target);
@@ -259,7 +286,7 @@ function background(){ctx.fillStyle='#203b30';ctx.fillRect(0,0,W,H);const grad=c
  ctx.strokeStyle='#d9f5cd24';ctx.setLineDash([3,8]);ctx.beginPath();ctx.moveTo(W*.5,0);ctx.lineTo(W*.5,H);ctx.stroke();ctx.setLineDash([]);
  ctx.fillStyle='#bdffb508';for(let i=0;i<65;i++)ctx.fillRect((i*137.3+21)%W,(i*283.7+37)%H,1.5,2);
 }
-function drawUnit(s){if(s.routed)return;const bob=s.dead?0:Math.sin(t*2.5+s.phase)*.28,x=s.x,y=s.y+bob;
+function drawUnit(s){if(s.routed)return;const bob=s.dead?0:Math.sin(t*1.5+s.phase)*.09,x=s.x,y=s.y+bob;
  if(s.dead){ctx.fillStyle='#101f1ac0';ctx.beginPath();ctx.ellipse(x,y+3,8,4,.4,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ba9d92a6';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-4,y-4);ctx.lineTo(x+4,y+4);ctx.moveTo(x+4,y-4);ctx.lineTo(x-4,y+4);ctx.stroke();return;}
  if(selected&&s.team==='friend'){ctx.beginPath();ctx.arc(x,y,13,0,2*Math.PI);ctx.lineWidth=1.4;ctx.strokeStyle=s.broken?'#ffb28b':'#d2ffe0c2';ctx.stroke();}
  if(s.broken){ctx.strokeStyle='#ff795e';ctx.lineWidth=1.9;ctx.beginPath();ctx.arc(x,y,14,0,2*Math.PI);ctx.stroke();}
@@ -275,11 +302,22 @@ function drawUnit(s){if(s.routed)return;const bob=s.dead?0:Math.sin(t*2.5+s.phas
  // Thin stress arc makes each soldier's personal stress legible.
  if(s.stress>12){ctx.beginPath();ctx.arc(x,y,12,-Math.PI/2,-Math.PI/2+stress*2*Math.PI);ctx.strokeStyle=s.stress>70?'#f16d53':'#e6c368';ctx.lineWidth=2;ctx.stroke();}
  if(s.hp<3&&!s.broken){ctx.fillStyle='#101c18';ctx.fillRect(x-10,y-17,20,3);ctx.fillStyle=s.team==='friend'?'#99e99d':'#f6a4a2';ctx.fillRect(x-10,y-17,20*s.hp/3,3);}
+ // A thin blue meter under each soldier shows remaining stamina.
+ ctx.fillStyle='#0d2424';ctx.fillRect(x-10,y+14,20,3);
+ ctx.fillStyle=s.stamina<25?'#eea86d':'#7fd7da';
+ ctx.fillRect(x-10,y+14,20*clamp(s.stamina/s.maxStamina,0,1),3);
 }
 function draw(){if(!W)return;background();if(marker){const age=t-marker.when;if(age<1.3){ctx.beginPath();ctx.arc(marker.x,marker.y,14+age*11,0,2*Math.PI);ctx.strokeStyle='rgba(211,255,218,'+(1-age/1.3)*.6+')';ctx.lineWidth=2;ctx.stroke();}else marker=null;}
  // Selection means selected soldiers are highlighted, but never hides their stats or swords.
  for(const s of foes)drawUnit(s);for(const s of friends)drawUnit(s);
- for(const sl of slashes){ctx.save();ctx.translate(sl.x,sl.y);ctx.rotate(sl.a);ctx.strokeStyle=sl.team==='friend'?'rgba(252,242,185,'+(sl.life/.22)+')':'rgba(255,181,159,'+(sl.life/.22)+')';ctx.lineWidth=2.6;ctx.beginPath();ctx.arc(0,0,reach,Math.PI*1.65,Math.PI*.33);ctx.stroke();ctx.restore();}
+ for(const sl of slashes){
+  ctx.save();ctx.translate(sl.x,sl.y);ctx.rotate(sl.a);
+  const opacity=sl.life/sl.duration;
+  ctx.strokeStyle=sl.type==='heavy'?'rgba(255,187,103,'+opacity+')':(sl.team==='friend'?'rgba(252,242,185,'+opacity+')':'rgba(255,181,159,'+opacity+')');
+  ctx.lineWidth=sl.type==='heavy'?5:2.4;
+  ctx.beginPath();ctx.arc(0,0,reach,Math.PI*1.65,Math.PI*(sl.type==='heavy'?.52:.33));ctx.stroke();
+  ctx.restore();
+ }
 }
 function resize(){const prevW=W,prevH=H,b=board.getBoundingClientRect();W=Math.max(220,b.width);H=Math.max(320,b.height);const dpr=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);if(!friends.length)populate();else if(prevW&&prevH){for(const s of [...friends,...foes]){s.x=s.x/prevW*W;s.y=s.y/prevH*H;s.tx=s.tx/prevW*W;s.ty=s.ty/prevH*H;s.anchorX=s.anchorX/prevW*W;s.anchorY=s.anchorY/prevH*H;}}draw();}
 function frame(ts){if(!last)last=ts;const dt=Math.min((ts-last)/1000,.040);last=ts;t+=dt;step(dt);draw();if(Math.floor(t*4)!==Math.floor((t-dt)*4))updateUI();requestAnimationFrame(frame)}
