@@ -499,7 +499,7 @@ function hit(attacker,target){
    const d=Math.hypot(n.x-target.x,n.y-target.y);
    if(d<88)n.stress=clamp(n.stress+stressBalance.allyKilled*(1-d/100),0,100);
   }
-  respawnEnemy(target); // 25 enemy slots continuously replenished.
+  respawnEnemy(target); // Fifty enemy slots continually replenish.
  }
 }
 function approach(s,x,y,dt,mult=1){const dx=x-s.x,dy=y-s.y,dist=Math.hypot(dx,dy);if(dist<.45)return;const n=Math.min(dist,s.speed*mult*dt);s.x+=dx/dist*n;s.y+=dy/dist*n;s.facing=dx>=0?1:-1;}
@@ -532,6 +532,11 @@ function separateSoldiers(){
  }
 }
 function step(dt){
+ if(t>=nextEngagementPlan){
+  planEngagements('friend');
+  planEngagements('foe');
+  nextEngagementPlan=t+.65;
+ }
  for(const s of [...friends,...foes]){
   if(s.dead||s.routed)continue;s.cooldown-=dt;s.decision-=dt;s.hitFlash=Math.max(0,s.hitFlash-dt);
   // Stamina restores while not recovering from a swing; movement uses some.
@@ -560,10 +565,14 @@ function step(dt){
   if(command==='stop'){moveX=s.x;moveY=s.y;}
   else if(command==='retreat'){moveX=s.anchorX;moveY=s.anchorY;pace=1.45;}
   else if(command==='attack'){
-    if(target&&dist>reach*.83){
-      // Stay nearer to the soldier's formation slot until the enemy is near.
-      const cohesion=s.disc/100*(1-s.stress/140);const offsetX=(s.anchorX-home(s.team).x)*cohesion*.65,offsetY=(s.anchorY-home(s.team).y)*cohesion*.75;
-      moveX=target.x+offsetX+(s.team==='friend'?-reach*.70:reach*.70);moveY=target.y+offsetY;pace=1.20;
+    if(target){
+      const slot=engagementPoint(s,target);
+      const distanceToSlot=Math.hypot(slot.x-s.x,slot.y-s.y);
+      if(dist>reach*.9||distanceToSlot>18){
+       const clear=avoidCombatCrowd(s,slot,target);
+       moveX=clear.x;moveY=clear.y;
+       pace=dist<=reach?.78:1.16;
+      }else{moveX=s.x;moveY=s.y;}
     }else{moveX=s.x;moveY=s.y;}
   }
   else if(command==='defend'||command==='move'||command==='idle'||command==='form'){moveX=s.tx;moveY=s.ty;}
