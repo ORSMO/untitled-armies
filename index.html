@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V0.3</title>
+<title>Untitled Armies — V0.4</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -41,7 +41,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 <div class="app">
   <header class="top">
     <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Discipline · Stress · Sword combat</p></div></div>
-    <div class="build" aria-label="Version 0.3">V0.3</div>
+    <div class="build" aria-label="Version 0.4">V0.4</div>
   </header>
   <main class="board" id="board" aria-label="Battlefield grid with twenty-five soldier dots">
     <canvas id="field"></canvas>
@@ -68,10 +68,12 @@ let W=0,H=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],slashes=[],
 const rnd=i=>{const x=Math.sin(i*127.1+91.7)*43758.5453;return x-Math.floor(x)};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const cell=12,reach=cell*2; // Exactly two battlefield grid squares (24px) from center to center.
+ // V0.4: stress is mostly driven by combat and losses rather than passive proximity.
+ const stressBalance={takenHit:10,givenHit:1,allyKilled:8,panicSpread:7,closeThreat:1.3,nearThreat:.25,recovery:5.5,breakingBase:68,disciplineResistance:.28};
 const gap=()=>clamp(W/17,23,29);
 function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74,W*.65,W-90),y:H*.51};}
 function formation(team,cx,cy){const d=gap(),n=team==='friend'?5:4;return Array.from({length:n*n},(_,i)=>({x:clamp(cx+(i%n-(n-1)/2)*d,15,W-15),y:clamp(cy+(Math.floor(i/n)-(n-1)/2)*d,22,H-22)}));}
-function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);return {id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,stress:Math.round(5+rnd(i+101)*17),hp:3,maxHp:3,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:rnd(i+16)*.8,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,hitFlash:0};}
+function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);return {id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,stress:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:rnd(i+16)*.8,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,hitFlash:0};}
 function populate(){nextId=0;const a=home('friend'),b=home('foe');friends=formation('friend',a.x,a.y).map((p,i)=>create('friend',i,p));foes=formation('foe',b.x,b.y).map((p,i)=>create('foe',i,p));slashes=[];selected=false;mode='idle';marker=null;updateUI();}
 function members(team){return team==='friend'?friends:foes;}
 function opponents(s){return s.team==='friend'?foes:friends;}
@@ -93,14 +95,14 @@ function updateUI(){ui.select.setAttribute('aria-pressed',selected?'true':'false
 ui.select.addEventListener('click',()=>{selected=!selected;if(selected){mode='stop';friends.forEach(s=>{s.anchorX=s.x;s.anchorY=s.y;});}else{mode='idle';}updateUI()});
 orderButtons.forEach(b=>b.addEventListener('click',()=>setMode(b.id)));
 canvas.addEventListener('pointerdown',e=>{if(!selected)return;const r=canvas.getBoundingClientRect(),x=clamp(e.clientX-r.left,95,W-85),y=clamp(e.clientY-r.top,39,H-43);mode='move';setFormation(x,y);marker={x,y,when:t};updateUI()});
-document.querySelector('#stressTest').addEventListener('click',()=>{for(const s of friends){if(!s.dead&&!s.broken){const frontline=s.id%5===4; s.stress=clamp(s.stress+(frontline?54+rnd(s.id+Math.floor(t)*3)*10:5),0,100);}}updateUI()});
+document.querySelector('#stressTest').addEventListener('click',()=>{for(const s of friends){if(!s.dead&&!s.broken){const frontline=s.id%5===4; s.stress=clamp(s.stress+(frontline?94+rnd(s.id+Math.floor(t)*3)*6:6),0,100);}}updateUI()});
 document.querySelector('#reset').addEventListener('click',populate);
-function panic(s){if(s.broken||s.dead)return;s.broken=true;s.decision=0;for(const n of members(s.team)){if(n===s||n.dead||n.broken)continue;const d=Math.hypot(n.x-s.x,n.y-s.y);if(d<80)n.stress=clamp(n.stress+21*(1-n.disc/160)*(1-d/100),0,100);} }
+function panic(s){if(s.broken||s.dead)return;s.broken=true;s.decision=0;for(const n of members(s.team)){if(n===s||n.dead||n.broken)continue;const d=Math.hypot(n.x-s.x,n.y-s.y);if(d<80)n.stress=clamp(n.stress+stressBalance.panicSpread*(1-n.disc/160)*(1-d/100),0,100);} }
 function hit(attacker,target){if(target.dead||attacker.dead||attacker.broken||target.broken)return;
  const dist=Math.hypot(target.x-attacker.x,target.y-attacker.y);if(dist>reach)return;
- attacker.cooldown=.8+(1-attacker.disc/100)*.28;target.hp--;target.hitFlash=.32;target.stress=clamp(target.stress+23,0,100);
- attacker.stress=clamp(attacker.stress+3,0,100);const angle=Math.atan2(target.y-attacker.y,target.x-attacker.x);slashes.push({x:attacker.x,y:attacker.y,a:angle,life:.22,team:attacker.team});
- if(target.hp<=0){target.dead=true;target.stress=100;for(const n of members(target.team)){if(n.dead||n.broken)continue;const d=Math.hypot(n.x-target.x,n.y-target.y);if(d<88)n.stress=clamp(n.stress+17*(1-d/100),0,100);}}
+ attacker.cooldown=.8+(1-attacker.disc/100)*.28;target.hp--;target.hitFlash=.32;target.stress=clamp(target.stress+stressBalance.takenHit,0,100);
+ attacker.stress=clamp(attacker.stress+stressBalance.givenHit,0,100);const angle=Math.atan2(target.y-attacker.y,target.x-attacker.x);slashes.push({x:attacker.x,y:attacker.y,a:angle,life:.22,team:attacker.team});
+ if(target.hp<=0){target.dead=true;target.stress=100;for(const n of members(target.team)){if(n.dead||n.broken)continue;const d=Math.hypot(n.x-target.x,n.y-target.y);if(d<88)n.stress=clamp(n.stress+stressBalance.allyKilled*(1-d/100),0,100);}}
 }
 function approach(s,x,y,dt,mult=1){const dx=x-s.x,dy=y-s.y,dist=Math.hypot(dx,dy);if(dist<.45)return;const n=Math.min(dist,s.speed*mult*dt);s.x+=dx/dist*n;s.y+=dy/dist*n;s.facing=dx>=0?1:-1;}
 // Soldiers occupy physical space. Separate living soldiers after movement, even
@@ -136,10 +138,11 @@ function step(dt){
   if(s.dead||s.routed)continue;s.cooldown-=dt;s.decision-=dt;s.hitFlash=Math.max(0,s.hitFlash-dt);
   const rivals=opponents(s),{target,dist}=nearest(s,rivals);
   if(s.broken){s.stress=100;const edge=s.team==='friend'?-35:W+35;approach(s,edge,clamp(s.y+Math.sin(t*3+s.phase)*8,18,H-18),dt,2.1);if(s.x< -12||s.x>W+12)s.routed=true;continue;}
-  if(dist<100)s.stress=clamp(s.stress+dt*(dist<reach*1.5?6:1.6),0,100);
-  else s.stress=clamp(s.stress-dt*(2.0+s.disc/55),0,100);
-  // Individual breaking thresholds: a disciplined soldier resists stress longer.
-  const breakingPoint=55+s.disc*.39+rnd(s.id+23)*6;
+  if(dist<reach*1.5)s.stress=clamp(s.stress+dt*stressBalance.closeThreat,0,100);
+  else if(dist<72)s.stress=clamp(s.stress+dt*stressBalance.nearThreat,0,100);
+  else s.stress=clamp(s.stress-dt*(stressBalance.recovery+s.disc/100),0,100);
+  // Discipline and personal courage determine the stress needed to flee.
+  const breakingPoint=stressBalance.breakingBase+s.disc*stressBalance.disciplineResistance+rnd(s.id+23)*5;
   if(s.stress>breakingPoint){panic(s);continue;}
   const player=s.team==='friend',command=player?mode:'attack';
   if(s.decision<=0){s.decision=.65+rnd(s.id+Math.floor(t*1.7))*1.2;
