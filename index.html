@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V1.1</title>
+<title>Untitled Armies — V1.2</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -36,6 +36,15 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 @media(max-width:620px){.info{flex-wrap:wrap;gap:7px}.info .tip{max-width:none;display:flex;gap:6px}.small-btn{padding:7px 11px}.overlay-top{gap:5px}.pill{font-size:9px;padding:5px 7px}.bottom-note{bottom:12px}}
 @media(max-width:400px){#rangeBadge{display:none}.info{font-size:10px}.info .tip{max-width:none}}
 
+/* Fullscreen toggle stays in the header and works in both windowed and fullscreen modes. */
+.top-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.fullscreen-button{display:flex;align-items:center;justify-content:center;gap:5px;min-height:36px;padding:6px 10px;border:1px solid #769c87;border-radius:10px;background:#1e3e31;color:#dbf8e2;font:750 11px/1 system-ui;cursor:pointer;touch-action:manipulation}
+.fullscreen-button:active{background:#31634b}
+.fullscreen-button:focus-visible{outline:2px solid #d3ffbe;outline-offset:2px}
+#fullscreenIcon{font-size:20px;line-height:1}
+.app:fullscreen{width:100%;max-width:none;height:100%;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);background:#0c1514}
+@media(max-height:630px){.fullscreen-button{min-height:29px;padding:4px 7px;font-size:10px}.top-actions{gap:5px}}
+@media(max-width:650px){#fullscreenLabel{display:none}.fullscreen-button{min-width:34px}}
 /* V1.1: a landscape viewport into a larger battlefield. */
 html,body{height:100%;overflow:hidden}
 body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
@@ -97,7 +106,10 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 <div class="app">
   <header class="top">
     <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Discipline · Stamina · Sword combat</p></div></div>
-    <div class="build" aria-label="Version 1.1">V1.1</div>
+    <div class="top-actions">
+      <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
+      <div class="build" aria-label="Version 1.2">V1.2</div>
+    </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
     <canvas id="field"></canvas>
@@ -138,6 +150,34 @@ const canvas=document.querySelector('#field'),board=document.querySelector('#boa
 const ctx=canvas.getContext('2d'),mini=document.querySelector('#minimap'),mctx=mini.getContext('2d');
 const ui={select:document.querySelector('#select'),label:document.querySelector('#select-label'),orders:document.querySelector('#orders'),status:document.querySelector('#status'),hint:document.querySelector('#hint'),mode:document.querySelector('#mode'),count:document.querySelector('#count'),remaining:document.querySelector('#friendlyCount'),enemyCount:document.querySelector('#enemyCount'),stress:document.querySelector('#stressLabel'),stamina:document.querySelector('#staminaLabel'),formationAnchor:document.querySelector('#formationAnchor'),formationBtn:document.querySelector('#formationBtn'),formationMenu:document.querySelector('#formationMenu')};
 const orderButtons=['attack','defend','stop','retreat'].map(id=>document.getElementById(id));
+ const app=document.querySelector('.app'),fullBtn=document.querySelector('#fullscreenBtn');
+ const fullIcon=document.querySelector('#fullscreenIcon'),fullLabel=document.querySelector('#fullscreenLabel');
+ function activeFullscreen(){return document.fullscreenElement===app||document.webkitFullscreenElement===app;}
+ function updateFullscreenButton(){
+  const active=activeFullscreen();
+  fullBtn.setAttribute('aria-pressed',active?'true':'false');
+  fullBtn.setAttribute('aria-label',active?'Exit fullscreen':'Enter fullscreen');
+  fullBtn.title=active?'Exit fullscreen':'Fullscreen';
+  fullIcon.textContent=active?'↙':'⛶';fullLabel.textContent=active?'Exit':'Fullscreen';
+ }
+ fullBtn.addEventListener('click',async()=>{
+  try{
+   if(activeFullscreen()){
+    const exit=document.exitFullscreen||document.webkitExitFullscreen;
+    if(exit)await exit.call(document);
+   }else{
+    const request=app.requestFullscreen||app.webkitRequestFullscreen;
+    if(!request)throw new Error('Fullscreen unsupported');
+    await request.call(app);
+   }
+   updateFullscreenButton();
+   resize();
+  }catch(err){
+   ui.hint.textContent='Fullscreen is blocked here. Open the game in Safari or Chrome to try again.';
+  }
+ });
+ document.addEventListener('fullscreenchange',()=>{updateFullscreenButton();resize()});
+ document.addEventListener('webkitfullscreenchange',()=>{updateFullscreenButton();resize()});
 let W=0,H=0,VW=0,VH=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],slashes=[],marker=null,nextId=0,formationType='block',formationDragging=false;
  const camera={x:0,y:0},cameraKeys=new Set();let fieldPointer=null;
 const rnd=i=>{const x=Math.sin(i*127.1+91.7)*43758.5453;return x-Math.floor(x)};
