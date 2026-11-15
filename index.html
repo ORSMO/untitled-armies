@@ -321,7 +321,56 @@ function updateUI(){ui.select.setAttribute('aria-pressed',selected?'true':'false
 }
 ui.select.addEventListener('click',()=>{selected=!selected;if(selected){mode='stop';friends.forEach(s=>{s.anchorX=s.x;s.anchorY=s.y;});}else{mode='idle';}updateUI()});
 orderButtons.forEach(b=>b.addEventListener('click',()=>setMode(b.id)));
-canvas.addEventListener('pointerdown',e=>{if(!selected)return;const r=canvas.getBoundingClientRect(),x=clamp(e.clientX-r.left,95,W-85),y=clamp(e.clientY-r.top,39,H-43);mode='move';setFormation(x,y);marker={x,y,when:t};updateUI()});
+// Tap orders soldiers to a world position; swipe pans the camera instead.
+ canvas.addEventListener('pointerdown',e=>{
+  if(e.button!==undefined&&e.button!==0)return;
+  setFormationMenu(false);
+  fieldPointer={id:e.pointerId,x:e.clientX,y:e.clientY,cx:camera.x,cy:camera.y,moved:false};
+  canvas.setPointerCapture?.(e.pointerId);
+ });
+ canvas.addEventListener('pointermove',e=>{
+  const p=fieldPointer;if(!p||p.id!==e.pointerId)return;
+  const dx=e.clientX-p.x,dy=e.clientY-p.y;
+  if(Math.hypot(dx,dy)>8)p.moved=true;
+  if(p.moved){
+   camera.x=clamp(p.cx-dx,0,Math.max(0,W-VW));
+   camera.y=clamp(p.cy-dy,0,Math.max(0,H-VH));
+  }
+ });
+ canvas.addEventListener('pointerup',e=>{
+  const p=fieldPointer;if(!p||p.id!==e.pointerId)return;
+  fieldPointer=null;
+  if(p.moved||!selected)return;
+  const r=canvas.getBoundingClientRect();
+  const x=clamp(camera.x+e.clientX-r.left,96,W-96);
+  const y=clamp(camera.y+e.clientY-r.top,40,H-40);
+  mode='move';setFormation(x,y);marker={x,y,when:t};updateUI();
+ });
+ canvas.addEventListener('pointercancel',()=>{fieldPointer=null});
+ canvas.addEventListener('wheel',e=>{
+  e.preventDefault();
+  camera.x=clamp(camera.x+e.deltaX+e.deltaY*.55,0,Math.max(0,W-VW));
+  camera.y=clamp(camera.y+e.deltaY*.45,0,Math.max(0,H-VH));
+ },{passive:false});
+ // Mini-map: tap or drag the overview to relocate the viewport.
+ function panFromMini(e){
+  const rect=mini.getBoundingClientRect();
+  const wx=clamp((e.clientX-rect.left)/rect.width,0,1)*W;
+  const wy=clamp((e.clientY-rect.top)/rect.height,0,1)*H;
+  camera.x=clamp(wx-VW*.5,0,Math.max(0,W-VW));
+  camera.y=clamp(wy-VH*.5,0,Math.max(0,H-VH));
+ }
+ mini.addEventListener('pointerdown',e=>{mini.setPointerCapture?.(e.pointerId);panFromMini(e)});
+ mini.addEventListener('pointermove',e=>{if(e.buttons||e.pressure>0)panFromMini(e)});
+ // Keyboard navigation on desktop without changing the army's current orders.
+ window.addEventListener('keydown',e=>{
+  if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','a','d','w','s','A','D','W','S'].includes(e.key)){
+   if(e.target?.tagName==='BUTTON')return;
+   cameraKeys.add(e.key.toLowerCase());e.preventDefault();
+  }
+ });
+ window.addEventListener('keyup',e=>cameraKeys.delete(e.key.toLowerCase()));
+ window.addEventListener('blur',()=>cameraKeys.clear());
 document.querySelector('#stressTest').addEventListener('click',()=>{for(const s of foes){if(!s.dead&&!s.broken){const frontline=foes.indexOf(s)%5===0; s.stress=clamp(s.stress+(frontline?94+rnd(s.id+Math.floor(t)*3)*6:6),0,100);}}updateUI()});
 document.querySelector('#reset').addEventListener('click',populate);
 function panic(s){if(s.team==='friend'||s.broken||s.dead)return;s.broken=true;s.targetId=null;s.escapeAngle=0;s.decision=0;for(const n of members(s.team)){if(n===s||n.dead||n.broken)continue;const d=Math.hypot(n.x-s.x,n.y-s.y);if(d<80)n.stress=clamp(n.stress+stressBalance.panicSpread*(1-n.disc/160)*(1-d/100),0,100);} }
@@ -458,7 +507,11 @@ function drawUnit(s){if(s.routed)return;const bob=s.dead?0:Math.sin(t*1.5+s.phas
  ctx.fillStyle=s.stamina<25?'#eea86d':'#7fd7da';
  ctx.fillRect(x-10,y+14,20*clamp(s.stamina/s.maxStamina,0,1),3);
 }
-function draw(){if(!W)return;background();if(marker){const age=t-marker.when;if(age<1.3){ctx.beginPath();ctx.arc(marker.x,marker.y,14+age*11,0,2*Math.PI);ctx.strokeStyle='rgba(211,255,218,'+(1-age/1.3)*.6+')';ctx.lineWidth=2;ctx.stroke();}else marker=null;}
+function draw(){
+ if(!VW)return;
+ ctx.clearRect(0,0,VW,VH);
+ ctx.save();ctx.translate(-camera.x,-camera.y);
+ background();if(marker){const age=t-marker.when;if(age<1.3){ctx.beginPath();ctx.arc(marker.x,marker.y,14+age*11,0,2*Math.PI);ctx.strokeStyle='rgba(211,255,218,'+(1-age/1.3)*.6+')';ctx.lineWidth=2;ctx.stroke();}else marker=null;}
  // Selection means selected soldiers are highlighted, but never hides their stats or swords.
  for(const s of foes)drawUnit(s);for(const s of friends)drawUnit(s);
  for(const sl of slashes){
@@ -469,9 +522,53 @@ function draw(){if(!W)return;background();if(marker){const age=t-marker.when;if(
   ctx.beginPath();ctx.arc(0,0,reach,Math.PI*1.65,Math.PI*(sl.type==='heavy'?.52:.33));ctx.stroke();
   ctx.restore();
  }
+ ctx.restore();
+ drawMinimap();
 }
-function resize(){const prevW=W,prevH=H,b=board.getBoundingClientRect();W=Math.max(220,b.width);H=Math.max(320,b.height);const dpr=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);if(!friends.length)populate();else if(prevW&&prevH){for(const s of [...friends,...foes]){s.x=s.x/prevW*W;s.y=s.y/prevH*H;s.tx=s.tx/prevW*W;s.ty=s.ty/prevH*H;s.anchorX=s.anchorX/prevW*W;s.anchorY=s.anchorY/prevH*H;}}draw();}
-function frame(ts){if(!last)last=ts;const dt=Math.min((ts-last)/1000,.040);last=ts;t+=dt;step(dt);draw();if(Math.floor(t*4)!==Math.floor((t-dt)*4))updateUI();requestAnimationFrame(frame)}
+function drawMinimap(){
+  if(!W)return;
+  const mw=mini.width,mh=mini.height;
+  mctx.clearRect(0,0,mw,mh);
+  mctx.fillStyle='#152b24';mctx.fillRect(0,0,mw,mh);
+  mctx.strokeStyle='#6e957d';mctx.lineWidth=2;mctx.strokeRect(1,1,mw-2,mh-2);
+  for(const s of foes){if(s.routed||s.dead)continue;mctx.fillStyle='#e47b74';mctx.fillRect(s.x/W*mw-2,s.y/H*mh-2,4,4);}
+  for(const s of friends){if(s.routed||s.dead)continue;mctx.fillStyle='#65e4a5';mctx.fillRect(s.x/W*mw-2,s.y/H*mh-2,4,4);}
+  mctx.strokeStyle='#f5ebbd';mctx.lineWidth=1.8;
+  mctx.strokeRect(camera.x/W*mw,camera.y/H*mh,Math.min(mw,VW/W*mw),Math.min(mh,VH/H*mh));
+ }
+ function resize(){
+  const b=board.getBoundingClientRect();
+  VW=Math.max(240,b.width);VH=Math.max(180,b.height);
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  canvas.width=Math.round(VW*dpr);canvas.height=Math.round(VH*dpr);
+  canvas.style.width=VW+'px';canvas.style.height=VH+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  if(!friends.length){
+   W=Math.max(1500,VW*1.7);H=Math.max(860,VH*1.7);
+   populate();
+  }else{
+   // Keep world coordinates fixed while the phone/browser changes dimensions.
+   W=Math.max(W,VW+120);H=Math.max(H,VH+120);
+   camera.x=clamp(camera.x,0,Math.max(0,W-VW));
+   camera.y=clamp(camera.y,0,Math.max(0,H-VH));
+  }
+  draw();
+ }
+function frame(ts){
+  if(!last)last=ts;
+  const dt=Math.min((ts-last)/1000,.040);
+  last=ts;t+=dt;
+  const panSpeed=420*dt;
+  if(cameraKeys.has('arrowleft')||cameraKeys.has('a'))camera.x-=panSpeed;
+  if(cameraKeys.has('arrowright')||cameraKeys.has('d'))camera.x+=panSpeed;
+  if(cameraKeys.has('arrowup')||cameraKeys.has('w'))camera.y-=panSpeed;
+  if(cameraKeys.has('arrowdown')||cameraKeys.has('s'))camera.y+=panSpeed;
+  camera.x=clamp(camera.x,0,Math.max(0,W-VW));
+  camera.y=clamp(camera.y,0,Math.max(0,H-VH));
+  step(dt);draw();
+  if(Math.floor(t*4)!==Math.floor((t-dt)*4))updateUI();
+  requestAnimationFrame(frame);
+ }
 window.addEventListener('resize',resize,{passive:true});if('ResizeObserver' in window)new ResizeObserver(resize).observe(board);resize();requestAnimationFrame(frame);
 })();
 </script>
