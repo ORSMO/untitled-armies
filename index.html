@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V0.7</title>
+<title>Untitled Armies — V0.8</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -41,11 +41,11 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 <div class="app">
   <header class="top">
     <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Discipline · Stress · Sword combat</p></div></div>
-    <div class="build" aria-label="Version 0.7">V0.7</div>
+    <div class="build" aria-label="Version 0.8">V0.8</div>
   </header>
   <main class="board" id="board" aria-label="Battlefield grid with twenty-five soldier dots">
     <canvas id="field"></canvas>
-    <div class="overlay-top" aria-live="polite"><span class="pill"><span class="light"></span><span id="count">25 SOLDIERS</span></span><span class="pill dim" id="status">IDLE</span><span class="pill dim" id="rangeBadge">⚔ 2 CELLS</span></div>
+    <div class="overlay-top" aria-live="polite"><span class="pill"><span class="light"></span><span id="count">25 SOLDIERS</span></span><span class="pill dim" id="status">IDLE</span><span class="pill dim" id="rangeBadge">⚔ 3 CELLS</span></div>
     <aside class="rail left"><button class="control" type="button" id="select" aria-pressed="false" aria-label="Select all soldiers"><span class="dot" aria-hidden="true">◎</span><span id="select-label">Select</span></button></aside>
     <aside class="rail right"><div class="orders is-hidden" id="orders">
       <button class="control attack" id="attack" type="button" aria-label="Attack: advance"><span class="dot" aria-hidden="true">⚔</span><span>Attack</span></button>
@@ -67,7 +67,7 @@ const orderButtons=['attack','defend','stop','retreat'].map(id=>document.getElem
 let W=0,H=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],slashes=[],marker=null,nextId=0;
 const rnd=i=>{const x=Math.sin(i*127.1+91.7)*43758.5453;return x-Math.floor(x)};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-const cell=12,reach=cell*2; // Exactly two battlefield grid squares (24px) from center to center.
+const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) from center to center.
  const facingNoticeRange=cell*7; // Look at nearby enemies only (seven squares).
  const maxTurnRate=3.7; // Radians per second; no instant snapping of the sword or facing marker.
  // V0.6: stress is mostly driven by combat and losses rather than passive proximity.
@@ -138,7 +138,7 @@ function setMode(m){if(!selected)return;mode=m;marker=null;
 function avgStress(){const live=friends.filter(s=>!s.dead&&!s.routed);return live.length?Math.round(live.reduce((a,s)=>a+s.stress,0)/live.length):0;}
 function updateUI(){ui.select.setAttribute('aria-pressed',selected?'true':'false');ui.label.textContent=selected?'Deselect':'Select';ui.orders.classList.toggle('is-hidden',!selected);ui.status.textContent=mode.toUpperCase();orderButtons.forEach(b=>b.classList.toggle('active',selected&&b.id===mode));const alive=friends.filter(s=>!s.dead&&!s.routed).length,broken=friends.filter(s=>s.broken&&!s.routed).length;
  ui.count.textContent=alive+' SOLDIERS';ui.remaining.textContent=alive+' / 25';ui.stress.textContent=avgStress()+'%';
- let status=({idle:'Troops are restless — discipline controls cohesion',attack:'Attacking with swords (range: 2 grid squares)',defend:'Holding formation and fighting nearby enemies',stop:'Standing still (panic can override orders)',retreat:'Ordered retreat toward your side',move:'Marching to your chosen position'}[mode]||'');
+ let status=({idle:'Troops are restless — discipline controls cohesion',attack:'Attacking with swords (range: 3 grid squares)',defend:'Holding formation and fighting nearby enemies',stop:'Standing still (panic can override orders)',retreat:'Ordered retreat toward your side',move:'Marching to your chosen position'}[mode]||'');
  if(broken)status=broken+' soldier'+(broken>1?'s are':' is')+' panicking and fleeing!';
  ui.hint.textContent=status;ui.mode.textContent=({idle:'Idle',attack:'Attack',defend:'Defend',stop:'Stop',retreat:'Retreat',move:'Move'}[mode]||'Idle');
 }
@@ -216,7 +216,7 @@ function step(dt){
   else if(command==='defend'||command==='move'||command==='idle'){moveX=s.tx;moveY=s.ty;}
   const disciplineControl=.42+s.disc/160;
   if(command!=='stop')approach(s,moveX,moveY,dt,pace*disciplineControl);
-  // All fighting soldiers carry swords. Attacks connect only within exactly two cells.
+  // All fighting soldiers carry swords. Attacks connect only within exactly three cells.
   updateFacing(s,target,target?Math.hypot(target.x-s.x,target.y-s.y):Infinity,dt);
    if(command!=='retreat'&&command!=='stop'&&target&&s.cooldown<=0&&Math.hypot(target.x-s.x,target.y-s.y)<=reach)hit(s,target);
  }
