@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V1.0</title>
+<title>Untitled Armies — V1.1</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -35,36 +35,111 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 .sword-label{color:#f7d69b}
 @media(max-width:620px){.info{flex-wrap:wrap;gap:7px}.info .tip{max-width:none;display:flex;gap:6px}.small-btn{padding:7px 11px}.overlay-top{gap:5px}.pill{font-size:9px;padding:5px 7px}.bottom-note{bottom:12px}}
 @media(max-width:400px){#rangeBadge{display:none}.info{font-size:10px}.info .tip{max-width:none}}
+
+/* V1.1: a landscape viewport into a larger battlefield. */
+html,body{height:100%;overflow:hidden}
+body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
+.app{height:100%;max-height:none;width:min(1450px,100%);gap:7px;min-height:0}
+.board{flex:1;height:auto;min-height:0;position:relative}
+#field{cursor:grab}#field:active{cursor:grabbing}
+#minimap{position:absolute;left:91px;bottom:12px;z-index:3;width:150px;height:85px;border:1px solid #8fbaa088;border-radius:9px;background:#142a22e8;box-shadow:0 3px 16px #0007;cursor:crosshair;touch-action:none}
+.map-guide{position:absolute;z-index:3;bottom:101px;left:92px;font:700 9px system-ui;letter-spacing:.06em;color:#daefda;background:#15271fdc;border-radius:4px;padding:3px 6px;pointer-events:none}
+.formation-anchor{position:relative;display:grid;place-items:center}
+.formation-anchor.is-hidden{display:none}
+.formation-menu{position:absolute;left:calc(100% + 3px);top:50%;transform:translateY(-50%);width:174px;height:178px;z-index:10;pointer-events:auto;filter:drop-shadow(0 3px 9px #0009)}
+.formation-menu.is-hidden{display:none}
+.formation-option{position:absolute;min-width:73px;height:38px;padding:4px 7px;border:1px solid #719b7e;background:#1b3c30f0;color:#f0f8e7;border-radius:19px;font:800 11px/1 system-ui;cursor:pointer;touch-action:none;box-shadow:0 3px 10px #0007}
+.formation-option[data-form="line"]{left:3px;top:2px}
+.formation-option[data-form="wedge"]{left:90px;top:40px}
+.formation-option[data-form="block"]{left:90px;top:101px}
+.formation-option[data-form="column"]{left:3px;top:140px}
+.formation-option.hover,.formation-option:focus-visible{background:#3d7956;border-color:#d9f5a9;outline:2px solid #b9ebad;outline-offset:1px}
+.formation-option.chosen{color:#b7f8c2;border-color:#8cd9a8}
+#formationBtn .dot{color:#b6f3ce}
+#formationBtn[aria-expanded="true"] .dot{background:#315e49;border-color:#a3e5af}
+#rotateNotice{display:none;position:fixed;inset:0;z-index:100;background:#0c1915;color:#e8f6e5;align-items:center;justify-content:center;flex-direction:column;gap:14px;padding:25px;text-align:center}
+#rotateNotice .rotate-icon{font-size:56px;line-height:1}
+#rotateNotice p{margin:0;color:#bcd6c6;max-width:280px}
+@media(orientation:portrait){#rotateNotice{display:flex}}
+@media(max-height:630px){
+ body{padding:0}
+ .app{width:100%;height:100dvh;gap:0}
+ .top{padding:4px 11px 3px}
+ .brand h1{font-size:14px}
+ .brand p{font-size:9px}
+ .emblem{width:28px;height:28px;font-size:16px}
+ .build{padding:5px 8px;font-size:10px}
+ .board{border-radius:0;border-left:0;border-right:0;min-height:0;height:auto;flex:1}
+ .rail{width:62px;padding:4px;gap:6px}
+ .right{width:70px}
+ .orders{gap:3px}
+ .dot{width:40px;height:40px;font-size:18px}
+ .control{min-width:50px;font-size:9px;gap:2px}
+ .overlay-top{top:5px;max-width:calc(100% - 142px)}
+ .pill{font-size:9px;padding:4px 7px}
+ .bottom-note{bottom:8px;font-size:10px;padding:5px 7px;max-width:calc(100% - 350px)}
+ .info{padding:4px 9px;font-size:10px;gap:6px;flex-wrap:nowrap;line-height:1.2}
+ .info .tip{display:flex;flex-shrink:0;max-width:none;gap:4px}
+ .small-btn{padding:5px 7px;font-size:10px}
+ #minimap{left:69px;bottom:8px;width:129px;height:70px}
+ .map-guide{left:70px;bottom:82px;font-size:8px}
+ .formation-option{height:34px;font-size:10px;min-width:68px}
+ .formation-menu{height:166px;width:160px}
+ .formation-option[data-form="line"]{left:2px;top:2px}
+ .formation-option[data-form="wedge"]{left:85px;top:37px}
+ .formation-option[data-form="block"]{left:85px;top:94px}
+ .formation-option[data-form="column"]{left:2px;top:131px}
+}
+@media(max-height:410px){.orders{gap:1px}.dot{width:35px;height:35px}.control{font-size:8px}.bottom-note{display:none}.map-guide{display:none}}
 </style>
 </head>
 <body>
 <div class="app">
   <header class="top">
     <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Discipline · Stamina · Sword combat</p></div></div>
-    <div class="build" aria-label="Version 1.0">V1.0</div>
+    <div class="build" aria-label="Version 1.1">V1.1</div>
   </header>
-  <main class="board" id="board" aria-label="Battlefield grid with twenty-five soldier dots">
+  <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
     <canvas id="field"></canvas>
-    <div class="overlay-top" aria-live="polite"><span class="pill"><span class="light"></span><span id="count">25 SOLDIERS</span></span><span class="pill dim" id="status">IDLE</span><span class="pill dim" id="rangeBadge">⚔ 3 CELLS</span></div>
-    <aside class="rail left"><button class="control" type="button" id="select" aria-pressed="false" aria-label="Select all soldiers"><span class="dot" aria-hidden="true">◎</span><span id="select-label">Select</span></button></aside>
+    <canvas id="minimap" width="180" height="102" aria-label="Battlefield minimap: touch or click to pan"></canvas>
+    <div class="map-guide">DRAG MAP TO PAN · TAP TO MOVE</div>
+    <div class="overlay-top" aria-live="polite"><span class="pill"><span class="light"></span><span id="count">50 SOLDIERS</span></span><span class="pill dim" id="status">IDLE</span><span class="pill dim" id="rangeBadge">⚔ 3 CELLS</span></div>
+    <aside class="rail left">
+  <button class="control" type="button" id="select" aria-pressed="false" aria-label="Select all soldiers"><span class="dot" aria-hidden="true">◎</span><span id="select-label">Select</span></button>
+  <div class="formation-anchor is-hidden" id="formationAnchor">
+   <button class="control" type="button" id="formationBtn" aria-label="Press and slide toward a formation" aria-expanded="false" aria-controls="formationMenu"><span class="dot" aria-hidden="true">◇</span><span>Formation</span></button>
+   <div class="formation-menu is-hidden" id="formationMenu" role="group" aria-label="Choose a formation">
+    <button class="formation-option" type="button" data-form="line">Line</button>
+    <button class="formation-option" type="button" data-form="wedge">Wedge</button>
+    <button class="formation-option" type="button" data-form="block">Block</button>
+    <button class="formation-option" type="button" data-form="column">Column</button>
+   </div>
+  </div>
+ </aside>
     <aside class="rail right"><div class="orders is-hidden" id="orders">
       <button class="control attack" id="attack" type="button" aria-label="Attack: advance"><span class="dot" aria-hidden="true">⚔</span><span>Attack</span></button>
       <button class="control defend" id="defend" type="button" aria-label="Defend: reform and hold"><span class="dot" aria-hidden="true">⬡</span><span>Defend</span></button>
       <button class="control stop" id="stop" type="button" aria-label="Stop all soldiers"><span class="dot" aria-hidden="true">■</span><span>Stop</span></button>
       <button class="control retreat" id="retreat" type="button" aria-label="Retreat to left side"><span class="dot" aria-hidden="true">↶</span><span>Retreat</span></button>
     </div></aside>
-    <div class="bottom-note" id="hint" aria-live="polite">Select your army to give orders</div>
+    <div class="bottom-note" id="hint" aria-live="polite">Select your army · swipe to explore the battlefield</div>
   </main>
-  <footer class="info"><span><strong id="friendlyCount">25 / 25</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">25 / 25</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
+  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
+</div>
+<div id="rotateNotice" role="status" aria-live="polite">
+ <div class="rotate-icon" aria-hidden="true">↻</div>
+ <strong>UNTITLED ARMIES · LANDSCAPE MODE</strong>
+ <p>Rotate your phone sideways to play on the wider battlefield.</p>
 </div>
 <script>
 (()=>{
 'use strict';
 const canvas=document.querySelector('#field'),board=document.querySelector('#board');
-const ctx=canvas.getContext('2d');
-const ui={select:document.querySelector('#select'),label:document.querySelector('#select-label'),orders:document.querySelector('#orders'),status:document.querySelector('#status'),hint:document.querySelector('#hint'),mode:document.querySelector('#mode'),count:document.querySelector('#count'),remaining:document.querySelector('#friendlyCount'),enemyCount:document.querySelector('#enemyCount'),stress:document.querySelector('#stressLabel'),stamina:document.querySelector('#staminaLabel')};
+const ctx=canvas.getContext('2d'),mini=document.querySelector('#minimap'),mctx=mini.getContext('2d');
+const ui={select:document.querySelector('#select'),label:document.querySelector('#select-label'),orders:document.querySelector('#orders'),status:document.querySelector('#status'),hint:document.querySelector('#hint'),mode:document.querySelector('#mode'),count:document.querySelector('#count'),remaining:document.querySelector('#friendlyCount'),enemyCount:document.querySelector('#enemyCount'),stress:document.querySelector('#stressLabel'),stamina:document.querySelector('#staminaLabel'),formationAnchor:document.querySelector('#formationAnchor'),formationBtn:document.querySelector('#formationBtn'),formationMenu:document.querySelector('#formationMenu')};
 const orderButtons=['attack','defend','stop','retreat'].map(id=>document.getElementById(id));
-let W=0,H=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],slashes=[],marker=null,nextId=0;
+let W=0,H=0,VW=0,VH=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],slashes=[],marker=null,nextId=0,formationType='block',formationDragging=false;
+ const camera={x:0,y:0},cameraKeys=new Set();let fieldPointer=null;
 const rnd=i=>{const x=Math.sin(i*127.1+91.7)*43758.5453;return x-Math.floor(x)};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) from center to center.
@@ -80,9 +155,37 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  };
 const gap=()=>clamp(W/17,23,29);
 function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74,W*.65,W-90),y:H*.51};}
-function formation(team,cx,cy){const d=gap(),n=5;return Array.from({length:n*n},(_,i)=>({x:clamp(cx+(i%n-(n-1)/2)*d,15,W-15),y:clamp(cy+(Math.floor(i/n)-(n-1)/2)*d,22,H-22)}));}
+// All formation styles provide fifty unique slots; enemy formations stay as Block.
+ function formation(team,cx,cy){
+  const d=gap(),type=team==='friend'?formationType:'block',positions=[];
+  if(type==='wedge'){
+   const rows=[2,4,6,8,10,10,10];
+   for(let depth=0;depth<rows.length;depth++){
+    const n=rows[depth];
+    for(let j=0;j<n;j++)positions.push({x:cx+(3-depth)*d,y:cy+(j-(n-1)/2)*d});
+   }
+  }else{
+   const cols=type==='line'?25:type==='column'?5:10;
+   const rows=50/cols;
+   for(let i=0;i<50;i++){
+    positions.push({x:cx+(i%cols-(cols-1)/2)*d,y:cy+(Math.floor(i/cols)-(rows-1)/2)*d});
+   }
+  }
+  return positions.map(p=>({x:clamp(p.x,18,W-18),y:clamp(p.y,21,H-21)}));
+ }
 function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);return {id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,stamina:100,maxStamina:100,recoveryDelay:0,attackCount:0,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:1.5+rnd(i+16)*1.3,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,escapeAngle:0,hitFlash:0};}
-function populate(){nextId=0;const a=home('friend'),b=home('foe');friends=formation('friend',a.x,a.y).map((p,i)=>create('friend',i,p));foes=formation('foe',b.x,b.y).map((p,i)=>create('foe',i,p));slashes=[];selected=false;mode='idle';marker=null;updateUI();}
+function focusArmy(){
+  const h=home('friend');
+  camera.x=clamp(h.x-VW*.37,0,Math.max(0,W-VW));
+  camera.y=clamp(h.y-VH*.51,0,Math.max(0,H-VH));
+ }
+ function populate(){
+  nextId=0;formationType='block';setFormationMenu(false);
+  const a=home('friend'),b=home('foe');
+  friends=formation('friend',a.x,a.y).map((p,i)=>create('friend',i,p));
+  foes=formation('foe',b.x,b.y).map((p,i)=>create('foe',i,p));
+  slashes=[];selected=false;mode='idle';marker=null;focusArmy();updateUI();
+ }
 // Enemy reinforcements enter at the right edge in the least crowded lane.
 function respawnEnemy(s){
  const index=foes.indexOf(s);if(index<0)return;
@@ -154,7 +257,52 @@ function chooseTarget(s){
   turnToward(s,Math.atan2(dy,dx),dt);
   if(s.x< -12||s.x>W+12)s.routed=true;
  }
-function setFormation(cx,cy){const p=formation('friend',cx,cy);friends.forEach((s,i)=>{if(!s.broken&&!s.dead){s.anchorX=p[i].x;s.anchorY=p[i].y;}});}
+function setFormation(cx,cy){
+  const p=formation('friend',cx,cy);
+  friends.forEach((s,i)=>{if(!s.broken&&!s.dead){
+   s.anchorX=p[i].x;s.anchorY=p[i].y;s.tx=p[i].x;s.ty=p[i].y;
+  }});
+ }
+ function setFormationMenu(open){
+  const visible=!!open&&selected;
+  ui.formationMenu.classList.toggle('is-hidden',!visible);
+  ui.formationBtn.setAttribute('aria-expanded',visible?'true':'false');
+  if(!visible)ui.formationMenu.querySelectorAll('.formation-option').forEach(b=>b.classList.remove('hover'));
+ }
+ function chooseFormation(type){
+  if(!selected||!['block','line','column','wedge'].includes(type))return;
+  formationType=type;setFormationMenu(false);
+  const cx=friends.reduce((a,s)=>a+s.anchorX,0)/friends.length;
+  const cy=friends.reduce((a,s)=>a+s.anchorY,0)/friends.length;
+  setFormation(cx,cy);mode='form';updateUI();
+ }
+ function hoveredFormation(e){
+  const el=document.elementFromPoint(e.clientX,e.clientY);
+  return el?.closest?.('.formation-option')||null;
+ }
+ const formOptions=[...ui.formationMenu.querySelectorAll('.formation-option')];
+ formOptions.forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();chooseFormation(b.dataset.form)}));
+ ui.formationBtn.addEventListener('pointerdown',e=>{
+  if(!selected)return;e.preventDefault();e.stopPropagation();
+  const wasOpen=!ui.formationMenu.classList.contains('is-hidden');
+  setFormationMenu(!wasOpen);formationDragging=!wasOpen;
+  if(formationDragging)ui.formationBtn.setPointerCapture?.(e.pointerId);
+ });
+ ui.formationBtn.addEventListener('pointermove',e=>{
+  if(!formationDragging)return;
+  const hover=hoveredFormation(e);
+  formOptions.forEach(b=>b.classList.toggle('hover',b===hover));
+ });
+ ui.formationBtn.addEventListener('pointerup',e=>{
+  if(!formationDragging)return;
+  const hover=hoveredFormation(e);formationDragging=false;
+  if(hover)chooseFormation(hover.dataset.form);
+ });
+ ui.formationBtn.addEventListener('pointercancel',()=>{formationDragging=false;setFormationMenu(false)});
+ // A keyboard or accessibility click also opens the radial choices.
+ ui.formationBtn.addEventListener('click',e=>{
+  if(e.detail===0&&selected)setFormationMenu(ui.formationMenu.classList.contains('is-hidden'));
+ });
 function setMode(m){if(!selected)return;mode=m;marker=null;
  if(m==='defend'){const alive=living(friends);const x=alive.reduce((a,s)=>a+s.x,0)/Math.max(alive.length,1),y=alive.reduce((a,s)=>a+s.y,0)/Math.max(alive.length,1);setFormation(x||home('friend').x,y||H*.5);}
  if(m==='stop'){friends.forEach(s=>{if(!s.broken&&!s.dead){s.anchorX=s.x;s.anchorY=s.y;}});}
@@ -163,14 +311,66 @@ function setMode(m){if(!selected)return;mode=m;marker=null;
 function avgStress(){const live=foes.filter(s=>!s.dead&&!s.routed);return live.length?Math.round(live.reduce((a,s)=>a+s.stress,0)/live.length):0;}
  function avgStamina(){const active=friends.filter(s=>!s.dead&&!s.routed);return active.length?Math.round(active.reduce((a,s)=>a+s.stamina,0)/active.length):0;}
 function updateUI(){ui.select.setAttribute('aria-pressed',selected?'true':'false');ui.label.textContent=selected?'Deselect':'Select';ui.orders.classList.toggle('is-hidden',!selected);ui.status.textContent=mode.toUpperCase();orderButtons.forEach(b=>b.classList.toggle('active',selected&&b.id===mode));const alive=friends.filter(s=>!s.dead&&!s.routed).length,broken=friends.filter(s=>s.broken&&!s.routed).length;
- ui.count.textContent=alive+' SOLDIERS';ui.remaining.textContent=alive+' / 25';ui.enemyCount.textContent=foes.filter(s=>!s.dead&&!s.routed).length+' / 25';ui.stress.textContent=avgStress()+'%';ui.stamina.textContent=avgStamina()+'%';
- let status=({idle:'Troops are restless — discipline controls cohesion',attack:'Attacking with swords (range: 3 grid squares)',defend:'Holding formation and fighting nearby enemies',stop:'Standing still (your troops cannot panic)',retreat:'Ordered retreat toward your side',move:'Marching to your chosen position'}[mode]||'');
+ ui.count.textContent=alive+' SOLDIERS';ui.remaining.textContent=alive+' / 50';ui.enemyCount.textContent=foes.filter(s=>!s.dead&&!s.routed).length+' / 50';ui.stress.textContent=avgStress()+'%';ui.stamina.textContent=avgStamina()+'%';
+ let status=({idle:'Drag to explore · select troops to give orders',attack:'Attacking with swords (range: 3 squares)',defend:'Holding formation and fighting nearby enemies',stop:'Standing still (your troops cannot panic)',retreat:'Ordered retreat toward your side',move:'Marching to your chosen position',form:'Reforming into '+formationType+' formation'}[mode]||'');
  if(broken)status=broken+' soldier'+(broken>1?'s are':' is')+' panicking and fleeing!';
- ui.hint.textContent=status;ui.mode.textContent=({idle:'Idle',attack:'Attack',defend:'Defend',stop:'Stop',retreat:'Retreat',move:'Move'}[mode]||'Idle');
+ ui.hint.textContent=status;ui.mode.textContent=({idle:'Idle',attack:'Attack',defend:'Defend',stop:'Stop',retreat:'Retreat',move:'Move',form:'Formation'}[mode]||'Idle');
+  ui.formationAnchor.classList.toggle('is-hidden',!selected);
+  if(!selected)setFormationMenu(false);
+  formOptions.forEach(b=>b.classList.toggle('chosen',b.dataset.form===formationType));
 }
 ui.select.addEventListener('click',()=>{selected=!selected;if(selected){mode='stop';friends.forEach(s=>{s.anchorX=s.x;s.anchorY=s.y;});}else{mode='idle';}updateUI()});
 orderButtons.forEach(b=>b.addEventListener('click',()=>setMode(b.id)));
-canvas.addEventListener('pointerdown',e=>{if(!selected)return;const r=canvas.getBoundingClientRect(),x=clamp(e.clientX-r.left,95,W-85),y=clamp(e.clientY-r.top,39,H-43);mode='move';setFormation(x,y);marker={x,y,when:t};updateUI()});
+// Tap orders soldiers to a world position; swipe pans the camera instead.
+ canvas.addEventListener('pointerdown',e=>{
+  if(e.button!==undefined&&e.button!==0)return;
+  setFormationMenu(false);
+  fieldPointer={id:e.pointerId,x:e.clientX,y:e.clientY,cx:camera.x,cy:camera.y,moved:false};
+  canvas.setPointerCapture?.(e.pointerId);
+ });
+ canvas.addEventListener('pointermove',e=>{
+  const p=fieldPointer;if(!p||p.id!==e.pointerId)return;
+  const dx=e.clientX-p.x,dy=e.clientY-p.y;
+  if(Math.hypot(dx,dy)>8)p.moved=true;
+  if(p.moved){
+   camera.x=clamp(p.cx-dx,0,Math.max(0,W-VW));
+   camera.y=clamp(p.cy-dy,0,Math.max(0,H-VH));
+  }
+ });
+ canvas.addEventListener('pointerup',e=>{
+  const p=fieldPointer;if(!p||p.id!==e.pointerId)return;
+  fieldPointer=null;
+  if(p.moved||!selected)return;
+  const r=canvas.getBoundingClientRect();
+  const x=clamp(camera.x+e.clientX-r.left,96,W-96);
+  const y=clamp(camera.y+e.clientY-r.top,40,H-40);
+  mode='move';setFormation(x,y);marker={x,y,when:t};updateUI();
+ });
+ canvas.addEventListener('pointercancel',()=>{fieldPointer=null});
+ canvas.addEventListener('wheel',e=>{
+  e.preventDefault();
+  camera.x=clamp(camera.x+e.deltaX+e.deltaY*.55,0,Math.max(0,W-VW));
+  camera.y=clamp(camera.y+e.deltaY*.45,0,Math.max(0,H-VH));
+ },{passive:false});
+ // Mini-map: tap or drag the overview to relocate the viewport.
+ function panFromMini(e){
+  const rect=mini.getBoundingClientRect();
+  const wx=clamp((e.clientX-rect.left)/rect.width,0,1)*W;
+  const wy=clamp((e.clientY-rect.top)/rect.height,0,1)*H;
+  camera.x=clamp(wx-VW*.5,0,Math.max(0,W-VW));
+  camera.y=clamp(wy-VH*.5,0,Math.max(0,H-VH));
+ }
+ mini.addEventListener('pointerdown',e=>{mini.setPointerCapture?.(e.pointerId);panFromMini(e)});
+ mini.addEventListener('pointermove',e=>{if(e.buttons||e.pressure>0)panFromMini(e)});
+ // Keyboard navigation on desktop without changing the army's current orders.
+ window.addEventListener('keydown',e=>{
+  if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','a','d','w','s','A','D','W','S'].includes(e.key)){
+   if(e.target?.tagName==='BUTTON')return;
+   cameraKeys.add(e.key.toLowerCase());e.preventDefault();
+  }
+ });
+ window.addEventListener('keyup',e=>cameraKeys.delete(e.key.toLowerCase()));
+ window.addEventListener('blur',()=>cameraKeys.clear());
 document.querySelector('#stressTest').addEventListener('click',()=>{for(const s of foes){if(!s.dead&&!s.broken){const frontline=foes.indexOf(s)%5===0; s.stress=clamp(s.stress+(frontline?94+rnd(s.id+Math.floor(t)*3)*6:6),0,100);}}updateUI()});
 document.querySelector('#reset').addEventListener('click',populate);
 function panic(s){if(s.team==='friend'||s.broken||s.dead)return;s.broken=true;s.targetId=null;s.escapeAngle=0;s.decision=0;for(const n of members(s.team)){if(n===s||n.dead||n.broken)continue;const d=Math.hypot(n.x-s.x,n.y-s.y);if(d<80)n.stress=clamp(n.stress+stressBalance.panicSpread*(1-n.disc/160)*(1-d/100),0,100);} }
@@ -268,7 +468,7 @@ function step(dt){
       moveX=target.x+offsetX+(s.team==='friend'?-reach*.70:reach*.70);moveY=target.y+offsetY;pace=1.20;
     }else{moveX=s.x;moveY=s.y;}
   }
-  else if(command==='defend'||command==='move'||command==='idle'){moveX=s.tx;moveY=s.ty;}
+  else if(command==='defend'||command==='move'||command==='idle'||command==='form'){moveX=s.tx;moveY=s.ty;}
   const disciplineControl=.42+s.disc/160;
   const fatiguePace=.76+.24*(s.stamina/s.maxStamina);
   const oldX=s.x,oldY=s.y;
@@ -307,7 +507,11 @@ function drawUnit(s){if(s.routed)return;const bob=s.dead?0:Math.sin(t*1.5+s.phas
  ctx.fillStyle=s.stamina<25?'#eea86d':'#7fd7da';
  ctx.fillRect(x-10,y+14,20*clamp(s.stamina/s.maxStamina,0,1),3);
 }
-function draw(){if(!W)return;background();if(marker){const age=t-marker.when;if(age<1.3){ctx.beginPath();ctx.arc(marker.x,marker.y,14+age*11,0,2*Math.PI);ctx.strokeStyle='rgba(211,255,218,'+(1-age/1.3)*.6+')';ctx.lineWidth=2;ctx.stroke();}else marker=null;}
+function draw(){
+ if(!VW)return;
+ ctx.clearRect(0,0,VW,VH);
+ ctx.save();ctx.translate(-camera.x,-camera.y);
+ background();if(marker){const age=t-marker.when;if(age<1.3){ctx.beginPath();ctx.arc(marker.x,marker.y,14+age*11,0,2*Math.PI);ctx.strokeStyle='rgba(211,255,218,'+(1-age/1.3)*.6+')';ctx.lineWidth=2;ctx.stroke();}else marker=null;}
  // Selection means selected soldiers are highlighted, but never hides their stats or swords.
  for(const s of foes)drawUnit(s);for(const s of friends)drawUnit(s);
  for(const sl of slashes){
@@ -318,9 +522,53 @@ function draw(){if(!W)return;background();if(marker){const age=t-marker.when;if(
   ctx.beginPath();ctx.arc(0,0,reach,Math.PI*1.65,Math.PI*(sl.type==='heavy'?.52:.33));ctx.stroke();
   ctx.restore();
  }
+ ctx.restore();
+ drawMinimap();
 }
-function resize(){const prevW=W,prevH=H,b=board.getBoundingClientRect();W=Math.max(220,b.width);H=Math.max(320,b.height);const dpr=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);if(!friends.length)populate();else if(prevW&&prevH){for(const s of [...friends,...foes]){s.x=s.x/prevW*W;s.y=s.y/prevH*H;s.tx=s.tx/prevW*W;s.ty=s.ty/prevH*H;s.anchorX=s.anchorX/prevW*W;s.anchorY=s.anchorY/prevH*H;}}draw();}
-function frame(ts){if(!last)last=ts;const dt=Math.min((ts-last)/1000,.040);last=ts;t+=dt;step(dt);draw();if(Math.floor(t*4)!==Math.floor((t-dt)*4))updateUI();requestAnimationFrame(frame)}
+function drawMinimap(){
+  if(!W)return;
+  const mw=mini.width,mh=mini.height;
+  mctx.clearRect(0,0,mw,mh);
+  mctx.fillStyle='#152b24';mctx.fillRect(0,0,mw,mh);
+  mctx.strokeStyle='#6e957d';mctx.lineWidth=2;mctx.strokeRect(1,1,mw-2,mh-2);
+  for(const s of foes){if(s.routed||s.dead)continue;mctx.fillStyle='#e47b74';mctx.fillRect(s.x/W*mw-2,s.y/H*mh-2,4,4);}
+  for(const s of friends){if(s.routed||s.dead)continue;mctx.fillStyle='#65e4a5';mctx.fillRect(s.x/W*mw-2,s.y/H*mh-2,4,4);}
+  mctx.strokeStyle='#f5ebbd';mctx.lineWidth=1.8;
+  mctx.strokeRect(camera.x/W*mw,camera.y/H*mh,Math.min(mw,VW/W*mw),Math.min(mh,VH/H*mh));
+ }
+ function resize(){
+  const b=board.getBoundingClientRect();
+  VW=Math.max(240,b.width);VH=Math.max(180,b.height);
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  canvas.width=Math.round(VW*dpr);canvas.height=Math.round(VH*dpr);
+  canvas.style.width=VW+'px';canvas.style.height=VH+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  if(!friends.length){
+   W=Math.max(1500,VW*1.7);H=Math.max(860,VH*1.7);
+   populate();
+  }else{
+   // Keep world coordinates fixed while the phone/browser changes dimensions.
+   W=Math.max(W,VW+120);H=Math.max(H,VH+120);
+   camera.x=clamp(camera.x,0,Math.max(0,W-VW));
+   camera.y=clamp(camera.y,0,Math.max(0,H-VH));
+  }
+  draw();
+ }
+function frame(ts){
+  if(!last)last=ts;
+  const dt=Math.min((ts-last)/1000,.040);
+  last=ts;t+=dt;
+  const panSpeed=420*dt;
+  if(cameraKeys.has('arrowleft')||cameraKeys.has('a'))camera.x-=panSpeed;
+  if(cameraKeys.has('arrowright')||cameraKeys.has('d'))camera.x+=panSpeed;
+  if(cameraKeys.has('arrowup')||cameraKeys.has('w'))camera.y-=panSpeed;
+  if(cameraKeys.has('arrowdown')||cameraKeys.has('s'))camera.y+=panSpeed;
+  camera.x=clamp(camera.x,0,Math.max(0,W-VW));
+  camera.y=clamp(camera.y,0,Math.max(0,H-VH));
+  step(dt);draw();
+  if(Math.floor(t*4)!==Math.floor((t-dt)*4))updateUI();
+  requestAnimationFrame(frame);
+ }
 window.addEventListener('resize',resize,{passive:true});if('ResizeObserver' in window)new ResizeObserver(resize).observe(board);resize();requestAnimationFrame(frame);
 })();
 </script>
