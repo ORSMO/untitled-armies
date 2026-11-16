@@ -786,13 +786,99 @@ function setMode(m){if(!selected)return;mode=m;marker=null;nextEngagementPlan=0;
  if(m==='stop'){friends.forEach(s=>{if(!s.broken&&!s.dead){s.anchorX=s.x;s.anchorY=s.y;}});}
  if(m==='retreat'){const h=home('friend');setFormation(Math.max(103,h.x*.57),H*.51);}
  updateUI();}
+// Enemy-only tactical orders; the user's army remains separately controlled.
+const enemyButton=document.querySelector('#enemyButton');
+const enemyPanel=document.querySelector('#enemyPanel');
+const enemyStatus=document.querySelector('#enemyCommandStatus');
+const ammoButton=document.querySelector('#infiniteAmmoButton');
+const enemyOrderControls=[...enemyPanel.querySelectorAll('[data-enemy-order]')];
+const enemyFormControls=[...enemyPanel.querySelectorAll('[data-enemy-form]')];
+const enemyOrderLabels={auto:'AI Auto',attack:'Charge',defend:'Hold',stop:'Stand still',retreat:'Retreat',move:'Move'};
+function updateEnemyUI(){
+ enemyStatus.textContent=(enemyMovePending?'Tap the battlefield':enemyOrderLabels[enemyCommand])+
+   ' · '+enemyFormationType[0].toUpperCase()+enemyFormationType.slice(1);
+ enemyOrderControls.forEach(b=>b.setAttribute('aria-pressed',
+  (enemyMovePending?b.dataset.enemyOrder==='move':b.dataset.enemyOrder===enemyCommand)?'true':'false'));
+ enemyFormControls.forEach(b=>b.setAttribute('aria-pressed',
+  b.dataset.enemyForm===enemyFormationType?'true':'false'));
+ ammoButton.setAttribute('aria-pressed',infiniteAmmo?'true':'false');
+ ammoButton.textContent=infiniteAmmo?'∞ Ammo: ON':'∞ Ammo: OFF';
+ ammoButton.title=infiniteAmmo?
+  'Unlimited arrows, bolts and javelins for BOTH armies. Switch off to restore normal ammo.' :
+  'Enable unlimited arrows, bolts and javelins for BOTH armies.';
+}
+function setEnemyPanel(open){
+ enemyPanel.classList.toggle('is-hidden',!open);
+ enemyButton.setAttribute('aria-expanded',open?'true':'false');
+ if(open){setArmorPanel(false);setEquipmentMenu(false);setFormationMenu(false);}
+}
+function enemyCenter(){
+ const alive=living(foes);
+ return alive.length?{
+  x:alive.reduce((sum,s)=>sum+s.x,0)/alive.length,
+  y:alive.reduce((sum,s)=>sum+s.y,0)/alive.length
+ }:home('foe');
+}
+function positionEnemyFormation(cx,cy){
+ const slots=formation('foe',clamp(cx,88,W-88),clamp(cy,65,H-65));
+ foes.forEach((s,i)=>{
+  if(s.dead||s.broken||s.routed)return;
+  s.anchorX=slots[i].x;s.anchorY=slots[i].y;
+  s.tx=slots[i].x;s.ty=slots[i].y;
+ });
+ nextEngagementPlan=0;
+}
+function commandEnemy(order){
+ if(order==='move'){
+  enemyMovePending=true;
+  setEnemyPanel(false);
+  ui.hint.textContent='🔴 Tap the battlefield to choose where the enemy army marches';
+  updateEnemyUI();return;
+ }
+ enemyMovePending=false;enemyCommand=order;
+ if(order==='defend'){
+  const center=enemyCenter();positionEnemyFormation(center.x,center.y);
+ }
+ if(order==='stop')foes.forEach(s=>{
+  if(!s.dead&&!s.broken&&!s.routed){
+   s.anchorX=s.x;s.anchorY=s.y;s.tx=s.x;s.ty=s.y;
+  }
+ });
+ if(order==='retreat')positionEnemyFormation(
+  clamp(Math.max(W*.87,home('foe').x+W*.07),100,W-100),H*.51);
+ nextEngagementPlan=0;
+ updateEnemyUI();
+}
+enemyButton.addEventListener('click',()=>setEnemyPanel(enemyPanel.classList.contains('is-hidden')));
+document.querySelector('#enemyClose').addEventListener('click',()=>setEnemyPanel(false));
+enemyOrderControls.forEach(b=>b.addEventListener('click',()=>commandEnemy(b.dataset.enemyOrder)));
+enemyFormControls.forEach(b=>b.addEventListener('click',()=>{
+ enemyFormationType=b.dataset.enemyForm;
+ const center=enemyCenter();positionEnemyFormation(center.x,center.y);
+ enemyCommand='defend';enemyMovePending=false;updateEnemyUI();
+}));
+document.querySelector('#enemyFocus').addEventListener('click',()=>{
+ const center=enemyCenter();
+ camera.x=clamp(center.x-VW*.5,0,Math.max(0,W-VW));
+ camera.y=clamp(center.y-VH*.5,0,Math.max(0,H-VH));
+ setEnemyPanel(false);
+});
+ammoButton.addEventListener('click',()=>{
+ infiniteAmmo=!infiniteAmmo;
+ updateEnemyUI();
+ ui.hint.textContent=infiniteAmmo?
+  '∞ Unlimited ranged ammo ON for BOTH armies':'Finite ranged ammo restored for both armies';
+});
+window.addEventListener('keydown',e=>{
+ if(e.key==='Escape'){enemyMovePending=false;setEnemyPanel(false);updateEnemyUI();}
+});
 function avgStress(){const live=foes.filter(s=>!s.dead&&!s.routed);return live.length?Math.round(live.reduce((a,s)=>a+s.stress,0)/live.length):0;}
  function avgStamina(){const active=friends.filter(s=>!s.dead&&!s.routed);return active.length?Math.round(active.reduce((a,s)=>a+s.stamina,0)/active.length):0;}
 function updateUI(){ui.select.setAttribute('aria-pressed',selected?'true':'false');ui.label.textContent=selected?'Deselect':'Select';ui.orders.classList.toggle('is-hidden',!selected);ui.status.textContent=mode.toUpperCase();orderButtons.forEach(b=>b.classList.toggle('active',selected&&b.id===mode));const alive=friends.filter(s=>!s.dead&&!s.routed).length,broken=friends.filter(s=>s.broken&&!s.routed).length;
  ui.count.textContent=alive+' SOLDIERS';ui.remaining.textContent=alive+' / 50';ui.enemyCount.textContent=foes.filter(s=>!s.dead&&!s.routed).length+' / 50';ui.stress.textContent=avgStress()+'%';ui.stamina.textContent=avgStamina()+'%';
  let status=({idle:'Drag to explore · select troops to give orders',attack:'Attacking with varied weapon reach and timed strikes',defend:'Holding formation and fighting nearby enemies',stop:'Standing still (your troops cannot panic)',retreat:'Ordered retreat toward your side',move:'Marching to your chosen position',form:'Reforming into '+formationType+' formation'}[mode]||'');
  if(broken)status=broken+' soldier'+(broken>1?'s are':' is')+' panicking and fleeing!';
- ui.hint.textContent=status;ui.mode.textContent=({idle:'Idle',attack:'Attack',defend:'Defend',stop:'Stop',retreat:'Retreat',move:'Move',form:'Formation'}[mode]||'Idle');
+ ui.hint.textContent=enemyMovePending?'🔴 TAP BATTLEFIELD TO MOVE ENEMY ARMY':status;ui.mode.textContent=({idle:'Idle',attack:'Attack',defend:'Defend',stop:'Stop',retreat:'Retreat',move:'Move',form:'Formation'}[mode]||'Idle');
   ui.formationAnchor.classList.toggle('is-hidden',!selected);
   if(!selected)setFormationMenu(false);
   formOptions.forEach(b=>b.classList.toggle('chosen',b.dataset.form===formationType));
@@ -818,7 +904,17 @@ orderButtons.forEach(b=>b.addEventListener('click',()=>setMode(b.id)));
  canvas.addEventListener('pointerup',e=>{
   const p=fieldPointer;if(!p||p.id!==e.pointerId)return;
   fieldPointer=null;
-  if(p.moved||!selected)return;
+  if(p.moved)return;
+  if(enemyMovePending){
+   const r=canvas.getBoundingClientRect();
+   const x=clamp(camera.x+e.clientX-r.left,90,W-90);
+   const y=clamp(camera.y+e.clientY-r.top,65,H-65);
+   positionEnemyFormation(x,y);
+   enemyCommand='move';enemyMovePending=false;
+   updateEnemyUI();
+   return;
+  }
+  if(!selected)return;
   const r=canvas.getBoundingClientRect();
   const x=clamp(camera.x+e.clientX-r.left,96,W-96);
   const y=clamp(camera.y+e.clientY-r.top,40,H-40);
