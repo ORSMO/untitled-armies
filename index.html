@@ -1791,7 +1791,9 @@ function drawUnit(s){if(s.routed)return;
  ctx.fillStyle='#ffffff40';ctx.beginPath();ctx.arc(x-2.5,y-3,2.7,0,2*Math.PI);ctx.fill();
  // Shields stay in front and visibly rise to defend incoming blows.
  const shield=shieldProfiles[s.shield];
- if(shield){
+ // Two-handed bows/crossbows occupy both hands; any shield returns when
+ // the archer switches to their close-combat weapon.
+ if(shield&&!(isArcher(s)&&!s.meleeReady&&!s.attack&&rangedProfiles[s.ranged]?.twoHand)){
   const recoil=clamp(s.shieldRecoil/.26,0,1);
   ctx.save();ctx.translate(x-Math.cos(s.faceAngle)*recoil*4,y-Math.sin(s.faceAngle)*recoil*4);
   ctx.rotate(s.faceAngle+recoil*.25);
@@ -2253,7 +2255,7 @@ function drawLabArena(ar){
   ctx.fillStyle=s.hitFlash>0?'#fff3aa':bodyColor;
   ctx.strokeStyle=armor?.color||'#fff';ctx.lineWidth=2.2;
   ctx.beginPath();ctx.arc(s.x,s.y,9,0,Math.PI*2);ctx.fill();ctx.stroke();
-  if(shield){
+  if(shield&&!(isArcher(s)&&!s.meleeReady&&!s.attack&&rangedProfiles[s.ranged]?.twoHand)){
    ctx.save();ctx.translate(s.x,s.y);ctx.rotate(s.faceAngle);
    ctx.fillStyle=s.guardActive?'#f3f0cf':shield.color;
    ctx.beginPath();ctx.ellipse(11,0,shield.size*.45,shield.size*.30,0,0,Math.PI*2);ctx.fill();
