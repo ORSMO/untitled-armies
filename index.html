@@ -332,7 +332,7 @@ body.lab-mode .lab-area{display:flex}
  <div class="lab-score"><span id="labBattles3">0 fights</span><span id="labBlocks3">0 blocks</span></div>
 </article>
 <article class="lab-card" id="labCard4">
- <div class="lab-card-head"><strong>Parry mastery</strong><span class="lab-count">4 vs 5</span></div>
+ <div class="lab-card-head"><strong>Parry vs shields</strong><span class="lab-count">4 vs 5</span></div>
  <div class="lab-matchup"><span class="lab-green" title="Elite/master · mail sword">🟢 Elite/master · mail sword</span><span class="lab-red" title="Trained/practiced · round sword">🔴 Trained/practiced · round sword</span></div>
  <canvas class="lab-map" id="labCanvas4" width="440" height="210" aria-label="Parry mastery simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult4">0–0 · 0 draws</span><span class="lab-winner" id="labLeader4">Testing…</span></div>
@@ -1410,6 +1410,11 @@ function drawUnit(s){if(s.routed)return;
  ctx.beginPath();ctx.arc(x,y,9.6,0,2*Math.PI);ctx.fillStyle=s.hitFlash>0?'#fff0b0':(s.broken?'#ed9b63':s.team==='friend'? (stress>.6?'#e1c064':stress>.3?'#9cc978':'#61d8a6'):(stress>.65?'#e6ad63':'#e47b74'));ctx.fill();ctx.strokeStyle=s.team==='friend'?'#ddffe1':'#ffe1da';ctx.lineWidth=1.2;ctx.stroke();
  // A narrow armor-colored helmet stripe distinguishes padded/leather/mail/plate.
  ctx.fillStyle=armorProfiles[s.armor]?.color||'#e5efe9';ctx.fillRect(x-5,y-7.5,10,2.6);
+ // Small gold/silver badge distinguishes experienced fighters from recruits.
+ if(s.experience==='elite'||s.experience==='veteran'){
+  ctx.fillStyle=s.experience==='elite'?'#f3d88a':'#b9dcd1';
+  ctx.beginPath();ctx.arc(x,y-11.8,s.experience==='elite'?2.8:2.2,0,Math.PI*2);ctx.fill();
+ }
  ctx.fillStyle='#ffffff40';ctx.beginPath();ctx.arc(x-2.5,y-3,2.7,0,2*Math.PI);ctx.fill();
  // Shields stay in front and visibly rise to defend incoming blows.
  const shield=shieldProfiles[s.shield];
@@ -1549,7 +1554,7 @@ const labScenarios=[
  {name:'Weapon familiarity',counts:[2,2],green:{"weapon":"axe","armor":"mail","shield":null,"experience":"veteran","familiarity":"novice"},red:{"weapon":"axe","armor":"mail","shield":null,"experience":"veteran","familiarity":"master"}},
  {name:'Skill vs plate',counts:[2,3],green:{"weapon":"sword","armor":"naked","shield":null,"experience":"elite","familiarity":"master"},red:{"weapon":"axe","armor":"plate","shield":null,"experience":"recruit","familiarity":"novice"}},
  {name:'Veterans outnumbered',counts:[3,4],green:{"weapon":"sword","armor":"mail","shield":"round","experience":"veteran","familiarity":"expert"},red:{"weapon":"sword","armor":"leather","shield":"round","experience":"recruit","familiarity":"novice"}},
- {name:'Parry mastery',counts:[4,5],green:{"weapon":"sword","armor":"mail","shield":null,"experience":"elite","familiarity":"master"},red:{"weapon":"sword","armor":"mail","shield":"round","experience":"trained","familiarity":"practiced"}},
+ {name:'Parry vs shields',counts:[4,5],green:{"weapon":"sword","armor":"mail","shield":null,"experience":"elite","familiarity":"master"},red:{"weapon":"sword","armor":"mail","shield":"round","experience":"trained","familiarity":"practiced"}},
  {name:'Skill vs heavy gear',counts:[5,5],green:{"weapon":"shortsword","armor":"leather","shield":"round","experience":"elite","familiarity":"master"},red:{"weapon":"greatsword","armor":"plate","shield":null,"experience":"recruit","familiarity":"novice"}}
 ];
 // The lab isolates *equipment* strength: morale routing stays in Classic mode.
@@ -1655,12 +1660,14 @@ function updateLabAnalysis(){
  const conclusions=[];
  if(totalFights<30)conclusions.push('Collecting more rounds before interpreting the advantages.');
  else{
-  const skill=labArenas[0],mastery=labArenas[1],armor=labArenas[2],numbers=labArenas[3];
+  const skill=labArenas[0],mastery=labArenas[1],armor=labArenas[2],numbers=labArenas[3],parryTest=labArenas[4];
   const rate=(a,team)=>a[team+'Wins']/Math.max(1,a.greenWins+a.redWins);
   if(rate(skill,'red')>.6)conclusions.push('Equal equipment: Elite fighters overcome Recruits because they aim and recover better.');
   if(rate(mastery,'red')>.6)conclusions.push('Equal veteran rank: mastery of the equipped weapon improves performance.');
   if(rate(armor,'red')>.65)conclusions.push('Plate and heavy axes remain an overwhelming advantage against naked elite swordsmen despite the experience gap—equipment still matters.');
   if(rate(numbers,'green')>.5)conclusions.push('Veterans can offset a numbers disadvantage, especially when equipped with stronger armor.');
+  if(rate(parryTest,'red')>.7&&parryTest.stats.friend.parries>0)
+   conclusions.push('Successful parries do not replace shields: five trained shield users can overwhelm four elite unshielded swordsmen.');
   conclusions.push('Experience affects precision, reactions, decisions and stamina—not health, armor reduction or magical damage bonuses.');
  }
  document.getElementById('labAnalysisNotes').textContent=
