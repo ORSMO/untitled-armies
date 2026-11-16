@@ -1341,7 +1341,9 @@ function updateShieldGuard(s,dt){
   for(const p of projectiles){
    if(p.team===s.team)continue;
    const dx=s.x-p.x,dy=s.y-p.y,dist=Math.hypot(dx,dy);
-   if(dist>115||dist<12)continue;
+   // Faster long-range arrows need to be noticed farther away.
+   // Keep reaction TIME the same so skill still decides whether a block works.
+   if(dist>Math.min(250,p.speed*.40)||dist<12)continue;
    if(dx*p.vx+dy*p.vy<=0)continue;
    const until=dist/p.speed;
    const reaction=.06+(100-(s.skill||45))*.0024;
