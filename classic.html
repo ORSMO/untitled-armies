@@ -301,7 +301,7 @@ const orderButtons=['attack','defend','stop','retreat'].map(id=>document.getElem
  });
  document.addEventListener('fullscreenchange',()=>{updateFullscreenButton();resize()});
  document.addEventListener('webkitfullscreenchange',()=>{updateFullscreenButton();resize()});
-let W=0,H=0,VW=0,VH=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],slashes=[],marker=null,nextId=0,formationType='block',formationDragging=false,nextEngagementPlan=0,nextSwingId=1;
+let W=0,H=0,VW=0,VH=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],slashes=[],projectiles=[],marker=null,nextId=0,formationType='block',formationDragging=false,nextEngagementPlan=0,nextSwingId=1;
  const camera={x:0,y:0},cameraKeys=new Set();let fieldPointer=null;
 const rnd=i=>{const x=Math.sin(i*127.1+91.7)*43758.5453;return x-Math.floor(x)};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -533,7 +533,7 @@ function focusArmy(){
   const a=home('friend'),b=home('foe');
   friends=formation('friend',a.x,a.y).map((p,i)=>create('friend',i,p));
   foes=formation('foe',b.x,b.y).map((p,i)=>create('foe',i,p));
-  slashes=[];selected=false;mode='idle';marker=null;focusArmy();updateUI();
+  slashes=[];projectiles=[];selected=false;mode='idle';marker=null;focusArmy();updateUI();
  }
 // Enemy reinforcements enter at the right edge in the least crowded lane.
 function respawnEnemy(s){
@@ -983,7 +983,7 @@ function shieldImpact(attacker,defender,a){
  const delta=Math.abs(Math.atan2(Math.sin(incoming-defender.faceAngle),Math.cos(incoming-defender.faceAngle)));
  const active=defender.guardActive&&delta<=shield.activeArc;
  if(!active&&delta>shield.passiveArc)return {block:0,stop:0,kind:null};
- const weapon=weaponProfiles[attacker.weapon];
+ const weapon=a.projectile?rangedProfiles[a.projectile]:weaponProfiles[attacker.weapon];
  const spend=shield.cost*(active?1.15:.62)*(1+weapon.weight*.19);
  if(defender.stamina<spend)return {block:0,stop:0,kind:null};
  const stop=active?shield.activeStop:shield.passiveStop;
@@ -1040,13 +1040,13 @@ function shieldImpact(attacker,defender,a){
 function applyWeaponImpact(attacker,target,a){
  if(target.dead||target.routed||target.broken||target.team===attacker.team||a.hitIds.has(target.id))return false;
  a.hitIds.add(target.id);
- const parry=attemptWeaponParry(attacker,target,a);
+ const parry=a.projectile?null:attemptWeaponParry(attacker,target,a);
  if(parry?.parried)return true;
  const incomingMomentum=a.momentum;
  const shield=shieldImpact(attacker,target,a),damageType=a.move.damageType;
  const afterShield=a.baseDamage*(1-shield.block);
  const actual=mitigatedDamage(afterShield,target.armor,damageType);
- const weapon=weaponProfiles[attacker.weapon],heavy=a.move.style==='heavy';
+ const weapon=a.projectile?rangedProfiles[a.projectile]:weaponProfiles[attacker.weapon],heavy=a.move.style==='heavy';
  // Physical hits and blocks happen regardless of friendly health immunity.
  if(target.team==='foe'){
   target.hp=Math.max(0,target.hp-actual);
@@ -1077,13 +1077,13 @@ function applyWeaponImpact(attacker,target,a){
  }
  const armorStop=armorImpact[target.armor]?.[damageType]??12;
  a.momentum=Math.max(0,a.momentum-armorStop-shield.stop);
- const interrupted=a.momentum<=0||a.hits>=weapon.cleave;
+ const interrupted=a.momentum<=0||a.hits>=(a.projectile?1:weapon.cleave);
  if(interrupted){
   a.momentum=0;a.stopped=true;
   // Strong shield or plate contacts arrest the swing and knock the weapon
   // back toward its owner, while leaving the defender a short counter window.
   const hardStop=blocked||armorStop>=incomingMomentum*.72;
-  if(hardStop){
+  if(hardStop&&!a.projectile){
    reactToImpact(attacker,target,30+weapon.weight*8);
    attacker.stagger=Math.max(attacker.stagger,reactionBalance.reboundStagger);
    attacker.cooldown=Math.max(attacker.cooldown,.38);
@@ -1160,7 +1160,7 @@ function updateShieldGuard(s,dt){
  s.parryWindow=Math.max(0,(s.parryWindow||0)-dt);
  s.parryPose=Math.max(0,(s.parryPose||0)-dt);
  const shield=shieldProfiles[s.shield];
- if(s.broken||s.dead||s.attack||s.stagger>0||s.guardBreak>0){
+ if(s.broken||s.dead||s.attack||s.rangedAim>0||s.stagger>0||s.guardBreak>0){
   s.guardActive=false;
   s.parryAttackId=null;return;
  }
@@ -1242,6 +1242,7 @@ function step(dt){
   if(s.dead||s.routed)continue;s.cooldown-=dt;s.decision-=dt;s.hitFlash=Math.max(0,s.hitFlash-dt);
   // Parry counters last only 0.72s; a waiting fighter cannot bank the bonus.
   s.counterWindow=Math.max(0,(s.counterWindow||0)-dt);
+  s.rangedCooldown=Math.max(0,(s.rangedCooldown||0)-dt);
   advanceReaction(s,dt);
   // Stamina restores while not recovering from a swing; movement uses some.
   s.recoveryDelay=Math.max(0,s.recoveryDelay-dt);
