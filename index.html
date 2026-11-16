@@ -1844,14 +1844,14 @@ document.getElementById('labPresetButton').addEventListener('click',()=>{
 const labSeconds=3600,labStepSeconds=.04,labWorldW=440,labWorldH=210,labMatchTimeout=75;
 let labArenas=[],labPaused=false,labTurn=0,labLastDraw=0,labAnalysisOpen=false,labAnalysisLast=0;
 const labCanvasNodes=Array.from({length:6},(_,i)=>document.getElementById('labCanvas'+i));
-function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0,parries:0,failedParries:0,counters:0,misses:0};}
+function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0,parries:0,failedParries:0,counters:0,misses:0,shots:0,rangedHits:0,rangedMisses:0,friendlyStops:0};}
 function activateLab(ar){
  activeLab=ar;W=labWorldW;H=labWorldH;t=ar.seconds;mode='attack';
- friends=ar.friends;foes=ar.foes;slashes=ar.slashes;
+ friends=ar.friends;foes=ar.foes;slashes=ar.slashes;projectiles=ar.projectiles;
  nextId=ar.nextId;nextSwingId=ar.nextSwingId;nextEngagementPlan=ar.nextEngagementPlan;
 }
 function storeLab(ar){
- ar.friends=friends;ar.foes=foes;ar.slashes=slashes;
+ ar.friends=friends;ar.foes=foes;ar.slashes=slashes;ar.projectiles=projectiles;
  ar.nextId=nextId;ar.nextSwingId=nextSwingId;ar.nextEngagementPlan=nextEngagementPlan;
  ar.seconds=t;
 }
@@ -1860,7 +1860,7 @@ function startLabRound(ar){
  // Don't replay the same seeded AI sequence every round: it creates false
  // 100%-win mirrors despite identical fighters. Distinct per-round IDs make
  // choices vary while remaining deterministic/reproducible.
- nextId=ar.rounds*16;nextSwingId=1+ar.rounds*7919;nextEngagementPlan=0;slashes=[];
+ nextId=ar.rounds*16;nextSwingId=1+ar.rounds*7919;nextEngagementPlan=0;slashes=[];projectiles=[];
  const countGreen=ar.spec.counts[0],countRed=ar.spec.counts[1];
  function spawn(team,count,gear){
   return Array.from({length:count},(_,i)=>{
@@ -1869,6 +1869,7 @@ function startLabRound(ar){
    const soldier=create(team,i,{x,y});
    Object.assign(soldier,gear);
    setFighterTraining(soldier,team,i,gear.experience,gear.familiarity);
+   initializeRangedEquipment(soldier);
    // Small individual variations, no extra health or armor from experience.
    const seed=ar.index*7019+ar.rounds*131+i*117+(team==='friend'?23:97);
    soldier.skill=clamp(soldier.skill+Math.round((rnd(seed)-.5)*8),8,98);
@@ -1901,7 +1902,7 @@ function initLab(){
   index,spec,ctx:labCanvasNodes[index].getContext('2d'),
   seconds:0,roundAge:0,rounds:0,greenWins:0,redWins:0,draws:0,
   stats:{friend:newLabScore(),foe:newLabScore()},
-  friends:[],foes:[],slashes:[],nextId:0,nextSwingId:1,nextEngagementPlan:0,done:false
+  friends:[],foes:[],slashes:[],projectiles:[],nextId:0,nextSwingId:1,nextEngagementPlan:0,done:false
  }));
  for(const arena of labArenas)startLabRound(arena);
  document.getElementById('labPause').textContent='Pause';
@@ -2010,11 +2011,13 @@ function updateLabHUD(){
  document.getElementById('labProgressLabel').textContent=
   (done?'Completed':'Running')+' · '+(avg/60).toFixed(1)+' / 60 simulated min per arena';
  const aggregate=labArenas.reduce((r,a)=>{
+  r.shots+=a.stats.friend.shots+a.stats.foe.shots;
+  r.rangedHits+=a.stats.friend.rangedHits+a.stats.foe.rangedHits;
   r.fights+=a.rounds;r.kills+=a.stats.friend.kills+a.stats.foe.kills;
   r.blocks+=a.stats.friend.blocks+a.stats.foe.blocks;
   r.parries+=a.stats.friend.parries+a.stats.foe.parries;
   return r;
- },{fights:0,kills:0,blocks:0,parries:0});
+ },{fights:0,kills:0,blocks:0,parries:0,shots:0,rangedHits:0});
  for(const a of labArenas){
   document.getElementById('labResult'+a.index).textContent=
    '🟢 '+a.greenWins+' · 🔴 '+a.redWins+' · = '+a.draws;
@@ -2026,7 +2029,7 @@ function updateLabHUD(){
  }
  document.getElementById('labSummary').textContent=
   aggregate.fights+' fights · '+aggregate.kills+' kills · '+aggregate.blocks+
-  ' blocks · '+aggregate.parries+' parries · Both sides vulnerable';
+  ' blocks · '+aggregate.parries+' parries · '+aggregate.rangedHits+'/'+aggregate.shots+' ranged hits/shots · Both sides vulnerable';
  const leaders=labArenas.filter(a=>{const decisive=a.greenWins+a.redWins;return a.done&&decisive>=10&&Math.abs(a.greenWins/decisive-.5)>=.055;}).length;
  const mirrorPass=labArenas.filter(a=>{
   const decisive=a.greenWins+a.redWins;
@@ -2082,6 +2085,15 @@ function drawLabArena(ar){
    ctx.beginPath();ctx.ellipse(11,0,shield.size*.45,shield.size*.30,0,0,Math.PI*2);ctx.fill();
    ctx.restore();
   }
+  if(s.ranged&&s.ammo>0){
+   const p=rangedProfiles[s.ranged];
+   ctx.fillStyle=p.color;ctx.font='bold 10px system-ui';
+   ctx.textAlign='center';ctx.fillText(s.ammo,s.x,s.y+23);
+   if(s.rangedAim>0){
+    ctx.strokeStyle=p.color;ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.arc(s.x,s.y,15,s.faceAngle-.7,s.faceAngle+.7);ctx.stroke();
+   }
+  }
   const w=weaponPose(s);
   ctx.strokeStyle=s.weapon==='axe'?'#f3bb87':'#f0f1eb';ctx.lineWidth=s.weapon==='greatsword'||s.weapon==='axe'?3:2;
   ctx.beginPath();ctx.moveTo(s.x+Math.cos(w.angle)*8,s.y+Math.sin(w.angle)*8);
@@ -2104,6 +2116,7 @@ function drawLabArena(ar){
    ctx.beginPath();ctx.arc(s.x,s.y-12,2.3,0,Math.PI*2);ctx.fill();
   }
  }
+ drawRangedProjectiles(ctx,ar.projectiles);
 }
 function drawLab(){for(const arena of labArenas)drawLabArena(arena);}
 function frameLab(ts){
