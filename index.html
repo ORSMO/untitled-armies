@@ -1160,7 +1160,7 @@ function step(dt){
   if(s.recoveryDelay===0)s.stamina=clamp(s.stamina+dt*7.4,0,s.maxStamina);
   if(s.broken){s.attack=null;s.guardActive=false;s.guardHold=0;s.stress=100;fleeFromEnemies(s,dt);if(!labMode&&s.routed&&s.team==='foe')respawnEnemy(s);continue;}
   const {target,dist}=chooseTarget(s);
-  if(s.team==='foe'||labMode){
+  if(s.team==='foe'&&!labMode){
    if(dist<reach*1.5)s.stress=clamp(s.stress+dt*stressBalance.closeThreat,0,100);
    else if(dist<72)s.stress=clamp(s.stress+dt*stressBalance.nearThreat,0,100);
    else s.stress=clamp(s.stress-dt*(stressBalance.recovery+s.disc/100),0,100);
@@ -1392,6 +1392,8 @@ const labScenarios=[
  {name:'Plate outnumbered',counts:[4,5],green:{weapon:'sword',shield:'tower',armor:'plate'},red:{weapon:'greatsword',shield:null,armor:'leather'}},
  {name:'Heavy weapons',counts:[5,5],green:{weapon:'greatsword',shield:null,armor:'plate'},red:{weapon:'axe',shield:null,armor:'mail'}}
 ];
+// The lab isolates *equipment* strength: morale routing stays in Classic mode.
+// Each fair test round ends through kills or the 75-second draw limit.
 const labSeconds=3600,labStepSeconds=.04,labWorldW=440,labWorldH=210,labMatchTimeout=75;
 let labArenas=[],labPaused=false,labTurn=0,labLastDraw=0;
 const labCanvasNodes=Array.from({length:6},(_,i)=>document.getElementById('labCanvas'+i));
