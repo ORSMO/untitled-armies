@@ -1293,6 +1293,11 @@ function drawUnit(s){if(s.routed)return;
  ctx.beginPath();ctx.arc(x,y,9.6,0,2*Math.PI);ctx.fillStyle=s.hitFlash>0?'#fff0b0':(s.broken?'#ed9b63':s.team==='friend'? (stress>.6?'#e1c064':stress>.3?'#9cc978':'#61d8a6'):(stress>.65?'#e6ad63':'#e47b74'));ctx.fill();ctx.strokeStyle=s.team==='friend'?'#ddffe1':'#ffe1da';ctx.lineWidth=1.2;ctx.stroke();
  // A narrow armor-colored helmet stripe distinguishes padded/leather/mail/plate.
  ctx.fillStyle=armorProfiles[s.armor]?.color||'#e5efe9';ctx.fillRect(x-5,y-7.5,10,2.6);
+ // Small gold/silver badge distinguishes experienced fighters from recruits.
+ if(s.experience==='elite'||s.experience==='veteran'){
+  ctx.fillStyle=s.experience==='elite'?'#f3d88a':'#b9dcd1';
+  ctx.beginPath();ctx.arc(x,y-11.8,s.experience==='elite'?2.8:2.2,0,Math.PI*2);ctx.fill();
+ }
  ctx.fillStyle='#ffffff40';ctx.beginPath();ctx.arc(x-2.5,y-3,2.7,0,2*Math.PI);ctx.fill();
  // Shields stay in front and visibly rise to defend incoming blows.
  const shield=shieldProfiles[s.shield];
