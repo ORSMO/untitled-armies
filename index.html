@@ -172,6 +172,7 @@ body.lab-mode .lab-area{display:flex}
 .lab-score{display:flex;justify-content:space-between;gap:5px;align-items:center;line-height:1.2;font:650 10px ui-monospace,monospace;color:#d7e8d9}
 .lab-score b{color:#f0ddac;font-weight:800}
 .lab-score .lab-winner{font-weight:800;color:#bceaba}
+.lab-explanation{color:#d1ddbf;background:#223c2e;border:1px solid #547c5b;border-radius:8px;padding:5px 9px;font-size:10px;line-height:1.35}
 .lab-summary{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#b4cdbb;font-size:10px;line-height:1.25;white-space:normal}
 .lab-summary strong{color:#f0e1b6}
 @media(max-height:620px){body.lab-mode .top{padding:4px 8px 2px}.lab-toolbar{padding:0}.lab-card{gap:2px;padding:3px 5px}.lab-card-head strong{font-size:10px}.lab-map{min-height:0}.lab-matchup{font-size:8px}.lab-score{font-size:9px}.lab-summary{font-size:9px}.lab-classic-link{font-size:10px;padding:4px 6px}.lab-commands button{font-size:10px;padding:4px 8px}}
@@ -300,58 +301,60 @@ body.lab-mode .lab-area{display:flex}
   <section class="lab-area" id="battleLab" aria-label="Six arena balance simulation">
  <div class="lab-toolbar">
   <div><strong>⚔ EXPERIENCE & WEAPON MASTERY LAB</strong> <span id="labProgressLabel">Repeated fair fights · 60 simulated minutes per arena</span></div>
-  <div class="lab-commands"><button type="button" id="labAnalysisButton" aria-expanded="false" aria-controls="labAnalysis">📊 Analysis</button><button type="button" id="labPause">Pause</button><button type="button" id="labRerun">↻ Rerun 1 hour</button></div>
+  <div class="lab-commands"><button type="button" id="labPresetButton" aria-pressed="false">⚖ Fairness check</button><button type="button" id="labAnalysisButton" aria-expanded="false" aria-controls="labAnalysis">📊 Explain results</button><button type="button" id="labPause">Pause</button><button type="button" id="labRerun">↻ Rerun 1 hour</button></div>
  </div>
  <progress id="labProgress" class="lab-progress" max="100" value="0" aria-label="Balance simulation progress"></progress>
  <div class="lab-grid"><article class="lab-card" id="labCard0">
- <div class="lab-card-head"><strong>Recruit vs Elite</strong><span class="lab-count">1 vs 1</span></div>
- <div class="lab-matchup"><span class="lab-green" title="Recruit · sword / round / leather">🟢 Recruit · sword / round / leather</span><span class="lab-red" title="Elite · sword / round / leather">🔴 Elite · sword / round / leather</span></div>
+ <div class="lab-card-head"><strong id="labName0">Recruit vs Elite</strong><span class="lab-count" id="labCount0">1 vs 1</span></div>
+ <div class="lab-matchup"><span class="lab-green" id="labGreen0" title="Recruit · sword / round / leather">🟢 Recruit · sword / round / leather</span><span class="lab-red" id="labRed0" title="Elite · sword / round / leather">🔴 Elite · sword / round / leather</span></div>
  <canvas class="lab-map" id="labCanvas0" width="440" height="210" aria-label="Recruit vs Elite simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult0">0–0 · 0 draws</span><span class="lab-winner" id="labLeader0">Testing…</span></div>
  <div class="lab-score"><span id="labBattles0">0 fights</span><span id="labBlocks0">0 blocks</span></div>
 </article>
 <article class="lab-card" id="labCard1">
- <div class="lab-card-head"><strong>Weapon familiarity</strong><span class="lab-count">2 vs 2</span></div>
- <div class="lab-matchup"><span class="lab-green" title="Veteran, novice axe · mail">🟢 Veteran, novice axe · mail</span><span class="lab-red" title="Veteran, master axe · mail">🔴 Veteran, master axe · mail</span></div>
+ <div class="lab-card-head"><strong id="labName1">Weapon familiarity</strong><span class="lab-count" id="labCount1">2 vs 2</span></div>
+ <div class="lab-matchup"><span class="lab-green" id="labGreen1" title="Veteran, novice axe · mail">🟢 Veteran, novice axe · mail</span><span class="lab-red" id="labRed1" title="Veteran, master axe · mail">🔴 Veteran, master axe · mail</span></div>
  <canvas class="lab-map" id="labCanvas1" width="440" height="210" aria-label="Weapon familiarity simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult1">0–0 · 0 draws</span><span class="lab-winner" id="labLeader1">Testing…</span></div>
  <div class="lab-score"><span id="labBattles1">0 fights</span><span id="labBlocks1">0 blocks</span></div>
 </article>
 <article class="lab-card" id="labCard2">
- <div class="lab-card-head"><strong>Skill vs plate</strong><span class="lab-count">2 vs 3</span></div>
- <div class="lab-matchup"><span class="lab-green" title="Elite/master · naked sword">🟢 Elite/master · naked sword</span><span class="lab-red" title="Recruit/novice · plate axe">🔴 Recruit/novice · plate axe</span></div>
+ <div class="lab-card-head"><strong id="labName2">Skill vs plate</strong><span class="lab-count" id="labCount2">2 vs 3</span></div>
+ <div class="lab-matchup"><span class="lab-green" id="labGreen2" title="Elite/master · naked sword">🟢 Elite/master · naked sword</span><span class="lab-red" id="labRed2" title="Recruit/novice · plate axe">🔴 Recruit/novice · plate axe</span></div>
  <canvas class="lab-map" id="labCanvas2" width="440" height="210" aria-label="Skill vs plate simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult2">0–0 · 0 draws</span><span class="lab-winner" id="labLeader2">Testing…</span></div>
  <div class="lab-score"><span id="labBattles2">0 fights</span><span id="labBlocks2">0 blocks</span></div>
 </article>
 <article class="lab-card" id="labCard3">
- <div class="lab-card-head"><strong>Veterans outnumbered</strong><span class="lab-count">3 vs 4</span></div>
- <div class="lab-matchup"><span class="lab-green" title="Veteran/expert · mail sword">🟢 Veteran/expert · mail sword</span><span class="lab-red" title="Recruit/novice · leather sword">🔴 Recruit/novice · leather sword</span></div>
+ <div class="lab-card-head"><strong id="labName3">Veterans outnumbered</strong><span class="lab-count" id="labCount3">3 vs 4</span></div>
+ <div class="lab-matchup"><span class="lab-green" id="labGreen3" title="Veteran/expert · mail sword">🟢 Veteran/expert · mail sword</span><span class="lab-red" id="labRed3" title="Recruit/novice · leather sword">🔴 Recruit/novice · leather sword</span></div>
  <canvas class="lab-map" id="labCanvas3" width="440" height="210" aria-label="Veterans outnumbered simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult3">0–0 · 0 draws</span><span class="lab-winner" id="labLeader3">Testing…</span></div>
  <div class="lab-score"><span id="labBattles3">0 fights</span><span id="labBlocks3">0 blocks</span></div>
 </article>
 <article class="lab-card" id="labCard4">
- <div class="lab-card-head"><strong>Parry vs shields</strong><span class="lab-count">4 vs 5</span></div>
- <div class="lab-matchup"><span class="lab-green" title="Elite/master · mail sword">🟢 Elite/master · mail sword</span><span class="lab-red" title="Trained/practiced · round sword">🔴 Trained/practiced · round sword</span></div>
+ <div class="lab-card-head"><strong id="labName4">Parry vs shields</strong><span class="lab-count" id="labCount4">4 vs 5</span></div>
+ <div class="lab-matchup"><span class="lab-green" id="labGreen4" title="Elite/master · mail sword">🟢 Elite/master · mail sword</span><span class="lab-red" id="labRed4" title="Trained/practiced · round sword">🔴 Trained/practiced · round sword</span></div>
  <canvas class="lab-map" id="labCanvas4" width="440" height="210" aria-label="Parry mastery simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult4">0–0 · 0 draws</span><span class="lab-winner" id="labLeader4">Testing…</span></div>
  <div class="lab-score"><span id="labBattles4">0 fights</span><span id="labBlocks4">0 blocks</span></div>
 </article>
 <article class="lab-card" id="labCard5">
- <div class="lab-card-head"><strong>Skill vs heavy gear</strong><span class="lab-count">5 vs 5</span></div>
- <div class="lab-matchup"><span class="lab-green" title="Elite/master · leather shortsword">🟢 Elite/master · leather shortsword</span><span class="lab-red" title="Recruit/novice · plate greatsword">🔴 Recruit/novice · plate greatsword</span></div>
+ <div class="lab-card-head"><strong id="labName5">Skill vs heavy gear</strong><span class="lab-count" id="labCount5">5 vs 5</span></div>
+ <div class="lab-matchup"><span class="lab-green" id="labGreen5" title="Elite/master · leather shortsword">🟢 Elite/master · leather shortsword</span><span class="lab-red" id="labRed5" title="Recruit/novice · plate greatsword">🔴 Recruit/novice · plate greatsword</span></div>
  <canvas class="lab-map" id="labCanvas5" width="440" height="210" aria-label="Skill vs heavy gear simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult5">0–0 · 0 draws</span><span class="lab-winner" id="labLeader5">Testing…</span></div>
  <div class="lab-score"><span id="labBattles5">0 fights</span><span id="labBlocks5">0 blocks</span></div>
 </article>
 </div>
+ <div id="labPlainExplanation" class="lab-explanation">Reading results: if red wins 70%, it won 7 out of 10 fights. Different equipment should cause unequal outcomes; identical equipment should be near 50/50.</div>
  <div class="lab-summary"><span id="labSummary">Both armies can take damage; no reinforcements. All fights use the existing combat engine.</span><strong id="labWinner">Calculating results…</strong></div>
  <div class="lab-insights-overlay is-hidden" id="labAnalysis">
   <div class="lab-insights-dialog" role="dialog" aria-modal="true" aria-labelledby="labAnalysisTitle">
-   <div class="lab-insights-header"><strong id="labAnalysisTitle">📊 ONE-HOUR BALANCE ANALYSIS</strong><button id="labAnalysisClose" type="button" aria-label="Close analysis">✕</button></div>
+   <div class="lab-insights-header"><strong id="labAnalysisTitle">📊 WHAT THESE FIGHTS MEAN</strong><button id="labAnalysisClose" type="button" aria-label="Close analysis">✕</button></div>
    <p>Each arena runs repeated vulnerable, no-respawn bouts for 60 simulated minutes. Extreme wins are intentional when skill, weapon familiarity, armor or numbers differ. Experience never grants extra health or armor.</p>
    <div class="lab-insights-scroll"><table><thead><tr><th>Matchup</th><th>Leader</th><th>Fights</th><th>Damage</th><th>Shield blocks</th><th>Parries</th><th>Counters</th><th>Failed parries</th><th>Guard breaks</th></tr></thead><tbody id="labAnalysisRows"></tbody></table></div>
+   <p id="labAnalysisHowToRead"><strong>How to read it:</strong> Green and red are simply the two teams. The percentage is how many decisive fights the leader won, not the chance that every individual sword strike connects. Armor, numbers and skill can create huge advantages. Only identical opponents are expected to split wins about 50/50.</p>
    <p id="labAnalysisNotes">Recommendations appear as results accumulate.</p>
   </div>
  </div>
@@ -1566,6 +1569,55 @@ const labScenarios=[
 ];
 // The lab isolates *equipment* strength: morale routing stays in Classic mode.
 // Each fair test round ends through kills or the 75-second draw limit.
+// Distinguish real advantages from simulation artifacts. These six mirrored
+// scenarios pit identical soldiers against each other, where 50/50 is the goal.
+const labMatchupScenarios=labScenarios.map(s=>({
+ name:s.name,counts:[...s.counts],green:{...s.green},red:{...s.red}
+}));
+const labMirrorScenarios=[
+ {name:'Veteran axes',counts:[1,1],gear:{weapon:'axe',armor:'mail',shield:null,experience:'veteran',familiarity:'expert'}},
+ {name:'Elite greatswords',counts:[2,2],gear:{weapon:'greatsword',armor:'plate',shield:null,experience:'elite',familiarity:'master'}},
+ {name:'Trained shields',counts:[1,1],gear:{weapon:'sword',armor:'mail',shield:'round',experience:'trained',familiarity:'practiced'}},
+ {name:'Recruit shortswords',counts:[3,3],gear:{weapon:'shortsword',armor:'naked',shield:null,experience:'recruit',familiarity:'novice'}},
+ {name:'Plate towers',counts:[5,5],gear:{weapon:'sword',armor:'plate',shield:'tower',experience:'trained',familiarity:'practiced'}},
+ {name:'Elite swords',counts:[4,4],gear:{weapon:'sword',armor:'naked',shield:null,experience:'elite',familiarity:'master'}}
+].map(s=>({name:s.name,counts:s.counts,green:{...s.gear},red:{...s.gear}}));
+let labPreset='matchups';
+function labGearLabel(gear){
+ return (gear.experience||'mixed')+' / '+(gear.familiarity||'mixed')+' · '+
+  gear.weapon+' · '+gear.armor+(gear.shield?' / '+gear.shield:'');
+}
+function updateLabTitles(){
+ for(let i=0;i<labScenarios.length;i++){
+  const s=labScenarios[i];
+  document.getElementById('labName'+i).textContent=s.name;
+  document.getElementById('labCount'+i).textContent=s.counts.join(' vs ');
+  const g=document.getElementById('labGreen'+i),r=document.getElementById('labRed'+i);
+  g.textContent='🟢 '+labGearLabel(s.green);
+  r.textContent='🔴 '+labGearLabel(s.red);
+  g.title=labGearLabel(s.green);r.title=labGearLabel(s.red);
+ }
+ const btn=document.getElementById('labPresetButton');
+ btn.textContent=labPreset==='matchups'?'⚖ Fairness check':'⚔ Skill matchups';
+ btn.setAttribute('aria-pressed',labPreset==='mirrors'?'true':'false');
+ document.getElementById('labPlainExplanation').textContent=labPreset==='mirrors'?
+  'FAIRNESS CHECK: Both teams are identical. A result near 50/50 means the combat test is trustworthy. Large differences after 100 fights need investigation.':
+  'SKILL MATCHUPS: Experience, armor, equipment, numbers or mastery are different. Big win rates are okay when there is a real advantage.';
+ document.getElementById('labAnalysisHowToRead').textContent=labPreset==='mirrors'?
+  'Same gear, rank, proficiency and numbers on both sides. Green and red should each win about half the fights. Minor differences are normal; large consistent differences mean the test is biased.':
+  'Green and red are the two sides. A 70% win rate means 7 wins out of 10 decisive fights. Bigger armor, weapon, number or skill advantages may legitimately cause one-sided results.';
+}
+function setLabPreset(mode){
+ labPreset=mode;
+ const options=mode==='mirrors'?labMirrorScenarios:labMatchupScenarios;
+ options.forEach((v,i)=>Object.assign(labScenarios[i],{
+  name:v.name,counts:[...v.counts],green:{...v.green},red:{...v.red}
+ }));
+ initLab();
+}
+document.getElementById('labPresetButton').addEventListener('click',()=>{
+ setLabPreset(labPreset==='matchups'?'mirrors':'matchups');
+});
 const labSeconds=3600,labStepSeconds=.04,labWorldW=440,labWorldH=210,labMatchTimeout=75;
 let labArenas=[],labPaused=false,labTurn=0,labLastDraw=0,labAnalysisOpen=false,labAnalysisLast=0;
 const labCanvasNodes=Array.from({length:6},(_,i)=>document.getElementById('labCanvas'+i));
@@ -1621,6 +1673,7 @@ function initLab(){
  labPaused=false;labTurn=0;labLastDraw=0;labAnalysisLast=0;labAnalysisOpen=false;
  document.getElementById('labAnalysis').classList.add('is-hidden');
  document.getElementById('labAnalysisButton').setAttribute('aria-expanded','false');
+ updateLabTitles();
  labArenas=labScenarios.map((spec,index)=>({
   index,spec,ctx:labCanvasNodes[index].getContext('2d'),
   seconds:0,roundAge:0,rounds:0,greenWins:0,redWins:0,draws:0,
