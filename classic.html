@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V2.5</title>
+<title>Untitled Armies — V2.6</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -174,7 +174,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
     <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Armor · Shields · Physical combat</p></div></div>
     <div class="top-actions">
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 2.5">V2.5</div>
+      <div class="build" aria-label="Version 2.6">V2.6</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
@@ -258,6 +258,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
       <tbody><tr><td>War bow</td><td>18</td><td>1005</td><td>0.64s</td><td>Light piercing</td></tr>
       <tr><td>Crossbow</td><td>12</td><td>1125</td><td>1.90s</td><td>Heavy piercing</td></tr>
       <tr><td>Javelins</td><td>6</td><td>624</td><td>1.05s</td><td>Heavy piercing</td></tr></tbody></table>
+      <p><strong>UNIT ROLES:</strong> <strong>Infantry</strong> fight with swords, axes or other melee weapons and never switch to ranged attacks. <strong>Archers</strong> always carry their selected bow, crossbow or javelins, prefer firing from a distance, and use their melee sidearm only when an enemy enters close-combat range. If out of ammunition, they keep their ranged weapon ready instead of charging with swords. Choose mixed ranks to deploy both roles in an army. <strong>Cavalry</strong> is reserved for a future mounted-combat update.</p>
       <p><strong>RANGED COMBAT:</strong> V2.4 triples maximum and ideal shooting distances. Better experience and ranged familiarity produce tighter shot groups, and experienced archers lead moving targets. Archers can switch to a new enemy during an existing draw rather than repeatedly cancelling shots when their target disappears. Projectiles still travel physically and can miss. War bows carry 18 arrows (fast), crossbows carry 12 bolts (slow reload, strong piercing), and javelins carry 6 throws (short range, powerful impact). Shots follow lofted trajectories over friendly ranks and stop when they reach the ground instead of sliding along it. Low shots near the shooter or impact point can still strike soldiers. Projectiles have travel time, can miss, and interact with directional shields and armor. Experience and independent ranged-weapon familiarity improve accuracy and timing; set Ranged skill separately from melee Mastery in Test gear. Soldiers automatically switch to melee when closely threatened or out of ammunition. A shield is lowered when aiming a two-handed bow or crossbow.</p>
       <p><strong>IMPACT REACTIONS:</strong> Heavy hits cause knockback and stagger. A successful active block can create a counterattack opening; a weak shield can suffer a <strong>GUARD BREAK</strong>. Plate and solid shields can stop a swing and recoil the attacker.</p>
       <p>Green and red soldiers wear mixed armor and carry different weapons. One-handed swords can use shields; greatswords and axes occupy both hands. Swing stages: wind-up → active hitbox → recovery. Your troops are still invulnerable.</p>
@@ -278,7 +279,12 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
   </div>
   <div class="equipment-grid"><div class="equipment-side">
    <h3>🟢 YOUR ARMY · 50 SOLDIERS</h3>
-   <div class="equipment-field"><label for="friendWeapon">Weapon</label><select id="friendWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option></select></div>
+   <div class="equipment-field"><label for="friendUnitRole">Unit type</label>
+<select id="friendUnitRole"><option value="infantry">⚔ Infantry — melee first</option>
+<option value="archer">🏹 Archer — ranged first</option>
+<option value="mixed">Infantry + Archers (half each)</option>
+<option value="cavalry" disabled>🐎 Cavalry — coming later</option></select></div>
+<div class="equipment-field"><label for="friendWeapon">Weapon</label><select id="friendWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option></select></div>
 <div class="equipment-field"><label for="friendRanged">Ranged</label><select id="friendRanged">
 <option value="none">No ranged weapon</option><option value="bow">War bow · 18 arrows</option><option value="crossbow">Crossbow · 12 bolts</option><option value="javelin">Javelins · 6 throws</option><option value="mixed">Mixed ranged weapons</option>
 </select></div>
@@ -296,7 +302,12 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
    <small id="friendGearNote">Mixed equipment. Two-handed troops carry no shields.</small>
  </div><div class="equipment-side foe-side">
    <h3>🔴 ENEMY ARMY · 50 SOLDIERS</h3>
-   <div class="equipment-field"><label for="foeWeapon">Weapon</label><select id="foeWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option></select></div>
+   <div class="equipment-field"><label for="foeUnitRole">Unit type</label>
+<select id="foeUnitRole"><option value="infantry">⚔ Infantry — melee first</option>
+<option value="archer">🏹 Archer — ranged first</option>
+<option value="mixed">Infantry + Archers (half each)</option>
+<option value="cavalry" disabled>🐎 Cavalry — coming later</option></select></div>
+<div class="equipment-field"><label for="foeWeapon">Weapon</label><select id="foeWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option></select></div>
 <div class="equipment-field"><label for="foeRanged">Ranged</label><select id="foeRanged">
 <option value="none">No ranged weapon</option><option value="bow">War bow · 18 arrows</option><option value="crossbow">Crossbow · 12 bolts</option><option value="javelin">Javelins · 6 throws</option><option value="mixed">Mixed ranged weapons</option>
 </select></div>
@@ -417,6 +428,17 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
    damage:1.72,momentum:94,stamina:10,weight:1.9,color:'#f6ac70',twoHand:false}
  };
  const rangedOrder=['bow','crossbow','javelin'];
+ // Unit classes determine combat priorities independently of equipment.
+ // Cavalry is a reserved class for the future mounted-combat update.
+ const unitRoles=['infantry','archer','cavalry'];
+ function soldierRole(s){return s.unitRole==='archer'?'archer':'infantry';}
+ function isArcher(s){return soldierRole(s)==='archer';}
+ function activeRangedProfile(s){return isArcher(s)?rangedProfiles[s.ranged]||null:null;}
+ function assignedRole(config,index){
+  if(config.unitRole==='archer')return 'archer';
+  if(config.unitRole==='mixed')return index%2===0?'infantry':'archer';
+  return 'infantry';
+ }
  const shieldProfiles={
   buckler:{label:'Buckler',size:8,weight:.85,passiveArc:.40,activeArc:.83,passiveBlock:.20,passiveStop:16,activeStop:68,cost:5,color:'#cda779'},
   round:{label:'Round shield',size:11,weight:1.8,passiveArc:.66,activeArc:1.20,passiveBlock:.35,passiveStop:31,activeStop:115,cost:8,color:'#b1b9a6'},
@@ -488,8 +510,8 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  // Applied matchup settings persist through Reset and enemy reinforcements.
  // "mixed" uses the original 50-soldier distribution for each category.
  const equipmentConfig={
-  friend:{weapon:'mixed',shield:'mixed',armor:'mixed',ranged:'none',rangedMastery:'same',experience:'mixed',familiarity:'mixed'},
-  foe:{weapon:'mixed',shield:'mixed',armor:'mixed',ranged:'none',rangedMastery:'same',experience:'mixed',familiarity:'mixed'}
+  friend:{weapon:'mixed',shield:'mixed',armor:'mixed',ranged:'none',unitRole:'infantry',rangedMastery:'same',experience:'mixed',familiarity:'mixed'},
+  foe:{weapon:'mixed',shield:'mixed',armor:'mixed',ranged:'none',unitRole:'infantry',rangedMastery:'same',experience:'mixed',familiarity:'mixed'}
  };
  function equipmentFor(team,index){
   const settings=equipmentConfig[team],offset=team==='friend'?0:1;
@@ -503,9 +525,13 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
     settings.shield==='none'?null:settings.shield;
   // A shield cannot coexist with a two-handed weapon, including in mixed armies.
   if(weaponProfiles[weapon].twoHand)shield=null;
-  const ranged=settings.ranged==='mixed'?((index%4===3)?null:rangedOrder[index%4]):
-   (rangedProfiles[settings.ranged]?settings.ranged:null);
-  return {weapon,shield,armor,ranged};
+  const unitRole=assignedRole(settings,index);
+  // Infantry never carry/use a ranged weapon. The Archer role can select
+  // bow, crossbow or javelins; a bow is the default if nothing was selected.
+  const chosenRanged=settings.ranged==='mixed'?rangedOrder[index%rangedOrder.length]:settings.ranged;
+  const ranged=unitRole==='archer'?
+   (rangedProfiles[chosenRanged]?chosenRanged:'bow'):null;
+  return {weapon,shield,armor,ranged,unitRole};
  }
  function equipCurrentArmy(team){
   const soldiers=team==='friend'?friends:foes;
@@ -963,8 +989,8 @@ document.querySelector('#reset').addEventListener('click',populate);
        equipPanel=document.querySelector('#equipmentPanel'),
        equipFeedback=document.querySelector('#equipmentFeedback');
  const equipControls={
-  friend:{weapon:document.querySelector('#friendWeapon'),shield:document.querySelector('#friendShield'),armor:document.querySelector('#friendArmor'),ranged:document.querySelector('#friendRanged'),rangedMastery:document.querySelector('#friendRangedMastery'),experience:document.querySelector('#friendExperience'),familiarity:document.querySelector('#friendFamiliarity'),note:document.querySelector('#friendGearNote')},
-  foe:{weapon:document.querySelector('#foeWeapon'),shield:document.querySelector('#foeShield'),armor:document.querySelector('#foeArmor'),ranged:document.querySelector('#foeRanged'),rangedMastery:document.querySelector('#foeRangedMastery'),experience:document.querySelector('#foeExperience'),familiarity:document.querySelector('#foeFamiliarity'),note:document.querySelector('#foeGearNote')}
+  friend:{weapon:document.querySelector('#friendWeapon'),shield:document.querySelector('#friendShield'),armor:document.querySelector('#friendArmor'),ranged:document.querySelector('#friendRanged'),unitRole:document.querySelector('#friendUnitRole'),rangedMastery:document.querySelector('#friendRangedMastery'),experience:document.querySelector('#friendExperience'),familiarity:document.querySelector('#friendFamiliarity'),note:document.querySelector('#friendGearNote')},
+  foe:{weapon:document.querySelector('#foeWeapon'),shield:document.querySelector('#foeShield'),armor:document.querySelector('#foeArmor'),ranged:document.querySelector('#foeRanged'),unitRole:document.querySelector('#foeUnitRole'),rangedMastery:document.querySelector('#foeRangedMastery'),experience:document.querySelector('#foeExperience'),familiarity:document.querySelector('#foeFamiliarity'),note:document.querySelector('#foeGearNote')}
  };
  const equipPresets={
   mixed:{friend:{weapon:'mixed',shield:'mixed',armor:'mixed'},foe:{weapon:'mixed',shield:'mixed',armor:'mixed'}},
@@ -972,9 +998,9 @@ document.querySelector('#reset').addEventListener('click',populate);
   cleave:{friend:{weapon:'axe',shield:'none',armor:'naked'},foe:{weapon:'shortsword',shield:'none',armor:'naked'}},
   shields:{friend:{weapon:'sword',shield:'round',armor:'mail'},foe:{weapon:'sword',shield:'kite',armor:'mail'}},
   skill:{friend:{weapon:'sword',shield:'round',armor:'leather',experience:'elite',familiarity:'master',ranged:'none'},foe:{weapon:'sword',shield:'round',armor:'leather',experience:'recruit',familiarity:'novice',ranged:'none'}},
-  archers:{friend:{weapon:'shortsword',ranged:'bow',shield:'none',armor:'leather',experience:'veteran',familiarity:'expert'},foe:{weapon:'sword',ranged:'none',shield:'round',armor:'mail',experience:'trained',familiarity:'practiced'}},
-  crossbows:{friend:{weapon:'sword',ranged:'crossbow',shield:'none',armor:'padded',experience:'trained',familiarity:'practiced'},foe:{weapon:'sword',ranged:'none',shield:'kite',armor:'plate',experience:'trained',familiarity:'practiced'}},
-  skirmish:{friend:{weapon:'shortsword',ranged:'javelin',shield:'round',armor:'leather',experience:'veteran',familiarity:'expert'},foe:{weapon:'shortsword',ranged:'bow',shield:'none',armor:'leather',experience:'veteran',familiarity:'expert'}}
+  archers:{friend:{unitRole:'archer',weapon:'shortsword',ranged:'bow',shield:'none',armor:'leather',experience:'veteran',familiarity:'expert'},foe:{weapon:'sword',ranged:'none',shield:'round',armor:'mail',experience:'trained',familiarity:'practiced',unitRole:'infantry'}},
+  crossbows:{friend:{unitRole:'archer',weapon:'sword',ranged:'crossbow',shield:'none',armor:'padded',experience:'trained',familiarity:'practiced'},foe:{weapon:'sword',ranged:'none',shield:'kite',armor:'plate',experience:'trained',familiarity:'practiced',unitRole:'infantry'}},
+  skirmish:{friend:{unitRole:'archer',weapon:'shortsword',ranged:'javelin',shield:'round',armor:'leather',experience:'veteran',familiarity:'expert'},foe:{unitRole:'archer',weapon:'shortsword',ranged:'bow',shield:'none',armor:'leather',experience:'veteran',familiarity:'expert'}}
  };
  let equipmentOpen=false;
  function syncEquipmentShield(team){
@@ -989,7 +1015,7 @@ document.querySelector('#reset').addEventListener('click',populate);
  function showEquipmentValues(values){
   for(const team of ['friend','foe']){
    const controls=equipControls[team],settings=values[team];
-   for(const field of ['weapon','shield','armor','experience','familiarity','ranged','rangedMastery'])controls[field].value=settings[field]||(field==='ranged'?'none':field==='rangedMastery'?'same':'mixed');
+   for(const field of ['weapon','shield','armor','experience','familiarity','ranged','rangedMastery','unitRole'])controls[field].value=settings[field]||(field==='ranged'?'none':field==='rangedMastery'?'same':field==='unitRole'?'infantry':'mixed');
    syncEquipmentShield(team);
   }
  }
@@ -1014,7 +1040,7 @@ document.querySelector('#reset').addEventListener('click',populate);
    syncEquipmentShield(team);
    equipFeedback.textContent='Equipment changed. Apply to update the battle.';
   });
-  for(const field of ['shield','armor','experience','familiarity','ranged','rangedMastery']){
+  for(const field of ['shield','armor','experience','familiarity','ranged','rangedMastery','unitRole']){
    equipControls[team][field].addEventListener('change',()=>{
     equipFeedback.textContent='Equipment changed. Apply to update the battle.';
    });
@@ -1038,7 +1064,8 @@ document.querySelector('#reset').addEventListener('click',populate);
     experience:experienceProfiles[c.experience.value]?c.experience.value:'mixed',
     familiarity:familiarityLevels[c.familiarity.value]!=null?c.familiarity.value:'mixed',
     ranged:rangedProfiles[c.ranged.value]?c.ranged.value:(c.ranged.value==='mixed'?'mixed':'none'),
-    rangedMastery:familiarityLevels[c.rangedMastery.value]!=null?c.rangedMastery.value:'same'
+    rangedMastery:familiarityLevels[c.rangedMastery.value]!=null?c.rangedMastery.value:'same',
+    unitRole:['infantry','archer','mixed'].includes(c.unitRole.value)?c.unitRole.value:'infantry'
    };
   }
   return draft;
@@ -1327,7 +1354,7 @@ function updateShieldGuard(s,dt){
  s.parryWindow=Math.max(0,(s.parryWindow||0)-dt);
  s.parryPose=Math.max(0,(s.parryPose||0)-dt);
  const shield=shieldProfiles[s.shield];
- if(s.broken||s.dead||s.attack||(s.rangedAim>0&&rangedProfiles[s.ranged]?.twoHand)||s.stagger>0||s.guardBreak>0){
+ if(s.broken||s.dead||s.attack||(isArcher(s)&&!s.attack&&rangedProfiles[s.ranged]?.twoHand)||s.stagger>0||s.guardBreak>0){
   s.guardActive=false;
   s.parryAttackId=null;return;
  }
@@ -1423,7 +1450,7 @@ function separateSoldiers(){
 // Bow/crossbow/javelin combat. Projectiles are physical entities: they travel,
 // can miss, and are caught by the first soldier along their path. Allied bodies
 // block shots harmlessly rather than allowing arrows to pass through teammates.
-function hasRangedAmmo(s){return !!rangedProfiles[s.ranged]&&(infiniteAmmo||s.ammo>0);}
+function hasRangedAmmo(s){return !!activeRangedProfile(s)&&(infiniteAmmo||s.ammo>0);}
 function meleeThreatRange(s){return Math.max(57,weaponProfiles[s.weapon].reach+13);}
 function rangedTimeFactor(s){
  const skill=s.skill||45,familiarity=rangedFamiliarity(s);
@@ -1441,7 +1468,7 @@ function projectileHeightAt(p,traveled){
 // A low shot may still strike a nearby friendly; otherwise infantry can
 // stand in front of archers while arrows and javelins pass above them.
 function launchProjectile(s,target){
- const profile=rangedProfiles[s.ranged];
+ const profile=activeRangedProfile(s);
  if(!profile||!hasRangedAmmo(s)||s.dead||s.broken||!target||target.dead)return false;
  if(s.stamina<profile.stamina){s.rangedCooldown=.30;return false;}
  const skill=s.skill||45,familiarity=rangedFamiliarity(s);
@@ -1486,7 +1513,7 @@ function launchProjectile(s,target){
  return true;
 }
 function beginRangedAim(s,target,dist){
- const profile=rangedProfiles[s.ranged];
+ const profile=activeRangedProfile(s);
  if(!profile||!hasRangedAmmo(s)||s.rangedCooldown>0||s.attack||s.stagger>0)return false;
  if(!target||dist>profile.range-12||dist<=meleeThreatRange(s))return false;
  if(s.stamina<profile.stamina+2)return false;
@@ -1497,7 +1524,7 @@ function beginRangedAim(s,target,dist){
 }
 function isViableRangedTarget(s,e){
  if(!e||e.dead||e.broken||e.routed)return false;
- const profile=rangedProfiles[s.ranged];if(!profile)return false;
+ const profile=activeRangedProfile(s);if(!profile)return false;
  const d=Math.hypot(e.x-s.x,e.y-s.y);
  return d>meleeThreatRange(s)&&d<=profile.range;
 }
@@ -1672,7 +1699,7 @@ function step(dt){
   else if(command==='retreat'){moveX=s.anchorX;moveY=s.anchorY;pace=1.45;}
   else if(command==='attack'){
     if(target){
-      const ranged=hasRangedAmmo(s)?rangedProfiles[s.ranged]:null;
+      const ranged=activeRangedProfile(s);
       if(ranged&&dist>meleeThreatRange(s)){
        // Keep the intended long standoff in Classic, but scale it down
        // in tiny 440×210 test arenas so archers do not flee to the edges.
@@ -1700,7 +1727,7 @@ function step(dt){
   else if(command==='defend'||command==='move'||command==='idle'||command==='form'){moveX=s.tx;moveY=s.ty;}
   const disciplineControl=.42+s.disc/160;
   const fatiguePace=.76+.24*(s.stamina/s.maxStamina);
-  const equipment=weaponProfiles[s.weapon].weight+(shieldProfiles[s.shield]?.weight||0)+(hasRangedAmmo(s)?rangedProfiles[s.ranged].weight:0);
+  const equipment=weaponProfiles[s.weapon].weight+(shieldProfiles[s.shield]?.weight||0)+(activeRangedProfile(s)?rangedProfiles[s.ranged].weight:0);
   const loadPace=clamp(1-equipment*.038,.70,1);
   const fightingPace=s.stagger>0?0:s.attack?.72:s.guardActive?.73:1;
   const oldX=s.x,oldY=s.y;
@@ -1720,9 +1747,12 @@ function step(dt){
    if(s.stagger>0){s.guardActive=false;s.rangedAim=0;}
    else if(s.attack)advanceAttack(s,dt);
    else if(s.rangedAim>0)advanceRangedAim(s,target,dt);
-   else if(target&&hasRangedAmmo(s)&&dist>meleeThreatRange(s))
+   else if(isArcher(s)&&target&&hasRangedAmmo(s)&&dist>meleeThreatRange(s))
     beginRangedAim(s,target,dist);
-   else if(target&&s.cooldown<=0)beginAttack(s,target);
+   // Archers never chase distant enemies with swords, including when
+   // out of ammunition. Melee is exclusively an emergency close threat.
+   else if(target&&(!isArcher(s)||dist<=meleeThreatRange(s))&&s.cooldown<=0)
+    beginAttack(s,target);
   }
  }
  separateSoldiers();
@@ -1803,7 +1833,7 @@ function drawUnit(s){if(s.routed)return;
   ctx.restore();
  }
  // Weapons physically move throughout wind-up, active and recovery phases.
- if((s.rangedAim>0||s.rangedRelease>0)&&s.ranged){
+ if(isArcher(s)&&s.ranged&&!s.attack){
   const rp=rangedProfiles[s.ranged];
   ctx.save();ctx.translate(x,y);ctx.rotate(s.faceAngle);
   ctx.strokeStyle=rp.color;ctx.lineWidth=2.5;ctx.beginPath();
@@ -1811,7 +1841,7 @@ function drawUnit(s){if(s.routed)return;
    ctx.arc(11,0,14,-1.1,1.1);ctx.stroke();
    ctx.strokeStyle='#f6e9c7';ctx.lineWidth=1;
    ctx.beginPath();ctx.moveTo(11+14*Math.cos(-1.1),14*Math.sin(-1.1));
-   ctx.lineTo(4,0);ctx.lineTo(11+14*Math.cos(1.1),14*Math.sin(1.1));ctx.stroke();
+   ctx.lineTo(s.rangedAim>0?4:11,0);ctx.lineTo(11+14*Math.cos(1.1),14*Math.sin(1.1));ctx.stroke();
   }else if(s.ranged==='crossbow'){
    ctx.moveTo(5,0);ctx.lineTo(24,0);ctx.moveTo(17,-11);ctx.lineTo(17,11);ctx.stroke();
    ctx.strokeStyle='#f9eac7';ctx.lineWidth=1;
