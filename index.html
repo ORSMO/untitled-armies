@@ -150,7 +150,7 @@ body.lab-mode .app{height:100dvh;width:min(1600px,100%);max-width:none;gap:5px;o
 body.lab-mode .board,body.lab-mode .info{display:none}
 .lab-classic-link{border:1px solid #657f70;color:#c9e9d0;text-decoration:none;border-radius:9px;padding:7px 9px;white-space:nowrap;font:700 11px/1.3 system-ui;background:#1c3329}
 .lab-classic-link:hover,.lab-classic-link:focus-visible{background:#295038;outline-color:#b7edc3}
-.lab-area{display:none;flex:1;min-height:0;flex-direction:column;gap:6px;padding:0 4px 5px}
+.lab-area{display:none;position:relative;flex:1;min-height:0;flex-direction:column;gap:6px;padding:0 4px 5px}
 body.lab-mode .lab-area{display:flex}
 .lab-toolbar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:2px 1px}
 .lab-toolbar strong{font-size:12px;letter-spacing:.045em}
@@ -177,6 +177,20 @@ body.lab-mode .lab-area{display:flex}
 @media(max-height:620px){body.lab-mode .top{padding:4px 8px 2px}.lab-toolbar{padding:0}.lab-card{gap:2px;padding:3px 5px}.lab-card-head strong{font-size:10px}.lab-map{min-height:0}.lab-matchup{font-size:8px}.lab-score{font-size:9px}.lab-summary{font-size:9px}.lab-classic-link{font-size:10px;padding:4px 6px}.lab-commands button{font-size:10px;padding:4px 8px}}
 @media(max-width:770px){.lab-classic-link{font-size:9px;padding:5px}.lab-grid{gap:4px}.lab-card-head strong{font-size:9px}.lab-card{padding:3px}.lab-matchup{font-size:8px}.lab-count{font-size:9px}.lab-score{font-size:8px}.lab-toolbar strong{font-size:10px}}
 @media(max-width:570px){.lab-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr))}.lab-summary{font-size:9px}}
+
+.lab-insights-overlay{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:#07140ee6;padding:8px}
+.lab-insights-overlay.is-hidden{display:none}
+.lab-insights-dialog{width:min(870px,100%);max-height:100%;overflow:auto;padding:13px;border:1px solid #87b79a;border-radius:12px;background:#182c24;color:#dfefdf;box-shadow:0 12px 50px #000c}
+.lab-insights-header{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.lab-insights-header strong{font-size:13px}
+.lab-insights-header button{border:1px solid #88a28d;border-radius:7px;padding:4px 10px;background:#264532;color:#eef7e7;cursor:pointer}
+.lab-insights-dialog p{font-size:11px;color:#c0d4c4;line-height:1.4;margin:8px 0}
+.lab-insights-scroll{overflow:auto;max-width:100%}
+.lab-insights-dialog table{border-collapse:collapse;min-width:620px;width:100%;font:650 10px system-ui;color:#e2f2e4}
+.lab-insights-dialog td,.lab-insights-dialog th{padding:6px 8px;border-bottom:1px solid #58786255;text-align:left}
+.lab-insights-dialog th{color:#a8dfbf}
+#labAnalysisNotes{font-size:12px;color:#e4d9a5}
+@media(max-height:460px){.lab-insights-dialog{padding:8px}.lab-insights-dialog td,.lab-insights-dialog th{padding:4px 6px}.lab-insights-dialog p{margin:5px 0;font-size:10px}}
 </style>
 </head>
 <body>
@@ -276,7 +290,7 @@ body.lab-mode .lab-area{display:flex}
   <section class="lab-area" id="battleLab" aria-label="Six arena balance simulation">
  <div class="lab-toolbar">
   <div><strong>⚔ SIX-ARENA BATTLE LAB</strong> <span id="labProgressLabel">Repeated fair fights · 60 simulated minutes per arena</span></div>
-  <div class="lab-commands"><button type="button" id="labPause">Pause</button><button type="button" id="labRerun">↻ Rerun 1 hour</button></div>
+  <div class="lab-commands"><button type="button" id="labAnalysisButton" aria-expanded="false" aria-controls="labAnalysis">📊 Analysis</button><button type="button" id="labPause">Pause</button><button type="button" id="labRerun">↻ Rerun 1 hour</button></div>
  </div>
  <progress id="labProgress" class="lab-progress" max="100" value="0" aria-label="Balance simulation progress"></progress>
  <div class="lab-grid"><article class="lab-card" id="labCard0">
@@ -323,6 +337,14 @@ body.lab-mode .lab-area{display:flex}
 </article>
 </div>
  <div class="lab-summary"><span id="labSummary">Both armies can take damage; no reinforcements. All fights use the existing combat engine.</span><strong id="labWinner">Calculating results…</strong></div>
+ <div class="lab-insights-overlay is-hidden" id="labAnalysis">
+  <div class="lab-insights-dialog" role="dialog" aria-modal="true" aria-labelledby="labAnalysisTitle">
+   <div class="lab-insights-header"><strong id="labAnalysisTitle">📊 ONE-HOUR BALANCE ANALYSIS</strong><button id="labAnalysisClose" type="button" aria-label="Close analysis">✕</button></div>
+   <p>Each arena runs repeated fair fights for 60 simulated minutes. A healthy winning advantage is roughly 55–80%; above 85% usually means a hard counter or imbalance.</p>
+   <div class="lab-insights-scroll"><table><thead><tr><th>Matchup</th><th>Leader</th><th>Fights</th><th>Damage</th><th>Shield blocks</th><th>Guard breaks</th></tr></thead><tbody id="labAnalysisRows"></tbody></table></div>
+   <p id="labAnalysisNotes">Recommendations appear as results accumulate.</p>
+  </div>
+ </div>
 </section>
   <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="equipmentButton" class="small-btn" aria-expanded="false" aria-controls="equipmentPanel">⚙ Test gear</button> <button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
 </div>
