@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V1.9</title>
+<title>Untitled Armies — V2.0</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -152,7 +152,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
     <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Armor · Shields · Physical combat</p></div></div>
     <div class="top-actions">
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 1.9">V1.9</div>
+      <div class="build" aria-label="Version 2.0">V2.0</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
@@ -1191,6 +1191,8 @@ function step(dt){
  }
  for(const s of [...friends,...foes]){
   if(s.dead||s.routed)continue;s.cooldown-=dt;s.decision-=dt;s.hitFlash=Math.max(0,s.hitFlash-dt);
+  // Parry counters last only 0.72s; a waiting fighter cannot bank the bonus.
+  s.counterWindow=Math.max(0,(s.counterWindow||0)-dt);
   advanceReaction(s,dt);
   // Stamina restores while not recovering from a swing; movement uses some.
   s.recoveryDelay=Math.max(0,s.recoveryDelay-dt);
