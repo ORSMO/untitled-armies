@@ -1380,6 +1380,188 @@ function drawMinimap(){
   }
   draw();
  }
+// --- V1.8 independent six-arena, one-hour fair-battle experiments. ---
+// The exact V1.7 weapon, armor, shield and movement functions above are reused.
+// World globals are switched between isolated arena states before every step.
+const labScenarios=[
+ {name:'Plate vs naked',counts:[1,1],green:{weapon:'sword',shield:'round',armor:'plate'},red:{weapon:'axe',shield:null,armor:'naked'}},
+ {name:'Shield discipline',counts:[2,2],green:{weapon:'sword',shield:'round',armor:'mail'},red:{weapon:'axe',shield:null,armor:'leather'}},
+ {name:'Two vs three',counts:[2,3],green:{weapon:'greatsword',shield:null,armor:'mail'},red:{weapon:'shortsword',shield:'buckler',armor:'naked'}},
+ {name:'Numbers vs axes',counts:[3,4],green:{weapon:'axe',shield:null,armor:'leather'},red:{weapon:'sword',shield:'round',armor:'padded'}},
+ {name:'Plate outnumbered',counts:[4,5],green:{weapon:'sword',shield:'tower',armor:'plate'},red:{weapon:'greatsword',shield:null,armor:'leather'}},
+ {name:'Heavy weapons',counts:[5,5],green:{weapon:'greatsword',shield:null,armor:'plate'},red:{weapon:'axe',shield:null,armor:'mail'}}
+];
+const labSeconds=3600,labStepSeconds=.04,labWorldW=440,labWorldH=210,labMatchTimeout=75;
+let labArenas=[],labPaused=false,labTurn=0,labLastDraw=0;
+const labCanvasNodes=Array.from({length:6},(_,i)=>document.getElementById('labCanvas'+i));
+function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0};}
+function activateLab(ar){
+ activeLab=ar;W=labWorldW;H=labWorldH;t=ar.seconds;mode='attack';
+ friends=ar.friends;foes=ar.foes;slashes=ar.slashes;
+ nextId=ar.nextId;nextSwingId=ar.nextSwingId;nextEngagementPlan=ar.nextEngagementPlan;
+}
+function storeLab(ar){
+ ar.friends=friends;ar.foes=foes;ar.slashes=slashes;
+ ar.nextId=nextId;ar.nextSwingId=nextSwingId;ar.nextEngagementPlan=nextEngagementPlan;
+ ar.seconds=t;
+}
+function startLabRound(ar){
+ activateLab(ar);
+ nextId=0;nextSwingId=1;nextEngagementPlan=0;slashes=[];
+ const countGreen=ar.spec.counts[0],countRed=ar.spec.counts[1];
+ function spawn(team,count,gear){
+  return Array.from({length:count},(_,i)=>{
+   const y=H*.5+(i-(count-1)*.5)*28;
+   const x=team==='friend'?135:305;
+   const soldier=create(team,i,{x,y});
+   Object.assign(soldier,gear);
+   // Seed varies each round and equally across both sides: no implicit cheat.
+   const seed=ar.index*7019+ar.rounds*131+i*117+(team==='friend'?23:97);
+   soldier.disc=64+Math.round(rnd(seed)*31);
+   soldier.speed=51+(rnd(seed+17)-.5)*12;
+   soldier.cooldown=.08+rnd(seed+19)*.19;
+   soldier.stress=0;
+   soldier.decision=.9+rnd(seed+41);
+   return soldier;
+  });
+ }
+ friends=spawn('friend',countGreen,ar.spec.green);
+ foes=spawn('foe',countRed,ar.spec.red);
+ ar.roundAge=0;storeLab(ar);
+}
+function initLab(){
+ document.body.classList.add('lab-mode');
+ labPaused=false;labTurn=0;labLastDraw=0;
+ labArenas=labScenarios.map((spec,index)=>({
+  index,spec,ctx:labCanvasNodes[index].getContext('2d'),
+  seconds:0,roundAge:0,rounds:0,greenWins:0,redWins:0,draws:0,
+  stats:{friend:newLabScore(),foe:newLabScore()},
+  friends:[],foes:[],slashes:[],nextId:0,nextSwingId:1,nextEngagementPlan:0,done:false
+ }));
+ for(const arena of labArenas)startLabRound(arena);
+ document.getElementById('labPause').textContent='Pause';
+ updateLabHUD();drawLab();
+}
+function advanceLab(ar){
+ if(ar.done)return;
+ activateLab(ar);
+ const delta=Math.min(labStepSeconds,labSeconds-ar.seconds);
+ if(delta<=0){ar.done=true;return;}
+ t+=delta;step(delta);
+ ar.roundAge+=delta;
+ const green=living(friends).length,red=living(foes).length;
+ if(green===0||red===0||ar.roundAge>=labMatchTimeout){
+  ar.rounds++;
+  if(green===0&&red>0)ar.redWins++;
+  else if(red===0&&green>0)ar.greenWins++;
+  else ar.draws++;
+  storeLab(ar);
+  if(ar.seconds<labSeconds-1e-6)startLabRound(ar);
+ }else storeLab(ar);
+ if(ar.seconds>=labSeconds-1e-6){ar.seconds=labSeconds;ar.done=true;}
+}
+function labWinner(ar){
+ const decisive=ar.greenWins+ar.redWins;
+ if(!decisive)return ar.done?'Draws only':'Testing…';
+ const greenRate=ar.greenWins/decisive,redRate=ar.redWins/decisive;
+ if(Math.abs(greenRate-.5)<.055)return 'Close matchup';
+ return (greenRate>redRate?'🟢 Green':'🔴 Red')+' '+Math.round(Math.max(greenRate,redRate)*100)+'%';
+}
+function updateLabHUD(){
+ const avg=labArenas.reduce((sum,a)=>sum+a.seconds,0)/(labArenas.length||1);
+ const pct=Math.min(100,avg/labSeconds*100);
+ const done=labArenas.every(a=>a.done);
+ document.getElementById('labProgress').value=pct;
+ document.getElementById('labProgressLabel').textContent=
+  (done?'Completed':'Running')+' · '+(avg/60).toFixed(1)+' / 60 simulated min per arena';
+ const aggregate=labArenas.reduce((r,a)=>{
+  r.fights+=a.rounds;r.kills+=a.stats.friend.kills+a.stats.foe.kills;
+  r.blocks+=a.stats.friend.blocks+a.stats.foe.blocks;
+  return r;
+ },{fights:0,kills:0,blocks:0});
+ for(const a of labArenas){
+  document.getElementById('labResult'+a.index).textContent=
+   '🟢 '+a.greenWins+' · 🔴 '+a.redWins+' · = '+a.draws;
+  document.getElementById('labLeader'+a.index).textContent=labWinner(a);
+  document.getElementById('labBattles'+a.index).textContent=
+   a.rounds+' fights · '+(a.stats.friend.damage+a.stats.foe.damage).toFixed(0)+' dmg';
+  document.getElementById('labBlocks'+a.index).textContent=
+   (a.stats.friend.blocks+a.stats.foe.blocks)+' blocks';
+ }
+ document.getElementById('labSummary').textContent=
+  aggregate.fights+' fights · '+aggregate.kills+' kills · '+aggregate.blocks+
+  ' blocks · Fair mode (both sides vulnerable, no reinforcements)';
+ const leaders=labArenas.filter(a=>a.done&&a.greenWins!==a.redWins).length;
+ document.getElementById('labWinner').textContent=done?
+  leaders+'/6 matchups have a clear leader':'Testing six equipment matchups…';
+ const pause=document.getElementById('labPause');
+ pause.disabled=done;pause.textContent=done?'Complete':labPaused?'Resume':'Pause';
+}
+function drawLabArena(ar){
+ const ctx=ar.ctx,can=labCanvasNodes[ar.index],ww=can.width,hh=can.height;
+ ctx.clearRect(0,0,ww,hh);
+ ctx.fillStyle='#20392d';ctx.fillRect(0,0,ww,hh);
+ ctx.strokeStyle='#9ac6a61c';ctx.lineWidth=.8;
+ ctx.beginPath();for(let x=0;x<=ww;x+=22){ctx.moveTo(x,0);ctx.lineTo(x,hh);}
+ for(let y=0;y<=hh;y+=22){ctx.moveTo(0,y);ctx.lineTo(ww,y);}ctx.stroke();
+ ctx.strokeStyle='#b5d6b03a';ctx.beginPath();ctx.moveTo(ww/2,0);ctx.lineTo(ww/2,hh);ctx.stroke();
+ for(const s of [...ar.foes,...ar.friends]){
+  if(s.routed)continue;
+  if(s.dead||s.broken){
+   ctx.strokeStyle=s.team==='friend'?'#468b65':'#985952';
+   ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(s.x-6,s.y-6);ctx.lineTo(s.x+6,s.y+6);
+   ctx.moveTo(s.x+6,s.y-6);ctx.lineTo(s.x-6,s.y+6);ctx.stroke();continue;
+  }
+  const armor=armorProfiles[s.armor],shield=shieldProfiles[s.shield];
+  const bodyColor=s.team==='friend'?'#75e8a3':'#ed8a7c';
+  ctx.fillStyle='#0b1f18aa';ctx.beginPath();ctx.ellipse(s.x,s.y+5,10,4,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=s.hitFlash>0?'#fff3aa':bodyColor;
+  ctx.strokeStyle=armor?.color||'#fff';ctx.lineWidth=2.2;
+  ctx.beginPath();ctx.arc(s.x,s.y,9,0,Math.PI*2);ctx.fill();ctx.stroke();
+  if(shield){
+   ctx.save();ctx.translate(s.x,s.y);ctx.rotate(s.faceAngle);
+   ctx.fillStyle=s.guardActive?'#f3f0cf':shield.color;
+   ctx.beginPath();ctx.ellipse(11,0,shield.size*.45,shield.size*.30,0,0,Math.PI*2);ctx.fill();
+   ctx.restore();
+  }
+  const w=weaponPose(s);
+  ctx.strokeStyle=s.weapon==='axe'?'#f3bb87':'#f0f1eb';ctx.lineWidth=s.weapon==='greatsword'||s.weapon==='axe'?3:2;
+  ctx.beginPath();ctx.moveTo(s.x+Math.cos(w.angle)*8,s.y+Math.sin(w.angle)*8);
+  ctx.lineTo(s.x+Math.cos(w.angle)*w.length,s.y+Math.sin(w.angle)*w.length);ctx.stroke();
+  if(s.hp<s.maxHp){
+   ctx.fillStyle='#15221c';ctx.fillRect(s.x-9,s.y-16,18,3);
+   ctx.fillStyle='#fbd58e';ctx.fillRect(s.x-9,s.y-16,18*clamp(s.hp/s.maxHp,0,1),3);
+  }
+  if(s.stagger>0){
+   ctx.strokeStyle='#f4d17d';ctx.lineWidth=1.5;
+   ctx.beginPath();ctx.arc(s.x,s.y,12,0,Math.PI*2);ctx.stroke();
+  }
+ }
+}
+function drawLab(){for(const arena of labArenas)drawLabArena(arena);}
+function frameLab(ts){
+ if(labPaused||labArenas.every(a=>a.done)){
+  if(ts-labLastDraw>180){updateLabHUD();drawLab();labLastDraw=ts;}
+  return;
+ }
+ // Dynamic work budget keeps the landscape UI responsive on weaker phones.
+ const start=performance.now();let batch=0;
+ while(batch<1800&&performance.now()-start<10){
+  const a=labArenas[labTurn%labArenas.length];
+  labTurn++;batch++;
+  if(!a.done)advanceLab(a);
+  if(labArenas.every(q=>q.done))break;
+ }
+ if(ts-labLastDraw>80){
+  updateLabHUD();drawLab();labLastDraw=ts;
+ }
+}
+document.getElementById('labPause').addEventListener('click',()=>{
+ if(labArenas.every(a=>a.done))return;
+ labPaused=!labPaused;updateLabHUD();
+});
+document.getElementById('labRerun').addEventListener('click',initLab);
+
 function frame(ts){
   if(!last)last=ts;
   const dt=Math.min((ts-last)/1000,.040);
