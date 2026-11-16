@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V2.4</title>
+<title>Untitled Armies — V2.5</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -201,7 +201,7 @@ body.lab-mode .lab-area{display:flex}
     <div class="top-actions">
       <a class="lab-classic-link" href="classic.html" title="Open original 50v50 battlefield">Classic battlefield</a>
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 2.4">V2.4</div>
+      <div class="build" aria-label="Version 2.5">V2.5</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
@@ -259,7 +259,7 @@ body.lab-mode .lab-area{display:flex}
       <tbody><tr><td>War bow</td><td>18</td><td>1005</td><td>0.64s</td><td>Light piercing</td></tr>
       <tr><td>Crossbow</td><td>12</td><td>1125</td><td>1.90s</td><td>Heavy piercing</td></tr>
       <tr><td>Javelins</td><td>6</td><td>624</td><td>1.05s</td><td>Heavy piercing</td></tr></tbody></table>
-      <p><strong>RANGED COMBAT:</strong> V2.4 triples maximum and ideal shooting distances. Better experience and ranged familiarity now produce tighter shot groups, and experienced archers lead moving targets instead of firing behind them. Projectiles still travel physically and can miss. War bows carry 18 arrows (fast), crossbows carry 12 bolts (slow reload, strong piercing), and javelins carry 6 throws (short range, powerful impact). Shots follow lofted trajectories over friendly ranks and stop when they reach the ground instead of sliding along it. Low shots near the shooter or impact point can still strike soldiers. Projectiles have travel time, can miss, and interact with directional shields and armor. Experience and independent ranged-weapon familiarity improve accuracy and timing; set Ranged skill separately from melee Mastery in Test gear. Soldiers automatically switch to melee when closely threatened or out of ammunition. A shield is lowered when aiming a two-handed bow or crossbow.</p>
+      <p><strong>RANGED COMBAT:</strong> V2.4 triples maximum and ideal shooting distances. Better experience and ranged familiarity produce tighter shot groups, and experienced archers lead moving targets. Archers can switch to a new enemy during an existing draw rather than repeatedly cancelling shots when their target disappears. Projectiles still travel physically and can miss. War bows carry 18 arrows (fast), crossbows carry 12 bolts (slow reload, strong piercing), and javelins carry 6 throws (short range, powerful impact). Shots follow lofted trajectories over friendly ranks and stop when they reach the ground instead of sliding along it. Low shots near the shooter or impact point can still strike soldiers. Projectiles have travel time, can miss, and interact with directional shields and armor. Experience and independent ranged-weapon familiarity improve accuracy and timing; set Ranged skill separately from melee Mastery in Test gear. Soldiers automatically switch to melee when closely threatened or out of ammunition. A shield is lowered when aiming a two-handed bow or crossbow.</p>
       <p><strong>IMPACT REACTIONS:</strong> Heavy hits cause knockback and stagger. A successful active block can create a counterattack opening; a weak shield can suffer a <strong>GUARD BREAK</strong>. Plate and solid shields can stop a swing and recoil the attacker.</p>
       <p>Green and red soldiers wear mixed armor and carry different weapons. One-handed swords can use shields; greatswords and axes occupy both hands. Swing stages: wind-up → active hitbox → recovery. Your troops are still invulnerable.</p>
      </section>
@@ -499,7 +499,7 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  function initializeRangedEquipment(s){
   s.ranged=rangedProfiles[s.ranged]?s.ranged:null;
   s.ammo=s.ranged?rangedProfiles[s.ranged].ammo:0;
-  s.rangedCooldown=0;s.rangedAim=0;s.shotCount=0;
+  s.rangedCooldown=0;s.rangedAim=0;s.rangedTargetId=null;s.rangedRelease=0;s.shotCount=0;
   s.fired=0;s.rangedHits=0;
  }
  function weaponFamiliarity(s){return clamp(s.weaponSkills?.[s.weapon]??35,0,100);}
@@ -1452,7 +1452,7 @@ function launchProjectile(s,target){
  s.stamina=clamp(s.stamina-profile.stamina*rangedTimeFactor(s),0,s.maxStamina);
  s.recoveryDelay=Math.max(s.recoveryDelay,.28);
  s.rangedCooldown=profile.reload*rangedTimeFactor(s);
- s.rangedAim=0;
+ s.rangedAim=0;s.rangedRelease=.22;
  const stats=combatLabStats(s.team);if(stats)stats.shots++;
  return true;
 }
@@ -1466,24 +1466,56 @@ function beginRangedAim(s,target,dist){
  s.guardActive=false;s.guardHold=0;
  return true;
 }
+function isViableRangedTarget(s,e){
+ if(!e||e.dead||e.broken||e.routed)return false;
+ const profile=rangedProfiles[s.ranged];if(!profile)return false;
+ const d=Math.hypot(e.x-s.x,e.y-s.y);
+ return d>meleeThreatRange(s)&&d<=profile.range;
+}
+function replacementRangedTarget(s,preferred){
+ // Keep a drawn bow ready when a target dies/respawns or moves away.
+ // Prefer the currently assigned soldier, then another shootable enemy.
+ if(isViableRangedTarget(s,preferred))return preferred;
+ let best=null,closest=Infinity;
+ for(const enemy of opponents(s)){
+  if(!isViableRangedTarget(s,enemy))continue;
+  const dist=Math.hypot(enemy.x-s.x,enemy.y-s.y);
+  if(dist<closest){best=enemy;closest=dist;}
+ }
+ return best;
+}
 function advanceRangedAim(s,target,dt){
  if(!s.rangedAim)return;
- // Lock onto the soldier being aimed at until release, instead of switching
- // targets mid-draw as the army's nearest-enemy selection changes.
- const tracked=opponents(s).find(e=>e.id===s.rangedTargetId);
- if(!tracked||tracked.dead||tracked.routed||tracked.broken||
-    s.stagger>0||s.broken||!hasRangedAmmo(s)||
-    Math.hypot(tracked.x-s.x,tracked.y-s.y)<=meleeThreatRange(s)){
-  s.rangedAim=0;return;
+ if(s.stagger>0||s.broken||!hasRangedAmmo(s)){
+  s.rangedAim=0;s.rangedTargetId=null;return;
  }
+ // An enemy already in sword range demands a melee response, not a
+ // last-second shot at somebody farther away.
+ if(target&&!target.dead&&!target.broken&&!target.routed&&
+    Math.hypot(target.x-s.x,target.y-s.y)<=meleeThreatRange(s)){
+  s.rangedAim=0;s.rangedTargetId=null;return;
+ }
+ let tracked=opponents(s).find(e=>e.id===s.rangedTargetId);
+ if(!isViableRangedTarget(s,tracked)){
+  tracked=replacementRangedTarget(s,target);
+  if(!tracked){
+   // No safe, in-range target: lower the weapon once, don't keep drawing
+   // against an unreachable/dead soldier.
+   s.rangedAim=0;s.rangedTargetId=null;
+   s.rangedCooldown=Math.max(s.rangedCooldown,.15);
+   return;
+  }
+  // Preserve draw progress when targets die, rout, respawn, or walk away.
+  s.rangedTargetId=tracked.id;
+ }
+ turnToward(s,Math.atan2(tracked.y-s.y,tracked.x-s.x),dt);
  s.rangedAim=Math.max(0,s.rangedAim-dt);
  if(s.rangedAim===0){
-  const profile=rangedProfiles[s.ranged];
-  if(Math.hypot(tracked.x-s.x,tracked.y-s.y)<=profile.range)
-   launchProjectile(s,tracked);
-  else s.rangedCooldown=.14;
+  if(!launchProjectile(s,tracked))s.rangedCooldown=Math.max(s.rangedCooldown,.18);
+  s.rangedTargetId=null;
  }
 }
+
 function updateProjectiles(dt){
  if(!projectiles.length)return;
  const active=[];
@@ -1582,6 +1614,7 @@ function step(dt){
   // Parry counters last only 0.72s; a waiting fighter cannot bank the bonus.
   s.counterWindow=Math.max(0,(s.counterWindow||0)-dt);
   s.rangedCooldown=Math.max(0,(s.rangedCooldown||0)-dt);
+  s.rangedRelease=Math.max(0,(s.rangedRelease||0)-dt);
   advanceReaction(s,dt);
   // Stamina restores while not recovering from a swing; movement uses some.
   s.recoveryDelay=Math.max(0,s.recoveryDelay-dt);
@@ -1741,7 +1774,7 @@ function drawUnit(s){if(s.routed)return;
   ctx.restore();
  }
  // Weapons physically move throughout wind-up, active and recovery phases.
- if(s.rangedAim>0&&s.ranged){
+ if((s.rangedAim>0||s.rangedRelease>0)&&s.ranged){
   const rp=rangedProfiles[s.ranged];
   ctx.save();ctx.translate(x,y);ctx.rotate(s.faceAngle);
   ctx.strokeStyle=rp.color;ctx.lineWidth=2.5;ctx.beginPath();
@@ -2182,7 +2215,7 @@ function drawLabArena(ar){
    const p=rangedProfiles[s.ranged];
    ctx.fillStyle=p.color;ctx.font='bold 10px system-ui';
    ctx.textAlign='center';ctx.fillText(s.ammo,s.x,s.y+23);
-   if(s.rangedAim>0){
+   if(s.rangedAim>0||s.rangedRelease>0){
     ctx.strokeStyle=p.color;ctx.lineWidth=2.5;
     ctx.beginPath();ctx.arc(s.x,s.y,15,s.faceAngle-.7,s.faceAngle+.7);ctx.stroke();
    }
