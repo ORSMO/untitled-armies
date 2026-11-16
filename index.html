@@ -310,49 +310,49 @@ body.lab-mode .lab-area{display:flex}
   </main>
   <section class="lab-area" id="battleLab" aria-label="Six arena balance simulation">
  <div class="lab-toolbar">
-  <div><strong>⚔ EXPERIENCE & WEAPON MASTERY LAB</strong> <span id="labProgressLabel">Repeated fair fights · 60 simulated minutes per arena</span></div>
+  <div><strong>🏹 RANGED COMBAT & WEAPON MASTERY LAB</strong> <span id="labProgressLabel">Repeated fair fights · 60 simulated minutes per arena</span></div>
   <div class="lab-commands"><button type="button" id="labPresetButton" aria-pressed="false">⚖ Fairness check</button><button type="button" id="labAnalysisButton" aria-expanded="false" aria-controls="labAnalysis">📊 Explain results</button><button type="button" id="labPause">Pause</button><button type="button" id="labRerun">↻ Rerun 1 hour</button></div>
  </div>
  <progress id="labProgress" class="lab-progress" max="100" value="0" aria-label="Balance simulation progress"></progress>
  <div class="lab-grid"><article class="lab-card" id="labCard0">
- <div class="lab-card-head"><strong id="labName0">Recruit vs Elite</strong><span class="lab-count" id="labCount0">1 vs 1</span></div>
+ <div class="lab-card-head"><strong id="labName0">Bow vs shield</strong><span class="lab-count" id="labCount0">1 vs 1</span></div>
  <div class="lab-matchup"><span class="lab-green" id="labGreen0" title="Recruit · sword / round / leather">🟢 Recruit · sword / round / leather</span><span class="lab-red" id="labRed0" title="Elite · sword / round / leather">🔴 Elite · sword / round / leather</span></div>
- <canvas class="lab-map" id="labCanvas0" width="440" height="210" aria-label="Recruit vs Elite simulated battlefield"></canvas>
+ <canvas class="lab-map" id="labCanvas0" width="440" height="210" aria-label="Bow vs shield simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult0">0–0 · 0 draws</span><span class="lab-winner" id="labLeader0">Testing…</span></div>
  <div class="lab-score"><span id="labBattles0">0 fights</span><span id="labBlocks0">0 blocks</span></div>
 </article>
 <article class="lab-card" id="labCard1">
- <div class="lab-card-head"><strong id="labName1">Weapon familiarity</strong><span class="lab-count" id="labCount1">2 vs 2</span></div>
+ <div class="lab-card-head"><strong id="labName1">Crossbows vs kite shields</strong><span class="lab-count" id="labCount1">2 vs 2</span></div>
  <div class="lab-matchup"><span class="lab-green" id="labGreen1" title="Veteran, novice axe · mail">🟢 Veteran, novice axe · mail</span><span class="lab-red" id="labRed1" title="Veteran, master axe · mail">🔴 Veteran, master axe · mail</span></div>
- <canvas class="lab-map" id="labCanvas1" width="440" height="210" aria-label="Weapon familiarity simulated battlefield"></canvas>
+ <canvas class="lab-map" id="labCanvas1" width="440" height="210" aria-label="Crossbows vs kite shields simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult1">0–0 · 0 draws</span><span class="lab-winner" id="labLeader1">Testing…</span></div>
  <div class="lab-score"><span id="labBattles1">0 fights</span><span id="labBlocks1">0 blocks</span></div>
 </article>
 <article class="lab-card" id="labCard2">
- <div class="lab-card-head"><strong id="labName2">Skill vs plate</strong><span class="lab-count" id="labCount2">2 vs 3</span></div>
+ <div class="lab-card-head"><strong id="labName2">Javelins vs recruits</strong><span class="lab-count" id="labCount2">2 vs 3</span></div>
  <div class="lab-matchup"><span class="lab-green" id="labGreen2" title="Elite/master · naked sword">🟢 Elite/master · naked sword</span><span class="lab-red" id="labRed2" title="Recruit/novice · plate axe">🔴 Recruit/novice · plate axe</span></div>
- <canvas class="lab-map" id="labCanvas2" width="440" height="210" aria-label="Skill vs plate simulated battlefield"></canvas>
+ <canvas class="lab-map" id="labCanvas2" width="440" height="210" aria-label="Javelins vs recruits simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult2">0–0 · 0 draws</span><span class="lab-winner" id="labLeader2">Testing…</span></div>
  <div class="lab-score"><span id="labBattles2">0 fights</span><span id="labBlocks2">0 blocks</span></div>
 </article>
 <article class="lab-card" id="labCard3">
- <div class="lab-card-head"><strong id="labName3">Veterans outnumbered</strong><span class="lab-count" id="labCount3">3 vs 4</span></div>
+ <div class="lab-card-head"><strong id="labName3">Archers vs plate wall</strong><span class="lab-count" id="labCount3">3 vs 4</span></div>
  <div class="lab-matchup"><span class="lab-green" id="labGreen3" title="Veteran/expert · mail sword">🟢 Veteran/expert · mail sword</span><span class="lab-red" id="labRed3" title="Recruit/novice · leather sword">🔴 Recruit/novice · leather sword</span></div>
- <canvas class="lab-map" id="labCanvas3" width="440" height="210" aria-label="Veterans outnumbered simulated battlefield"></canvas>
+ <canvas class="lab-map" id="labCanvas3" width="440" height="210" aria-label="Archers vs plate wall simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult3">0–0 · 0 draws</span><span class="lab-winner" id="labLeader3">Testing…</span></div>
  <div class="lab-score"><span id="labBattles3">0 fights</span><span id="labBlocks3">0 blocks</span></div>
 </article>
 <article class="lab-card" id="labCard4">
- <div class="lab-card-head"><strong id="labName4">Parry vs shields</strong><span class="lab-count" id="labCount4">4 vs 5</span></div>
+ <div class="lab-card-head"><strong id="labName4">Crossbows vs heavy armor</strong><span class="lab-count" id="labCount4">4 vs 5</span></div>
  <div class="lab-matchup"><span class="lab-green" id="labGreen4" title="Elite/master · mail sword">🟢 Elite/master · mail sword</span><span class="lab-red" id="labRed4" title="Trained/practiced · round sword">🔴 Trained/practiced · round sword</span></div>
- <canvas class="lab-map" id="labCanvas4" width="440" height="210" aria-label="Parry mastery simulated battlefield"></canvas>
+ <canvas class="lab-map" id="labCanvas4" width="440" height="210" aria-label="Crossbows vs heavy armor simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult4">0–0 · 0 draws</span><span class="lab-winner" id="labLeader4">Testing…</span></div>
  <div class="lab-score"><span id="labBattles4">0 fights</span><span id="labBlocks4">0 blocks</span></div>
 </article>
 <article class="lab-card" id="labCard5">
- <div class="lab-card-head"><strong id="labName5">Skill vs heavy gear</strong><span class="lab-count" id="labCount5">5 vs 5</span></div>
+ <div class="lab-card-head"><strong id="labName5">Bows vs javelins</strong><span class="lab-count" id="labCount5">5 vs 5</span></div>
  <div class="lab-matchup"><span class="lab-green" id="labGreen5" title="Elite/master · leather shortsword">🟢 Elite/master · leather shortsword</span><span class="lab-red" id="labRed5" title="Recruit/novice · plate greatsword">🔴 Recruit/novice · plate greatsword</span></div>
- <canvas class="lab-map" id="labCanvas5" width="440" height="210" aria-label="Skill vs heavy gear simulated battlefield"></canvas>
+ <canvas class="lab-map" id="labCanvas5" width="440" height="210" aria-label="Bows vs javelins simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult5">0–0 · 0 draws</span><span class="lab-winner" id="labLeader5">Testing…</span></div>
  <div class="lab-score"><span id="labBattles5">0 fights</span><span id="labBlocks5">0 blocks</span></div>
 </article>
@@ -363,8 +363,8 @@ body.lab-mode .lab-area{display:flex}
   <div class="lab-insights-dialog" role="dialog" aria-modal="true" aria-labelledby="labAnalysisTitle">
    <div class="lab-insights-header"><strong id="labAnalysisTitle">📊 WHAT THESE FIGHTS MEAN</strong><button id="labAnalysisClose" type="button" aria-label="Close analysis">✕</button></div>
    <p>Each arena runs repeated vulnerable, no-respawn bouts for 60 simulated minutes. Extreme wins are intentional when skill, weapon familiarity, armor or numbers differ. Experience never grants extra health or armor.</p>
-   <div class="lab-insights-scroll"><table><thead><tr><th>Matchup</th><th>Leader</th><th>Fights</th><th>Damage</th><th>Shield blocks</th><th>Parries</th><th>Counters</th><th>Failed parries</th><th>Guard breaks</th></tr></thead><tbody id="labAnalysisRows"></tbody></table></div>
-   <p id="labAnalysisHowToRead"><strong>How to read it:</strong> Green and red are simply the two teams. The percentage is how many decisive fights the leader won, not the chance that every individual sword strike connects. Armor, numbers and skill can create huge advantages. Only identical opponents are expected to split wins about 50/50.</p>
+   <div class="lab-insights-scroll"><table><thead><tr><th>Matchup</th><th>Leader</th><th>Fights</th><th>Shots</th><th>Contacts</th><th>Damage</th><th>Shield blocks</th><th>Parries</th><th>Counters</th><th>Failed parries</th><th>Guard breaks</th></tr></thead><tbody id="labAnalysisRows"></tbody></table></div>
+   <p id="labAnalysisHowToRead"><strong>How to read it:</strong> Green and red are simply the two teams. Battle win percentages are separate from individual ranged accuracy. Shots and enemy contacts are listed below. Armor, numbers and skill can create huge advantages. Only identical opponents are expected to split wins about 50/50.</p>
    <p id="labAnalysisNotes">Recommendations appear as results accumulate.</p>
   </div>
  </div>
@@ -1783,12 +1783,12 @@ function drawMinimap(){
 // The exact V1.7 weapon, armor, shield and movement functions above are reused.
 // World globals are switched between isolated arena states before every step.
 const labScenarios=[
- {name:'Skill duel',counts:[1,1],green:{"weapon":"sword","armor":"leather","shield":"round","experience":"recruit","familiarity":"practiced"},red:{"weapon":"sword","armor":"leather","shield":"round","experience":"elite","familiarity":"practiced"}},
- {name:'Weapon familiarity',counts:[2,2],green:{"weapon":"axe","armor":"mail","shield":null,"experience":"veteran","familiarity":"novice"},red:{"weapon":"axe","armor":"mail","shield":null,"experience":"veteran","familiarity":"master"}},
- {name:'Skill vs plate',counts:[2,3],green:{"weapon":"sword","armor":"naked","shield":null,"experience":"elite","familiarity":"master"},red:{"weapon":"axe","armor":"plate","shield":null,"experience":"recruit","familiarity":"novice"}},
- {name:'Veterans outnumbered',counts:[3,4],green:{"weapon":"sword","armor":"mail","shield":"round","experience":"veteran","familiarity":"expert"},red:{"weapon":"sword","armor":"leather","shield":"round","experience":"recruit","familiarity":"novice"}},
- {name:'Parry vs shields',counts:[4,5],green:{"weapon":"sword","armor":"mail","shield":null,"experience":"elite","familiarity":"master"},red:{"weapon":"sword","armor":"mail","shield":"round","experience":"trained","familiarity":"practiced"}},
- {name:'Skill vs heavy gear',counts:[5,5],green:{"weapon":"shortsword","armor":"leather","shield":"round","experience":"elite","familiarity":"master"},red:{"weapon":"greatsword","armor":"plate","shield":null,"experience":"recruit","familiarity":"novice"}}
+ {name:'Bow vs shield',counts:[1,1],green:{"weapon":"shortsword","armor":"leather","shield":null,"experience":"veteran","familiarity":"expert","ranged":"bow"},red:{"weapon":"sword","armor":"leather","shield":"round","experience":"trained","familiarity":"practiced","ranged":null}},
+ {name:'Crossbows vs kite shields',counts:[2,2],green:{"weapon":"shortsword","armor":"padded","shield":null,"experience":"trained","familiarity":"practiced","ranged":"crossbow"},red:{"weapon":"sword","armor":"mail","shield":"kite","experience":"trained","familiarity":"practiced","ranged":null}},
+ {name:'Javelins vs recruits',counts:[2,3],green:{"weapon":"shortsword","armor":"leather","shield":"round","experience":"veteran","familiarity":"expert","ranged":"javelin"},red:{"weapon":"shortsword","armor":"naked","shield":null,"experience":"recruit","familiarity":"novice","ranged":null}},
+ {name:'Archers vs plate wall',counts:[3,4],green:{"weapon":"shortsword","armor":"leather","shield":null,"experience":"veteran","familiarity":"expert","ranged":"bow"},red:{"weapon":"sword","armor":"plate","shield":"round","experience":"trained","familiarity":"practiced","ranged":null}},
+ {name:'Crossbows vs heavy armor',counts:[4,5],green:{"weapon":"shortsword","armor":"mail","shield":null,"experience":"trained","familiarity":"expert","ranged":"crossbow"},red:{"weapon":"axe","armor":"plate","shield":null,"experience":"trained","familiarity":"practiced","ranged":null}},
+ {name:'Bows vs javelins',counts:[5,5],green:{"weapon":"shortsword","armor":"leather","shield":null,"experience":"veteran","familiarity":"expert","ranged":"bow"},red:{"weapon":"sword","armor":"leather","shield":"round","experience":"veteran","familiarity":"expert","ranged":"javelin"}}
 ];
 // The lab isolates *equipment* strength: morale routing stays in Classic mode.
 // Each fair test round ends through kills or the 75-second draw limit.
@@ -1798,17 +1798,17 @@ const labMatchupScenarios=labScenarios.map(s=>({
  name:s.name,counts:[...s.counts],green:{...s.green},red:{...s.red}
 }));
 const labMirrorScenarios=[
- {name:'Veteran axes',counts:[1,1],gear:{weapon:'axe',armor:'mail',shield:null,experience:'veteran',familiarity:'expert'}},
- {name:'Elite greatswords',counts:[2,2],gear:{weapon:'greatsword',armor:'plate',shield:null,experience:'elite',familiarity:'master'}},
- {name:'Trained shields',counts:[1,1],gear:{weapon:'sword',armor:'mail',shield:'round',experience:'trained',familiarity:'practiced'}},
- {name:'Recruit shortswords',counts:[3,3],gear:{weapon:'shortsword',armor:'naked',shield:null,experience:'recruit',familiarity:'novice'}},
- {name:'Plate towers',counts:[5,5],gear:{weapon:'sword',armor:'plate',shield:'tower',experience:'trained',familiarity:'practiced'}},
- {name:'Elite swords',counts:[4,4],gear:{weapon:'sword',armor:'naked',shield:null,experience:'elite',familiarity:'master'}}
+ {name:'Veteran archers',counts:[1,1],gear:{"weapon":"shortsword","armor":"leather","shield":null,"experience":"veteran","familiarity":"expert","ranged":"bow"}},
+ {name:'Trained crossbows',counts:[2,2],gear:{"weapon":"shortsword","armor":"mail","shield":null,"experience":"trained","familiarity":"practiced","ranged":"crossbow"}},
+ {name:'Javelin skirmishers',counts:[3,3],gear:{"weapon":"shortsword","armor":"leather","shield":"round","experience":"veteran","familiarity":"expert","ranged":"javelin"}},
+ {name:'Arming sword shields',counts:[2,2],gear:{"weapon":"sword","armor":"mail","shield":"round","experience":"trained","familiarity":"practiced","ranged":null}},
+ {name:'Plate towers',counts:[5,5],gear:{"weapon":"sword","armor":"plate","shield":"tower","experience":"trained","familiarity":"practiced","ranged":null}},
+ {name:'Elite swords',counts:[4,4],gear:{"weapon":"sword","armor":"naked","shield":null,"experience":"elite","familiarity":"master","ranged":null}}
 ].map(s=>({name:s.name,counts:s.counts,green:{...s.gear},red:{...s.gear}}));
 let labPreset='matchups';
 function labGearLabel(gear){
  return (gear.experience||'mixed')+' / '+(gear.familiarity||'mixed')+' · '+
-  gear.weapon+' · '+gear.armor+(gear.shield?' / '+gear.shield:'');
+  gear.weapon+' · '+gear.armor+(gear.shield?' / '+gear.shield:'')+(gear.ranged?' · 🏹 '+gear.ranged:'');
 }
 function updateLabTitles(){
  for(let i=0;i<labScenarios.length;i++){
@@ -1825,7 +1825,7 @@ function updateLabTitles(){
  btn.setAttribute('aria-pressed',labPreset==='mirrors'?'true':'false');
  document.getElementById('labPlainExplanation').textContent=labPreset==='mirrors'?
   'FAIRNESS CHECK: Both teams are identical. A result near 50/50 means the combat test is trustworthy. Large differences need investigation, allowing more variation for small samples.':
-  'SKILL MATCHUPS: Experience, armor, equipment, numbers or mastery are different. Big win rates are okay when there is a real advantage.';
+  'RANGED MATCHUPS: Arrows, bolts and javelins have travel time. Shields, armor, skill, ammo and melee rushes affect who wins.';
  document.getElementById('labAnalysisHowToRead').textContent=labPreset==='mirrors'?
   'Same gear, rank, proficiency and numbers on both sides. Green and red should each win about half the fights. Minor differences are normal; large consistent differences mean the test is biased.':
   'Green and red are the two sides. A 70% win rate means 7 wins out of 10 decisive fights. Bigger armor, weapon, number or skill advantages may legitimately cause one-sided results.';
@@ -1950,6 +1950,8 @@ function updateLabAnalysis(){
     Math.round(100*Math.max(ar.greenWins,ar.redWins)/decisive)+'%':'—';
   return '<tr><td>'+ar.spec.name+' ('+ar.spec.counts.join('v')+')</td>'+
     '<td>'+leader+'</td><td>'+ar.rounds+'</td>'+
+    '<td>'+(green.shots+red.shots)+'</td>'+
+    '<td>'+(green.rangedHits+red.rangedHits)+'</td>'+
     '<td>'+Math.round(green.damage+red.damage)+'</td>'+
     '<td>'+(green.blocks+red.blocks)+'</td>'+
     '<td>'+(green.parries+red.parries)+'</td>'+
