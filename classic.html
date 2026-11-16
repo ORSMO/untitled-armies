@@ -144,6 +144,28 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 #equipmentFeedback{font-size:10px;color:#bfefc6;flex:1;min-width:150px}
 @media(max-height:500px){.equipment-panel{padding:8px 11px}.equipment-header strong{font-size:12px}.equipment-panel p{margin:3px 0 6px}.equipment-presets{margin-bottom:6px}.equipment-side{padding:6px}.equipment-side h3{margin-bottom:3px}.equipment-field{margin:3px 0}.equipment-field select{padding:4px}.equipment-actions{margin-top:7px}.equipment-presets button,.equipment-actions button{padding:4px 8px}}
 @media(max-width:535px){.equipment-grid{grid-template-columns:1fr}.equipment-panel{max-width:420px}}
+
+/* V2.3 compact enemy-control popover: a separate, accessible tactical surface. */
+.enemy-command-panel{position:absolute;z-index:10;top:50%;left:50%;transform:translate(-50%,-50%);
+ width:min(540px,calc(100% - 150px));max-height:calc(100% - 18px);overflow:auto;overscroll-behavior:contain;
+ border:1px solid #d28a83;border-radius:13px;padding:11px 13px;
+ background:#211e1cf2;box-shadow:0 12px 45px #000c;color:#f8e5dd}
+.enemy-command-panel.is-hidden{display:none}
+.enemy-command-header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.enemy-command-header strong{font-size:13px;letter-spacing:.06em}
+.enemy-command-header button{border:1px solid #a77c72;background:#44302e;border-radius:7px;color:#ffebe3;
+ padding:4px 10px;font-weight:700;cursor:pointer}
+.enemy-command-panel p{font-size:11px;line-height:1.35;margin:7px 0;color:#dcc7c0}
+.enemy-command-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin:6px 0}
+.enemy-command-grid button,.enemy-command-foot button{border:1px solid #8e6862;border-radius:8px;
+ background:#3c302e;color:#f7e5df;font:700 11px/1.2 system-ui;min-height:30px;padding:6px 7px;cursor:pointer}
+.enemy-command-grid button[aria-pressed=true]{background:#995044;border-color:#e0a49b;color:#fff6e5}
+.enemy-command-label{font-size:10px;letter-spacing:.12em;font-weight:800;color:#eac6b1;margin:9px 0 2px}
+.enemy-command-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:9px}
+.enemy-command-foot span{font-size:10px;color:#f3bdab}
+#infiniteAmmoButton[aria-pressed=true]{border-color:#ddc66c;background:#594820;color:#fff5c0}
+@media(max-height:600px){.enemy-command-panel{padding:7px 9px}.enemy-command-grid button{min-height:25px;padding:4px}.enemy-command-panel p{margin:3px 0}}
+@media(max-width:570px){.enemy-command-panel{width:calc(100% - 128px)}.enemy-command-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.enemy-command-grid button{font-size:10px}}
 </style>
 </head>
 <body>
@@ -179,6 +201,32 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
       <button class="control retreat" id="retreat" type="button" aria-label="Retreat to left side"><span class="dot" aria-hidden="true">↶</span><span>Retreat</span></button>
     </div></aside>
     <div class="bottom-note" id="hint" aria-live="polite">Select your army · swipe to explore the battlefield</div>
+ <section class="enemy-command-panel is-hidden" id="enemyPanel" aria-label="Enemy army control panel">
+  <div class="enemy-command-header">
+   <strong>🔴 ENEMY ARMY COMMANDS</strong>
+   <button id="enemyClose" type="button" aria-label="Close enemy orders">✕</button>
+  </div>
+  <p>Command the enemy's 50 soldiers independently. They still take damage and can panic.</p>
+  <div class="enemy-command-grid" role="group" aria-label="Enemy orders">
+   <button type="button" data-enemy-order="auto">AI Auto</button>
+   <button type="button" data-enemy-order="attack">Charge</button>
+   <button type="button" data-enemy-order="defend">Hold / Fight</button>
+   <button type="button" data-enemy-order="stop">Stand still</button>
+   <button type="button" data-enemy-order="retreat">Retreat</button>
+   <button type="button" data-enemy-order="move">Tap to move</button>
+  </div>
+  <div class="enemy-command-label">FORMATION</div>
+  <div class="enemy-command-grid" role="group" aria-label="Enemy formations">
+   <button type="button" data-enemy-form="block">Block</button>
+   <button type="button" data-enemy-form="line">Line</button>
+   <button type="button" data-enemy-form="wedge">Wedge</button>
+   <button type="button" data-enemy-form="column">Column</button>
+  </div>
+  <div class="enemy-command-foot">
+   <button type="button" id="enemyFocus">⌖ View enemy army</button>
+   <span id="enemyCommandStatus">AI Auto · Block</span>
+  </div>
+ </section>
      <section class="armor-panel is-hidden" id="armorPanel" aria-label="Armor, weapons and shields reference">
       <div class="armor-panel-header"><strong>⚔ WEAPONS · SHIELDS · ARMOR</strong><button class="armor-close" type="button" id="closeArmor" aria-label="Close armor reference">✕</button></div>
       <p>Each value is <strong>flat reduction / percentage reduction</strong> for that damage category.</p>
@@ -273,7 +321,9 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
  </section>
 </div>
   </main>
-  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="equipmentButton" class="small-btn" aria-expanded="false" aria-controls="equipmentPanel">⚙ Test gear</button> <button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
+  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="enemyButton" class="small-btn" aria-expanded="false" aria-controls="enemyPanel">🔴 Enemy orders</button>
+    <button type="button" id="infiniteAmmoButton" class="small-btn" aria-pressed="false" title="Unlimited arrows, bolts and javelins for both armies">∞ Ammo: OFF</button>
+    <button type="button" id="equipmentButton" class="small-btn" aria-expanded="false" aria-controls="equipmentPanel">⚙ Test gear</button> <button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
 </div>
 <div id="rotateNotice" role="status" aria-live="polite">
  <div class="rotate-icon" aria-hidden="true">↻</div>
