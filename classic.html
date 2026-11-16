@@ -544,6 +544,18 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
    soldier.guardBreak=0;soldier.shieldRecoil=0;soldier.guardBreakFlash=0;
    soldier.cooldown=Math.min(Math.max(soldier.cooldown,0),.26);
   });
+  // Re-equipping classes also updates formation anchors. Archers in a
+  // newly mixed army can take the rear ranks without teleporting soldiers.
+  if(soldiers.length===50){
+   const cx=soldiers.reduce((v,u)=>v+(u.anchorX??u.x),0)/50;
+   const cy=soldiers.reduce((v,u)=>v+(u.anchorY??u.y),0)/50;
+   const slots=formation(team,cx,cy);
+   soldiers.forEach((u,i)=>{
+    if(u.dead||u.broken||u.routed)return;
+    u.anchorX=slots[i].x;u.anchorY=slots[i].y;
+    u.tx=slots[i].x;u.ty=slots[i].y;
+   });
+  }
   nextEngagementPlan=0;
  }
  // Attack timing is split into wind-up, physical active frames and recovery.
