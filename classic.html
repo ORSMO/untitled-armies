@@ -612,9 +612,34 @@ function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74
   }else{
    const cols=type==='line'?25:type==='column'?5:10;
    const rows=50/cols;
-   for(let i=0;i<50;i++){
+   for(let i=0;i<50;i++)
     positions.push({x:cx+(i%cols-(cols-1)/2)*d,y:cy+(Math.floor(i/cols)-(rows-1)/2)*d});
+  }
+  // Infantry-only armies keep their original formation. For archers,
+  // reserve wider firing lanes; in mixed armies infantry take the front
+  // and archers deploy in separate rear ranks instead of interleaving.
+  const roles=Array.from({length:50},(_,i)=>assignedRole(equipmentConfig[team],i));
+  if(roles.includes('archer')){
+   const infantry=roles.map((role,i)=>role==='infantry'?i:-1).filter(i=>i>=0);
+   const archers=roles.map((role,i)=>role==='archer'?i:-1).filter(i=>i>=0);
+   const forward=team==='friend'?1:-1;
+   function place(indices,isBow){
+    const count=indices.length;if(!count)return;
+    const stride=isBow?Math.max(36,d*1.40):d;
+    const lanes=type==='line'?Math.min(count,25):
+      type==='column'?Math.min(count,5):Math.min(count,10);
+    indices.forEach((index,j)=>{
+     const column=j%lanes,row=Math.floor(j/lanes);
+     const rowCenter=(lanes-1)*.5;
+     const y=cy+(column-rowCenter)*stride;
+     // Rearward bow ranks sit behind the last infantry row with room
+     // for a shot. Pure archer armies use the same spread-out pattern.
+     const front=isBow?(infantry.length?-d*3:-d*.2)-row*stride:
+       d*2-row*d;
+     positions[index]={x:cx+forward*front,y};
+    });
    }
+   place(infantry,false);place(archers,true);
   }
   return positions.map(p=>({x:clamp(p.x,18,W-18),y:clamp(p.y,21,H-21)}));
  }
@@ -1439,16 +1464,21 @@ function approach(s,x,y,dt,mult=1){const dx=x-s.x,dy=y-s.y,dist=Math.hypot(dx,dy
 // formations a little steadier without allowing any bodies to overlap.
 function separateSoldiers(){
  const all=[...friends,...foes].filter(s=>!s.dead&&!s.routed);
- const minDistance=20.7, minSq=minDistance*minDistance;
+ const minDistance=20.7;
  for(let pass=0;pass<4;pass++){
   for(let i=0;i<all.length;i++){
    const a=all[i];
    for(let j=i+1;j<all.length;j++){
     const b=all[j];let dx=b.x-a.x,dy=b.y-a.y;
     let sq=dx*dx+dy*dy;
-    if(sq>=minSq)continue;
+    // Archers need wider firing stances, both beside other archers and
+    // beside friendly infantry. Keep old collision for melee opponents.
+    const friendly=a.team===b.team;
+    const clearance=friendly&&(isArcher(a)||isArcher(b))?
+      (isArcher(a)&&isArcher(b)?33:26):minDistance;
+    if(sq>=clearance*clearance)continue;
     if(sq<.000001){const angle=(a.id*73+b.id*151)*.33;dx=Math.cos(angle);dy=Math.sin(angle);sq=1;}
-    const dist=Math.sqrt(sq),push=(minDistance-dist+.005);
+    const dist=Math.sqrt(sq),push=(clearance-dist+.005);
     const ya=(a.broken?2:1.05-a.disc*.003);
     const yb=(b.broken?2:1.05-b.disc*.003);
     const wa=ya/(ya+yb),wb=yb/(ya+yb);
@@ -1474,13 +1504,14 @@ function rangedTimeFactor(s){
 // friendly lines then descend near the intended target; only low flights can
 // collide with soldiers. World-space body height is shared by both teams.
 const missileBodyHeight=15;
-const missileMuzzleHeight=8;
+const missileMuzzleHeight=22;
 function projectileHeightAt(p,traveled){
  const u=clamp(traveled/Math.max(1,p.arcDistance||p.range),0,1);
  return missileMuzzleHeight*(1-u)+4*(p.loft??0)*u*(1-u);
 }
-// A low shot may still strike a nearby friendly; otherwise infantry can
-// stand in front of archers while arrows and javelins pass above them.
+// Archers release above allied head height, so tightly packed friendly
+// ranks cannot swallow every shot during the first few steps of flight.
+// The arc still descends through enemy-height hitboxes near its landing point.
 function launchProjectile(s,target){
  const profile=activeRangedProfile(s);
  if(!profile||!hasRangedAmmo(s)||s.dead||s.broken||!target||target.dead)return false;
