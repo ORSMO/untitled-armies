@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V1.3</title>
+<title>Untitled Armies — V1.4</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -100,6 +100,21 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
  .formation-option[data-form="column"]{left:2px;top:131px}
 }
 @media(max-height:410px){.orders{gap:1px}.dot{width:35px;height:35px}.control{font-size:8px}.bottom-note{display:none}.map-guide{display:none}}
+
+/* A compact inspectable armor guide, overlaying the map only when requested. */
+.armor-panel{position:absolute;z-index:8;left:50%;top:50%;transform:translate(-50%,-50%);width:min(455px,calc(100% - 174px));max-height:calc(100% - 34px);overflow:auto;border:1px solid #88ac8f;border-radius:13px;padding:10px 12px;background:#11261ef5;color:#e5f4e8;box-shadow:0 10px 32px #000b}
+.armor-panel.is-hidden{display:none}
+.armor-panel-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
+.armor-panel-header strong{font-size:13px;letter-spacing:.06em}
+.armor-close{border:1px solid #648a72;background:#214132;color:#ecf9ed;border-radius:7px;cursor:pointer;padding:4px 9px;font:700 12px system-ui}
+.armor-panel p{font-size:10px;color:#bfd5c3;margin:5px 0;line-height:1.35}
+.armor-panel table{width:100%;border-collapse:collapse;font-size:10px;text-align:left;white-space:nowrap}
+.armor-panel th,.armor-panel td{padding:6px 4px;border-bottom:1px solid #45645082}
+.armor-panel th{color:#a6d8b7;font-weight:750}
+.armor-panel td:not(:first-child){font-variant-numeric:tabular-nums}
+.armor-chip{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px}
+@media(max-height:630px){.armor-panel{max-height:calc(100% - 20px);padding:7px 10px}.armor-panel th,.armor-panel td{padding:4px 3px}.info>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+@media(max-width:620px){.armor-panel{width:calc(100% - 140px)}}
 </style>
 </head>
 <body>
@@ -108,7 +123,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
     <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Discipline · Stamina · Sword combat</p></div></div>
     <div class="top-actions">
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 1.3">V1.3</div>
+      <div class="build" aria-label="Version 1.4">V1.4</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
@@ -135,8 +150,20 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
       <button class="control retreat" id="retreat" type="button" aria-label="Retreat to left side"><span class="dot" aria-hidden="true">↶</span><span>Retreat</span></button>
     </div></aside>
     <div class="bottom-note" id="hint" aria-live="polite">Select your army · swipe to explore the battlefield</div>
+     <section class="armor-panel is-hidden" id="armorPanel" aria-label="Armor protection reference">
+      <div class="armor-panel-header"><strong>🛡 ARMOR PROTECTION</strong><button class="armor-close" type="button" id="closeArmor" aria-label="Close armor reference">✕</button></div>
+      <p>Each value is <strong>flat reduction / percentage reduction</strong> for that damage category.</p>
+      <table><thead><tr><th>Armor</th><th>Slash</th><th>Piercing</th><th>Blunt</th></tr></thead><tbody>
+       <tr><td><span class="armor-chip" style="background:#d5b690"></span>Padded</td><td>0.04 / 5%</td><td>0.03 / 3%</td><td>0.11 / 14%</td></tr>
+       <tr><td><span class="armor-chip" style="background:#b98250"></span>Leather</td><td>0.17 / 15%</td><td>0.08 / 8%</td><td>0.09 / 9%</td></tr>
+       <tr><td><span class="armor-chip" style="background:#aeb7bc"></span>Mail</td><td>0.38 / 28%</td><td>0.15 / 14%</td><td>0.05 / 5%</td></tr>
+       <tr><td><span class="armor-chip" style="background:#e0e9f2"></span>Plate</td><td>0.68 / 45%</td><td>0.40 / 28%</td><td>0.10 / 9%</td></tr>
+      </tbody></table>
+      <p>Damage taken = max(0, attack damage − flat) × (1 − percentage / 100).</p>
+      <p>Light swords slash or thrust (1 base damage); heavy attacks slash, thrust, or strike with the pommel (2 base damage). Your army remains invulnerable.</p>
+     </section>
   </main>
-  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
+  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">🛡 Armor</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
 </div>
 <div id="rotateNotice" role="status" aria-live="polite">
  <div class="rotate-icon" aria-hidden="true">↻</div>
@@ -193,6 +220,23 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   light:{cost:10,damage:1,cooldown:.68,stress:8,effect:.20},
   heavy:{cost:29,damage:2,cooldown:1.36,stress:18,effect:.34}
  };
+ // Six independent protection stats per armor: flat + percent for each channel.
+ const armorProfiles={
+  padded:{label:'Padded',color:'#d5b690',slash:{flat:.04,pct:5},piercing:{flat:.03,pct:3},blunt:{flat:.11,pct:14}},
+  leather:{label:'Leather',color:'#b98250',slash:{flat:.17,pct:15},piercing:{flat:.08,pct:8},blunt:{flat:.09,pct:9}},
+  mail:{label:'Mail',color:'#aeb7bc',slash:{flat:.38,pct:28},piercing:{flat:.15,pct:14},blunt:{flat:.05,pct:5}},
+  plate:{label:'Plate',color:'#e0e9f2',slash:{flat:.68,pct:45},piercing:{flat:.40,pct:28},blunt:{flat:.10,pct:9}}
+ };
+ const armorOrder=['padded','leather','mail','plate'];
+ function mitigatedDamage(raw,armor,damageType){
+  const defense=armorProfiles[armor]?.[damageType]||{flat:0,pct:0};
+  return Math.max(0,raw-defense.flat)*(1-clamp(defense.pct,0,100)/100);
+ }
+ function attackDamageType(attacker,style){
+  const swing=attacker.attackCount+attacker.id;
+  return style==='heavy'?['slash','piercing','blunt'][Math.floor(swing/3)%3]:
+    (swing%3===1?'piercing':'slash');
+ }
 const gap=()=>clamp(W/17,23,29);
 function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74,W*.65,W-90),y:H*.51};}
 // All formation styles provide fifty unique slots; enemy formations stay as Block.
@@ -213,7 +257,7 @@ function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74
   }
   return positions.map(p=>({x:clamp(p.x,18,W-18),y:clamp(p.y,21,H-21)}));
  }
-function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);return {id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,stamina:100,maxStamina:100,recoveryDelay:0,attackCount:0,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:1.5+rnd(i+16)*1.3,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,engageSlot:0,escapeAngle:0,hitFlash:0};}
+function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);return {id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,armor:armorOrder[(i+(team==='friend'?0:1))%armorOrder.length],stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,stamina:100,maxStamina:100,recoveryDelay:0,attackCount:0,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:1.5+rnd(i+16)*1.3,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,engageSlot:0,escapeAngle:0,hitFlash:0};}
 function focusArmy(){
   const h=home('friend');
   camera.x=clamp(h.x-VW*.37,0,Math.max(0,W-VW));
@@ -471,6 +515,15 @@ orderButtons.forEach(b=>b.addEventListener('click',()=>setMode(b.id)));
  window.addEventListener('blur',()=>cameraKeys.clear());
 document.querySelector('#stressTest').addEventListener('click',()=>{for(const s of foes){if(!s.dead&&!s.broken){const frontline=foes.indexOf(s)%5===0; s.stress=clamp(s.stress+(frontline?94+rnd(s.id+Math.floor(t)*3)*6:6),0,100);}}updateUI()});
 document.querySelector('#reset').addEventListener('click',populate);
+ const armorBtn=document.querySelector('#armorButton'),armorPanel=document.querySelector('#armorPanel');
+ function setArmorPanel(open){
+  armorPanel.classList.toggle('is-hidden',!open);
+  armorBtn.setAttribute('aria-expanded',open?'true':'false');
+ }
+ armorBtn.addEventListener('click',()=>setArmorPanel(armorPanel.classList.contains('is-hidden')));
+ document.querySelector('#closeArmor').addEventListener('click',()=>setArmorPanel(false));
+ armorPanel.addEventListener('pointerdown',e=>e.stopPropagation());
+ window.addEventListener('keydown',e=>{if(e.key==='Escape')setArmorPanel(false)});
 function panic(s){if(s.team==='friend'||s.broken||s.dead)return;s.broken=true;s.targetId=null;s.escapeAngle=0;s.decision=0;for(const n of members(s.team)){if(n===s||n.dead||n.broken)continue;const d=Math.hypot(n.x-s.x,n.y-s.y);if(d<80)n.stress=clamp(n.stress+stressBalance.panicSpread*(1-n.disc/160)*(1-d/100),0,100);} }
 function hit(attacker,target){
  if(target.dead||attacker.dead||attacker.broken||target.broken)return;
@@ -479,19 +532,23 @@ function hit(attacker,target){
  const heavy=attacker.stamina>=52&&(attacker.attackCount+attacker.id)%3===0;
  const type=heavy?'heavy':'light',style=attackStyles[type];
  if(attacker.stamina<style.cost)return; // Exhaustion: recover before swinging again.
+ const damageType=attackDamageType(attacker,type);
  attacker.attackCount++;
  attacker.stamina=clamp(attacker.stamina-style.cost,0,attacker.maxStamina);
  attacker.recoveryDelay=type==='heavy'?.78:.42;
  attacker.cooldown=style.cooldown+(1-attacker.disc/100)*.22;
- // Your soldiers remain immortal and stress-free, including against heavy hits.
+ // Apply flat reduction first, then percentage reduction. Armor works on
+ // every damage channel; friendly troops still have their cheat invulnerability.
+ const actualDamage=mitigatedDamage(style.damage,target.armor,damageType);
  if(target.team==='foe'){
-  target.hp-=style.damage;
-  target.stress=clamp(target.stress+style.stress,0,100);
+  target.hp=Math.max(0,target.hp-actualDamage);
+  const impact=style.damage>0?actualDamage/style.damage:0;
+  target.stress=clamp(target.stress+style.stress*(.25+.75*impact),0,100);
  }
  target.hitFlash=type==='heavy'?.42:.25;
  if(attacker.team==='foe')attacker.stress=clamp(attacker.stress+stressBalance.givenHit,0,100);
  const angle=Math.atan2(target.y-attacker.y,target.x-attacker.x);
- slashes.push({x:attacker.x,y:attacker.y,a:angle,life:style.effect,duration:style.effect,type,team:attacker.team});
+ slashes.push({x:attacker.x,y:attacker.y,a:angle,life:style.effect,duration:style.effect,type,damageType,team:attacker.team});
  if(target.team==='foe'&&target.hp<=0){
   target.dead=true;target.stress=100;
   for(const n of foes){
@@ -600,6 +657,8 @@ function drawUnit(s){if(s.routed)return;const bob=s.dead?0:Math.sin(t*1.5+s.phas
  const stress=s.stress/100;
  ctx.beginPath();ctx.ellipse(x,y+7,8,3.3,0,0,Math.PI*2);ctx.fillStyle='#06161188';ctx.fill();
  ctx.beginPath();ctx.arc(x,y,9.6,0,2*Math.PI);ctx.fillStyle=s.hitFlash>0?'#fff0b0':(s.broken?'#ed9b63':s.team==='friend'? (stress>.6?'#e1c064':stress>.3?'#9cc978':'#61d8a6'):(stress>.65?'#e6ad63':'#e47b74'));ctx.fill();ctx.strokeStyle=s.team==='friend'?'#ddffe1':'#ffe1da';ctx.lineWidth=1.2;ctx.stroke();
+ // A narrow armor-colored helmet stripe distinguishes padded/leather/mail/plate.
+ ctx.fillStyle=armorProfiles[s.armor]?.color||'#e5efe9';ctx.fillRect(x-5,y-7.5,10,2.6);
  ctx.fillStyle='#ffffff40';ctx.beginPath();ctx.arc(x-2.5,y-3,2.7,0,2*Math.PI);ctx.fill();
  // Small sword hilt and blade: every active soldier is visibly equipped.
  ctx.save();ctx.translate(x,y);ctx.rotate(s.faceAngle);
@@ -626,7 +685,11 @@ function draw(){
   const opacity=sl.life/sl.duration;
   ctx.strokeStyle=sl.type==='heavy'?'rgba(255,187,103,'+opacity+')':(sl.team==='friend'?'rgba(252,242,185,'+opacity+')':'rgba(255,181,159,'+opacity+')');
   ctx.lineWidth=sl.type==='heavy'?5:2.4;
-  ctx.beginPath();ctx.arc(0,0,reach,Math.PI*1.65,Math.PI*(sl.type==='heavy'?.52:.33));ctx.stroke();
+  ctx.beginPath();
+  if(sl.damageType==='piercing'){ctx.moveTo(3,0);ctx.lineTo(reach,0);}
+  else if(sl.damageType==='blunt'){ctx.arc(reach*.84,0,sl.type==='heavy'?10:7,0,Math.PI*2);}
+  else{ctx.arc(0,0,reach,Math.PI*1.65,Math.PI*(sl.type==='heavy'?.52:.33));}
+  ctx.stroke();
   ctx.restore();
  }
  ctx.restore();
