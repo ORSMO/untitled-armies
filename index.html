@@ -367,6 +367,7 @@ const orderButtons=['attack','defend','stop','retreat'].map(id=>document.getElem
  document.addEventListener('fullscreenchange',()=>{updateFullscreenButton();resize()});
  document.addEventListener('webkitfullscreenchange',()=>{updateFullscreenButton();resize()});
 let W=0,H=0,VW=0,VH=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],slashes=[],marker=null,nextId=0,formationType='block',formationDragging=false,nextEngagementPlan=0,nextSwingId=1;
+ let labMode=true,activeLab=null;
  const camera={x:0,y:0},cameraKeys=new Set();let fieldPointer=null;
 const rnd=i=>{const x=Math.sin(i*127.1+91.7)*43758.5453;return x-Math.floor(x)};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -879,7 +880,7 @@ document.querySelector('#reset').addEventListener('click',populate);
  window.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&equipmentOpen)setEquipmentMenu(false);
  });
-function panic(s){if(s.team==='friend'||s.broken||s.dead)return;s.broken=true;s.targetId=null;s.escapeAngle=0;s.decision=0;for(const n of members(s.team)){if(n===s||n.dead||n.broken)continue;const d=Math.hypot(n.x-s.x,n.y-s.y);if(d<80)n.stress=clamp(n.stress+stressBalance.panicSpread*(1-n.disc/160)*(1-d/100),0,100);} }
+function panic(s){if((!labMode&&s.team==='friend')||s.broken||s.dead)return;s.broken=true;s.targetId=null;s.escapeAngle=0;s.decision=0;for(const n of members(s.team)){if(n===s||n.dead||n.broken)continue;const d=Math.hypot(n.x-s.x,n.y-s.y);if(d<80)n.stress=clamp(n.stress+stressBalance.panicSpread*(1-n.disc/160)*(1-d/100),0,100);} }
 // Move selection balances armor vulnerability, stamina, variety and groups.
 function chooseCombatMove(s,target){
  const weapon=weaponProfiles[s.weapon],available=weapon.moves;
@@ -978,15 +979,23 @@ function applyWeaponImpact(attacker,target,a){
  const shield=shieldImpact(attacker,target,a),damageType=a.move.damageType;
  const afterShield=a.baseDamage*(1-shield.block);
  const actual=mitigatedDamage(afterShield,target.armor,damageType);
+ if(labMode&&activeLab){
+  const offense=activeLab.stats[attacker.team],defense=activeLab.stats[target.team];
+  offense.hits++;offense.damage+=actual;
+  defense.shieldSaved+=Math.max(0,a.baseDamage-afterShield);
+  defense.armorSaved+=Math.max(0,afterShield-actual);
+  if(shield.kind){defense.blocks++;if(shield.kind==='active')defense.activeBlocks++;}
+  if(shield.guardBroken)defense.guardBreaks++;
+ }
  const weapon=weaponProfiles[attacker.weapon],heavy=a.move.style==='heavy';
  // Physical hits and blocks happen regardless of friendly health immunity.
- if(target.team==='foe'){
+ if(target.team==='foe'||labMode){
   target.hp=Math.max(0,target.hp-actual);
   const style=attackStyles[a.move.style];
   target.stress=clamp(target.stress+style.stress*(.15+.85*actual/Math.max(.01,a.baseDamage)),0,100);
  }
  target.hitFlash=shield.kind?.33:.27;
- if(attacker.team==='foe')attacker.stress=clamp(attacker.stress+stressBalance.givenHit,0,100);
+ if(attacker.team==='foe'||labMode)attacker.stress=clamp(attacker.stress+stressBalance.givenHit,0,100);
  a.hits++;
  // A raised shield transfers the blow into recoil. Heavy unblocked hits can
  // briefly disrupt an enemy's wind-up, creating an opening to counterattack.
@@ -1025,14 +1034,15 @@ function applyWeaponImpact(attacker,target,a){
   x:target.x,y:target.y,a:Math.atan2(target.y-attacker.y,target.x-attacker.x),
   life:shield.guardBroken?.48:.26,duration:shield.guardBroken?.48:.26,
   type:a.move.style,team:attacker.team});
- if(target.team==='foe'&&target.hp<=0){
+ if((target.team==='foe'||labMode)&&target.hp<=0){
   target.dead=true;target.stress=100;
-  for(const n of foes){
+  for(const n of members(target.team)){
    if(n===target||n.dead||n.broken||n.routed)continue;
    const d=Math.hypot(n.x-target.x,n.y-target.y);
    if(d<88)n.stress=clamp(n.stress+stressBalance.allyKilled*(1-d/100),0,100);
   }
-  respawnEnemy(target);
+  if(labMode&&activeLab)activeLab.stats[attacker.team].kills++;
+  if(!labMode)respawnEnemy(target);
  }
  return true;
 }
@@ -1148,9 +1158,9 @@ function step(dt){
   // Stamina restores while not recovering from a swing; movement uses some.
   s.recoveryDelay=Math.max(0,s.recoveryDelay-dt);
   if(s.recoveryDelay===0)s.stamina=clamp(s.stamina+dt*7.4,0,s.maxStamina);
-  if(s.broken){s.attack=null;s.guardActive=false;s.guardHold=0;s.stress=100;fleeFromEnemies(s,dt);if(s.routed&&s.team==='foe')respawnEnemy(s);continue;}
+  if(s.broken){s.attack=null;s.guardActive=false;s.guardHold=0;s.stress=100;fleeFromEnemies(s,dt);if(!labMode&&s.routed&&s.team==='foe')respawnEnemy(s);continue;}
   const {target,dist}=chooseTarget(s);
-  if(s.team==='foe'){
+  if(s.team==='foe'||labMode){
    if(dist<reach*1.5)s.stress=clamp(s.stress+dt*stressBalance.closeThreat,0,100);
    else if(dist<72)s.stress=clamp(s.stress+dt*stressBalance.nearThreat,0,100);
    else s.stress=clamp(s.stress-dt*(stressBalance.recovery+s.disc/100),0,100);
