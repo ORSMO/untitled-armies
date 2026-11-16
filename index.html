@@ -496,19 +496,23 @@ function hit(attacker,target){
  const heavy=attacker.stamina>=52&&(attacker.attackCount+attacker.id)%3===0;
  const type=heavy?'heavy':'light',style=attackStyles[type];
  if(attacker.stamina<style.cost)return; // Exhaustion: recover before swinging again.
+ const damageType=attackDamageType(attacker,type);
  attacker.attackCount++;
  attacker.stamina=clamp(attacker.stamina-style.cost,0,attacker.maxStamina);
  attacker.recoveryDelay=type==='heavy'?.78:.42;
  attacker.cooldown=style.cooldown+(1-attacker.disc/100)*.22;
- // Your soldiers remain immortal and stress-free, including against heavy hits.
+ // Apply flat reduction first, then percentage reduction. Armor works on
+ // every damage channel; friendly troops still have their cheat invulnerability.
+ const actualDamage=mitigatedDamage(style.damage,target.armor,damageType);
  if(target.team==='foe'){
-  target.hp-=style.damage;
-  target.stress=clamp(target.stress+style.stress,0,100);
+  target.hp=Math.max(0,target.hp-actualDamage);
+  const impact=style.damage>0?actualDamage/style.damage:0;
+  target.stress=clamp(target.stress+style.stress*(.25+.75*impact),0,100);
  }
  target.hitFlash=type==='heavy'?.42:.25;
  if(attacker.team==='foe')attacker.stress=clamp(attacker.stress+stressBalance.givenHit,0,100);
  const angle=Math.atan2(target.y-attacker.y,target.x-attacker.x);
- slashes.push({x:attacker.x,y:attacker.y,a:angle,life:style.effect,duration:style.effect,type,team:attacker.team});
+ slashes.push({x:attacker.x,y:attacker.y,a:angle,life:style.effect,duration:style.effect,type,damageType,team:attacker.team});
  if(target.team==='foe'&&target.hp<=0){
   target.dead=true;target.stress=100;
   for(const n of foes){
@@ -617,6 +621,8 @@ function drawUnit(s){if(s.routed)return;const bob=s.dead?0:Math.sin(t*1.5+s.phas
  const stress=s.stress/100;
  ctx.beginPath();ctx.ellipse(x,y+7,8,3.3,0,0,Math.PI*2);ctx.fillStyle='#06161188';ctx.fill();
  ctx.beginPath();ctx.arc(x,y,9.6,0,2*Math.PI);ctx.fillStyle=s.hitFlash>0?'#fff0b0':(s.broken?'#ed9b63':s.team==='friend'? (stress>.6?'#e1c064':stress>.3?'#9cc978':'#61d8a6'):(stress>.65?'#e6ad63':'#e47b74'));ctx.fill();ctx.strokeStyle=s.team==='friend'?'#ddffe1':'#ffe1da';ctx.lineWidth=1.2;ctx.stroke();
+ // A narrow armor-colored helmet stripe distinguishes padded/leather/mail/plate.
+ ctx.fillStyle=armorProfiles[s.armor]?.color||'#e5efe9';ctx.fillRect(x-5,y-7.5,10,2.6);
  ctx.fillStyle='#ffffff40';ctx.beginPath();ctx.arc(x-2.5,y-3,2.7,0,2*Math.PI);ctx.fill();
  // Small sword hilt and blade: every active soldier is visibly equipped.
  ctx.save();ctx.translate(x,y);ctx.rotate(s.faceAngle);
@@ -643,7 +649,11 @@ function draw(){
   const opacity=sl.life/sl.duration;
   ctx.strokeStyle=sl.type==='heavy'?'rgba(255,187,103,'+opacity+')':(sl.team==='friend'?'rgba(252,242,185,'+opacity+')':'rgba(255,181,159,'+opacity+')');
   ctx.lineWidth=sl.type==='heavy'?5:2.4;
-  ctx.beginPath();ctx.arc(0,0,reach,Math.PI*1.65,Math.PI*(sl.type==='heavy'?.52:.33));ctx.stroke();
+  ctx.beginPath();
+  if(sl.damageType==='piercing'){ctx.moveTo(3,0);ctx.lineTo(reach,0);}
+  else if(sl.damageType==='blunt'){ctx.arc(reach*.84,0,sl.type==='heavy'?10:7,0,Math.PI*2);}
+  else{ctx.arc(0,0,reach,Math.PI*1.65,Math.PI*(sl.type==='heavy'?.52:.33));}
+  ctx.stroke();
   ctx.restore();
  }
  ctx.restore();
