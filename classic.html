@@ -576,7 +576,8 @@ function avoidCombatCrowd(s,goal,target){
  // Smoothly rotate on the shortest arc, even when crossing the -PI/PI boundary.
  function turnToward(s,angle,dt){
   const delta=Math.atan2(Math.sin(angle-s.faceAngle),Math.cos(angle-s.faceAngle));
-  s.faceAngle+=clamp(delta,-maxTurnRate*dt,maxTurnRate*dt);
+  const skillTurn=maxTurnRate*(.80+(s.skill||45)*.003);
+  s.faceAngle+=clamp(delta,-skillTurn*dt,skillTurn*dt);
  }
  function updateFacing(s,target,dist,dt){
   // Maintain the army's forward direction until an enemy gets close enough.
@@ -841,13 +842,16 @@ function chooseCombatMove(s,target){
  const nearby=opponents(s).filter(e=>!e.dead&&!e.broken&&!e.routed&&Math.hypot(e.x-s.x,e.y-s.y)<weapon.reach+22).length;
  for(let j=0;j<available.length;j++){
   const name=available[j],m=attackMoves[name],style=attackStyles[m.style];
-  const cost=style.cost*m.stamina*(.60+weapon.weight*.30);
+  const cost=style.cost*m.stamina*(.60+weapon.weight*.30)*trainingEfficiency(s);
   if(s.stamina<cost)continue;
   const raw=style.damage*weapon.power*m.mult;
   const expected=mitigatedDamage(raw,threatArmor,m.damageType);
   const choiceIndex=(s.id+s.attackCount)%available.length;
   // Rotation makes the full moveset visible while armor rewards weak spots.
-  let score=expected*.70-cost*.017+(j===choiceIndex?1.12:0);
+  const judgment=clamp((s.skill||45)/100*.85+weaponFamiliarity(s)/100*.15,0,1);
+  // Recruits choose for variety; veterans understand armor and their reach.
+  let score=expected*(.25+judgment*.75)-cost*.017+
+    (j===choiceIndex?1.33*(1-judgment*.58):0);
   if(name==='cleave'&&nearby>1)score+=Math.min(nearby,5)*.33;
   if(m.style==='heavy'&&s.stamina<48)score-=.75;
   if(name===s.lastMove)score-=.33;
@@ -863,17 +867,24 @@ function beginAttack(s,target){
  const name=chooseCombatMove(s,target);
  if(!name)return false;
  const move=attackMoves[name],style=attackStyles[move.style];
- const cost=style.cost*move.stamina*(.60+weapon.weight*.30);
+ const cost=style.cost*move.stamina*(.60+weapon.weight*.30)*trainingEfficiency(s)*(s.counterWindow>0?.83:1);
  if(s.stamina<cost)return false;
  s.stamina=clamp(s.stamina-cost,0,s.maxStamina);
  s.attackCount++;
  s.lastMove=name;
  s.guardActive=false;s.guardHold=0;
- const rate=weapon.speed*(s.stamina<24?1.16:1);
+ const familiarity=weaponFamiliarity(s),mastery=s.skill||45;
+ const counter=s.counterWindow>0;
+ const rate=weapon.speed*(1.10-mastery*.0015-familiarity*.0008)*
+   (s.stamina<24?1.16:1)*(counter?.82:1);
  const wind=move.wind*rate,active=move.active*rate,recover=move.recover*rate;
+ // Precision is geometrical: poorer fighters visibly swing off-target.
+ const imprecision=(100-mastery)*.0031+(100-familiarity)*.0015;
+ const aimError=(rnd(s.id*139+nextSwingId*43+17)-.5)*2*imprecision;
+ s.counterWindow=0;
  s.attack={
   id:nextSwingId++,name,move,phase:'windup',elapsed:0,
-  wind,active,recover,hitIds:new Set(),hits:0,
+  wind,active,recover,hitIds:new Set(),hits:0,counter,aimError,
   // Momentum gets spent on armor and shields, NOT on dealing damage.
   // Thus several naked targets can each take the complete base damage.
   momentum:weapon.momentum*move.momentum*(move.style==='heavy'?1.12:1),
@@ -886,7 +897,7 @@ function beginAttack(s,target){
 }
 function weaponSegment(s,a,progress){
  const m=a.move,p=clamp(progress,0,1);
- const angle=s.faceAngle+(m.thrust?0:m.from+(m.to-m.from)*p);
+ const angle=s.faceAngle+(a.aimError||0)+(m.thrust?0:m.from+(m.to-m.from)*p);
  const reachNow=a.reach*(m.thrust?.48+.52*p:1);
  const ux=Math.cos(angle),uy=Math.sin(angle);
  return {ax:s.x+ux*9,ay:s.y+uy*9,bx:s.x+ux*reachNow,by:s.y+uy*reachNow};
@@ -1100,7 +1111,7 @@ function step(dt){
   advanceReaction(s,dt);
   // Stamina restores while not recovering from a swing; movement uses some.
   s.recoveryDelay=Math.max(0,s.recoveryDelay-dt);
-  if(s.recoveryDelay===0)s.stamina=clamp(s.stamina+dt*7.4,0,s.maxStamina);
+  if(s.recoveryDelay===0)s.stamina=clamp(s.stamina+dt*(6.7+(s.skill||45)*.012),0,s.maxStamina);
   if(s.broken){s.attack=null;s.guardActive=false;s.guardHold=0;s.stress=100;fleeFromEnemies(s,dt);if(s.routed&&s.team==='foe')respawnEnemy(s);continue;}
   const {target,dist}=chooseTarget(s);
   if(s.team==='foe'){
