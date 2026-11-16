@@ -2211,7 +2211,7 @@ function drawLabArena(ar){
    ctx.beginPath();ctx.ellipse(11,0,shield.size*.45,shield.size*.30,0,0,Math.PI*2);ctx.fill();
    ctx.restore();
   }
-  if(s.ranged&&s.ammo>0){
+  if(s.ranged&&(s.ammo>0||s.rangedRelease>0)){
    const p=rangedProfiles[s.ranged];
    ctx.fillStyle=p.color;ctx.font='bold 10px system-ui';
    ctx.textAlign='center';ctx.fillText(s.ammo,s.x,s.y+23);
