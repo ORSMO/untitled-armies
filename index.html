@@ -1363,6 +1363,7 @@ function drawMinimap(){
   mctx.strokeRect(camera.x/W*mw,camera.y/H*mh,Math.min(mw,VW/W*mw),Math.min(mh,VH/H*mh));
  }
  function resize(){
+  if(labMode){if(labArenas.length)drawLab();return;}
   const b=board.getBoundingClientRect();
   VW=Math.max(240,b.width);VH=Math.max(180,b.height);
   const dpr=Math.min(window.devicePixelRatio||1,2);
@@ -1464,7 +1465,7 @@ function labWinner(ar){
  const decisive=ar.greenWins+ar.redWins;
  if(!decisive)return ar.done?'Draws only':'Testing…';
  const greenRate=ar.greenWins/decisive,redRate=ar.redWins/decisive;
- if(Math.abs(greenRate-.5)<.055)return 'Close matchup';
+ if(Math.abs(greenRate-.5)<.055||decisive<10)return 'Close matchup';
  return (greenRate>redRate?'🟢 Green':'🔴 Red')+' '+Math.round(Math.max(greenRate,redRate)*100)+'%';
 }
 function updateLabHUD(){
@@ -1491,7 +1492,7 @@ function updateLabHUD(){
  document.getElementById('labSummary').textContent=
   aggregate.fights+' fights · '+aggregate.kills+' kills · '+aggregate.blocks+
   ' blocks · Fair mode (both sides vulnerable, no reinforcements)';
- const leaders=labArenas.filter(a=>a.done&&a.greenWins!==a.redWins).length;
+ const leaders=labArenas.filter(a=>{const decisive=a.greenWins+a.redWins;return a.done&&decisive>=10&&Math.abs(a.greenWins/decisive-.5)>=.055;}).length;
  document.getElementById('labWinner').textContent=done?
   leaders+'/6 matchups have a clear leader':'Testing six equipment matchups…';
  const pause=document.getElementById('labPause');
@@ -1563,6 +1564,7 @@ document.getElementById('labPause').addEventListener('click',()=>{
 document.getElementById('labRerun').addEventListener('click',initLab);
 
 function frame(ts){
+  if(labMode){frameLab(ts);requestAnimationFrame(frame);return;}
   if(!last)last=ts;
   const dt=Math.min((ts-last)/1000,.040);
   last=ts;
@@ -1579,7 +1581,7 @@ function frame(ts){
   if(!equipmentOpen&&Math.floor(t*4)!==Math.floor((t-dt)*4))updateUI();
   requestAnimationFrame(frame);
  }
-window.addEventListener('resize',resize,{passive:true});if('ResizeObserver' in window)new ResizeObserver(resize).observe(board);resize();requestAnimationFrame(frame);
+window.addEventListener('resize',resize,{passive:true});if('ResizeObserver' in window)new ResizeObserver(resize).observe(board);if(labMode)initLab();else resize();requestAnimationFrame(frame);
 })();
 </script>
 </body>
