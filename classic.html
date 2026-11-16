@@ -206,23 +206,30 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
        <tr><td>Tower</td><td>4.00</td><td>16</td><td>62%</td></tr>
       </tbody></table>
       <p><strong>EXPERIENCE:</strong> Recruit (18), Trained (45), Veteran (72), Elite (92). Rank improves reaction speed, attack precision, defense and stamina efficiency without adding health or armor. <strong>WEAPON MASTERY:</strong> each fighter remembers separate familiarity with shortswords, arming swords, greatswords and axes (18–97). A skilled swordsman can still be new to axes. Experienced fighters may parry telegraphed blows; a successful parry gives only 0.72 seconds to begin a counterattack. Mastery improves weapon timing and stamina use, but cannot create extra health or damage. A light weapon still cannot deflect an overwhelmingly powerful cleave.</p>
+      <p><strong>RANGED COMBAT:</strong> War bows carry 18 arrows (fast), crossbows carry 12 bolts (slow reload, strong piercing), and javelins carry 6 throws (short range, powerful impact). All projectiles have real travel time, can miss, and interact with directional shields and armor. Skill and independent ranged-weapon familiarity improve accuracy and timing. Soldiers automatically switch to melee when closely threatened or out of ammunition. A shield is lowered when aiming a two-handed bow or crossbow.</p>
       <p><strong>IMPACT REACTIONS:</strong> Heavy hits cause knockback and stagger. A successful active block can create a counterattack opening; a weak shield can suffer a <strong>GUARD BREAK</strong>. Plate and solid shields can stop a swing and recoil the attacker.</p>
       <p>Green and red soldiers wear mixed armor and carry different weapons. One-handed swords can use shields; greatswords and axes occupy both hands. Swing stages: wind-up → active hitbox → recovery. Your troops are still invulnerable.</p>
      </section>
   <div class="equipment-backdrop is-hidden" id="equipmentBackdrop">
  <section class="equipment-panel" id="equipmentPanel" role="dialog" aria-modal="true" aria-labelledby="equipmentTitle">
   <div class="equipment-header"><strong id="equipmentTitle">⚙ EQUIPMENT TESTING · 50 VS 50</strong><button type="button" id="closeEquipment" class="armor-close" aria-label="Close equipment testing">✕</button></div>
-  <p>Customize both armies or choose a quick matchup. The battle pauses while this menu is open. Two-handed weapons cannot use shields.</p>
+  <p>Customize both armies or choose a quick matchup. The battle pauses while this menu is open. Set melee and ranged weapons separately; ranged ammo is limited, and soldiers draw their melee weapons when threatened or out of shots. Two-handed melee weapons cannot use shields. Two-handed ranged weapons put shields away while firing.</p>
   <div class="equipment-presets" role="group" aria-label="Quick equipment matchups">
    <button type="button" data-matchup="mixed">Mixed armies</button>
    <button type="button" data-matchup="plate">Plate wall</button>
    <button type="button" data-matchup="cleave">Cleave test</button>
    <button type="button" data-matchup="shields">Shield clash</button>
    <button type="button" data-matchup="skill">Elite vs recruits</button>
+   <button type="button" data-matchup="archers">Archers vs infantry</button>
+   <button type="button" data-matchup="crossbows">Crossbows vs plate</button>
+   <button type="button" data-matchup="skirmish">Javelins vs bows</button>
   </div>
   <div class="equipment-grid"><div class="equipment-side">
    <h3>🟢 YOUR ARMY · 50 SOLDIERS</h3>
    <div class="equipment-field"><label for="friendWeapon">Weapon</label><select id="friendWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option></select></div>
+<div class="equipment-field"><label for="friendRanged">Ranged</label><select id="friendRanged">
+<option value="none">No ranged weapon</option><option value="bow">War bow · 18 arrows</option><option value="crossbow">Crossbow · 12 bolts</option><option value="javelin">Javelins · 6 throws</option><option value="mixed">Mixed ranged weapons</option>
+</select></div>
 <div class="equipment-field"><label for="friendShield">Shield</label><select id="friendShield"><option value="mixed">Mixed shields</option><option value="none">No shield</option><option value="buckler">Buckler</option><option value="round">Round shield</option><option value="kite">Kite shield</option><option value="tower">Tower shield</option></select></div>
 <div class="equipment-field"><label for="friendArmor">Armor</label><select id="friendArmor"><option value="mixed">Mixed armor</option><option value="naked">Unarmored</option><option value="padded">Padded</option><option value="leather">Leather</option><option value="mail">Mail</option><option value="plate">Plate</option></select></div>
 <div class="equipment-field"><label for="friendExperience">Rank</label><select id="friendExperience">
@@ -233,6 +240,9 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
  </div><div class="equipment-side foe-side">
    <h3>🔴 ENEMY ARMY · 50 SOLDIERS</h3>
    <div class="equipment-field"><label for="foeWeapon">Weapon</label><select id="foeWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option></select></div>
+<div class="equipment-field"><label for="foeRanged">Ranged</label><select id="foeRanged">
+<option value="none">No ranged weapon</option><option value="bow">War bow · 18 arrows</option><option value="crossbow">Crossbow · 12 bolts</option><option value="javelin">Javelins · 6 throws</option><option value="mixed">Mixed ranged weapons</option>
+</select></div>
 <div class="equipment-field"><label for="foeShield">Shield</label><select id="foeShield"><option value="mixed">Mixed shields</option><option value="none">No shield</option><option value="buckler">Buckler</option><option value="round">Round shield</option><option value="kite">Kite shield</option><option value="tower">Tower shield</option></select></div>
 <div class="equipment-field"><label for="foeArmor">Armor</label><select id="foeArmor"><option value="mixed">Mixed armor</option><option value="naked">Unarmored</option><option value="padded">Padded</option><option value="leather">Leather</option><option value="mail">Mail</option><option value="plate">Plate</option></select></div>
 <div class="equipment-field"><label for="foeExperience">Rank</label><select id="foeExperience">
@@ -787,15 +797,18 @@ document.querySelector('#reset').addEventListener('click',populate);
        equipPanel=document.querySelector('#equipmentPanel'),
        equipFeedback=document.querySelector('#equipmentFeedback');
  const equipControls={
-  friend:{weapon:document.querySelector('#friendWeapon'),shield:document.querySelector('#friendShield'),armor:document.querySelector('#friendArmor'),experience:document.querySelector('#friendExperience'),familiarity:document.querySelector('#friendFamiliarity'),note:document.querySelector('#friendGearNote')},
-  foe:{weapon:document.querySelector('#foeWeapon'),shield:document.querySelector('#foeShield'),armor:document.querySelector('#foeArmor'),experience:document.querySelector('#foeExperience'),familiarity:document.querySelector('#foeFamiliarity'),note:document.querySelector('#foeGearNote')}
+  friend:{weapon:document.querySelector('#friendWeapon'),shield:document.querySelector('#friendShield'),armor:document.querySelector('#friendArmor'),ranged:document.querySelector('#friendRanged'),experience:document.querySelector('#friendExperience'),familiarity:document.querySelector('#friendFamiliarity'),note:document.querySelector('#friendGearNote')},
+  foe:{weapon:document.querySelector('#foeWeapon'),shield:document.querySelector('#foeShield'),armor:document.querySelector('#foeArmor'),ranged:document.querySelector('#foeRanged'),experience:document.querySelector('#foeExperience'),familiarity:document.querySelector('#foeFamiliarity'),note:document.querySelector('#foeGearNote')}
  };
  const equipPresets={
   mixed:{friend:{weapon:'mixed',shield:'mixed',armor:'mixed'},foe:{weapon:'mixed',shield:'mixed',armor:'mixed'}},
   plate:{friend:{weapon:'greatsword',shield:'none',armor:'mail'},foe:{weapon:'sword',shield:'tower',armor:'plate'}},
   cleave:{friend:{weapon:'axe',shield:'none',armor:'naked'},foe:{weapon:'shortsword',shield:'none',armor:'naked'}},
   shields:{friend:{weapon:'sword',shield:'round',armor:'mail'},foe:{weapon:'sword',shield:'kite',armor:'mail'}},
-  skill:{friend:{weapon:'sword',shield:'round',armor:'leather',experience:'elite',familiarity:'master'},foe:{weapon:'sword',shield:'round',armor:'leather',experience:'recruit',familiarity:'novice'}}
+  skill:{friend:{weapon:'sword',shield:'round',armor:'leather',experience:'elite',familiarity:'master',ranged:'none'},foe:{weapon:'sword',shield:'round',armor:'leather',experience:'recruit',familiarity:'novice',ranged:'none'}},
+  archers:{friend:{weapon:'shortsword',ranged:'bow',shield:'none',armor:'leather',experience:'veteran',familiarity:'expert'},foe:{weapon:'sword',ranged:'none',shield:'round',armor:'mail',experience:'trained',familiarity:'practiced'}},
+  crossbows:{friend:{weapon:'sword',ranged:'crossbow',shield:'none',armor:'padded',experience:'trained',familiarity:'practiced'},foe:{weapon:'sword',ranged:'none',shield:'kite',armor:'plate',experience:'trained',familiarity:'practiced'}},
+  skirmish:{friend:{weapon:'shortsword',ranged:'javelin',shield:'round',armor:'leather',experience:'veteran',familiarity:'expert'},foe:{weapon:'shortsword',ranged:'bow',shield:'none',armor:'leather',experience:'veteran',familiarity:'expert'}}
  };
  let equipmentOpen=false;
  function syncEquipmentShield(team){
@@ -810,7 +823,7 @@ document.querySelector('#reset').addEventListener('click',populate);
  function showEquipmentValues(values){
   for(const team of ['friend','foe']){
    const controls=equipControls[team],settings=values[team];
-   for(const field of ['weapon','shield','armor','experience','familiarity'])controls[field].value=settings[field]||'mixed';
+   for(const field of ['weapon','shield','armor','experience','familiarity','ranged'])controls[field].value=settings[field]||(field==='ranged'?'none':'mixed');
    syncEquipmentShield(team);
   }
  }
@@ -835,7 +848,7 @@ document.querySelector('#reset').addEventListener('click',populate);
    syncEquipmentShield(team);
    equipFeedback.textContent='Equipment changed. Apply to update the battle.';
   });
-  for(const field of ['shield','armor','experience','familiarity']){
+  for(const field of ['shield','armor','experience','familiarity','ranged']){
    equipControls[team][field].addEventListener('change',()=>{
     equipFeedback.textContent='Equipment changed. Apply to update the battle.';
    });
@@ -857,7 +870,8 @@ document.querySelector('#reset').addEventListener('click',populate);
     shield:weaponProfiles[weapon]?.twoHand?'none':
       (c.shield.value==='mixed'||c.shield.value==='none'||shieldProfiles[c.shield.value]?c.shield.value:'mixed'),
     experience:experienceProfiles[c.experience.value]?c.experience.value:'mixed',
-    familiarity:familiarityLevels[c.familiarity.value]!=null?c.familiarity.value:'mixed'
+    familiarity:familiarityLevels[c.familiarity.value]!=null?c.familiarity.value:'mixed',
+    ranged:rangedProfiles[c.ranged.value]?c.ranged.value:(c.ranged.value==='mixed'?'mixed':'none')
    };
   }
   return draft;
