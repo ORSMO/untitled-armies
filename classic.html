@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V2.1</title>
+<title>Untitled Armies — V2.2</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -152,7 +152,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
     <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Armor · Shields · Physical combat</p></div></div>
     <div class="top-actions">
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 2.1">V2.1</div>
+      <div class="build" aria-label="Version 2.2">V2.2</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
@@ -210,14 +210,14 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
       <tbody><tr><td>War bow</td><td>18</td><td>335</td><td>0.64s</td><td>Light piercing</td></tr>
       <tr><td>Crossbow</td><td>12</td><td>375</td><td>1.90s</td><td>Heavy piercing</td></tr>
       <tr><td>Javelins</td><td>6</td><td>208</td><td>1.05s</td><td>Heavy piercing</td></tr></tbody></table>
-      <p><strong>RANGED COMBAT:</strong> War bows carry 18 arrows (fast), crossbows carry 12 bolts (slow reload, strong piercing), and javelins carry 6 throws (short range, powerful impact). All projectiles have real travel time, can miss, and interact with directional shields and armor. Experience and independent ranged-weapon familiarity improve accuracy and timing; set Ranged skill separately from melee Mastery in Test gear. Soldiers automatically switch to melee when closely threatened or out of ammunition. A shield is lowered when aiming a two-handed bow or crossbow.</p>
+      <p><strong>RANGED COMBAT:</strong> War bows carry 18 arrows (fast), crossbows carry 12 bolts (slow reload, strong piercing), and javelins carry 6 throws (short range, powerful impact). Shots follow lofted trajectories over friendly ranks instead of requiring a clear lane. Low shots near the shooter or impact point can still strike soldiers. Projectiles have travel time, can miss, and interact with directional shields and armor. Experience and independent ranged-weapon familiarity improve accuracy and timing; set Ranged skill separately from melee Mastery in Test gear. Soldiers automatically switch to melee when closely threatened or out of ammunition. A shield is lowered when aiming a two-handed bow or crossbow.</p>
       <p><strong>IMPACT REACTIONS:</strong> Heavy hits cause knockback and stagger. A successful active block can create a counterattack opening; a weak shield can suffer a <strong>GUARD BREAK</strong>. Plate and solid shields can stop a swing and recoil the attacker.</p>
       <p>Green and red soldiers wear mixed armor and carry different weapons. One-handed swords can use shields; greatswords and axes occupy both hands. Swing stages: wind-up → active hitbox → recovery. Your troops are still invulnerable.</p>
      </section>
   <div class="equipment-backdrop is-hidden" id="equipmentBackdrop">
  <section class="equipment-panel" id="equipmentPanel" role="dialog" aria-modal="true" aria-labelledby="equipmentTitle">
   <div class="equipment-header"><strong id="equipmentTitle">⚙ EQUIPMENT TESTING · 50 VS 50</strong><button type="button" id="closeEquipment" class="armor-close" aria-label="Close equipment testing">✕</button></div>
-  <p>Customize both armies or choose a quick matchup. The battle pauses while this menu is open. Set melee and ranged weapons separately; ranged ammo is limited, and soldiers draw their melee weapons when threatened or out of shots. Two-handed melee weapons cannot use shields. Two-handed ranged weapons put shields away while firing.</p>
+  <p>Customize both armies or choose a quick matchup. The battle pauses while this menu is open. Set melee and ranged weapons separately; ranged ammo is limited, and archers can shoot over allied infantry before drawing melee weapons when threatened or out of shots. Two-handed melee weapons cannot use shields. Two-handed ranged weapons put shields away while firing.</p>
   <div class="equipment-presets" role="group" aria-label="Quick equipment matchups">
    <button type="button" data-matchup="mixed">Mixed armies</button>
    <button type="button" data-matchup="plate">Plate wall</button>
