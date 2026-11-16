@@ -107,7 +107,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 .armor-panel-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
 .armor-panel-header strong{font-size:13px;letter-spacing:.06em}
 .armor-close{border:1px solid #648a72;background:#214132;color:#ecf9ed;border-radius:7px;cursor:pointer;padding:4px 9px;font:700 12px system-ui}
-.armor-panel p{font-size:10px;color:#bfd5c3;margin:5px 0;line-height:1.35}
+.armor-panel p{font-size:10px;color:#bfd5c3;margin:8px 0 5px;line-height:1.35}
 .armor-panel table{width:100%;border-collapse:collapse;font-size:10px;text-align:left;white-space:nowrap}
 .armor-panel th,.armor-panel td{padding:6px 4px;border-bottom:1px solid #45645082}
 .armor-panel th{color:#a6d8b7;font-weight:750}
@@ -130,7 +130,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
     <canvas id="field"></canvas>
     <canvas id="minimap" width="180" height="102" aria-label="Battlefield minimap: touch or click to pan"></canvas>
     <div class="map-guide">DRAG MAP TO PAN · TAP TO MOVE</div>
-    <div class="overlay-top" aria-live="polite"><span class="pill"><span class="light"></span><span id="count">50 SOLDIERS</span></span><span class="pill dim" id="status">IDLE</span><span class="pill dim" id="rangeBadge">⚔ 3 CELLS</span></div>
+    <div class="overlay-top" aria-live="polite"><span class="pill"><span class="light"></span><span id="count">50 SOLDIERS</span></span><span class="pill dim" id="status">IDLE</span><span class="pill dim" id="rangeBadge">⚔ WEAPON REACH</span></div>
     <aside class="rail left">
   <button class="control" type="button" id="select" aria-pressed="false" aria-label="Select all soldiers"><span class="dot" aria-hidden="true">◎</span><span id="select-label">Select</span></button>
   <div class="formation-anchor is-hidden" id="formationAnchor">
@@ -150,20 +150,36 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
       <button class="control retreat" id="retreat" type="button" aria-label="Retreat to left side"><span class="dot" aria-hidden="true">↶</span><span>Retreat</span></button>
     </div></aside>
     <div class="bottom-note" id="hint" aria-live="polite">Select your army · swipe to explore the battlefield</div>
-     <section class="armor-panel is-hidden" id="armorPanel" aria-label="Armor protection reference">
-      <div class="armor-panel-header"><strong>🛡 ARMOR PROTECTION</strong><button class="armor-close" type="button" id="closeArmor" aria-label="Close armor reference">✕</button></div>
+     <section class="armor-panel is-hidden" id="armorPanel" aria-label="Armor, weapons and shields reference">
+      <div class="armor-panel-header"><strong>⚔ WEAPONS · SHIELDS · ARMOR</strong><button class="armor-close" type="button" id="closeArmor" aria-label="Close armor reference">✕</button></div>
       <p>Each value is <strong>flat reduction / percentage reduction</strong> for that damage category.</p>
       <table><thead><tr><th>Armor</th><th>Slash</th><th>Piercing</th><th>Blunt</th></tr></thead><tbody>
+       <tr><td><span class="armor-chip" style="background:#f0d0ac"></span>Unarmored</td><td>0 / 0%</td><td>0 / 0%</td><td>0 / 0%</td></tr>
        <tr><td><span class="armor-chip" style="background:#d5b690"></span>Padded</td><td>0.04 / 5%</td><td>0.03 / 3%</td><td>0.11 / 14%</td></tr>
        <tr><td><span class="armor-chip" style="background:#b98250"></span>Leather</td><td>0.17 / 15%</td><td>0.08 / 8%</td><td>0.09 / 9%</td></tr>
        <tr><td><span class="armor-chip" style="background:#aeb7bc"></span>Mail</td><td>0.38 / 28%</td><td>0.15 / 14%</td><td>0.05 / 5%</td></tr>
        <tr><td><span class="armor-chip" style="background:#e0e9f2"></span>Plate</td><td>0.68 / 45%</td><td>0.40 / 28%</td><td>0.10 / 9%</td></tr>
       </tbody></table>
       <p>Damage taken = max(0, attack damage − flat) × (1 − percentage / 100).</p>
-      <p>Light swords slash or thrust (1 base damage); heavy attacks slash, thrust, or strike with the pommel (2 base damage). Your army remains invulnerable.</p>
+      <p>Armor also resists <strong>weapon momentum</strong>: a heavy slash can pass through several unarmored targets but is stopped by plate or a strong shield.</p>
+      <p><strong>WEAPONS</strong> — weight slows movement and makes swings cost more stamina.</p>
+      <table><thead><tr><th>Weapon</th><th>Weight</th><th>Reach</th><th>Attacks</th></tr></thead><tbody>
+       <tr><td>Short sword</td><td>1.00</td><td>31 px</td><td>Slashes, stab, pommel</td></tr>
+       <tr><td>Arming sword</td><td>1.55</td><td>36 px</td><td>Slashes, overhead, stab, pommel</td></tr>
+       <tr><td>Greatsword</td><td>3.35</td><td>47 px</td><td>Wide cleave, slashes, stab, pommel</td></tr>
+       <tr><td>Battle axe</td><td>3.80</td><td>43 px</td><td>Wide cleave, slashes, pommel</td></tr>
+      </tbody></table>
+      <p><strong>SHIELDS</strong> — smaller shields are quick; larger ones cover a wider frontal angle. Passive guarding reduces damage automatically. Soldiers also <strong>actively raise</strong> shields when they spot a wind-up, spending more stamina to stop a blow.</p>
+      <table><thead><tr><th>Shield</th><th>Weight</th><th>Size</th><th>Passive cut</th></tr></thead><tbody>
+       <tr><td>Buckler</td><td>0.85</td><td>8</td><td>20%</td></tr>
+       <tr><td>Round</td><td>1.80</td><td>11</td><td>35%</td></tr>
+       <tr><td>Kite</td><td>2.70</td><td>13</td><td>48%</td></tr>
+       <tr><td>Tower</td><td>4.00</td><td>16</td><td>62%</td></tr>
+      </tbody></table>
+      <p>Green and red soldiers wear mixed armor and carry different weapons. One-handed swords can use shields; greatswords and axes occupy both hands. Swing stages: wind-up → active hitbox → recovery. Your troops are still invulnerable.</p>
      </section>
   </main>
-  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">🛡 Armor</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
+  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
 </div>
 <div id="rotateNotice" role="status" aria-live="polite">
  <div class="rotate-icon" aria-hidden="true">↻</div>
@@ -489,7 +505,7 @@ function avgStress(){const live=foes.filter(s=>!s.dead&&!s.routed);return live.l
  function avgStamina(){const active=friends.filter(s=>!s.dead&&!s.routed);return active.length?Math.round(active.reduce((a,s)=>a+s.stamina,0)/active.length):0;}
 function updateUI(){ui.select.setAttribute('aria-pressed',selected?'true':'false');ui.label.textContent=selected?'Deselect':'Select';ui.orders.classList.toggle('is-hidden',!selected);ui.status.textContent=mode.toUpperCase();orderButtons.forEach(b=>b.classList.toggle('active',selected&&b.id===mode));const alive=friends.filter(s=>!s.dead&&!s.routed).length,broken=friends.filter(s=>s.broken&&!s.routed).length;
  ui.count.textContent=alive+' SOLDIERS';ui.remaining.textContent=alive+' / 50';ui.enemyCount.textContent=foes.filter(s=>!s.dead&&!s.routed).length+' / 50';ui.stress.textContent=avgStress()+'%';ui.stamina.textContent=avgStamina()+'%';
- let status=({idle:'Drag to explore · select troops to give orders',attack:'Attacking with swords (range: 3 squares)',defend:'Holding formation and fighting nearby enemies',stop:'Standing still (your troops cannot panic)',retreat:'Ordered retreat toward your side',move:'Marching to your chosen position',form:'Reforming into '+formationType+' formation'}[mode]||'');
+ let status=({idle:'Drag to explore · select troops to give orders',attack:'Attacking with varied weapon reach and timed strikes',defend:'Holding formation and fighting nearby enemies',stop:'Standing still (your troops cannot panic)',retreat:'Ordered retreat toward your side',move:'Marching to your chosen position',form:'Reforming into '+formationType+' formation'}[mode]||'');
  if(broken)status=broken+' soldier'+(broken>1?'s are':' is')+' panicking and fleeing!';
  ui.hint.textContent=status;ui.mode.textContent=({idle:'Idle',attack:'Attack',defend:'Defend',stop:'Stop',retreat:'Retreat',move:'Move',form:'Formation'}[mode]||'Idle');
   ui.formationAnchor.classList.toggle('is-hidden',!selected);
