@@ -1674,6 +1674,26 @@ function drawUnit(s){if(s.routed)return;
   ctx.restore();
  }
  // Weapons physically move throughout wind-up, active and recovery phases.
+ if(s.rangedAim>0&&s.ranged){
+  const rp=rangedProfiles[s.ranged];
+  ctx.save();ctx.translate(x,y);ctx.rotate(s.faceAngle);
+  ctx.strokeStyle=rp.color;ctx.lineWidth=2.5;ctx.beginPath();
+  if(s.ranged==='bow'){
+   ctx.arc(11,0,14,-1.1,1.1);ctx.stroke();
+   ctx.strokeStyle='#f6e9c7';ctx.lineWidth=1;
+   ctx.beginPath();ctx.moveTo(11+14*Math.cos(-1.1),14*Math.sin(-1.1));
+   ctx.lineTo(4,0);ctx.lineTo(11+14*Math.cos(1.1),14*Math.sin(1.1));ctx.stroke();
+  }else if(s.ranged==='crossbow'){
+   ctx.moveTo(5,0);ctx.lineTo(24,0);ctx.moveTo(17,-11);ctx.lineTo(17,11);ctx.stroke();
+   ctx.strokeStyle='#f9eac7';ctx.lineWidth=1;
+   ctx.beginPath();ctx.moveTo(17,-11);ctx.lineTo(7,0);ctx.lineTo(17,11);ctx.stroke();
+  }else{
+   ctx.moveTo(6,0);ctx.lineTo(30,0);ctx.stroke();
+   ctx.fillStyle=rp.color;ctx.beginPath();ctx.moveTo(32,0);
+   ctx.lineTo(26,-3);ctx.lineTo(26,3);ctx.closePath();ctx.fill();
+  }
+  ctx.restore();
+ }else{
  const wp=weaponPose(s);
  if(s.parryPose>0){
   ctx.save();ctx.translate(x,y);ctx.rotate(s.faceAngle-.62);
@@ -1710,6 +1730,13 @@ function drawUnit(s){if(s.routed)return;
   ctx.beginPath();ctx.moveTo(12,0);ctx.lineTo(wp.length,0);ctx.stroke();
  }
  ctx.restore();
+ }
+ // An amber counter below the fighter shows ammunition remaining.
+ if(s.ranged){
+  ctx.font='bold 9px system-ui';ctx.textAlign='center';
+  ctx.fillStyle=s.ammo>0?rangedProfiles[s.ranged].color:'#b4aba2';
+  ctx.fillText(String(s.ammo),x+17,y+19);
+ }
  // Thin stress arc makes each soldier's personal stress legible.
  if(s.stress>12){ctx.beginPath();ctx.arc(x,y,12,-Math.PI/2,-Math.PI/2+stress*2*Math.PI);ctx.strokeStyle=s.stress>70?'#f16d53':'#e6c368';ctx.lineWidth=2;ctx.stroke();}
  if(s.hp<3&&!s.broken){ctx.fillStyle='#101c18';ctx.fillRect(x-10,y-17,20,3);ctx.fillStyle=s.team==='friend'?'#99e99d':'#f6a4a2';ctx.fillRect(x-10,y-17,20*s.hp/3,3);}
