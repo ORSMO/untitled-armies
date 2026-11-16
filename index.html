@@ -299,49 +299,49 @@ body.lab-mode .lab-area{display:flex}
   </main>
   <section class="lab-area" id="battleLab" aria-label="Six arena balance simulation">
  <div class="lab-toolbar">
-  <div><strong>⚔ SIX-ARENA BATTLE LAB</strong> <span id="labProgressLabel">Repeated fair fights · 60 simulated minutes per arena</span></div>
+  <div><strong>⚔ EXPERIENCE & WEAPON MASTERY LAB</strong> <span id="labProgressLabel">Repeated fair fights · 60 simulated minutes per arena</span></div>
   <div class="lab-commands"><button type="button" id="labAnalysisButton" aria-expanded="false" aria-controls="labAnalysis">📊 Analysis</button><button type="button" id="labPause">Pause</button><button type="button" id="labRerun">↻ Rerun 1 hour</button></div>
  </div>
  <progress id="labProgress" class="lab-progress" max="100" value="0" aria-label="Balance simulation progress"></progress>
  <div class="lab-grid"><article class="lab-card" id="labCard0">
- <div class="lab-card-head"><strong>Buckler vs round</strong><span class="lab-count">1 vs 1</span></div>
- <div class="lab-matchup"><span class="lab-green">🟢 Leather · sword/buckler</span><span class="lab-red">🔴 Leather · short/round</span></div>
- <canvas class="lab-map" id="labCanvas0" width="440" height="210" aria-label="Buckler vs round simulated battlefield"></canvas>
+ <div class="lab-card-head"><strong>Recruit vs Elite</strong><span class="lab-count">1 vs 1</span></div>
+ <div class="lab-matchup"><span class="lab-green" title="Recruit · sword / round / leather">🟢 Recruit · sword / round / leather</span><span class="lab-red" title="Elite · sword / round / leather">🔴 Elite · sword / round / leather</span></div>
+ <canvas class="lab-map" id="labCanvas0" width="440" height="210" aria-label="Recruit vs Elite simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult0">0–0 · 0 draws</span><span class="lab-winner" id="labLeader0">Testing…</span></div>
  <div class="lab-score"><span id="labBattles0">0 fights</span><span id="labBlocks0">0 blocks</span></div>
 </article>
 <article class="lab-card" id="labCard1">
- <div class="lab-card-head"><strong>Shield vs axe</strong><span class="lab-count">2 vs 2</span></div>
- <div class="lab-matchup"><span class="lab-green">🟢 Padded · sword/round</span><span class="lab-red">🔴 Leather · axe</span></div>
- <canvas class="lab-map" id="labCanvas1" width="440" height="210" aria-label="Shield vs axe simulated battlefield"></canvas>
+ <div class="lab-card-head"><strong>Weapon familiarity</strong><span class="lab-count">2 vs 2</span></div>
+ <div class="lab-matchup"><span class="lab-green" title="Veteran, novice axe · mail">🟢 Veteran, novice axe · mail</span><span class="lab-red" title="Veteran, master axe · mail">🔴 Veteran, master axe · mail</span></div>
+ <canvas class="lab-map" id="labCanvas1" width="440" height="210" aria-label="Weapon familiarity simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult1">0–0 · 0 draws</span><span class="lab-winner" id="labLeader1">Testing…</span></div>
  <div class="lab-score"><span id="labBattles1">0 fights</span><span id="labBlocks1">0 blocks</span></div>
 </article>
 <article class="lab-card" id="labCard2">
- <div class="lab-card-head"><strong>Cleave vs numbers</strong><span class="lab-count">2 vs 3</span></div>
- <div class="lab-matchup"><span class="lab-green">🟢 Naked · greatsword</span><span class="lab-red">🔴 Leather · short/buckler</span></div>
- <canvas class="lab-map" id="labCanvas2" width="440" height="210" aria-label="Cleave vs numbers simulated battlefield"></canvas>
+ <div class="lab-card-head"><strong>Skill vs plate</strong><span class="lab-count">2 vs 3</span></div>
+ <div class="lab-matchup"><span class="lab-green" title="Elite/master · naked sword">🟢 Elite/master · naked sword</span><span class="lab-red" title="Recruit/novice · plate axe">🔴 Recruit/novice · plate axe</span></div>
+ <canvas class="lab-map" id="labCanvas2" width="440" height="210" aria-label="Skill vs plate simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult2">0–0 · 0 draws</span><span class="lab-winner" id="labLeader2">Testing…</span></div>
  <div class="lab-score"><span id="labBattles2">0 fights</span><span id="labBlocks2">0 blocks</span></div>
 </article>
 <article class="lab-card" id="labCard3">
- <div class="lab-card-head"><strong>Axes vs numbers</strong><span class="lab-count">3 vs 4</span></div>
- <div class="lab-matchup"><span class="lab-green">🟢 Leather · axe</span><span class="lab-red">🔴 Padded · sword/round</span></div>
- <canvas class="lab-map" id="labCanvas3" width="440" height="210" aria-label="Axes vs numbers simulated battlefield"></canvas>
+ <div class="lab-card-head"><strong>Veterans outnumbered</strong><span class="lab-count">3 vs 4</span></div>
+ <div class="lab-matchup"><span class="lab-green" title="Veteran/expert · mail sword">🟢 Veteran/expert · mail sword</span><span class="lab-red" title="Recruit/novice · leather sword">🔴 Recruit/novice · leather sword</span></div>
+ <canvas class="lab-map" id="labCanvas3" width="440" height="210" aria-label="Veterans outnumbered simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult3">0–0 · 0 draws</span><span class="lab-winner" id="labLeader3">Testing…</span></div>
  <div class="lab-score"><span id="labBattles3">0 fights</span><span id="labBlocks3">0 blocks</span></div>
 </article>
 <article class="lab-card" id="labCard4">
- <div class="lab-card-head"><strong>Plate vs greatsword</strong><span class="lab-count">4 vs 5</span></div>
- <div class="lab-matchup"><span class="lab-green">🟢 Plate · short/buckler</span><span class="lab-red">🔴 Mail · greatsword</span></div>
- <canvas class="lab-map" id="labCanvas4" width="440" height="210" aria-label="Plate vs greatsword simulated battlefield"></canvas>
+ <div class="lab-card-head"><strong>Parry mastery</strong><span class="lab-count">4 vs 5</span></div>
+ <div class="lab-matchup"><span class="lab-green" title="Elite/master · mail sword">🟢 Elite/master · mail sword</span><span class="lab-red" title="Trained/practiced · round sword">🔴 Trained/practiced · round sword</span></div>
+ <canvas class="lab-map" id="labCanvas4" width="440" height="210" aria-label="Parry mastery simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult4">0–0 · 0 draws</span><span class="lab-winner" id="labLeader4">Testing…</span></div>
  <div class="lab-score"><span id="labBattles4">0 fights</span><span id="labBlocks4">0 blocks</span></div>
 </article>
 <article class="lab-card" id="labCard5">
- <div class="lab-card-head"><strong>Small sword clash</strong><span class="lab-count">5 vs 5</span></div>
- <div class="lab-matchup"><span class="lab-green">🟢 Mail · short/buckler</span><span class="lab-red">🔴 Leather · sword/round</span></div>
- <canvas class="lab-map" id="labCanvas5" width="440" height="210" aria-label="Small sword clash simulated battlefield"></canvas>
+ <div class="lab-card-head"><strong>Skill vs heavy gear</strong><span class="lab-count">5 vs 5</span></div>
+ <div class="lab-matchup"><span class="lab-green" title="Elite/master · leather shortsword">🟢 Elite/master · leather shortsword</span><span class="lab-red" title="Recruit/novice · plate greatsword">🔴 Recruit/novice · plate greatsword</span></div>
+ <canvas class="lab-map" id="labCanvas5" width="440" height="210" aria-label="Skill vs heavy gear simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult5">0–0 · 0 draws</span><span class="lab-winner" id="labLeader5">Testing…</span></div>
  <div class="lab-score"><span id="labBattles5">0 fights</span><span id="labBlocks5">0 blocks</span></div>
 </article>
@@ -350,8 +350,8 @@ body.lab-mode .lab-area{display:flex}
  <div class="lab-insights-overlay is-hidden" id="labAnalysis">
   <div class="lab-insights-dialog" role="dialog" aria-modal="true" aria-labelledby="labAnalysisTitle">
    <div class="lab-insights-header"><strong id="labAnalysisTitle">📊 ONE-HOUR BALANCE ANALYSIS</strong><button id="labAnalysisClose" type="button" aria-label="Close analysis">✕</button></div>
-   <p>Each arena runs repeated fair fights for 60 simulated minutes. A healthy winning advantage is roughly 55–80%; above 85% usually means a hard counter or imbalance.</p>
-   <div class="lab-insights-scroll"><table><thead><tr><th>Matchup</th><th>Leader</th><th>Fights</th><th>Damage</th><th>Shield blocks</th><th>Guard breaks</th></tr></thead><tbody id="labAnalysisRows"></tbody></table></div>
+   <p>Each arena runs repeated vulnerable, no-respawn bouts for 60 simulated minutes. Extreme wins are intentional when skill, weapon familiarity, armor or numbers differ. Experience never grants extra health or armor.</p>
+   <div class="lab-insights-scroll"><table><thead><tr><th>Matchup</th><th>Leader</th><th>Fights</th><th>Damage</th><th>Shield blocks</th><th>Parries</th><th>Counters</th><th>Failed parries</th><th>Guard breaks</th></tr></thead><tbody id="labAnalysisRows"></tbody></table></div>
    <p id="labAnalysisNotes">Recommendations appear as results accumulate.</p>
   </div>
  </div>
@@ -1635,37 +1635,37 @@ function labWinner(ar){
  return (greenRate>redRate?'🟢 Green':'🔴 Red')+' '+Math.round(Math.max(greenRate,redRate)*100)+'%';
 }
 function updateLabAnalysis(){
- const rows=labArenas.map(a=>{
-  const f=a.stats.friend,r=a.stats.foe,decisive=a.greenWins+a.redWins;
-  const leader=decisive?(a.greenWins>a.redWins?'🟢':'🔴')+
-    ' '+Math.round(Math.max(a.greenWins,a.redWins)/decisive*100)+'%':'—';
-  return '<tr><td>'+a.spec.name+' ('+a.spec.counts.join('v')+')</td>'+
-   '<td>'+leader+'</td><td>'+a.rounds+'</td>'+
-   '<td>'+Math.round(f.damage+r.damage)+'</td>'+
-   '<td>'+ (f.blocks+r.blocks)+'</td>'+
-   '<td>'+ (f.guardBreaks+r.guardBreaks)+'</td></tr>';
+ const rows=labArenas.map(ar=>{
+  const green=ar.stats.friend,red=ar.stats.foe,decisive=ar.greenWins+ar.redWins;
+  const leader=decisive?(ar.greenWins>ar.redWins?'🟢 ':'🔴 ')+
+    Math.round(100*Math.max(ar.greenWins,ar.redWins)/decisive)+'%':'—';
+  return '<tr><td>'+ar.spec.name+' ('+ar.spec.counts.join('v')+')</td>'+
+    '<td>'+leader+'</td><td>'+ar.rounds+'</td>'+
+    '<td>'+Math.round(green.damage+red.damage)+'</td>'+
+    '<td>'+(green.blocks+red.blocks)+'</td>'+
+    '<td>'+(green.parries+red.parries)+'</td>'+
+    '<td>'+(green.counters+red.counters)+'</td>'+
+    '<td>'+(green.failedParries+red.failedParries)+'</td>'+
+    '<td>'+(green.guardBreaks+red.guardBreaks)+'</td></tr>';
  }).join('');
  document.getElementById('labAnalysisRows').innerHTML=rows;
- const available=labArenas.reduce((sum,a)=>sum+a.rounds,0),complete=labArenas.every(a=>a.done);
- const notes=[];
- if(available<60){notes.push('Collecting enough rounds to interpret equipment advantages.');}
+ const finished=labArenas.every(a=>a.done),totalFights=labArenas.reduce((sum,a)=>sum+a.rounds,0);
+ const parries=labArenas.reduce((sum,a)=>sum+a.stats.friend.parries+a.stats.foe.parries,0);
+ const counters=labArenas.reduce((sum,a)=>sum+a.stats.friend.counters+a.stats.foe.counters,0);
+ const conclusions=[];
+ if(totalFights<30)conclusions.push('Collecting more rounds before interpreting the advantages.');
  else{
-  const a2=labArenas[1],a4=labArenas[3],a5=labArenas[4],a6=labArenas[5];
-  const winRate=(a,team)=>a[team+'Wins']/Math.max(1,a.greenWins+a.redWins);
-  const max=Math.max(...labArenas.map(a=>Math.max(a.greenWins,a.redWins)/Math.max(1,a.greenWins+a.redWins)));
-  if(max>.85)notes.push('An advantage above 85% needs investigation: try a weaker armor or stronger counterweapon.');
-  else notes.push('All tested leaders remain within the target of roughly 55–80%: clear but beatable.');
-  if(winRate(a4,'green')>.75)
-   notes.push('3 axes can beat 4 padded round-shield troops: consider testing about 5% less axe momentum or slightly stronger shield stopping power.');
-  if(winRate(a6,'green')>.75)
-   notes.push('Mail buckler shortswords strongly outperform leather round-shield swords: armor may be more influential than weapon reach.');
-  if(winRate(a5,'red')>.65)
-   notes.push('Five greatswords overcome four plate-armored shortswords: superior reach and numbers can still defeat plate.');
-  if(winRate(a2,'green')>.55&&winRate(a2,'green')<.75)
-   notes.push('The 2v2 round-shield versus axe test is a useful near-balanced benchmark.');
+  const skill=labArenas[0],mastery=labArenas[1],armor=labArenas[2],numbers=labArenas[3];
+  const rate=(a,team)=>a[team+'Wins']/Math.max(1,a.greenWins+a.redWins);
+  if(rate(skill,'red')>.6)conclusions.push('Equal equipment: Elite fighters overcome Recruits because they aim and recover better.');
+  if(rate(mastery,'red')>.6)conclusions.push('Equal veteran rank: mastery of the equipped weapon improves performance.');
+  if(rate(armor,'red')>.65)conclusions.push('Plate and heavy axes remain an overwhelming advantage against naked elite swordsmen despite the experience gap—equipment still matters.');
+  if(rate(numbers,'green')>.5)conclusions.push('Veterans can offset a numbers disadvantage, especially when equipped with stronger armor.');
+  conclusions.push('Experience affects precision, reactions, decisions and stamina—not health, armor reduction or magical damage bonuses.');
  }
  document.getElementById('labAnalysisNotes').textContent=
-   (complete?'Final report: ':'Live sample: ')+notes.join(' ');
+  (finished?'Final analysis: ':'Live assessment: ')+
+  conclusions.join(' ')+' '+parries+' timed parries and '+counters+' successful counter-hits recorded.';
 }
 function setLabAnalysis(open){
  labAnalysisOpen=!!open;
@@ -1703,7 +1703,7 @@ function updateLabHUD(){
   ' blocks · '+aggregate.parries+' parries · Both sides vulnerable';
  const leaders=labArenas.filter(a=>{const decisive=a.greenWins+a.redWins;return a.done&&decisive>=10&&Math.abs(a.greenWins/decisive-.5)>=.055;}).length;
  document.getElementById('labWinner').textContent=done?
-  leaders+'/6 matchups have a clear leader':'Testing six equipment matchups…';
+  leaders+'/6 matchups have a clear leader':'Testing experience and gear matchups…';
  const pause=document.getElementById('labPause');
  pause.disabled=done;pause.textContent=done?'Complete':labPaused?'Resume':'Pause';
 }
