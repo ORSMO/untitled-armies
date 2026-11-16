@@ -1232,6 +1232,137 @@ function separateSoldiers(){
   for(const s of all){if(!s.broken){s.x=clamp(s.x,11,W-11);s.y=clamp(s.y,11,H-11);}}
  }
 }
+// Bow/crossbow/javelin combat. Projectiles are physical entities: they travel,
+// can miss, and are caught by the first soldier along their path. Allied bodies
+// block shots harmlessly rather than allowing arrows to pass through teammates.
+function hasRangedAmmo(s){return !!rangedProfiles[s.ranged]&&s.ammo>0;}
+function meleeThreatRange(s){return Math.max(57,weaponProfiles[s.weapon].reach+13);}
+function rangedTimeFactor(s){
+ const skill=s.skill||45,familiarity=rangedFamiliarity(s);
+ return clamp(1.23-skill*.0022-familiarity*.0014,.76,1.19);
+}
+function shotLaneBlocker(s,target){
+ const dx=target.x-s.x,dy=target.y-s.y,distSq=dx*dx+dy*dy;
+ if(distSq<1)return null;
+ for(const ally of members(s.team)){
+  if(ally===s||ally.dead||ally.broken||ally.routed)continue;
+  const u=((ally.x-s.x)*dx+(ally.y-s.y)*dy)/distSq;
+  if(u<=.055||u>=.96)continue;
+  const px=s.x+u*dx,py=s.y+u*dy;
+  if(Math.hypot(ally.x-px,ally.y-py)<15)return ally;
+ }
+ return null;
+}
+function launchProjectile(s,target){
+ const profile=rangedProfiles[s.ranged];
+ if(!profile||s.ammo<=0||s.dead||s.broken||!target||target.dead)return false;
+ if(s.stamina<profile.stamina){s.rangedCooldown=.30;return false;}
+ const skill=s.skill||45,familiarity=rangedFamiliarity(s);
+ const dist=Math.max(1,Math.hypot(target.x-s.x,target.y-s.y));
+ const flight=dist/profile.speed;
+ const anticipate=clamp((skill+familiarity)/235,0,.78);
+ const vx=clamp(target.vx||0,-80,80),vy=clamp(target.vy||0,-80,80);
+ const predictedX=target.x+vx*flight*anticipate,predictedY=target.y+vy*flight*anticipate;
+ const errorSize=.012+(100-skill)*.0032+(100-familiarity)*.0021;
+ const error=(rnd(s.id*197+s.shotCount*139+41)-.5)*2*errorSize;
+ const angle=Math.atan2(predictedY-s.y,predictedX-s.x)+error;
+ const ox=s.x+Math.cos(angle)*12,oy=s.y+Math.sin(angle)*12;
+ const projectile={
+  id:-(s.id*64+s.shotCount+1),shooter:s,shooterId:s.id,team:s.team,
+  kind:s.ranged,damage:profile.damage,momentum:profile.momentum,
+  x:ox,y:oy,vx:Math.cos(angle)*profile.speed,vy:Math.sin(angle)*profile.speed,
+  speed:profile.speed,range:profile.range,traveled:0
+ };
+ projectiles.push(projectile);
+ s.ammo--;s.shotCount++;s.fired++;
+ s.stamina=clamp(s.stamina-profile.stamina*rangedTimeFactor(s),0,s.maxStamina);
+ s.recoveryDelay=Math.max(s.recoveryDelay,.28);
+ s.rangedCooldown=profile.reload*rangedTimeFactor(s);
+ s.rangedAim=0;
+ const stats=combatLabStats(s.team);if(stats)stats.shots++;
+ return true;
+}
+function beginRangedAim(s,target,dist){
+ const profile=rangedProfiles[s.ranged];
+ if(!profile||s.ammo<=0||s.rangedCooldown>0||s.attack||s.stagger>0)return false;
+ if(!target||dist>profile.range-12||dist<=meleeThreatRange(s))return false;
+ if(s.stamina<profile.stamina+2)return false;
+ if(shotLaneBlocker(s,target)){s.rangedCooldown=.12;return false;}
+ s.rangedAim=profile.draw*rangedTimeFactor(s);
+ s.rangedTargetId=target.id;
+ s.guardActive=false;s.guardHold=0;
+ return true;
+}
+function advanceRangedAim(s,target,dt){
+ if(!s.rangedAim)return;
+ if(!target||target.dead||target.routed||s.stagger>0||s.broken||
+    !hasRangedAmmo(s)||Math.hypot(target.x-s.x,target.y-s.y)<=meleeThreatRange(s)){
+  s.rangedAim=0;return;
+ }
+ s.rangedAim=Math.max(0,s.rangedAim-dt);
+ if(s.rangedAim===0){
+  if(shotLaneBlocker(s,target))s.rangedCooldown=.16;
+  else launchProjectile(s,target);
+ }
+}
+function updateProjectiles(dt){
+ if(!projectiles.length)return;
+ const active=[];
+ for(const p of projectiles){
+  const remain=p.range-p.traveled;
+  if(remain<=0)continue;
+  const travel=Math.min(remain,p.speed*dt);
+  const x1=p.x,y1=p.y,x2=x1+p.vx*travel/p.speed,y2=y1+p.vy*travel/p.speed;
+  const seg={ax:x1,ay:y1,bx:x2,by:y2};
+  const dx=x2-x1,dy=y2-y1,dsq=dx*dx+dy*dy;
+  let closest=null,at=Infinity;
+  for(const other of [...friends,...foes]){
+   if(other.dead||other.routed||other.broken||
+      (other.team===p.team&&other.id===p.shooterId))continue;
+   const radius=p.kind==='javelin'?10:9.3;
+   if(pointSegmentDistance(other.x,other.y,seg)>radius)continue;
+   const u=dsq>0?clamp(((other.x-x1)*dx+(other.y-y1)*dy)/dsq,0,1):0;
+   if(u<at){at=u;closest=other;}
+  }
+  if(closest){
+   p.x=x1+dx*at;p.y=y1+dy*at;
+   if(closest.team===p.team){
+    const stat=combatLabStats(p.team);if(stat)stat.friendlyStops++;
+   }else{
+    const a={id:p.id,move:{style:p.kind==='bow'?'light':'heavy',damageType:'piercing'},
+      baseDamage:p.damage,momentum:p.momentum,hits:0,hitIds:new Set(),
+      projectile:p.kind,counter:false,stopped:false};
+    const hit=applyWeaponImpact(p.shooter,closest,a);
+    if(hit){
+     p.shooter.rangedHits++;
+     const stat=combatLabStats(p.team);if(stat)stat.rangedHits++;
+    }
+   }
+  }else{
+   p.x=x2;p.y=y2;p.traveled+=travel;
+   if(p.traveled<p.range-1e-6&&
+      p.x>0&&p.y>0&&p.x<W&&p.y<H)active.push(p);
+   else{
+    const stat=combatLabStats(p.team);if(stat)stat.rangedMisses++;
+   }
+  }
+ }
+ projectiles=active;
+}
+function drawRangedProjectiles(ctx,shots){
+ for(const p of shots){
+  const profile=rangedProfiles[p.kind];if(!profile)continue;
+  const a=Math.atan2(p.vy,p.vx),length=p.kind==='javelin'?17:11;
+  ctx.save();ctx.translate(p.x,p.y);ctx.rotate(a);
+  ctx.lineWidth=p.kind==='javelin'?3:1.8;
+  ctx.strokeStyle=profile.color;ctx.beginPath();ctx.moveTo(-length*.7,0);
+  ctx.lineTo(length*.4,0);ctx.stroke();
+  ctx.fillStyle=profile.color;ctx.beginPath();ctx.moveTo(length*.6,0);
+  ctx.lineTo(length*.15,-3);ctx.lineTo(length*.15,3);ctx.closePath();ctx.fill();
+  ctx.restore();
+ }
+}
+
 function step(dt){
  if(t>=nextEngagementPlan){
   planEngagements('friend');
