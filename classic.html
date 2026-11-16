@@ -1160,7 +1160,7 @@ function updateShieldGuard(s,dt){
  s.parryWindow=Math.max(0,(s.parryWindow||0)-dt);
  s.parryPose=Math.max(0,(s.parryPose||0)-dt);
  const shield=shieldProfiles[s.shield];
- if(s.broken||s.dead||s.attack||s.rangedAim>0||s.stagger>0||s.guardBreak>0){
+ if(s.broken||s.dead||s.attack||(s.rangedAim>0&&rangedProfiles[s.ranged]?.twoHand)||s.stagger>0||s.guardBreak>0){
   s.guardActive=false;
   s.parryAttackId=null;return;
  }
