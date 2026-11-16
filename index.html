@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V1.4</title>
+<title>Untitled Armies — V1.5</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -107,7 +107,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 .armor-panel-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
 .armor-panel-header strong{font-size:13px;letter-spacing:.06em}
 .armor-close{border:1px solid #648a72;background:#214132;color:#ecf9ed;border-radius:7px;cursor:pointer;padding:4px 9px;font:700 12px system-ui}
-.armor-panel p{font-size:10px;color:#bfd5c3;margin:5px 0;line-height:1.35}
+.armor-panel p{font-size:10px;color:#bfd5c3;margin:8px 0 5px;line-height:1.35}
 .armor-panel table{width:100%;border-collapse:collapse;font-size:10px;text-align:left;white-space:nowrap}
 .armor-panel th,.armor-panel td{padding:6px 4px;border-bottom:1px solid #45645082}
 .armor-panel th{color:#a6d8b7;font-weight:750}
@@ -120,17 +120,17 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Discipline · Stamina · Sword combat</p></div></div>
+    <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Armor · Shields · Physical combat</p></div></div>
     <div class="top-actions">
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 1.4">V1.4</div>
+      <div class="build" aria-label="Version 1.5">V1.5</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
     <canvas id="field"></canvas>
     <canvas id="minimap" width="180" height="102" aria-label="Battlefield minimap: touch or click to pan"></canvas>
     <div class="map-guide">DRAG MAP TO PAN · TAP TO MOVE</div>
-    <div class="overlay-top" aria-live="polite"><span class="pill"><span class="light"></span><span id="count">50 SOLDIERS</span></span><span class="pill dim" id="status">IDLE</span><span class="pill dim" id="rangeBadge">⚔ 3 CELLS</span></div>
+    <div class="overlay-top" aria-live="polite"><span class="pill"><span class="light"></span><span id="count">50 SOLDIERS</span></span><span class="pill dim" id="status">IDLE</span><span class="pill dim" id="rangeBadge">⚔ WEAPON REACH</span></div>
     <aside class="rail left">
   <button class="control" type="button" id="select" aria-pressed="false" aria-label="Select all soldiers"><span class="dot" aria-hidden="true">◎</span><span id="select-label">Select</span></button>
   <div class="formation-anchor is-hidden" id="formationAnchor">
@@ -150,20 +150,36 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
       <button class="control retreat" id="retreat" type="button" aria-label="Retreat to left side"><span class="dot" aria-hidden="true">↶</span><span>Retreat</span></button>
     </div></aside>
     <div class="bottom-note" id="hint" aria-live="polite">Select your army · swipe to explore the battlefield</div>
-     <section class="armor-panel is-hidden" id="armorPanel" aria-label="Armor protection reference">
-      <div class="armor-panel-header"><strong>🛡 ARMOR PROTECTION</strong><button class="armor-close" type="button" id="closeArmor" aria-label="Close armor reference">✕</button></div>
+     <section class="armor-panel is-hidden" id="armorPanel" aria-label="Armor, weapons and shields reference">
+      <div class="armor-panel-header"><strong>⚔ WEAPONS · SHIELDS · ARMOR</strong><button class="armor-close" type="button" id="closeArmor" aria-label="Close armor reference">✕</button></div>
       <p>Each value is <strong>flat reduction / percentage reduction</strong> for that damage category.</p>
       <table><thead><tr><th>Armor</th><th>Slash</th><th>Piercing</th><th>Blunt</th></tr></thead><tbody>
+       <tr><td><span class="armor-chip" style="background:#f0d0ac"></span>Unarmored</td><td>0 / 0%</td><td>0 / 0%</td><td>0 / 0%</td></tr>
        <tr><td><span class="armor-chip" style="background:#d5b690"></span>Padded</td><td>0.04 / 5%</td><td>0.03 / 3%</td><td>0.11 / 14%</td></tr>
        <tr><td><span class="armor-chip" style="background:#b98250"></span>Leather</td><td>0.17 / 15%</td><td>0.08 / 8%</td><td>0.09 / 9%</td></tr>
        <tr><td><span class="armor-chip" style="background:#aeb7bc"></span>Mail</td><td>0.38 / 28%</td><td>0.15 / 14%</td><td>0.05 / 5%</td></tr>
        <tr><td><span class="armor-chip" style="background:#e0e9f2"></span>Plate</td><td>0.68 / 45%</td><td>0.40 / 28%</td><td>0.10 / 9%</td></tr>
       </tbody></table>
       <p>Damage taken = max(0, attack damage − flat) × (1 − percentage / 100).</p>
-      <p>Light swords slash or thrust (1 base damage); heavy attacks slash, thrust, or strike with the pommel (2 base damage). Your army remains invulnerable.</p>
+      <p>Armor also resists <strong>weapon momentum</strong>: a heavy slash can pass through several unarmored targets but is stopped by plate or a strong shield.</p>
+      <p><strong>WEAPONS</strong> — weight slows movement and makes swings cost more stamina.</p>
+      <table><thead><tr><th>Weapon</th><th>Weight</th><th>Reach</th><th>Attacks</th></tr></thead><tbody>
+       <tr><td>Short sword</td><td>1.00</td><td>31 px</td><td>Slashes, stab, pommel</td></tr>
+       <tr><td>Arming sword</td><td>1.55</td><td>36 px</td><td>Slashes, overhead, stab, pommel</td></tr>
+       <tr><td>Greatsword</td><td>3.35</td><td>47 px</td><td>Wide cleave, slashes, stab, pommel</td></tr>
+       <tr><td>Battle axe</td><td>3.80</td><td>43 px</td><td>Wide cleave, slashes, pommel</td></tr>
+      </tbody></table>
+      <p><strong>SHIELDS</strong> — smaller shields are quick; larger ones cover a wider frontal angle. Passive guarding reduces damage automatically. Soldiers also <strong>actively raise</strong> shields when they spot a wind-up, spending more stamina to stop a blow.</p>
+      <table><thead><tr><th>Shield</th><th>Weight</th><th>Size</th><th>Passive cut</th></tr></thead><tbody>
+       <tr><td>Buckler</td><td>0.85</td><td>8</td><td>20%</td></tr>
+       <tr><td>Round</td><td>1.80</td><td>11</td><td>35%</td></tr>
+       <tr><td>Kite</td><td>2.70</td><td>13</td><td>48%</td></tr>
+       <tr><td>Tower</td><td>4.00</td><td>16</td><td>62%</td></tr>
+      </tbody></table>
+      <p>Green and red soldiers wear mixed armor and carry different weapons. One-handed swords can use shields; greatswords and axes occupy both hands. Swing stages: wind-up → active hitbox → recovery. Your troops are still invulnerable.</p>
      </section>
   </main>
-  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">🛡 Armor</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
+  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
 </div>
 <div id="rotateNotice" role="status" aria-live="polite">
  <div class="rotate-icon" aria-hidden="true">↻</div>
@@ -205,7 +221,7 @@ const orderButtons=['attack','defend','stop','retreat'].map(id=>document.getElem
  });
  document.addEventListener('fullscreenchange',()=>{updateFullscreenButton();resize()});
  document.addEventListener('webkitfullscreenchange',()=>{updateFullscreenButton();resize()});
-let W=0,H=0,VW=0,VH=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],slashes=[],marker=null,nextId=0,formationType='block',formationDragging=false,nextEngagementPlan=0;
+let W=0,H=0,VW=0,VH=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],slashes=[],marker=null,nextId=0,formationType='block',formationDragging=false,nextEngagementPlan=0,nextSwingId=1;
  const camera={x:0,y:0},cameraKeys=new Set();let fieldPointer=null;
 const rnd=i=>{const x=Math.sin(i*127.1+91.7)*43758.5453;return x-Math.floor(x)};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -222,21 +238,52 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  };
  // Six independent protection stats per armor: flat + percent for each channel.
  const armorProfiles={
+  naked:{label:'Unarmored',color:'#f0d0ac',slash:{flat:0,pct:0},piercing:{flat:0,pct:0},blunt:{flat:0,pct:0}},
   padded:{label:'Padded',color:'#d5b690',slash:{flat:.04,pct:5},piercing:{flat:.03,pct:3},blunt:{flat:.11,pct:14}},
   leather:{label:'Leather',color:'#b98250',slash:{flat:.17,pct:15},piercing:{flat:.08,pct:8},blunt:{flat:.09,pct:9}},
   mail:{label:'Mail',color:'#aeb7bc',slash:{flat:.38,pct:28},piercing:{flat:.15,pct:14},blunt:{flat:.05,pct:5}},
   plate:{label:'Plate',color:'#e0e9f2',slash:{flat:.68,pct:45},piercing:{flat:.40,pct:28},blunt:{flat:.10,pct:9}}
  };
- const armorOrder=['padded','leather','mail','plate'];
+ const armorOrder=['naked','padded','leather','mail','plate'];
+ // Damage reduction and momentum absorption are deliberately separate.
+ // A plate-clad soldier can be injured but still stop an axe's follow-through.
+ const armorImpact={
+  naked:{slash:5,piercing:7,blunt:7},
+  padded:{slash:11,piercing:11,blunt:14},
+  leather:{slash:22,piercing:18,blunt:26},
+  mail:{slash:57,piercing:38,blunt:39},
+  plate:{slash:260,piercing:135,blunt:135}
+ };
+ const weaponProfiles={
+  shortsword:{label:'Short sword',weight:1.0,reach:31,power:.91,momentum:38,speed:.83,twoHand:false,moves:['slashRight','slashLeft','thrust','pommel'],cleave:1},
+  sword:{label:'Arming sword',weight:1.55,reach:36,power:1,momentum:68,speed:1,twoHand:false,moves:['slashRight','slashLeft','overhead','thrust','pommel'],cleave:1},
+  greatsword:{label:'Greatsword',weight:3.35,reach:47,power:1.25,momentum:115,speed:1.24,twoHand:true,moves:['slashRight','slashLeft','overhead','thrust','cleave','pommel'],cleave:5},
+  axe:{label:'Battle axe',weight:3.8,reach:43,power:1.38,momentum:143,speed:1.38,twoHand:true,moves:['slashRight','slashLeft','overhead','cleave','pommel'],cleave:6}
+ };
+ const weaponOrder=['shortsword','sword','greatsword','axe'];
+ const shieldProfiles={
+  buckler:{label:'Buckler',size:8,weight:.85,passiveArc:.40,activeArc:.83,passiveBlock:.20,passiveStop:16,activeStop:68,cost:5,color:'#cda779'},
+  round:{label:'Round shield',size:11,weight:1.8,passiveArc:.66,activeArc:1.20,passiveBlock:.35,passiveStop:31,activeStop:115,cost:8,color:'#b1b9a6'},
+  kite:{label:'Kite shield',size:13,weight:2.7,passiveArc:.83,activeArc:1.42,passiveBlock:.48,passiveStop:50,activeStop:155,cost:11,color:'#d5ad81'},
+  tower:{label:'Tower shield',size:16,weight:4.0,passiveArc:1.04,activeArc:1.59,passiveBlock:.62,passiveStop:76,activeStop:260,cost:16,color:'#a5c4d1'}
+ };
+ const shieldOrder=['buckler','round','kite','tower'];
+ // Attack timing is split into wind-up, physical active frames and recovery.
+ // Slash angles are local to the soldier's facing; thrusts travel straight.
+ const attackMoves={
+  slashRight:{label:'Right slash',damageType:'slash',style:'light',from:-1.25,to:1.27,wind:.21,active:.27,recover:.32,mult:1,momentum:1,stamina:1},
+  slashLeft:{label:'Left slash',damageType:'slash',style:'light',from:1.25,to:-1.27,wind:.21,active:.27,recover:.32,mult:1,momentum:1,stamina:1},
+  overhead:{label:'Overhead slash',damageType:'slash',style:'heavy',from:-1.48,to:.55,wind:.29,active:.28,recover:.43,mult:1.26,momentum:1.2,stamina:1.2},
+  thrust:{label:'Stab',damageType:'piercing',style:'light',from:0,to:0,wind:.23,active:.22,recover:.31,mult:1.13,momentum:.9,stamina:1.05,thrust:true},
+  pommel:{label:'Pommel strike',damageType:'blunt',style:'heavy',from:-.45,to:.35,wind:.24,active:.19,recover:.34,mult:1.1,momentum:1.06,stamina:1.05,short:true},
+  cleave:{label:'Wide cleave',damageType:'slash',style:'heavy',from:-1.55,to:1.57,wind:.38,active:.38,recover:.59,mult:1.22,momentum:1.38,stamina:1.48}
+ };
+
  function mitigatedDamage(raw,armor,damageType){
   const defense=armorProfiles[armor]?.[damageType]||{flat:0,pct:0};
   return Math.max(0,raw-defense.flat)*(1-clamp(defense.pct,0,100)/100);
  }
- function attackDamageType(attacker,style){
-  const swing=attacker.attackCount+attacker.id;
-  return style==='heavy'?['slash','piercing','blunt'][Math.floor(swing/3)%3]:
-    (swing%3===1?'piercing':'slash');
- }
+ // Damage type is now part of each individual attack move.
 const gap=()=>clamp(W/17,23,29);
 function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74,W*.65,W-90),y:H*.51};}
 // All formation styles provide fifty unique slots; enemy formations stay as Block.
@@ -257,14 +304,14 @@ function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74
   }
   return positions.map(p=>({x:clamp(p.x,18,W-18),y:clamp(p.y,21,H-21)}));
  }
-function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);return {id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,armor:armorOrder[(i+(team==='friend'?0:1))%armorOrder.length],stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,stamina:100,maxStamina:100,recoveryDelay:0,attackCount:0,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:1.5+rnd(i+16)*1.3,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,engageSlot:0,escapeAngle:0,hitFlash:0};}
+function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);return {id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,armor:armorOrder[(i+(team==='friend'?0:1))%armorOrder.length],weapon:weaponOrder[(i+(team==='friend'?0:2))%weaponOrder.length],shield:(i+(team==='friend'?0:2))%4>=2?null:shieldOrder[(Math.floor(i/2)+(team==='friend'?0:1))%shieldOrder.length],attack:null,guardActive:false,guardHold:0,guardBreak:0,stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,stamina:100,maxStamina:100,recoveryDelay:0,attackCount:0,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:1.5+rnd(i+16)*1.3,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,engageSlot:0,escapeAngle:0,hitFlash:0};}
 function focusArmy(){
   const h=home('friend');
   camera.x=clamp(h.x-VW*.37,0,Math.max(0,W-VW));
   camera.y=clamp(h.y-VH*.51,0,Math.max(0,H-VH));
  }
  function populate(){
-  nextId=0;nextEngagementPlan=0;formationType='block';setFormationMenu(false);
+  nextId=0;nextSwingId=1;nextEngagementPlan=0;formationType='block';setFormationMenu(false);
   const a=home('friend'),b=home('foe');
   friends=formation('friend',a.x,a.y).map((p,i)=>create('friend',i,p));
   foes=formation('foe',b.x,b.y).map((p,i)=>create('foe',i,p));
@@ -317,7 +364,7 @@ function planEngagements(team){
 }
 function chooseTarget(s){
  const enemies=opponents(s);
- let planned=null,dist=Infinity,urgent=null,urgentDist=reach*.9;
+ let planned=null,dist=Infinity,urgent=null,urgentDist=weaponProfiles[s.weapon].reach*.86;
  for(const e of enemies){
   if(e.dead||e.broken||e.routed)continue;
   const d=Math.hypot(e.x-s.x,e.y-s.y);
@@ -325,7 +372,7 @@ function chooseTarget(s){
   if(d<urgentDist){urgent=e;urgentDist=d;}
  }
  // A real threat directly beside a soldier overrides a distant assignment.
- if(urgent&&dist>reach*1.4)return {target:urgent,dist:urgentDist};
+ if(urgent&&dist>weaponProfiles[s.weapon].reach*1.4)return {target:urgent,dist:urgentDist};
  if(planned)return {target:planned,dist};
  nextEngagementPlan=0;
  let nearest=null,nearestDistance=Infinity;
@@ -341,7 +388,7 @@ function engagementPoint(s,target){
  const side=s.team==='friend'?-1:1;
  const flanks=[0,-.62,.62,-1.17,1.17,-1.5,1.5];
  const angle=(side<0?Math.PI:0)+flanks[s.engageSlot%flanks.length];
- const radius=reach*.83;
+ const radius=weaponProfiles[s.weapon].reach*.79;
  const x=target.x+Math.cos(angle)*radius;
  let y=target.y+Math.sin(angle)*radius;
  if(Math.hypot(target.x-s.x,target.y-s.y)>115)y=y*.78+s.anchorY*.22;
@@ -454,7 +501,7 @@ function avgStress(){const live=foes.filter(s=>!s.dead&&!s.routed);return live.l
  function avgStamina(){const active=friends.filter(s=>!s.dead&&!s.routed);return active.length?Math.round(active.reduce((a,s)=>a+s.stamina,0)/active.length):0;}
 function updateUI(){ui.select.setAttribute('aria-pressed',selected?'true':'false');ui.label.textContent=selected?'Deselect':'Select';ui.orders.classList.toggle('is-hidden',!selected);ui.status.textContent=mode.toUpperCase();orderButtons.forEach(b=>b.classList.toggle('active',selected&&b.id===mode));const alive=friends.filter(s=>!s.dead&&!s.routed).length,broken=friends.filter(s=>s.broken&&!s.routed).length;
  ui.count.textContent=alive+' SOLDIERS';ui.remaining.textContent=alive+' / 50';ui.enemyCount.textContent=foes.filter(s=>!s.dead&&!s.routed).length+' / 50';ui.stress.textContent=avgStress()+'%';ui.stamina.textContent=avgStamina()+'%';
- let status=({idle:'Drag to explore · select troops to give orders',attack:'Attacking with swords (range: 3 squares)',defend:'Holding formation and fighting nearby enemies',stop:'Standing still (your troops cannot panic)',retreat:'Ordered retreat toward your side',move:'Marching to your chosen position',form:'Reforming into '+formationType+' formation'}[mode]||'');
+ let status=({idle:'Drag to explore · select troops to give orders',attack:'Attacking with varied weapon reach and timed strikes',defend:'Holding formation and fighting nearby enemies',stop:'Standing still (your troops cannot panic)',retreat:'Ordered retreat toward your side',move:'Marching to your chosen position',form:'Reforming into '+formationType+' formation'}[mode]||'');
  if(broken)status=broken+' soldier'+(broken>1?'s are':' is')+' panicking and fleeing!';
  ui.hint.textContent=status;ui.mode.textContent=({idle:'Idle',attack:'Attack',defend:'Defend',stop:'Stop',retreat:'Retreat',move:'Move',form:'Formation'}[mode]||'Idle');
   ui.formationAnchor.classList.toggle('is-hidden',!selected);
@@ -525,30 +572,117 @@ document.querySelector('#reset').addEventListener('click',populate);
  armorPanel.addEventListener('pointerdown',e=>e.stopPropagation());
  window.addEventListener('keydown',e=>{if(e.key==='Escape')setArmorPanel(false)});
 function panic(s){if(s.team==='friend'||s.broken||s.dead)return;s.broken=true;s.targetId=null;s.escapeAngle=0;s.decision=0;for(const n of members(s.team)){if(n===s||n.dead||n.broken)continue;const d=Math.hypot(n.x-s.x,n.y-s.y);if(d<80)n.stress=clamp(n.stress+stressBalance.panicSpread*(1-n.disc/160)*(1-d/100),0,100);} }
-function hit(attacker,target){
- if(target.dead||attacker.dead||attacker.broken||target.broken)return;
- const dist=Math.hypot(target.x-attacker.x,target.y-attacker.y);if(dist>reach)return;
- // Soldiers mix in heavy blows every few swings when they have the stamina.
- const heavy=attacker.stamina>=52&&(attacker.attackCount+attacker.id)%3===0;
- const type=heavy?'heavy':'light',style=attackStyles[type];
- if(attacker.stamina<style.cost)return; // Exhaustion: recover before swinging again.
- const damageType=attackDamageType(attacker,type);
- attacker.attackCount++;
- attacker.stamina=clamp(attacker.stamina-style.cost,0,attacker.maxStamina);
- attacker.recoveryDelay=type==='heavy'?.78:.42;
- attacker.cooldown=style.cooldown+(1-attacker.disc/100)*.22;
- // Apply flat reduction first, then percentage reduction. Armor works on
- // every damage channel; friendly troops still have their cheat invulnerability.
- const actualDamage=mitigatedDamage(style.damage,target.armor,damageType);
- if(target.team==='foe'){
-  target.hp=Math.max(0,target.hp-actualDamage);
-  const impact=style.damage>0?actualDamage/style.damage:0;
-  target.stress=clamp(target.stress+style.stress*(.25+.75*impact),0,100);
+// Move selection balances armor vulnerability, stamina, variety and groups.
+function chooseCombatMove(s,target){
+ const weapon=weaponProfiles[s.weapon],available=weapon.moves;
+ const threatArmor=target?.armor||'padded';
+ let best=null,bestScore=-Infinity;
+ const nearby=opponents(s).filter(e=>!e.dead&&!e.broken&&!e.routed&&Math.hypot(e.x-s.x,e.y-s.y)<weapon.reach+22).length;
+ for(let j=0;j<available.length;j++){
+  const name=available[j],m=attackMoves[name],style=attackStyles[m.style];
+  const cost=style.cost*m.stamina*(.60+weapon.weight*.30);
+  if(s.stamina<cost)continue;
+  const raw=style.damage*weapon.power*m.mult;
+  const expected=mitigatedDamage(raw,threatArmor,m.damageType);
+  const choiceIndex=(s.id+s.attackCount)%available.length;
+  // Rotation makes the full moveset visible while armor rewards weak spots.
+  let score=expected*.70-cost*.017+(j===choiceIndex?1.12:0);
+  if(name==='cleave'&&nearby>1)score+=Math.min(nearby,5)*.33;
+  if(m.style==='heavy'&&s.stamina<48)score-=.75;
+  if(name===s.lastMove)score-=.33;
+  if(target?.shield&&m.damageType==='blunt')score+=.30;
+  if(score>bestScore){best=name;bestScore=score;}
  }
- target.hitFlash=type==='heavy'?.42:.25;
+ return best;
+}
+function beginAttack(s,target){
+ if(s.attack||s.cooldown>0||s.guardActive)return false;
+ const weapon=weaponProfiles[s.weapon];
+ if(!target||Math.hypot(target.x-s.x,target.y-s.y)>weapon.reach+9)return false;
+ const name=chooseCombatMove(s,target);
+ if(!name)return false;
+ const move=attackMoves[name],style=attackStyles[move.style];
+ const cost=style.cost*move.stamina*(.60+weapon.weight*.30);
+ if(s.stamina<cost)return false;
+ s.stamina=clamp(s.stamina-cost,0,s.maxStamina);
+ s.attackCount++;
+ s.lastMove=name;
+ s.guardActive=false;s.guardHold=0;
+ const rate=weapon.speed*(s.stamina<24?1.16:1);
+ const wind=move.wind*rate,active=move.active*rate,recover=move.recover*rate;
+ s.attack={
+  id:nextSwingId++,name,move,phase:'windup',elapsed:0,
+  wind,active,recover,hitIds:new Set(),hits:0,
+  // Momentum gets spent on armor and shields, NOT on dealing damage.
+  // Thus several naked targets can each take the complete base damage.
+  momentum:weapon.momentum*move.momentum*(move.style==='heavy'?1.12:1),
+  baseDamage:style.damage*weapon.power*move.mult,
+  reach:weapon.reach*(move.short?.62:1)
+ };
+ s.cooldown=wind+active+recover+.08;
+ s.recoveryDelay=wind+active+recover*.5;
+ return true;
+}
+function weaponSegment(s,a,progress){
+ const m=a.move,p=clamp(progress,0,1);
+ const angle=s.faceAngle+(m.thrust?0:m.from+(m.to-m.from)*p);
+ const reachNow=a.reach*(m.thrust?.48+.52*p:1);
+ const ux=Math.cos(angle),uy=Math.sin(angle);
+ return {ax:s.x+ux*9,ay:s.y+uy*9,bx:s.x+ux*reachNow,by:s.y+uy*reachNow};
+}
+function pointSegmentDistance(px,py,seg){
+ const dx=seg.bx-seg.ax,dy=seg.by-seg.ay;
+ const lenSq=dx*dx+dy*dy;
+ const u=lenSq>0?clamp(((px-seg.ax)*dx+(py-seg.ay)*dy)/lenSq,0,1):0;
+ return Math.hypot(px-seg.ax-dx*u,py-seg.ay-dy*u);
+}
+// A directional shield can catch hits passively, or be deliberately raised
+// for a larger block arc, greater stopping power and more stamina spent.
+function shieldImpact(attacker,defender,a){
+ const shield=shieldProfiles[defender.shield];
+ if(!shield||defender.guardBreak>0||defender.stamina<2)return {block:0,stop:0,kind:null};
+ const incoming=Math.atan2(attacker.y-defender.y,attacker.x-defender.x);
+ const delta=Math.abs(Math.atan2(Math.sin(incoming-defender.faceAngle),Math.cos(incoming-defender.faceAngle)));
+ const active=defender.guardActive&&delta<=shield.activeArc;
+ if(!active&&delta>shield.passiveArc)return {block:0,stop:0,kind:null};
+ const weapon=weaponProfiles[attacker.weapon];
+ const spend=shield.cost*(active?1.15:.62)*(1+weapon.weight*.19);
+ if(defender.stamina<spend)return {block:0,stop:0,kind:null};
+ const stop=active?shield.activeStop:shield.passiveStop;
+ const block=active?clamp(stop/Math.max(1,a.momentum),0,1):shield.passiveBlock;
+ defender.stamina=clamp(defender.stamina-spend,0,defender.maxStamina);
+ defender.recoveryDelay=Math.max(defender.recoveryDelay,active?.28:.12);
+ if(active){
+  defender.guardHold=Math.max(0,defender.guardHold-.13);
+  if(block<.65||defender.stamina<9){
+   defender.guardBreak=.36+weapon.weight*.075;
+   defender.guardActive=false;
+  }
+ }
+ return {block,stop,kind:active?'active':'passive'};
+}
+function applyWeaponImpact(attacker,target,a){
+ if(target.dead||target.routed||target.broken||target.team===attacker.team||a.hitIds.has(target.id))return false;
+ a.hitIds.add(target.id);
+ const shield=shieldImpact(attacker,target,a),damageType=a.move.damageType;
+ const afterShield=a.baseDamage*(1-shield.block);
+ const actual=mitigatedDamage(afterShield,target.armor,damageType);
+ // Even when allies are invulnerable, they visibly block and expend stamina.
+ if(target.team==='foe'){
+  target.hp=Math.max(0,target.hp-actual);
+  const style=attackStyles[a.move.style];
+  target.stress=clamp(target.stress+style.stress*(.15+.85*actual/Math.max(.01,a.baseDamage)),0,100);
+ }
+ target.hitFlash=shield.kind? .32:.27;
  if(attacker.team==='foe')attacker.stress=clamp(attacker.stress+stressBalance.givenHit,0,100);
- const angle=Math.atan2(target.y-attacker.y,target.x-attacker.x);
- slashes.push({x:attacker.x,y:attacker.y,a:angle,life:style.effect,duration:style.effect,type,damageType,team:attacker.team});
+ a.hits++;
+ const armorStop=armorImpact[target.armor]?.[damageType]??12;
+ a.momentum=Math.max(0,a.momentum-armorStop-shield.stop);
+ const interrupted=a.momentum<=0||a.hits>=weaponProfiles[attacker.weapon].cleave;
+ if(interrupted)a.momentum=0;
+ slashes.push({kind:shield.kind?'block':'impact',damageType,block:shield.kind,
+  x:target.x,y:target.y,a:Math.atan2(target.y-attacker.y,target.x-attacker.x),
+  life:.23,duration:.23,type:a.move.style,team:attacker.team});
  if(target.team==='foe'&&target.hp<=0){
   target.dead=true;target.stress=100;
   for(const n of foes){
@@ -556,7 +690,76 @@ function hit(attacker,target){
    const d=Math.hypot(n.x-target.x,n.y-target.y);
    if(d<88)n.stress=clamp(n.stress+stressBalance.allyKilled*(1-d/100),0,100);
   }
-  respawnEnemy(target); // Fifty enemy slots continually replenish.
+  respawnEnemy(target);
+ }
+ return true;
+}
+// Sweep the moving blade through actual battlefield positions. Each target
+// is hit at most once per swing, in traversal order, until momentum runs out.
+function scanWeaponArc(s,a,from,to){
+ if(a.momentum<=0)return;
+ const contacts=[],samples=Math.max(4,Math.ceil(Math.abs(to-from)*14));
+ const enemies=opponents(s);
+ for(const e of enemies){
+  if(e.dead||e.routed||e.broken||a.hitIds.has(e.id))continue;
+  if(Math.hypot(e.x-s.x,e.y-s.y)>a.reach+13)continue;
+  let first=Infinity;
+  for(let n=0;n<=samples;n++){
+   const p=from+(to-from)*n/samples;
+   if(pointSegmentDistance(e.x,e.y,weaponSegment(s,a,p))<=10.1){
+    first=p;break;
+   }
+  }
+  if(first<Infinity)contacts.push({target:e,p:first,range:Math.hypot(e.x-s.x,e.y-s.y)});
+ }
+ contacts.sort((a,b)=>a.p-b.p||a.range-b.range);
+ for(const contact of contacts){
+  if(a.momentum<=0)break;
+  applyWeaponImpact(s,contact.target,a);
+ }
+}
+function advanceAttack(s,dt){
+ const a=s.attack;if(!a)return;
+ let remaining=dt;
+ for(let passes=0;passes<4&&s.attack&&remaining>0;passes++){
+  const duration=a.phase==='windup'?a.wind:a.phase==='active'?a.active:a.recover;
+  const used=Math.min(remaining,Math.max(0,duration-a.elapsed));
+  const was=a.elapsed/duration,now=(a.elapsed+used)/duration;
+  if(a.phase==='active')scanWeaponArc(s,a,was,now);
+  a.elapsed+=used;remaining-=used;
+  if(a.elapsed<duration-1e-6)break;
+  if(a.phase==='windup')a.phase='active';
+  else if(a.phase==='active')a.phase='recovery';
+  else{s.attack=null;break;}
+  a.elapsed=0;
+ }
+}
+function updateShieldGuard(s,dt){
+ s.guardBreak=Math.max(0,s.guardBreak-dt);
+ s.guardHold=Math.max(0,s.guardHold-dt);
+ const shield=shieldProfiles[s.shield];
+ if(!shield||s.broken||s.dead||s.attack||s.guardBreak>0){
+  s.guardActive=false;return;
+ }
+ for(const other of opponents(s)){
+  if(other.dead||other.routed||other.broken||!other.attack)continue;
+  const threat=other.attack,weapon=weaponProfiles[other.weapon];
+  if(Math.hypot(other.x-s.x,other.y-s.y)>weapon.reach+16)continue;
+  const angle=Math.atan2(other.y-s.y,other.x-s.x);
+  const diff=Math.abs(Math.atan2(Math.sin(angle-s.faceAngle),Math.cos(angle-s.faceAngle)));
+  if(diff>shield.activeArc+.12)continue;
+  // Discipline affects reaction; wind-up gives defenders a readable warning.
+  const reaction=.08+(1-s.disc/100)*.21+shield.weight*.014;
+  if(threat.phase==='active'||threat.phase==='windup'&&threat.elapsed>=reaction){
+   if(s.stamina>shield.cost*1.7&&rnd(s.id+threat.id*7)<.59+s.disc*.0036){
+    s.guardHold=Math.max(s.guardHold,.18+shield.weight*.025);
+   }
+  }
+ }
+ s.guardActive=s.guardHold>0&&s.stamina>shield.cost*1.3;
+ if(s.guardActive){
+  s.stamina=clamp(s.stamina-dt*(1.1+shield.weight*.9),0,s.maxStamina);
+  s.recoveryDelay=Math.max(s.recoveryDelay,.08);
  }
 }
 function approach(s,x,y,dt,mult=1){const dx=x-s.x,dy=y-s.y,dist=Math.hypot(dx,dy);if(dist<.45)return;const n=Math.min(dist,s.speed*mult*dt);s.x+=dx/dist*n;s.y+=dy/dist*n;s.facing=dx>=0?1:-1;}
@@ -599,7 +802,7 @@ function step(dt){
   // Stamina restores while not recovering from a swing; movement uses some.
   s.recoveryDelay=Math.max(0,s.recoveryDelay-dt);
   if(s.recoveryDelay===0)s.stamina=clamp(s.stamina+dt*7.4,0,s.maxStamina);
-  if(s.broken){s.stress=100;fleeFromEnemies(s,dt);if(s.routed&&s.team==='foe')respawnEnemy(s);continue;}
+  if(s.broken){s.attack=null;s.guardActive=false;s.guardHold=0;s.stress=100;fleeFromEnemies(s,dt);if(s.routed&&s.team==='foe')respawnEnemy(s);continue;}
   const {target,dist}=chooseTarget(s);
   if(s.team==='foe'){
    if(dist<reach*1.5)s.stress=clamp(s.stress+dt*stressBalance.closeThreat,0,100);
@@ -625,22 +828,29 @@ function step(dt){
     if(target){
       const slot=engagementPoint(s,target);
       const distanceToSlot=Math.hypot(slot.x-s.x,slot.y-s.y);
-      if(dist>reach*.9||distanceToSlot>18){
+      if(dist>weaponProfiles[s.weapon].reach*.92||distanceToSlot>18){
        const clear=avoidCombatCrowd(s,slot,target);
        moveX=clear.x;moveY=clear.y;
-       pace=dist<=reach?.78:1.16;
+       pace=dist<=weaponProfiles[s.weapon].reach?.78:1.16;
       }else{moveX=s.x;moveY=s.y;}
     }else{moveX=s.x;moveY=s.y;}
   }
   else if(command==='defend'||command==='move'||command==='idle'||command==='form'){moveX=s.tx;moveY=s.ty;}
   const disciplineControl=.42+s.disc/160;
   const fatiguePace=.76+.24*(s.stamina/s.maxStamina);
+  const equipment=weaponProfiles[s.weapon].weight+(shieldProfiles[s.shield]?.weight||0);
+  const loadPace=clamp(1-equipment*.038,.70,1);
+  const fightingPace=s.attack?.72:s.guardActive?.73:1;
   const oldX=s.x,oldY=s.y;
-  if(command!=='stop')approach(s,moveX,moveY,dt,pace*disciplineControl*fatiguePace);
-  s.stamina=clamp(s.stamina-Math.hypot(s.x-oldX,s.y-oldY)*.048,0,s.maxStamina);
-  // All fighting soldiers carry swords. Attacks connect only within exactly three cells.
+  if(command!=='stop')approach(s,moveX,moveY,dt,pace*disciplineControl*fatiguePace*loadPace*fightingPace);
+  s.stamina=clamp(s.stamina-Math.hypot(s.x-oldX,s.y-oldY)*(.042+equipment*.004),0,s.maxStamina);
   updateFacing(s,target,target?Math.hypot(target.x-s.x,target.y-s.y):Infinity,dt);
-   if(command!=='retreat'&&command!=='stop'&&target&&s.cooldown<=0&&Math.hypot(target.x-s.x,target.y-s.y)<=reach)hit(s,target);
+  if(command==='stop'||command==='retreat'){s.attack=null;s.guardActive=false;}
+  else{
+   updateShieldGuard(s,dt);
+   if(s.attack)advanceAttack(s,dt);
+   else if(target&&s.cooldown<=0)beginAttack(s,target);
+  }
  }
  separateSoldiers();
  for(const effect of slashes)effect.life-=dt;slashes=slashes.filter(e=>e.life>0);
@@ -649,6 +859,23 @@ function background(){ctx.fillStyle='#203b30';ctx.fillRect(0,0,W,H);const grad=c
  ctx.beginPath();for(let x=.5;x<=W;x+=cell){ctx.moveTo(x,0);ctx.lineTo(x,H)}for(let y=.5;y<=H;y+=cell){ctx.moveTo(0,y);ctx.lineTo(W,y)}ctx.lineWidth=.7;ctx.strokeStyle='#c3e2b22a';ctx.stroke();
  ctx.strokeStyle='#d9f5cd24';ctx.setLineDash([3,8]);ctx.beginPath();ctx.moveTo(W*.5,0);ctx.lineTo(W*.5,H);ctx.stroke();ctx.setLineDash([]);
  ctx.fillStyle='#bdffb508';for(let i=0;i<65;i++)ctx.fillRect((i*137.3+21)%W,(i*283.7+37)%H,1.5,2);
+}
+function weaponPose(s){
+ const w=weaponProfiles[s.weapon],a=s.attack;
+ if(!a)return {angle:s.faceAngle,length:w.reach*.62};
+ const m=a.move,p=clamp(a.elapsed/(a.phase==='windup'?a.wind:a.phase==='active'?a.active:a.recover),0,1);
+ let offset=0,length=a.reach;
+ if(a.phase==='windup'){
+  offset=m.thrust?0:m.from*p;
+  length=a.reach*(m.thrust?.45:.78);
+ }else if(a.phase==='active'){
+  offset=m.thrust?0:m.from+(m.to-m.from)*p;
+  length=a.reach*(m.thrust?.48+.52*p:1);
+ }else{
+  offset=m.thrust?0:m.to*(1-p);
+  length=a.reach*(m.thrust?1-.52*p:1-.38*p);
+ }
+ return {angle:s.faceAngle+offset,length};
 }
 function drawUnit(s){if(s.routed)return;const bob=s.dead?0:Math.sin(t*1.5+s.phase)*.09,x=s.x,y=s.y+bob;
  if(s.dead){ctx.fillStyle='#101f1ac0';ctx.beginPath();ctx.ellipse(x,y+3,8,4,.4,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ba9d92a6';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-4,y-4);ctx.lineTo(x+4,y+4);ctx.moveTo(x+4,y-4);ctx.lineTo(x-4,y+4);ctx.stroke();return;}
@@ -660,11 +887,53 @@ function drawUnit(s){if(s.routed)return;const bob=s.dead?0:Math.sin(t*1.5+s.phas
  // A narrow armor-colored helmet stripe distinguishes padded/leather/mail/plate.
  ctx.fillStyle=armorProfiles[s.armor]?.color||'#e5efe9';ctx.fillRect(x-5,y-7.5,10,2.6);
  ctx.fillStyle='#ffffff40';ctx.beginPath();ctx.arc(x-2.5,y-3,2.7,0,2*Math.PI);ctx.fill();
- // Small sword hilt and blade: every active soldier is visibly equipped.
- ctx.save();ctx.translate(x,y);ctx.rotate(s.faceAngle);
-  ctx.fillStyle='#f4ffe1';ctx.beginPath();ctx.arc(7,0,2.3,0,Math.PI*2);ctx.fill();
-  ctx.strokeStyle='#f1d2a2';ctx.lineWidth=2.1;ctx.beginPath();ctx.moveTo(12,-4);ctx.lineTo(12,4);ctx.stroke();
-  ctx.strokeStyle='#eff5ee';ctx.lineWidth=2.2;ctx.beginPath();ctx.moveTo(8,0);ctx.lineTo(21,0);ctx.stroke();ctx.restore();
+ // Shields stay in front and visibly rise to defend incoming blows.
+ const shield=shieldProfiles[s.shield];
+ if(shield){
+  ctx.save();ctx.translate(x,y);ctx.rotate(s.faceAngle);
+  ctx.fillStyle=s.guardActive?'#f1eac0':shield.color;
+  ctx.strokeStyle=s.guardActive?'#fff9cb':'#625544';
+  ctx.lineWidth=s.guardActive?2.4:1.4;
+  ctx.beginPath();ctx.ellipse(10,0,shield.size*.58,shield.size*.41,0,0,Math.PI*2);
+  ctx.fill();ctx.stroke();
+  ctx.fillStyle='#6b5c4d';ctx.fillRect(9,-shield.size*.2,2,shield.size*.4);
+  if(s.guardActive){
+   ctx.strokeStyle='#abeddfbb';ctx.lineWidth=2.4;
+   ctx.beginPath();ctx.arc(0,0,shield.size+12,-.9,.9);ctx.stroke();
+  }
+  ctx.restore();
+ }
+ // Weapons physically move throughout wind-up, active and recovery phases.
+ const wp=weaponPose(s);
+ ctx.save();ctx.translate(x,y);ctx.rotate(wp.angle);
+ if(s.attack?.phase==='active'&&!s.attack.move.thrust){
+  ctx.strokeStyle=s.attack.move.damageType==='blunt'?'#e8a86866':'#fff0aa66';
+  ctx.lineWidth=s.weapon==='axe'?7:4;
+  const m=s.attack.move,progress=s.attack.elapsed/s.attack.active;
+  ctx.beginPath();
+  for(let j=0;j<=5;j++){
+   const q=clamp(progress-j*.055,0,1);
+   const theta=m.from+(m.to-m.from)*q-wp.angle+s.faceAngle;
+   const px=Math.cos(theta)*wp.length,py=Math.sin(theta)*wp.length;
+   if(j===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+ }
+ ctx.fillStyle='#f4ffe1';ctx.beginPath();ctx.arc(7,0,2.1,0,Math.PI*2);ctx.fill();
+ if(s.weapon==='axe'){
+  ctx.strokeStyle='#ad8258';ctx.lineWidth=3.2;
+  ctx.beginPath();ctx.moveTo(7,0);ctx.lineTo(wp.length,0);ctx.stroke();
+  ctx.fillStyle='#d8e2e4';ctx.strokeStyle='#f4eded';ctx.lineWidth=1.2;
+  ctx.beginPath();ctx.moveTo(wp.length-9,-8);ctx.lineTo(wp.length+2,-11);
+  ctx.lineTo(wp.length+2,11);ctx.lineTo(wp.length-9,8);ctx.closePath();ctx.fill();ctx.stroke();
+ }else{
+  ctx.strokeStyle='#aa7b55';ctx.lineWidth=3.2;ctx.beginPath();ctx.moveTo(7,0);ctx.lineTo(12,0);ctx.stroke();
+  ctx.strokeStyle='#f1d2a2';ctx.lineWidth=2.1;
+  ctx.beginPath();ctx.moveTo(12,s.weapon==='greatsword'?-5:-3.5);ctx.lineTo(12,s.weapon==='greatsword'?5:3.5);ctx.stroke();
+  ctx.strokeStyle='#edf2f7';ctx.lineWidth=s.weapon==='greatsword'?3.3:2.35;
+  ctx.beginPath();ctx.moveTo(12,0);ctx.lineTo(wp.length,0);ctx.stroke();
+ }
+ ctx.restore();
  // Thin stress arc makes each soldier's personal stress legible.
  if(s.stress>12){ctx.beginPath();ctx.arc(x,y,12,-Math.PI/2,-Math.PI/2+stress*2*Math.PI);ctx.strokeStyle=s.stress>70?'#f16d53':'#e6c368';ctx.lineWidth=2;ctx.stroke();}
  if(s.hp<3&&!s.broken){ctx.fillStyle='#101c18';ctx.fillRect(x-10,y-17,20,3);ctx.fillStyle=s.team==='friend'?'#99e99d':'#f6a4a2';ctx.fillRect(x-10,y-17,20*s.hp/3,3);}
@@ -682,15 +951,15 @@ function draw(){
  for(const s of foes)drawUnit(s);for(const s of friends)drawUnit(s);
  for(const sl of slashes){
   ctx.save();ctx.translate(sl.x,sl.y);ctx.rotate(sl.a);
-  const opacity=sl.life/sl.duration;
-  ctx.strokeStyle=sl.type==='heavy'?'rgba(255,187,103,'+opacity+')':(sl.team==='friend'?'rgba(252,242,185,'+opacity+')':'rgba(255,181,159,'+opacity+')');
-  ctx.lineWidth=sl.type==='heavy'?5:2.4;
+  const opacity=clamp(sl.life/sl.duration,0,1);
+  ctx.strokeStyle=sl.block?'rgba(141,235,249,'+opacity+')':
+    sl.damageType==='blunt'?'rgba(255,179,103,'+opacity+')':
+    sl.team==='friend'?'rgba(251,240,168,'+opacity+')':'rgba(255,181,159,'+opacity+')';
+  ctx.lineWidth=sl.block?2.7:sl.type==='heavy'?3.6:2.3;
   ctx.beginPath();
-  if(sl.damageType==='piercing'){ctx.moveTo(3,0);ctx.lineTo(reach,0);}
-  else if(sl.damageType==='blunt'){ctx.arc(reach*.84,0,sl.type==='heavy'?10:7,0,Math.PI*2);}
-  else{ctx.arc(0,0,reach,Math.PI*1.65,Math.PI*(sl.type==='heavy'?.52:.33));}
-  ctx.stroke();
-  ctx.restore();
+  if(sl.block){ctx.arc(0,0,8+(1-opacity)*8,0,Math.PI*2);}
+  else{ctx.moveTo(-6,-5);ctx.lineTo(6,5);ctx.moveTo(-6,5);ctx.lineTo(6,-5);}
+  ctx.stroke();ctx.restore();
  }
  ctx.restore();
  drawMinimap();
