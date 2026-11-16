@@ -273,6 +273,57 @@ body.lab-mode .lab-area{display:flex}
  </section>
 </div>
   </main>
+  <section class="lab-area" id="battleLab" aria-label="Six arena balance simulation">
+ <div class="lab-toolbar">
+  <div><strong>⚔ SIX-ARENA BATTLE LAB</strong> <span id="labProgressLabel">Repeated fair fights · 60 simulated minutes per arena</span></div>
+  <div class="lab-commands"><button type="button" id="labPause">Pause</button><button type="button" id="labRerun">↻ Rerun 1 hour</button></div>
+ </div>
+ <progress id="labProgress" class="lab-progress" max="100" value="0" aria-label="Balance simulation progress"></progress>
+ <div class="lab-grid"><article class="lab-card" id="labCard0">
+ <div class="lab-card-head"><strong>Plate vs naked</strong><span class="lab-count">1 vs 1</span></div>
+ <div class="lab-matchup"><span class="lab-green">🟢 Plate · sword</span><span class="lab-red">🔴 Naked · axe</span></div>
+ <canvas class="lab-map" id="labCanvas0" width="440" height="210" aria-label="Plate vs naked simulated battlefield"></canvas>
+ <div class="lab-score"><span id="labResult0">0–0 · 0 draws</span><span class="lab-winner" id="labLeader0">Testing…</span></div>
+ <div class="lab-score"><span id="labBattles0">0 fights</span><span id="labBlocks0">0 blocks</span></div>
+</article>
+<article class="lab-card" id="labCard1">
+ <div class="lab-card-head"><strong>Shield discipline</strong><span class="lab-count">2 vs 2</span></div>
+ <div class="lab-matchup"><span class="lab-green">🟢 Mail · sword/round</span><span class="lab-red">🔴 Leather · axe</span></div>
+ <canvas class="lab-map" id="labCanvas1" width="440" height="210" aria-label="Shield discipline simulated battlefield"></canvas>
+ <div class="lab-score"><span id="labResult1">0–0 · 0 draws</span><span class="lab-winner" id="labLeader1">Testing…</span></div>
+ <div class="lab-score"><span id="labBattles1">0 fights</span><span id="labBlocks1">0 blocks</span></div>
+</article>
+<article class="lab-card" id="labCard2">
+ <div class="lab-card-head"><strong>Two vs three</strong><span class="lab-count">2 vs 3</span></div>
+ <div class="lab-matchup"><span class="lab-green">🟢 Mail · greatsword</span><span class="lab-red">🔴 Naked · shortsword</span></div>
+ <canvas class="lab-map" id="labCanvas2" width="440" height="210" aria-label="Two vs three simulated battlefield"></canvas>
+ <div class="lab-score"><span id="labResult2">0–0 · 0 draws</span><span class="lab-winner" id="labLeader2">Testing…</span></div>
+ <div class="lab-score"><span id="labBattles2">0 fights</span><span id="labBlocks2">0 blocks</span></div>
+</article>
+<article class="lab-card" id="labCard3">
+ <div class="lab-card-head"><strong>Numbers vs axes</strong><span class="lab-count">3 vs 4</span></div>
+ <div class="lab-matchup"><span class="lab-green">🟢 Leather · axe</span><span class="lab-red">🔴 Padded · sword/round</span></div>
+ <canvas class="lab-map" id="labCanvas3" width="440" height="210" aria-label="Numbers vs axes simulated battlefield"></canvas>
+ <div class="lab-score"><span id="labResult3">0–0 · 0 draws</span><span class="lab-winner" id="labLeader3">Testing…</span></div>
+ <div class="lab-score"><span id="labBattles3">0 fights</span><span id="labBlocks3">0 blocks</span></div>
+</article>
+<article class="lab-card" id="labCard4">
+ <div class="lab-card-head"><strong>Plate outnumbered</strong><span class="lab-count">4 vs 5</span></div>
+ <div class="lab-matchup"><span class="lab-green">🟢 Plate · sword/tower</span><span class="lab-red">🔴 Leather · greatsword</span></div>
+ <canvas class="lab-map" id="labCanvas4" width="440" height="210" aria-label="Plate outnumbered simulated battlefield"></canvas>
+ <div class="lab-score"><span id="labResult4">0–0 · 0 draws</span><span class="lab-winner" id="labLeader4">Testing…</span></div>
+ <div class="lab-score"><span id="labBattles4">0 fights</span><span id="labBlocks4">0 blocks</span></div>
+</article>
+<article class="lab-card" id="labCard5">
+ <div class="lab-card-head"><strong>Heavy weapons</strong><span class="lab-count">5 vs 5</span></div>
+ <div class="lab-matchup"><span class="lab-green">🟢 Plate · greatsword</span><span class="lab-red">🔴 Mail · axe</span></div>
+ <canvas class="lab-map" id="labCanvas5" width="440" height="210" aria-label="Heavy weapons simulated battlefield"></canvas>
+ <div class="lab-score"><span id="labResult5">0–0 · 0 draws</span><span class="lab-winner" id="labLeader5">Testing…</span></div>
+ <div class="lab-score"><span id="labBattles5">0 fights</span><span id="labBlocks5">0 blocks</span></div>
+</article>
+</div>
+ <div class="lab-summary"><span id="labSummary">Both armies can take damage; no reinforcements. All fights use the existing combat engine.</span><strong id="labWinner">Calculating results…</strong></div>
+</section>
   <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="equipmentButton" class="small-btn" aria-expanded="false" aria-controls="equipmentPanel">⚙ Test gear</button> <button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
 </div>
 <div id="rotateNotice" role="status" aria-live="polite">
