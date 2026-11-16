@@ -1523,19 +1523,19 @@ function drawMinimap(){
 // The exact V1.7 weapon, armor, shield and movement functions above are reused.
 // World globals are switched between isolated arena states before every step.
 const labScenarios=[
- {name:'Buckler vs round',counts:[1,1],green:{weapon:'sword',shield:'buckler',armor:'leather'},red:{weapon:'shortsword',shield:'round',armor:'leather'}},
- {name:'Shield vs axe',counts:[2,2],green:{weapon:'sword',shield:'round',armor:'padded'},red:{weapon:'axe',shield:null,armor:'leather'}},
- {name:'Cleave vs numbers',counts:[2,3],green:{weapon:'greatsword',shield:null,armor:'naked'},red:{weapon:'shortsword',shield:'buckler',armor:'leather'}},
- {name:'Axes vs numbers',counts:[3,4],green:{weapon:'axe',shield:null,armor:'leather'},red:{weapon:'sword',shield:'round',armor:'padded'}},
- {name:'Plate vs greatsword',counts:[4,5],green:{weapon:'shortsword',shield:'buckler',armor:'plate'},red:{weapon:'greatsword',shield:null,armor:'mail'}},
- {name:'Small sword clash',counts:[5,5],green:{weapon:'shortsword',shield:'buckler',armor:'mail'},red:{weapon:'sword',shield:'round',armor:'leather'}}
+ {name:'Skill duel',counts:[1,1],green:{"weapon":"sword","armor":"leather","shield":"round","experience":"recruit","familiarity":"practiced"},red:{"weapon":"sword","armor":"leather","shield":"round","experience":"elite","familiarity":"practiced"}},
+ {name:'Weapon familiarity',counts:[2,2],green:{"weapon":"axe","armor":"mail","shield":null,"experience":"veteran","familiarity":"novice"},red:{"weapon":"axe","armor":"mail","shield":null,"experience":"veteran","familiarity":"master"}},
+ {name:'Skill vs plate',counts:[2,3],green:{"weapon":"sword","armor":"naked","shield":null,"experience":"elite","familiarity":"master"},red:{"weapon":"axe","armor":"plate","shield":null,"experience":"recruit","familiarity":"novice"}},
+ {name:'Veterans outnumbered',counts:[3,4],green:{"weapon":"sword","armor":"mail","shield":"round","experience":"veteran","familiarity":"expert"},red:{"weapon":"sword","armor":"leather","shield":"round","experience":"recruit","familiarity":"novice"}},
+ {name:'Parry mastery',counts:[4,5],green:{"weapon":"sword","armor":"mail","shield":null,"experience":"elite","familiarity":"master"},red:{"weapon":"sword","armor":"mail","shield":"round","experience":"trained","familiarity":"practiced"}},
+ {name:'Skill vs heavy gear',counts:[5,5],green:{"weapon":"shortsword","armor":"leather","shield":"round","experience":"elite","familiarity":"master"},red:{"weapon":"greatsword","armor":"plate","shield":null,"experience":"recruit","familiarity":"novice"}}
 ];
 // The lab isolates *equipment* strength: morale routing stays in Classic mode.
 // Each fair test round ends through kills or the 75-second draw limit.
 const labSeconds=3600,labStepSeconds=.04,labWorldW=440,labWorldH=210,labMatchTimeout=75;
 let labArenas=[],labPaused=false,labTurn=0,labLastDraw=0,labAnalysisOpen=false,labAnalysisLast=0;
 const labCanvasNodes=Array.from({length:6},(_,i)=>document.getElementById('labCanvas'+i));
-function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0};}
+function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0,parries:0,failedParries:0,counters:0,misses:0};}
 function activateLab(ar){
  activeLab=ar;W=labWorldW;H=labWorldH;t=ar.seconds;mode='attack';
  friends=ar.friends;foes=ar.foes;slashes=ar.slashes;
@@ -1556,9 +1556,11 @@ function startLabRound(ar){
    const x=team==='friend'?135:305;
    const soldier=create(team,i,{x,y});
    Object.assign(soldier,gear);
-   // Seed varies each round and equally across both sides: no implicit cheat.
+   setFighterTraining(soldier,team,i,gear.experience,gear.familiarity);
+   // Small individual variations, no extra health or armor from experience.
    const seed=ar.index*7019+ar.rounds*131+i*117+(team==='friend'?23:97);
-   soldier.disc=64+Math.round(rnd(seed)*31);
+   soldier.skill=clamp(soldier.skill+Math.round((rnd(seed)-.5)*8),8,98);
+   soldier.disc=clamp(Math.round(22+soldier.skill*.78),20,97);
    soldier.speed=51+(rnd(seed+17)-.5)*12;
    soldier.cooldown=.08+rnd(seed+19)*.19;
    soldier.stress=0;
@@ -1662,8 +1664,9 @@ function updateLabHUD(){
  const aggregate=labArenas.reduce((r,a)=>{
   r.fights+=a.rounds;r.kills+=a.stats.friend.kills+a.stats.foe.kills;
   r.blocks+=a.stats.friend.blocks+a.stats.foe.blocks;
+  r.parries+=a.stats.friend.parries+a.stats.foe.parries;
   return r;
- },{fights:0,kills:0,blocks:0});
+ },{fights:0,kills:0,blocks:0,parries:0});
  for(const a of labArenas){
   document.getElementById('labResult'+a.index).textContent=
    '🟢 '+a.greenWins+' · 🔴 '+a.redWins+' · = '+a.draws;
@@ -1671,11 +1674,11 @@ function updateLabHUD(){
   document.getElementById('labBattles'+a.index).textContent=
    a.rounds+' fights · '+(a.stats.friend.damage+a.stats.foe.damage).toFixed(0)+' dmg';
   document.getElementById('labBlocks'+a.index).textContent=
-   (a.stats.friend.blocks+a.stats.foe.blocks)+' blocks';
+   (a.stats.friend.blocks+a.stats.foe.blocks)+' blocks · '+(a.stats.friend.parries+a.stats.foe.parries)+' parries';
  }
  document.getElementById('labSummary').textContent=
   aggregate.fights+' fights · '+aggregate.kills+' kills · '+aggregate.blocks+
-  ' blocks · Fair mode (both sides vulnerable, no reinforcements)';
+  ' blocks · '+aggregate.parries+' parries · Both sides vulnerable';
  const leaders=labArenas.filter(a=>{const decisive=a.greenWins+a.redWins;return a.done&&decisive>=10&&Math.abs(a.greenWins/decisive-.5)>=.055;}).length;
  document.getElementById('labWinner').textContent=done?
   leaders+'/6 matchups have a clear leader':'Testing six equipment matchups…';
