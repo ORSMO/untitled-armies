@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V1.8</title>
+<title>Untitled Armies — V1.9</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -200,7 +200,7 @@ body.lab-mode .lab-area{display:flex}
     <div class="top-actions">
       <a class="lab-classic-link" href="classic.html" title="Open original 50v50 battlefield">Classic battlefield</a>
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 1.8">V1.8</div>
+      <div class="build" aria-label="Version 1.9">V1.9</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
@@ -253,6 +253,7 @@ body.lab-mode .lab-area{display:flex}
        <tr><td>Kite</td><td>2.70</td><td>13</td><td>48%</td></tr>
        <tr><td>Tower</td><td>4.00</td><td>16</td><td>62%</td></tr>
       </tbody></table>
+      <p><strong>EXPERIENCE:</strong> Recruit (18), Trained (45), Veteran (72), Elite (92). Rank improves reaction speed, attack precision, defense and stamina efficiency without adding health or armor. <strong>WEAPON MASTERY:</strong> each fighter remembers separate familiarity with shortswords, arming swords, greatswords and axes (18–97). A skilled swordsman can still be new to axes. Experienced fighters may parry telegraphed blows; a successful parry opens a brief counterattack, but insufficient weapon momentum cannot deflect a massive cleave.</p>
       <p><strong>IMPACT REACTIONS:</strong> Heavy hits cause knockback and stagger. A successful active block can create a counterattack opening; a weak shield can suffer a <strong>GUARD BREAK</strong>. Plate and solid shields can stop a swing and recoil the attacker.</p>
       <p>Green and red soldiers wear mixed armor and carry different weapons. One-handed swords can use shields; greatswords and axes occupy both hands. Swing stages: wind-up → active hitbox → recovery. Your troops are still invulnerable.</p>
      </section>
@@ -265,18 +266,27 @@ body.lab-mode .lab-area{display:flex}
    <button type="button" data-matchup="plate">Plate wall</button>
    <button type="button" data-matchup="cleave">Cleave test</button>
    <button type="button" data-matchup="shields">Shield clash</button>
+   <button type="button" data-matchup="skill">Elite vs recruits</button>
   </div>
   <div class="equipment-grid"><div class="equipment-side">
    <h3>🟢 YOUR ARMY · 50 SOLDIERS</h3>
    <div class="equipment-field"><label for="friendWeapon">Weapon</label><select id="friendWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option></select></div>
 <div class="equipment-field"><label for="friendShield">Shield</label><select id="friendShield"><option value="mixed">Mixed shields</option><option value="none">No shield</option><option value="buckler">Buckler</option><option value="round">Round shield</option><option value="kite">Kite shield</option><option value="tower">Tower shield</option></select></div>
 <div class="equipment-field"><label for="friendArmor">Armor</label><select id="friendArmor"><option value="mixed">Mixed armor</option><option value="naked">Unarmored</option><option value="padded">Padded</option><option value="leather">Leather</option><option value="mail">Mail</option><option value="plate">Plate</option></select></div>
+<div class="equipment-field"><label for="friendExperience">Rank</label><select id="friendExperience">
+<option value="mixed">Mixed ranks</option><option value="recruit">Recruit</option><option value="trained">Trained</option><option value="veteran">Veteran</option><option value="elite">Elite</option></select></div>
+<div class="equipment-field"><label for="friendFamiliarity">Mastery</label><select id="friendFamiliarity">
+<option value="mixed">Individual weapon skills</option><option value="novice">Novice · 18</option><option value="practiced">Practiced · 56</option><option value="expert">Expert · 85</option><option value="master">Master · 97</option></select></div>
    <small id="friendGearNote">Mixed equipment. Two-handed troops carry no shields.</small>
  </div><div class="equipment-side foe-side">
    <h3>🔴 ENEMY ARMY · 50 SOLDIERS</h3>
    <div class="equipment-field"><label for="foeWeapon">Weapon</label><select id="foeWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option></select></div>
 <div class="equipment-field"><label for="foeShield">Shield</label><select id="foeShield"><option value="mixed">Mixed shields</option><option value="none">No shield</option><option value="buckler">Buckler</option><option value="round">Round shield</option><option value="kite">Kite shield</option><option value="tower">Tower shield</option></select></div>
 <div class="equipment-field"><label for="foeArmor">Armor</label><select id="foeArmor"><option value="mixed">Mixed armor</option><option value="naked">Unarmored</option><option value="padded">Padded</option><option value="leather">Leather</option><option value="mail">Mail</option><option value="plate">Plate</option></select></div>
+<div class="equipment-field"><label for="foeExperience">Rank</label><select id="foeExperience">
+<option value="mixed">Mixed ranks</option><option value="recruit">Recruit</option><option value="trained">Trained</option><option value="veteran">Veteran</option><option value="elite">Elite</option></select></div>
+<div class="equipment-field"><label for="foeFamiliarity">Mastery</label><select id="foeFamiliarity">
+<option value="mixed">Individual weapon skills</option><option value="novice">Novice · 18</option><option value="practiced">Practiced · 56</option><option value="expert">Expert · 85</option><option value="master">Master · 97</option></select></div>
    <small id="foeGearNote">Enemy reinforcements inherit these gear settings.</small>
  </div></div>
   <div class="equipment-actions">
@@ -289,49 +299,49 @@ body.lab-mode .lab-area{display:flex}
   </main>
   <section class="lab-area" id="battleLab" aria-label="Six arena balance simulation">
  <div class="lab-toolbar">
-  <div><strong>⚔ SIX-ARENA BATTLE LAB</strong> <span id="labProgressLabel">Repeated fair fights · 60 simulated minutes per arena</span></div>
+  <div><strong>⚔ EXPERIENCE & WEAPON MASTERY LAB</strong> <span id="labProgressLabel">Repeated fair fights · 60 simulated minutes per arena</span></div>
   <div class="lab-commands"><button type="button" id="labAnalysisButton" aria-expanded="false" aria-controls="labAnalysis">📊 Analysis</button><button type="button" id="labPause">Pause</button><button type="button" id="labRerun">↻ Rerun 1 hour</button></div>
  </div>
  <progress id="labProgress" class="lab-progress" max="100" value="0" aria-label="Balance simulation progress"></progress>
  <div class="lab-grid"><article class="lab-card" id="labCard0">
- <div class="lab-card-head"><strong>Buckler vs round</strong><span class="lab-count">1 vs 1</span></div>
- <div class="lab-matchup"><span class="lab-green">🟢 Leather · sword/buckler</span><span class="lab-red">🔴 Leather · short/round</span></div>
- <canvas class="lab-map" id="labCanvas0" width="440" height="210" aria-label="Buckler vs round simulated battlefield"></canvas>
+ <div class="lab-card-head"><strong>Recruit vs Elite</strong><span class="lab-count">1 vs 1</span></div>
+ <div class="lab-matchup"><span class="lab-green" title="Recruit · sword / round / leather">🟢 Recruit · sword / round / leather</span><span class="lab-red" title="Elite · sword / round / leather">🔴 Elite · sword / round / leather</span></div>
+ <canvas class="lab-map" id="labCanvas0" width="440" height="210" aria-label="Recruit vs Elite simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult0">0–0 · 0 draws</span><span class="lab-winner" id="labLeader0">Testing…</span></div>
  <div class="lab-score"><span id="labBattles0">0 fights</span><span id="labBlocks0">0 blocks</span></div>
 </article>
 <article class="lab-card" id="labCard1">
- <div class="lab-card-head"><strong>Shield vs axe</strong><span class="lab-count">2 vs 2</span></div>
- <div class="lab-matchup"><span class="lab-green">🟢 Padded · sword/round</span><span class="lab-red">🔴 Leather · axe</span></div>
- <canvas class="lab-map" id="labCanvas1" width="440" height="210" aria-label="Shield vs axe simulated battlefield"></canvas>
+ <div class="lab-card-head"><strong>Weapon familiarity</strong><span class="lab-count">2 vs 2</span></div>
+ <div class="lab-matchup"><span class="lab-green" title="Veteran, novice axe · mail">🟢 Veteran, novice axe · mail</span><span class="lab-red" title="Veteran, master axe · mail">🔴 Veteran, master axe · mail</span></div>
+ <canvas class="lab-map" id="labCanvas1" width="440" height="210" aria-label="Weapon familiarity simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult1">0–0 · 0 draws</span><span class="lab-winner" id="labLeader1">Testing…</span></div>
  <div class="lab-score"><span id="labBattles1">0 fights</span><span id="labBlocks1">0 blocks</span></div>
 </article>
 <article class="lab-card" id="labCard2">
- <div class="lab-card-head"><strong>Cleave vs numbers</strong><span class="lab-count">2 vs 3</span></div>
- <div class="lab-matchup"><span class="lab-green">🟢 Naked · greatsword</span><span class="lab-red">🔴 Leather · short/buckler</span></div>
- <canvas class="lab-map" id="labCanvas2" width="440" height="210" aria-label="Cleave vs numbers simulated battlefield"></canvas>
+ <div class="lab-card-head"><strong>Skill vs plate</strong><span class="lab-count">2 vs 3</span></div>
+ <div class="lab-matchup"><span class="lab-green" title="Elite/master · naked sword">🟢 Elite/master · naked sword</span><span class="lab-red" title="Recruit/novice · plate axe">🔴 Recruit/novice · plate axe</span></div>
+ <canvas class="lab-map" id="labCanvas2" width="440" height="210" aria-label="Skill vs plate simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult2">0–0 · 0 draws</span><span class="lab-winner" id="labLeader2">Testing…</span></div>
  <div class="lab-score"><span id="labBattles2">0 fights</span><span id="labBlocks2">0 blocks</span></div>
 </article>
 <article class="lab-card" id="labCard3">
- <div class="lab-card-head"><strong>Axes vs numbers</strong><span class="lab-count">3 vs 4</span></div>
- <div class="lab-matchup"><span class="lab-green">🟢 Leather · axe</span><span class="lab-red">🔴 Padded · sword/round</span></div>
- <canvas class="lab-map" id="labCanvas3" width="440" height="210" aria-label="Axes vs numbers simulated battlefield"></canvas>
+ <div class="lab-card-head"><strong>Veterans outnumbered</strong><span class="lab-count">3 vs 4</span></div>
+ <div class="lab-matchup"><span class="lab-green" title="Veteran/expert · mail sword">🟢 Veteran/expert · mail sword</span><span class="lab-red" title="Recruit/novice · leather sword">🔴 Recruit/novice · leather sword</span></div>
+ <canvas class="lab-map" id="labCanvas3" width="440" height="210" aria-label="Veterans outnumbered simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult3">0–0 · 0 draws</span><span class="lab-winner" id="labLeader3">Testing…</span></div>
  <div class="lab-score"><span id="labBattles3">0 fights</span><span id="labBlocks3">0 blocks</span></div>
 </article>
 <article class="lab-card" id="labCard4">
- <div class="lab-card-head"><strong>Plate vs greatsword</strong><span class="lab-count">4 vs 5</span></div>
- <div class="lab-matchup"><span class="lab-green">🟢 Plate · short/buckler</span><span class="lab-red">🔴 Mail · greatsword</span></div>
- <canvas class="lab-map" id="labCanvas4" width="440" height="210" aria-label="Plate vs greatsword simulated battlefield"></canvas>
+ <div class="lab-card-head"><strong>Parry vs shields</strong><span class="lab-count">4 vs 5</span></div>
+ <div class="lab-matchup"><span class="lab-green" title="Elite/master · mail sword">🟢 Elite/master · mail sword</span><span class="lab-red" title="Trained/practiced · round sword">🔴 Trained/practiced · round sword</span></div>
+ <canvas class="lab-map" id="labCanvas4" width="440" height="210" aria-label="Parry mastery simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult4">0–0 · 0 draws</span><span class="lab-winner" id="labLeader4">Testing…</span></div>
  <div class="lab-score"><span id="labBattles4">0 fights</span><span id="labBlocks4">0 blocks</span></div>
 </article>
 <article class="lab-card" id="labCard5">
- <div class="lab-card-head"><strong>Small sword clash</strong><span class="lab-count">5 vs 5</span></div>
- <div class="lab-matchup"><span class="lab-green">🟢 Mail · short/buckler</span><span class="lab-red">🔴 Leather · sword/round</span></div>
- <canvas class="lab-map" id="labCanvas5" width="440" height="210" aria-label="Small sword clash simulated battlefield"></canvas>
+ <div class="lab-card-head"><strong>Skill vs heavy gear</strong><span class="lab-count">5 vs 5</span></div>
+ <div class="lab-matchup"><span class="lab-green" title="Elite/master · leather shortsword">🟢 Elite/master · leather shortsword</span><span class="lab-red" title="Recruit/novice · plate greatsword">🔴 Recruit/novice · plate greatsword</span></div>
+ <canvas class="lab-map" id="labCanvas5" width="440" height="210" aria-label="Skill vs heavy gear simulated battlefield"></canvas>
  <div class="lab-score"><span id="labResult5">0–0 · 0 draws</span><span class="lab-winner" id="labLeader5">Testing…</span></div>
  <div class="lab-score"><span id="labBattles5">0 fights</span><span id="labBlocks5">0 blocks</span></div>
 </article>
@@ -340,8 +350,8 @@ body.lab-mode .lab-area{display:flex}
  <div class="lab-insights-overlay is-hidden" id="labAnalysis">
   <div class="lab-insights-dialog" role="dialog" aria-modal="true" aria-labelledby="labAnalysisTitle">
    <div class="lab-insights-header"><strong id="labAnalysisTitle">📊 ONE-HOUR BALANCE ANALYSIS</strong><button id="labAnalysisClose" type="button" aria-label="Close analysis">✕</button></div>
-   <p>Each arena runs repeated fair fights for 60 simulated minutes. A healthy winning advantage is roughly 55–80%; above 85% usually means a hard counter or imbalance.</p>
-   <div class="lab-insights-scroll"><table><thead><tr><th>Matchup</th><th>Leader</th><th>Fights</th><th>Damage</th><th>Shield blocks</th><th>Guard breaks</th></tr></thead><tbody id="labAnalysisRows"></tbody></table></div>
+   <p>Each arena runs repeated vulnerable, no-respawn bouts for 60 simulated minutes. Extreme wins are intentional when skill, weapon familiarity, armor or numbers differ. Experience never grants extra health or armor.</p>
+   <div class="lab-insights-scroll"><table><thead><tr><th>Matchup</th><th>Leader</th><th>Fights</th><th>Damage</th><th>Shield blocks</th><th>Parries</th><th>Counters</th><th>Failed parries</th><th>Guard breaks</th></tr></thead><tbody id="labAnalysisRows"></tbody></table></div>
    <p id="labAnalysisNotes">Recommendations appear as results accumulate.</p>
   </div>
  </div>
@@ -436,11 +446,48 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   tower:{label:'Tower shield',size:16,weight:4.0,passiveArc:1.04,activeArc:1.59,passiveBlock:.62,passiveStop:76,activeStop:260,cost:16,color:'#a5c4d1'}
  };
  const shieldOrder=['buckler','round','kite','tower'];
+// Experience determines timing, precision and composure, not extra health.
+ // Familiarity is stored separately for EACH weapon on the same soldier.
+ const experienceProfiles={
+  recruit:{label:'Recruit',skill:18},
+  trained:{label:'Trained',skill:45},
+  veteran:{label:'Veteran',skill:72},
+  elite:{label:'Elite',skill:92}
+ };
+ const experienceOrder=['recruit','trained','veteran','elite'];
+ const familiarityLevels={novice:18,practiced:56,expert:85,master:97};
+ const weaponSkillKey={shortsword:11,sword:23,greatsword:37,axe:53};
+ function weaponFamiliarity(s){return clamp(s.weaponSkills?.[s.weapon]??35,0,100);}
+ function trainingEfficiency(s){
+  return clamp(1.16-(s.skill||45)*.0022-weaponFamiliarity(s)*.00125,.80,1.18);
+ }
+ function setFighterTraining(s,team,index,rank,focus){
+  const config=equipmentConfig[team]||{};
+  const choice=rank||config.experience||'mixed';
+  const experience=experienceProfiles[choice]?choice:
+    experienceOrder[(index+(team==='friend'?0:1))%4];
+  s.experience=experience;
+  s.skill=experienceProfiles[experience].skill;
+  // Personality / individual variation is not equipment protection.
+  s.disc=clamp(Math.round(22+s.skill*.78),20,96);
+  if(!s.weaponSkills){
+   s.weaponSkills={};
+   for(const weapon of weaponOrder){
+    const seed=index*41+weaponSkillKey[weapon]*73+(team==='friend'?7:29);
+    s.weaponSkills[weapon]=Math.round(19+rnd(seed)*65);
+   }
+  }
+  const focusChoice=focus||config.familiarity||'mixed';
+  if(familiarityLevels[focusChoice]!=null)s.weaponSkills[s.weapon]=familiarityLevels[focusChoice];
+  s.parryAttackId=null;s.parryWindow=0;s.parryPose=0;
+  s.lastParryThreat=-1;s.counterWindow=0;
+ }
+
  // Applied matchup settings persist through Reset and enemy reinforcements.
  // "mixed" uses the original 50-soldier distribution for each category.
  const equipmentConfig={
-  friend:{weapon:'mixed',shield:'mixed',armor:'mixed'},
-  foe:{weapon:'mixed',shield:'mixed',armor:'mixed'}
+  friend:{weapon:'mixed',shield:'mixed',armor:'mixed',experience:'mixed',familiarity:'mixed'},
+  foe:{weapon:'mixed',shield:'mixed',armor:'mixed',experience:'mixed',familiarity:'mixed'}
  };
  function equipmentFor(team,index){
   const settings=equipmentConfig[team],offset=team==='friend'?0:1;
@@ -460,6 +507,7 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   const soldiers=team==='friend'?friends:foes;
   soldiers.forEach((soldier,index)=>{
    Object.assign(soldier,equipmentFor(team,index));
+   setFighterTraining(soldier,team,index);
    // Switching equipment safely ends any attack/guard using the old item.
    soldier.attack=null;soldier.guardActive=false;soldier.guardHold=0;
    soldier.guardBreak=0;soldier.shieldRecoil=0;soldier.guardBreakFlash=0;
@@ -539,7 +587,7 @@ function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74
   }
   return positions.map(p=>({x:clamp(p.x,18,W-18),y:clamp(p.y,21,H-21)}));
  }
-function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);return {id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,...equipmentFor(team,i),attack:null,guardActive:false,guardHold:0,guardBreak:0,stagger:0,knockVX:0,knockVY:0,shieldRecoil:0,impactLean:0,guardBreakFlash:0,stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,stamina:100,maxStamina:100,recoveryDelay:0,attackCount:0,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:1.5+rnd(i+16)*1.3,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,engageSlot:0,escapeAngle:0,hitFlash:0};}
+function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);const soldier={id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,...equipmentFor(team,i),attack:null,guardActive:false,guardHold:0,guardBreak:0,stagger:0,knockVX:0,knockVY:0,shieldRecoil:0,impactLean:0,guardBreakFlash:0,stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,stamina:100,maxStamina:100,recoveryDelay:0,attackCount:0,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:1.5+rnd(i+16)*1.3,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,engageSlot:0,escapeAngle:0,hitFlash:0};setFighterTraining(soldier,team,i);return soldier;}
 function focusArmy(){
   const h=home('friend');
   camera.x=clamp(h.x-VW*.37,0,Math.max(0,W-VW));
@@ -646,7 +694,8 @@ function avoidCombatCrowd(s,goal,target){
  // Smoothly rotate on the shortest arc, even when crossing the -PI/PI boundary.
  function turnToward(s,angle,dt){
   const delta=Math.atan2(Math.sin(angle-s.faceAngle),Math.cos(angle-s.faceAngle));
-  s.faceAngle+=clamp(delta,-maxTurnRate*dt,maxTurnRate*dt);
+  const skillTurn=maxTurnRate*(.80+(s.skill||45)*.003);
+  s.faceAngle+=clamp(delta,-skillTurn*dt,skillTurn*dt);
  }
  function updateFacing(s,target,dist,dt){
   // Maintain the army's forward direction until an enemy gets close enough.
@@ -813,14 +862,15 @@ document.querySelector('#reset').addEventListener('click',populate);
        equipPanel=document.querySelector('#equipmentPanel'),
        equipFeedback=document.querySelector('#equipmentFeedback');
  const equipControls={
-  friend:{weapon:document.querySelector('#friendWeapon'),shield:document.querySelector('#friendShield'),armor:document.querySelector('#friendArmor'),note:document.querySelector('#friendGearNote')},
-  foe:{weapon:document.querySelector('#foeWeapon'),shield:document.querySelector('#foeShield'),armor:document.querySelector('#foeArmor'),note:document.querySelector('#foeGearNote')}
+  friend:{weapon:document.querySelector('#friendWeapon'),shield:document.querySelector('#friendShield'),armor:document.querySelector('#friendArmor'),experience:document.querySelector('#friendExperience'),familiarity:document.querySelector('#friendFamiliarity'),note:document.querySelector('#friendGearNote')},
+  foe:{weapon:document.querySelector('#foeWeapon'),shield:document.querySelector('#foeShield'),armor:document.querySelector('#foeArmor'),experience:document.querySelector('#foeExperience'),familiarity:document.querySelector('#foeFamiliarity'),note:document.querySelector('#foeGearNote')}
  };
  const equipPresets={
   mixed:{friend:{weapon:'mixed',shield:'mixed',armor:'mixed'},foe:{weapon:'mixed',shield:'mixed',armor:'mixed'}},
   plate:{friend:{weapon:'greatsword',shield:'none',armor:'mail'},foe:{weapon:'sword',shield:'tower',armor:'plate'}},
   cleave:{friend:{weapon:'axe',shield:'none',armor:'naked'},foe:{weapon:'shortsword',shield:'none',armor:'naked'}},
-  shields:{friend:{weapon:'sword',shield:'round',armor:'mail'},foe:{weapon:'sword',shield:'kite',armor:'mail'}}
+  shields:{friend:{weapon:'sword',shield:'round',armor:'mail'},foe:{weapon:'sword',shield:'kite',armor:'mail'}},
+  skill:{friend:{weapon:'sword',shield:'round',armor:'leather',experience:'elite',familiarity:'master'},foe:{weapon:'sword',shield:'round',armor:'leather',experience:'recruit',familiarity:'novice'}}
  };
  let equipmentOpen=false;
  function syncEquipmentShield(team){
@@ -835,7 +885,7 @@ document.querySelector('#reset').addEventListener('click',populate);
  function showEquipmentValues(values){
   for(const team of ['friend','foe']){
    const controls=equipControls[team],settings=values[team];
-   for(const field of ['weapon','shield','armor'])controls[field].value=settings[field];
+   for(const field of ['weapon','shield','armor','experience','familiarity'])controls[field].value=settings[field]||'mixed';
    syncEquipmentShield(team);
   }
  }
@@ -860,7 +910,7 @@ document.querySelector('#reset').addEventListener('click',populate);
    syncEquipmentShield(team);
    equipFeedback.textContent='Equipment changed. Apply to update the battle.';
   });
-  for(const field of ['shield','armor']){
+  for(const field of ['shield','armor','experience','familiarity']){
    equipControls[team][field].addEventListener('change',()=>{
     equipFeedback.textContent='Equipment changed. Apply to update the battle.';
    });
@@ -880,7 +930,9 @@ document.querySelector('#reset').addEventListener('click',populate);
     weapon:weaponProfiles[weapon]||weapon==='mixed'?weapon:'mixed',
     armor:armorProfiles[c.armor.value]||c.armor.value==='mixed'?c.armor.value:'mixed',
     shield:weaponProfiles[weapon]?.twoHand?'none':
-      (c.shield.value==='mixed'||c.shield.value==='none'||shieldProfiles[c.shield.value]?c.shield.value:'mixed')
+      (c.shield.value==='mixed'||c.shield.value==='none'||shieldProfiles[c.shield.value]?c.shield.value:'mixed'),
+    experience:experienceProfiles[c.experience.value]?c.experience.value:'mixed',
+    familiarity:familiarityLevels[c.familiarity.value]!=null?c.familiarity.value:'mixed'
    };
   }
   return draft;
@@ -911,13 +963,20 @@ function chooseCombatMove(s,target){
  const nearby=opponents(s).filter(e=>!e.dead&&!e.broken&&!e.routed&&Math.hypot(e.x-s.x,e.y-s.y)<weapon.reach+22).length;
  for(let j=0;j<available.length;j++){
   const name=available[j],m=attackMoves[name],style=attackStyles[m.style];
-  const cost=style.cost*m.stamina*(.60+weapon.weight*.30);
+  // Never select a short pommel attack from full sword distance. Previously
+  // high-skill fighters preferred its damage but repeatedly struck empty air.
+  const distance=target?Math.hypot(target.x-s.x,target.y-s.y):0;
+  if(m.short&&distance>weapon.reach*.62+8)continue;
+  const cost=style.cost*m.stamina*(.60+weapon.weight*.30)*trainingEfficiency(s);
   if(s.stamina<cost)continue;
   const raw=style.damage*weapon.power*m.mult;
   const expected=mitigatedDamage(raw,threatArmor,m.damageType);
   const choiceIndex=(s.id+s.attackCount)%available.length;
   // Rotation makes the full moveset visible while armor rewards weak spots.
-  let score=expected*.70-cost*.017+(j===choiceIndex?1.12:0);
+  const judgment=clamp((s.skill||45)/100*.85+weaponFamiliarity(s)/100*.15,0,1);
+  // Recruits choose for variety; veterans understand armor and their reach.
+  let score=expected*(.25+judgment*.75)-cost*.017+
+    (j===choiceIndex?1.33*(1-judgment*.58):0);
   if(name==='cleave'&&nearby>1)score+=Math.min(nearby,5)*.33;
   if(m.style==='heavy'&&s.stamina<48)score-=.75;
   if(name===s.lastMove)score-=.33;
@@ -933,17 +992,24 @@ function beginAttack(s,target){
  const name=chooseCombatMove(s,target);
  if(!name)return false;
  const move=attackMoves[name],style=attackStyles[move.style];
- const cost=style.cost*move.stamina*(.60+weapon.weight*.30);
+ const cost=style.cost*move.stamina*(.60+weapon.weight*.30)*trainingEfficiency(s)*(s.counterWindow>0?.83:1);
  if(s.stamina<cost)return false;
  s.stamina=clamp(s.stamina-cost,0,s.maxStamina);
  s.attackCount++;
  s.lastMove=name;
  s.guardActive=false;s.guardHold=0;
- const rate=weapon.speed*(s.stamina<24?1.16:1);
+ const familiarity=weaponFamiliarity(s),mastery=s.skill||45;
+ const counter=s.counterWindow>0;
+ const rate=weapon.speed*(1.10-mastery*.0015-familiarity*.0008)*
+   (s.stamina<24?1.16:1)*(counter?.82:1);
  const wind=move.wind*rate,active=move.active*rate,recover=move.recover*rate;
+ // Precision is geometrical: poorer fighters visibly swing off-target.
+ const imprecision=(100-mastery)*.0031+(100-familiarity)*.0015;
+ const aimError=(rnd(s.id*139+nextSwingId*43+17)-.5)*2*imprecision;
+ s.counterWindow=0;
  s.attack={
   id:nextSwingId++,name,move,phase:'windup',elapsed:0,
-  wind,active,recover,hitIds:new Set(),hits:0,
+  wind,active,recover,hitIds:new Set(),hits:0,counter,aimError,
   // Momentum gets spent on armor and shields, NOT on dealing damage.
   // Thus several naked targets can each take the complete base damage.
   momentum:weapon.momentum*move.momentum*(move.style==='heavy'?1.12:1),
@@ -956,7 +1022,7 @@ function beginAttack(s,target){
 }
 function weaponSegment(s,a,progress){
  const m=a.move,p=clamp(progress,0,1);
- const angle=s.faceAngle+(m.thrust?0:m.from+(m.to-m.from)*p);
+ const angle=s.faceAngle+(a.aimError||0)+(m.thrust?0:m.from+(m.to-m.from)*p);
  const reachNow=a.reach*(m.thrust?.48+.52*p:1);
  const ux=Math.cos(angle),uy=Math.sin(angle);
  return {ax:s.x+ux*9,ay:s.y+uy*9,bx:s.x+ux*reachNow,by:s.y+uy*reachNow};
@@ -994,9 +1060,47 @@ function shieldImpact(attacker,defender,a){
  }
  return {block,stop,kind:active?'active':'passive',guardBroken};
 }
+// Skilled fighters may anticipate a visible strike and redirect the weapon.
+ // Parrying is not a chance-to-ignore-damage roll at the moment of impact:
+ // AI must read the wind-up, raise its weapon in time and meet a momentum test.
+ function combatLabStats(team){
+  return typeof labMode!=='undefined'&&labMode&&activeLab?activeLab.stats[team]:null;
+ }
+ function attemptWeaponParry(attacker,defender,a){
+  if(defender.parryAttackId!==a.id||defender.parryWindow<=0)return null;
+  defender.parryAttackId=null;defender.parryWindow=0;
+  const familiarity=weaponFamiliarity(defender),skill=defender.skill||45;
+  const cost=(7+weaponProfiles[attacker.weapon].weight*2.1)*trainingEfficiency(defender);
+  const resistance=weaponProfiles[defender.weapon].momentum*
+    (.53+skill*.0047+familiarity*.0038);
+  const success=defender.stamina>=cost&&resistance>=a.momentum*.84;
+  defender.stamina=clamp(defender.stamina-cost,0,defender.maxStamina);
+  defender.recoveryDelay=Math.max(defender.recoveryDelay,.22);
+  defender.parryPose=.30;
+  if(!success){
+   const stats=combatLabStats(defender.team);if(stats)stats.failedParries++;
+   defender.stagger=Math.max(defender.stagger,.12);
+   return {parried:false};
+  }
+  const stats=combatLabStats(defender.team);
+  if(stats)stats.parries++;
+  defender.counterWindow=.72;
+  defender.guardActive=false;defender.guardHold=0;
+  attacker.stagger=Math.max(attacker.stagger,.18+skill*.00065);
+  attacker.cooldown=Math.max(attacker.cooldown,.28);
+  reactToImpact(attacker,defender,22+weaponProfiles[attacker.weapon].weight*4);
+  a.hits++;a.momentum=0;a.stopped=true;
+  slashes.push({kind:'parry',block:'parry',x:defender.x,y:defender.y,
+   a:Math.atan2(attacker.y-defender.y,attacker.x-defender.x),
+   life:.36,duration:.36,type:a.move.style,team:defender.team});
+  return {parried:true};
+ }
+
 function applyWeaponImpact(attacker,target,a){
  if(target.dead||target.routed||target.broken||target.team===attacker.team||a.hitIds.has(target.id))return false;
  a.hitIds.add(target.id);
+ const parry=attemptWeaponParry(attacker,target,a);
+ if(parry?.parried)return true;
  const incomingMomentum=a.momentum;
  const shield=shieldImpact(attacker,target,a),damageType=a.move.damageType;
  const afterShield=a.baseDamage*(1-shield.block);
@@ -1019,6 +1123,10 @@ function applyWeaponImpact(attacker,target,a){
  target.hitFlash=shield.kind?.33:.27;
  if(attacker.team==='foe'||labMode)attacker.stress=clamp(attacker.stress+stressBalance.givenHit,0,100);
  a.hits++;
+ if(a.counter){
+  const metrics=combatLabStats(attacker.team);
+  if(metrics&&!a.counterCounted){metrics.counters++;a.counterCounted=true;}
+ }
  // A raised shield transfers the blow into recoil. Heavy unblocked hits can
  // briefly disrupt an enemy's wind-up, creating an opening to counterattack.
  const blocked=!!shield.kind;
@@ -1107,38 +1215,62 @@ function advanceAttack(s,dt){
   if(a.elapsed<duration-1e-6)break;
   if(a.phase==='windup')a.phase='active';
   else if(a.phase==='active')a.phase='recovery';
-  else{s.attack=null;break;}
+  else{
+   if(a.hits===0){const stats=combatLabStats(s.team);if(stats)stats.misses++;}
+   s.attack=null;break;
+  }
   a.elapsed=0;
  }
 }
 function updateShieldGuard(s,dt){
  s.guardBreak=Math.max(0,s.guardBreak-dt);
  s.guardHold=Math.max(0,s.guardHold-dt);
+ s.parryWindow=Math.max(0,(s.parryWindow||0)-dt);
+ s.parryPose=Math.max(0,(s.parryPose||0)-dt);
  const shield=shieldProfiles[s.shield];
- if(!shield||s.broken||s.dead||s.attack||s.stagger>0||s.guardBreak>0){
-  s.guardActive=false;return;
+ if(s.broken||s.dead||s.attack||s.stagger>0||s.guardBreak>0){
+  s.guardActive=false;
+  s.parryAttackId=null;return;
  }
  for(const other of opponents(s)){
   if(other.dead||other.routed||other.broken||!other.attack)continue;
   const threat=other.attack,weapon=weaponProfiles[other.weapon];
-  if(Math.hypot(other.x-s.x,other.y-s.y)>weapon.reach+16)continue;
+  if(Math.hypot(other.x-s.x,other.y-s.y)>weapon.reach+17)continue;
   const angle=Math.atan2(other.y-s.y,other.x-s.x);
   const diff=Math.abs(Math.atan2(Math.sin(angle-s.faceAngle),Math.cos(angle-s.faceAngle)));
-  if(diff>shield.activeArc+.12)continue;
-  // Discipline affects reaction; wind-up gives defenders a readable warning.
-  const reaction=.08+(1-s.disc/100)*.21+shield.weight*.014;
-  if(threat.phase==='active'||threat.phase==='windup'&&threat.elapsed>=reaction){
-   if(s.stamina>shield.cost*1.7&&rnd(s.id+threat.id*7)<.59+s.disc*.0036){
-    s.guardHold=Math.max(s.guardHold,.18+shield.weight*.025);
+  const skill=s.skill||45,fam=weaponFamiliarity(s);
+  const reaction=.052+(100-skill)*.0024+(100-fam)*.0006+
+    (shield?.weight||0)*.009;
+  if(threat.phase==='windup'&&threat.elapsed>=reaction&&
+     threat.wind-threat.elapsed<.24&&diff<.95&&
+     s.lastParryThreat!==threat.id&&s.stamina>13){
+   // One decision per incoming swing. Training helps see the attack and
+   // mastery enables the correctly timed weapon deflection.
+   s.lastParryThreat=threat.id;
+   const chance=clamp((skill-38)*.0105+(fam-42)*.0040,0,.82);
+   if(rnd(s.id*37+other.id*13+threat.id*113+3)<chance){
+    s.parryAttackId=threat.id;
+    s.parryWindow=clamp(threat.wind-threat.elapsed+threat.active*.95,.19,.57);
+    s.parryPose=.27;
+    s.guardActive=false;s.guardHold=0;
    }
   }
+  if(!shield||s.parryAttackId===threat.id)continue;
+  if(diff>shield.activeArc+.12)continue;
+  if(threat.phase==='active'||threat.phase==='windup'&&threat.elapsed>=reaction){
+   const guardChance=clamp(.31+skill*.0045+fam*.0017,.25,.95);
+   if(s.stamina>shield.cost*1.7&&
+      rnd(s.id+threat.id*7)<guardChance)
+    s.guardHold=Math.max(s.guardHold,.18+shield.weight*.025);
+  }
  }
- s.guardActive=s.guardHold>0&&s.stamina>shield.cost*1.3;
+ s.guardActive=!!shield&&s.guardHold>0&&s.stamina>shield.cost*1.3;
  if(s.guardActive){
-  s.stamina=clamp(s.stamina-dt*(1.1+shield.weight*.9),0,s.maxStamina);
+  s.stamina=clamp(s.stamina-dt*(1.1+shield.weight*.9)*trainingEfficiency(s),0,s.maxStamina);
   s.recoveryDelay=Math.max(s.recoveryDelay,.08);
  }
 }
+
 function approach(s,x,y,dt,mult=1){const dx=x-s.x,dy=y-s.y,dist=Math.hypot(dx,dy);if(dist<.45)return;const n=Math.min(dist,s.speed*mult*dt);s.x+=dx/dist*n;s.y+=dy/dist*n;s.facing=dx>=0?1:-1;}
 // Soldiers occupy physical space. Separate living soldiers after movement, even
 // if both teams or multiple soldiers try to reach exactly the same spot.
@@ -1179,7 +1311,7 @@ function step(dt){
   advanceReaction(s,dt);
   // Stamina restores while not recovering from a swing; movement uses some.
   s.recoveryDelay=Math.max(0,s.recoveryDelay-dt);
-  if(s.recoveryDelay===0)s.stamina=clamp(s.stamina+dt*7.4,0,s.maxStamina);
+  if(s.recoveryDelay===0)s.stamina=clamp(s.stamina+dt*(6.7+(s.skill||45)*.012),0,s.maxStamina);
   if(s.broken){s.attack=null;s.guardActive=false;s.guardHold=0;s.stress=100;fleeFromEnemies(s,dt);if(!labMode&&s.routed&&s.team==='foe')respawnEnemy(s);continue;}
   const {target,dist}=chooseTarget(s);
   if(s.team==='foe'&&!labMode){
@@ -1258,7 +1390,7 @@ function weaponPose(s){
   offset=m.thrust?0:m.to*(1-p);
   length=a.reach*(m.thrust?1-.52*p:1-.38*p);
  }
- return {angle:s.faceAngle+offset,length};
+ return {angle:s.faceAngle+offset+(a.aimError||0),length};
 }
 function drawUnit(s){if(s.routed)return;
  const bob=s.dead?0:Math.sin(t*1.5+s.phase)*.09;
@@ -1278,6 +1410,11 @@ function drawUnit(s){if(s.routed)return;
  ctx.beginPath();ctx.arc(x,y,9.6,0,2*Math.PI);ctx.fillStyle=s.hitFlash>0?'#fff0b0':(s.broken?'#ed9b63':s.team==='friend'? (stress>.6?'#e1c064':stress>.3?'#9cc978':'#61d8a6'):(stress>.65?'#e6ad63':'#e47b74'));ctx.fill();ctx.strokeStyle=s.team==='friend'?'#ddffe1':'#ffe1da';ctx.lineWidth=1.2;ctx.stroke();
  // A narrow armor-colored helmet stripe distinguishes padded/leather/mail/plate.
  ctx.fillStyle=armorProfiles[s.armor]?.color||'#e5efe9';ctx.fillRect(x-5,y-7.5,10,2.6);
+ // Small gold/silver badge distinguishes experienced fighters from recruits.
+ if(s.experience==='elite'||s.experience==='veteran'){
+  ctx.fillStyle=s.experience==='elite'?'#f3d88a':'#b9dcd1';
+  ctx.beginPath();ctx.arc(x,y-11.8,s.experience==='elite'?2.8:2.2,0,Math.PI*2);ctx.fill();
+ }
  ctx.fillStyle='#ffffff40';ctx.beginPath();ctx.arc(x-2.5,y-3,2.7,0,2*Math.PI);ctx.fill();
  // Shields stay in front and visibly rise to defend incoming blows.
  const shield=shieldProfiles[s.shield];
@@ -1306,6 +1443,12 @@ function drawUnit(s){if(s.routed)return;
  }
  // Weapons physically move throughout wind-up, active and recovery phases.
  const wp=weaponPose(s);
+ if(s.parryPose>0){
+  ctx.save();ctx.translate(x,y);ctx.rotate(s.faceAngle-.62);
+  ctx.strokeStyle='rgba(154,242,247,'+clamp(s.parryPose/.30,0,1)+')';
+  ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(7,-14);ctx.lineTo(23,6);ctx.stroke();
+  ctx.restore();
+ }
  ctx.save();ctx.translate(x,y);ctx.rotate(wp.angle);
  if(s.attack?.phase==='active'&&!s.attack.move.thrust){
   ctx.strokeStyle=s.attack.move.damageType==='blunt'?'#e8a86866':'#fff0aa66';
@@ -1353,7 +1496,7 @@ function draw(){
  for(const sl of slashes){
   ctx.save();ctx.translate(sl.x,sl.y);ctx.rotate(sl.a);
   const opacity=clamp(sl.life/sl.duration,0,1);
-  ctx.strokeStyle=sl.guardBroken?'rgba(255,103,88,'+opacity+')':sl.block?'rgba(141,235,249,'+opacity+')':
+  ctx.strokeStyle=sl.guardBroken?'rgba(255,103,88,'+opacity+')':sl.kind==='parry'?'rgba(128,255,238,'+opacity+')':sl.block?'rgba(141,235,249,'+opacity+')':
     sl.damageType==='blunt'?'rgba(255,179,103,'+opacity+')':
     sl.team==='friend'?'rgba(251,240,168,'+opacity+')':'rgba(255,181,159,'+opacity+')';
   ctx.lineWidth=sl.block?2.7:sl.type==='heavy'?3.6:2.3;
@@ -1361,11 +1504,11 @@ function draw(){
   if(sl.block){ctx.arc(0,0,8+(1-opacity)*(sl.guardBroken?13:8),0,Math.PI*2);}
   else{ctx.moveTo(-6,-5);ctx.lineTo(6,5);ctx.moveTo(-6,5);ctx.lineTo(6,-5);}
   ctx.stroke();
-   if(sl.guardBroken){
+   if(sl.guardBroken||sl.kind==='parry'){
     ctx.save();ctx.rotate(-sl.a);
     ctx.fillStyle='rgba(255,193,160,'+opacity+')';
     ctx.font='bold 10px system-ui';ctx.textAlign='center';
-    ctx.fillText('GUARD BREAK',0,-20-(1-opacity)*10);
+    ctx.fillText(sl.kind==='parry'?'PARRY!':'GUARD BREAK',0,-20-(1-opacity)*10);
     ctx.restore();
    }
    ctx.restore();
@@ -1407,19 +1550,19 @@ function drawMinimap(){
 // The exact V1.7 weapon, armor, shield and movement functions above are reused.
 // World globals are switched between isolated arena states before every step.
 const labScenarios=[
- {name:'Buckler vs round',counts:[1,1],green:{weapon:'sword',shield:'buckler',armor:'leather'},red:{weapon:'shortsword',shield:'round',armor:'leather'}},
- {name:'Shield vs axe',counts:[2,2],green:{weapon:'sword',shield:'round',armor:'padded'},red:{weapon:'axe',shield:null,armor:'leather'}},
- {name:'Cleave vs numbers',counts:[2,3],green:{weapon:'greatsword',shield:null,armor:'naked'},red:{weapon:'shortsword',shield:'buckler',armor:'leather'}},
- {name:'Axes vs numbers',counts:[3,4],green:{weapon:'axe',shield:null,armor:'leather'},red:{weapon:'sword',shield:'round',armor:'padded'}},
- {name:'Plate vs greatsword',counts:[4,5],green:{weapon:'shortsword',shield:'buckler',armor:'plate'},red:{weapon:'greatsword',shield:null,armor:'mail'}},
- {name:'Small sword clash',counts:[5,5],green:{weapon:'shortsword',shield:'buckler',armor:'mail'},red:{weapon:'sword',shield:'round',armor:'leather'}}
+ {name:'Skill duel',counts:[1,1],green:{"weapon":"sword","armor":"leather","shield":"round","experience":"recruit","familiarity":"practiced"},red:{"weapon":"sword","armor":"leather","shield":"round","experience":"elite","familiarity":"practiced"}},
+ {name:'Weapon familiarity',counts:[2,2],green:{"weapon":"axe","armor":"mail","shield":null,"experience":"veteran","familiarity":"novice"},red:{"weapon":"axe","armor":"mail","shield":null,"experience":"veteran","familiarity":"master"}},
+ {name:'Skill vs plate',counts:[2,3],green:{"weapon":"sword","armor":"naked","shield":null,"experience":"elite","familiarity":"master"},red:{"weapon":"axe","armor":"plate","shield":null,"experience":"recruit","familiarity":"novice"}},
+ {name:'Veterans outnumbered',counts:[3,4],green:{"weapon":"sword","armor":"mail","shield":"round","experience":"veteran","familiarity":"expert"},red:{"weapon":"sword","armor":"leather","shield":"round","experience":"recruit","familiarity":"novice"}},
+ {name:'Parry vs shields',counts:[4,5],green:{"weapon":"sword","armor":"mail","shield":null,"experience":"elite","familiarity":"master"},red:{"weapon":"sword","armor":"mail","shield":"round","experience":"trained","familiarity":"practiced"}},
+ {name:'Skill vs heavy gear',counts:[5,5],green:{"weapon":"shortsword","armor":"leather","shield":"round","experience":"elite","familiarity":"master"},red:{"weapon":"greatsword","armor":"plate","shield":null,"experience":"recruit","familiarity":"novice"}}
 ];
 // The lab isolates *equipment* strength: morale routing stays in Classic mode.
 // Each fair test round ends through kills or the 75-second draw limit.
 const labSeconds=3600,labStepSeconds=.04,labWorldW=440,labWorldH=210,labMatchTimeout=75;
 let labArenas=[],labPaused=false,labTurn=0,labLastDraw=0,labAnalysisOpen=false,labAnalysisLast=0;
 const labCanvasNodes=Array.from({length:6},(_,i)=>document.getElementById('labCanvas'+i));
-function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0};}
+function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0,parries:0,failedParries:0,counters:0,misses:0};}
 function activateLab(ar){
  activeLab=ar;W=labWorldW;H=labWorldH;t=ar.seconds;mode='attack';
  friends=ar.friends;foes=ar.foes;slashes=ar.slashes;
@@ -1440,9 +1583,11 @@ function startLabRound(ar){
    const x=team==='friend'?135:305;
    const soldier=create(team,i,{x,y});
    Object.assign(soldier,gear);
-   // Seed varies each round and equally across both sides: no implicit cheat.
+   setFighterTraining(soldier,team,i,gear.experience,gear.familiarity);
+   // Small individual variations, no extra health or armor from experience.
    const seed=ar.index*7019+ar.rounds*131+i*117+(team==='friend'?23:97);
-   soldier.disc=64+Math.round(rnd(seed)*31);
+   soldier.skill=clamp(soldier.skill+Math.round((rnd(seed)-.5)*8),8,98);
+   soldier.disc=clamp(Math.round(22+soldier.skill*.78),20,97);
    soldier.speed=51+(rnd(seed+17)-.5)*12;
    soldier.cooldown=.08+rnd(seed+19)*.19;
    soldier.stress=0;
@@ -1495,37 +1640,39 @@ function labWinner(ar){
  return (greenRate>redRate?'🟢 Green':'🔴 Red')+' '+Math.round(Math.max(greenRate,redRate)*100)+'%';
 }
 function updateLabAnalysis(){
- const rows=labArenas.map(a=>{
-  const f=a.stats.friend,r=a.stats.foe,decisive=a.greenWins+a.redWins;
-  const leader=decisive?(a.greenWins>a.redWins?'🟢':'🔴')+
-    ' '+Math.round(Math.max(a.greenWins,a.redWins)/decisive*100)+'%':'—';
-  return '<tr><td>'+a.spec.name+' ('+a.spec.counts.join('v')+')</td>'+
-   '<td>'+leader+'</td><td>'+a.rounds+'</td>'+
-   '<td>'+Math.round(f.damage+r.damage)+'</td>'+
-   '<td>'+ (f.blocks+r.blocks)+'</td>'+
-   '<td>'+ (f.guardBreaks+r.guardBreaks)+'</td></tr>';
+ const rows=labArenas.map(ar=>{
+  const green=ar.stats.friend,red=ar.stats.foe,decisive=ar.greenWins+ar.redWins;
+  const leader=decisive?(ar.greenWins>ar.redWins?'🟢 ':'🔴 ')+
+    Math.round(100*Math.max(ar.greenWins,ar.redWins)/decisive)+'%':'—';
+  return '<tr><td>'+ar.spec.name+' ('+ar.spec.counts.join('v')+')</td>'+
+    '<td>'+leader+'</td><td>'+ar.rounds+'</td>'+
+    '<td>'+Math.round(green.damage+red.damage)+'</td>'+
+    '<td>'+(green.blocks+red.blocks)+'</td>'+
+    '<td>'+(green.parries+red.parries)+'</td>'+
+    '<td>'+(green.counters+red.counters)+'</td>'+
+    '<td>'+(green.failedParries+red.failedParries)+'</td>'+
+    '<td>'+(green.guardBreaks+red.guardBreaks)+'</td></tr>';
  }).join('');
  document.getElementById('labAnalysisRows').innerHTML=rows;
- const available=labArenas.reduce((sum,a)=>sum+a.rounds,0),complete=labArenas.every(a=>a.done);
- const notes=[];
- if(available<60){notes.push('Collecting enough rounds to interpret equipment advantages.');}
+ const finished=labArenas.every(a=>a.done),totalFights=labArenas.reduce((sum,a)=>sum+a.rounds,0);
+ const parries=labArenas.reduce((sum,a)=>sum+a.stats.friend.parries+a.stats.foe.parries,0);
+ const counters=labArenas.reduce((sum,a)=>sum+a.stats.friend.counters+a.stats.foe.counters,0);
+ const conclusions=[];
+ if(totalFights<30)conclusions.push('Collecting more rounds before interpreting the advantages.');
  else{
-  const a2=labArenas[1],a4=labArenas[3],a5=labArenas[4],a6=labArenas[5];
-  const winRate=(a,team)=>a[team+'Wins']/Math.max(1,a.greenWins+a.redWins);
-  const max=Math.max(...labArenas.map(a=>Math.max(a.greenWins,a.redWins)/Math.max(1,a.greenWins+a.redWins)));
-  if(max>.85)notes.push('An advantage above 85% needs investigation: try a weaker armor or stronger counterweapon.');
-  else notes.push('All tested leaders remain within the target of roughly 55–80%: clear but beatable.');
-  if(winRate(a4,'green')>.75)
-   notes.push('3 axes can beat 4 padded round-shield troops: consider testing about 5% less axe momentum or slightly stronger shield stopping power.');
-  if(winRate(a6,'green')>.75)
-   notes.push('Mail buckler shortswords strongly outperform leather round-shield swords: armor may be more influential than weapon reach.');
-  if(winRate(a5,'red')>.65)
-   notes.push('Five greatswords overcome four plate-armored shortswords: superior reach and numbers can still defeat plate.');
-  if(winRate(a2,'green')>.55&&winRate(a2,'green')<.75)
-   notes.push('The 2v2 round-shield versus axe test is a useful near-balanced benchmark.');
+  const skill=labArenas[0],mastery=labArenas[1],armor=labArenas[2],numbers=labArenas[3],parryTest=labArenas[4];
+  const rate=(a,team)=>a[team+'Wins']/Math.max(1,a.greenWins+a.redWins);
+  if(rate(skill,'red')>.6)conclusions.push('Equal equipment: Elite fighters overcome Recruits because they aim and recover better.');
+  if(rate(mastery,'red')>.6)conclusions.push('Equal veteran rank: mastery of the equipped weapon improves performance.');
+  if(rate(armor,'red')>.65)conclusions.push('Plate and heavy axes remain an overwhelming advantage against naked elite swordsmen despite the experience gap—equipment still matters.');
+  if(rate(numbers,'green')>.5)conclusions.push('Veterans can offset a numbers disadvantage, especially when equipped with stronger armor.');
+  if(rate(parryTest,'red')>.7&&parryTest.stats.friend.parries>0)
+   conclusions.push('Successful parries do not replace shields: five trained shield users can overwhelm four elite unshielded swordsmen.');
+  conclusions.push('Experience affects precision, reactions, decisions and stamina—not health, armor reduction or magical damage bonuses.');
  }
  document.getElementById('labAnalysisNotes').textContent=
-   (complete?'Final report: ':'Live sample: ')+notes.join(' ');
+  (finished?'Final analysis: ':'Live assessment: ')+
+  conclusions.join(' ')+' '+parries+' timed parries and '+counters+' successful counter-hits recorded.';
 }
 function setLabAnalysis(open){
  labAnalysisOpen=!!open;
@@ -1546,8 +1693,9 @@ function updateLabHUD(){
  const aggregate=labArenas.reduce((r,a)=>{
   r.fights+=a.rounds;r.kills+=a.stats.friend.kills+a.stats.foe.kills;
   r.blocks+=a.stats.friend.blocks+a.stats.foe.blocks;
+  r.parries+=a.stats.friend.parries+a.stats.foe.parries;
   return r;
- },{fights:0,kills:0,blocks:0});
+ },{fights:0,kills:0,blocks:0,parries:0});
  for(const a of labArenas){
   document.getElementById('labResult'+a.index).textContent=
    '🟢 '+a.greenWins+' · 🔴 '+a.redWins+' · = '+a.draws;
@@ -1555,14 +1703,14 @@ function updateLabHUD(){
   document.getElementById('labBattles'+a.index).textContent=
    a.rounds+' fights · '+(a.stats.friend.damage+a.stats.foe.damage).toFixed(0)+' dmg';
   document.getElementById('labBlocks'+a.index).textContent=
-   (a.stats.friend.blocks+a.stats.foe.blocks)+' blocks';
+   (a.stats.friend.blocks+a.stats.foe.blocks)+' blocks · '+(a.stats.friend.parries+a.stats.foe.parries)+' parries';
  }
  document.getElementById('labSummary').textContent=
   aggregate.fights+' fights · '+aggregate.kills+' kills · '+aggregate.blocks+
-  ' blocks · Fair mode (both sides vulnerable, no reinforcements)';
+  ' blocks · '+aggregate.parries+' parries · Both sides vulnerable';
  const leaders=labArenas.filter(a=>{const decisive=a.greenWins+a.redWins;return a.done&&decisive>=10&&Math.abs(a.greenWins/decisive-.5)>=.055;}).length;
  document.getElementById('labWinner').textContent=done?
-  leaders+'/6 matchups have a clear leader':'Testing six equipment matchups…';
+  leaders+'/6 matchups have a clear leader':'Testing experience and gear matchups…';
  const pause=document.getElementById('labPause');
  pause.disabled=done;pause.textContent=done?'Complete':labPaused?'Resume':'Pause';
 }
@@ -1604,6 +1752,15 @@ function drawLabArena(ar){
   if(s.stagger>0){
    ctx.strokeStyle='#f4d17d';ctx.lineWidth=1.5;
    ctx.beginPath();ctx.arc(s.x,s.y,12,0,Math.PI*2);ctx.stroke();
+  }
+  if(s.parryPose>0){
+   ctx.strokeStyle='rgba(145,255,232,'+clamp(s.parryPose/.30,0,1)+')';
+   ctx.lineWidth=2.5;ctx.beginPath();
+   ctx.arc(s.x,s.y,15,s.faceAngle-.9,s.faceAngle+.9);ctx.stroke();
+  }
+  if(s.experience==='elite'||s.experience==='veteran'){
+   ctx.fillStyle=s.experience==='elite'?'#e8d487':'#c0ddd1';
+   ctx.beginPath();ctx.arc(s.x,s.y-12,2.3,0,Math.PI*2);ctx.fill();
   }
  }
 }
