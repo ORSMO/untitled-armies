@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V2.0</title>
+<title>Untitled Armies — V2.1</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -152,7 +152,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
     <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Armor · Shields · Physical combat</p></div></div>
     <div class="top-actions">
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 2.0">V2.0</div>
+      <div class="build" aria-label="Version 2.1">V2.1</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
@@ -206,23 +206,39 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
        <tr><td>Tower</td><td>4.00</td><td>16</td><td>62%</td></tr>
       </tbody></table>
       <p><strong>EXPERIENCE:</strong> Recruit (18), Trained (45), Veteran (72), Elite (92). Rank improves reaction speed, attack precision, defense and stamina efficiency without adding health or armor. <strong>WEAPON MASTERY:</strong> each fighter remembers separate familiarity with shortswords, arming swords, greatswords and axes (18–97). A skilled swordsman can still be new to axes. Experienced fighters may parry telegraphed blows; a successful parry gives only 0.72 seconds to begin a counterattack. Mastery improves weapon timing and stamina use, but cannot create extra health or damage. A light weapon still cannot deflect an overwhelmingly powerful cleave.</p>
+      <table><thead><tr><th>Ranged</th><th>Ammo</th><th>Range</th><th>Reload</th><th>Impact</th></tr></thead>
+      <tbody><tr><td>War bow</td><td>18</td><td>335</td><td>0.64s</td><td>Light piercing</td></tr>
+      <tr><td>Crossbow</td><td>12</td><td>375</td><td>1.90s</td><td>Heavy piercing</td></tr>
+      <tr><td>Javelins</td><td>6</td><td>208</td><td>1.05s</td><td>Heavy piercing</td></tr></tbody></table>
+      <p><strong>RANGED COMBAT:</strong> War bows carry 18 arrows (fast), crossbows carry 12 bolts (slow reload, strong piercing), and javelins carry 6 throws (short range, powerful impact). All projectiles have real travel time, can miss, and interact with directional shields and armor. Experience and independent ranged-weapon familiarity improve accuracy and timing; set Ranged skill separately from melee Mastery in Test gear. Soldiers automatically switch to melee when closely threatened or out of ammunition. A shield is lowered when aiming a two-handed bow or crossbow.</p>
       <p><strong>IMPACT REACTIONS:</strong> Heavy hits cause knockback and stagger. A successful active block can create a counterattack opening; a weak shield can suffer a <strong>GUARD BREAK</strong>. Plate and solid shields can stop a swing and recoil the attacker.</p>
       <p>Green and red soldiers wear mixed armor and carry different weapons. One-handed swords can use shields; greatswords and axes occupy both hands. Swing stages: wind-up → active hitbox → recovery. Your troops are still invulnerable.</p>
      </section>
   <div class="equipment-backdrop is-hidden" id="equipmentBackdrop">
  <section class="equipment-panel" id="equipmentPanel" role="dialog" aria-modal="true" aria-labelledby="equipmentTitle">
   <div class="equipment-header"><strong id="equipmentTitle">⚙ EQUIPMENT TESTING · 50 VS 50</strong><button type="button" id="closeEquipment" class="armor-close" aria-label="Close equipment testing">✕</button></div>
-  <p>Customize both armies or choose a quick matchup. The battle pauses while this menu is open. Two-handed weapons cannot use shields.</p>
+  <p>Customize both armies or choose a quick matchup. The battle pauses while this menu is open. Set melee and ranged weapons separately; ranged ammo is limited, and soldiers draw their melee weapons when threatened or out of shots. Two-handed melee weapons cannot use shields. Two-handed ranged weapons put shields away while firing.</p>
   <div class="equipment-presets" role="group" aria-label="Quick equipment matchups">
    <button type="button" data-matchup="mixed">Mixed armies</button>
    <button type="button" data-matchup="plate">Plate wall</button>
    <button type="button" data-matchup="cleave">Cleave test</button>
    <button type="button" data-matchup="shields">Shield clash</button>
    <button type="button" data-matchup="skill">Elite vs recruits</button>
+   <button type="button" data-matchup="archers">Archers vs infantry</button>
+   <button type="button" data-matchup="crossbows">Crossbows vs plate</button>
+   <button type="button" data-matchup="skirmish">Javelins vs bows</button>
   </div>
   <div class="equipment-grid"><div class="equipment-side">
    <h3>🟢 YOUR ARMY · 50 SOLDIERS</h3>
    <div class="equipment-field"><label for="friendWeapon">Weapon</label><select id="friendWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option></select></div>
+<div class="equipment-field"><label for="friendRanged">Ranged</label><select id="friendRanged">
+<option value="none">No ranged weapon</option><option value="bow">War bow · 18 arrows</option><option value="crossbow">Crossbow · 12 bolts</option><option value="javelin">Javelins · 6 throws</option><option value="mixed">Mixed ranged weapons</option>
+</select></div>
+<div class="equipment-field"><label for="friendRangedMastery">Ranged skill</label><select id="friendRangedMastery">
+<option value="same">Same as melee skill</option>
+<option value="novice">Novice · 18</option><option value="practiced">Practiced · 56</option>
+<option value="expert">Expert · 85</option><option value="master">Master · 97</option>
+</select></div>
 <div class="equipment-field"><label for="friendShield">Shield</label><select id="friendShield"><option value="mixed">Mixed shields</option><option value="none">No shield</option><option value="buckler">Buckler</option><option value="round">Round shield</option><option value="kite">Kite shield</option><option value="tower">Tower shield</option></select></div>
 <div class="equipment-field"><label for="friendArmor">Armor</label><select id="friendArmor"><option value="mixed">Mixed armor</option><option value="naked">Unarmored</option><option value="padded">Padded</option><option value="leather">Leather</option><option value="mail">Mail</option><option value="plate">Plate</option></select></div>
 <div class="equipment-field"><label for="friendExperience">Rank</label><select id="friendExperience">
@@ -233,6 +249,14 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
  </div><div class="equipment-side foe-side">
    <h3>🔴 ENEMY ARMY · 50 SOLDIERS</h3>
    <div class="equipment-field"><label for="foeWeapon">Weapon</label><select id="foeWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option></select></div>
+<div class="equipment-field"><label for="foeRanged">Ranged</label><select id="foeRanged">
+<option value="none">No ranged weapon</option><option value="bow">War bow · 18 arrows</option><option value="crossbow">Crossbow · 12 bolts</option><option value="javelin">Javelins · 6 throws</option><option value="mixed">Mixed ranged weapons</option>
+</select></div>
+<div class="equipment-field"><label for="foeRangedMastery">Ranged skill</label><select id="foeRangedMastery">
+<option value="same">Same as melee skill</option>
+<option value="novice">Novice · 18</option><option value="practiced">Practiced · 56</option>
+<option value="expert">Expert · 85</option><option value="master">Master · 97</option>
+</select></div>
 <div class="equipment-field"><label for="foeShield">Shield</label><select id="foeShield"><option value="mixed">Mixed shields</option><option value="none">No shield</option><option value="buckler">Buckler</option><option value="round">Round shield</option><option value="kite">Kite shield</option><option value="tower">Tower shield</option></select></div>
 <div class="equipment-field"><label for="foeArmor">Armor</label><select id="foeArmor"><option value="mixed">Mixed armor</option><option value="naked">Unarmored</option><option value="padded">Padded</option><option value="leather">Leather</option><option value="mail">Mail</option><option value="plate">Plate</option></select></div>
 <div class="equipment-field"><label for="foeExperience">Rank</label><select id="foeExperience">
@@ -291,7 +315,7 @@ const orderButtons=['attack','defend','stop','retreat'].map(id=>document.getElem
  });
  document.addEventListener('fullscreenchange',()=>{updateFullscreenButton();resize()});
  document.addEventListener('webkitfullscreenchange',()=>{updateFullscreenButton();resize()});
-let W=0,H=0,VW=0,VH=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],slashes=[],marker=null,nextId=0,formationType='block',formationDragging=false,nextEngagementPlan=0,nextSwingId=1;
+let W=0,H=0,VW=0,VH=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],slashes=[],projectiles=[],marker=null,nextId=0,formationType='block',formationDragging=false,nextEngagementPlan=0,nextSwingId=1;
  const camera={x:0,y:0},cameraKeys=new Set();let fieldPointer=null;
 const rnd=i=>{const x=Math.sin(i*127.1+91.7)*43758.5453;return x-Math.floor(x)};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -331,6 +355,16 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   axe:{label:'Battle axe',weight:3.8,reach:43,power:1.38,momentum:143,speed:1.38,twoHand:true,moves:['slashRight','slashLeft','overhead','cleave','pommel'],cleave:6}
  };
  const weaponOrder=['shortsword','sword','greatsword','axe'];
+ // Secondary weapons have limited shots, physical flight and melee fallback.
+ const rangedProfiles={
+  bow:{label:'War bow',speed:260,range:335,ideal:215,ammo:18,draw:.62,reload:.64,
+   damage:1.28,momentum:48,stamina:5,weight:1.1,color:'#e8d28e',twoHand:true},
+  crossbow:{label:'Crossbow',speed:365,range:375,ideal:265,ammo:12,draw:.43,reload:1.90,
+   damage:2.25,momentum:108,stamina:7,weight:2.7,color:'#e3ebf2',twoHand:true},
+  javelin:{label:'Javelins',speed:190,range:208,ideal:138,ammo:6,draw:.45,reload:1.05,
+   damage:1.72,momentum:94,stamina:10,weight:1.9,color:'#f6ac70',twoHand:false}
+ };
+ const rangedOrder=['bow','crossbow','javelin'];
  const shieldProfiles={
   buckler:{label:'Buckler',size:8,weight:.85,passiveArc:.40,activeArc:.83,passiveBlock:.20,passiveStop:16,activeStop:68,cost:5,color:'#cda779'},
   round:{label:'Round shield',size:11,weight:1.8,passiveArc:.66,activeArc:1.20,passiveBlock:.35,passiveStop:31,activeStop:115,cost:8,color:'#b1b9a6'},
@@ -349,6 +383,14 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  const experienceOrder=['recruit','trained','veteran','elite'];
  const familiarityLevels={novice:18,practiced:56,expert:85,master:97};
  const weaponSkillKey={shortsword:11,sword:23,greatsword:37,axe:53};
+ const rangedSkillKey={bow:67,crossbow:79,javelin:89};
+ function rangedFamiliarity(s){return clamp(s.rangedSkills?.[s.ranged]??35,0,100);}
+ function initializeRangedEquipment(s){
+  s.ranged=rangedProfiles[s.ranged]?s.ranged:null;
+  s.ammo=s.ranged?rangedProfiles[s.ranged].ammo:0;
+  s.rangedCooldown=0;s.rangedAim=0;s.shotCount=0;
+  s.fired=0;s.rangedHits=0;
+ }
  function weaponFamiliarity(s){return clamp(s.weaponSkills?.[s.weapon]??35,0,100);}
  function trainingEfficiency(s){
   const familiarity=weaponFamiliarity(s);
@@ -356,7 +398,7 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   const fluency=clamp((familiarity-80)/17,0,1);
   return clamp(1.16-(s.skill||45)*.0022-familiarity*.00125-fluency*.035,.80,1.18);
  }
- function setFighterTraining(s,team,index,rank,focus){
+ function setFighterTraining(s,team,index,rank,focus,rangedFocus){
   const config=equipmentConfig[team]||{};
   const choice=rank||config.experience||'mixed';
   const experience=experienceProfiles[choice]?choice:
@@ -374,6 +416,19 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   }
   const focusChoice=focus||config.familiarity||'mixed';
   if(familiarityLevels[focusChoice]!=null)s.weaponSkills[s.weapon]=familiarityLevels[focusChoice];
+  if(!s.rangedSkills){
+   s.rangedSkills={};
+   for(const ranged of rangedOrder){
+    const seed=index*41+rangedSkillKey[ranged]*73+(team==='friend'?17:31);
+    s.rangedSkills[ranged]=Math.round(19+rnd(seed)*65);
+   }
+  }
+  if(s.ranged){
+   const choice=rangedFocus||config.rangedMastery||'same';
+   if(familiarityLevels[choice]!=null)s.rangedSkills[s.ranged]=familiarityLevels[choice];
+   else if(choice==='same'&&familiarityLevels[focusChoice]!=null)
+    s.rangedSkills[s.ranged]=familiarityLevels[focusChoice];
+  }
   s.parryAttackId=null;s.parryWindow=0;s.parryPose=0;
   s.lastParryThreat=-1;s.counterWindow=0;
  }
@@ -381,8 +436,8 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  // Applied matchup settings persist through Reset and enemy reinforcements.
  // "mixed" uses the original 50-soldier distribution for each category.
  const equipmentConfig={
-  friend:{weapon:'mixed',shield:'mixed',armor:'mixed',experience:'mixed',familiarity:'mixed'},
-  foe:{weapon:'mixed',shield:'mixed',armor:'mixed',experience:'mixed',familiarity:'mixed'}
+  friend:{weapon:'mixed',shield:'mixed',armor:'mixed',ranged:'none',rangedMastery:'same',experience:'mixed',familiarity:'mixed'},
+  foe:{weapon:'mixed',shield:'mixed',armor:'mixed',ranged:'none',rangedMastery:'same',experience:'mixed',familiarity:'mixed'}
  };
  function equipmentFor(team,index){
   const settings=equipmentConfig[team],offset=team==='friend'?0:1;
@@ -396,13 +451,16 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
     settings.shield==='none'?null:settings.shield;
   // A shield cannot coexist with a two-handed weapon, including in mixed armies.
   if(weaponProfiles[weapon].twoHand)shield=null;
-  return {weapon,shield,armor};
+  const ranged=settings.ranged==='mixed'?((index%4===3)?null:rangedOrder[index%4]):
+   (rangedProfiles[settings.ranged]?settings.ranged:null);
+  return {weapon,shield,armor,ranged};
  }
  function equipCurrentArmy(team){
   const soldiers=team==='friend'?friends:foes;
   soldiers.forEach((soldier,index)=>{
    Object.assign(soldier,equipmentFor(team,index));
    setFighterTraining(soldier,team,index);
+   initializeRangedEquipment(soldier);
    // Switching equipment safely ends any attack/guard using the old item.
    soldier.attack=null;soldier.guardActive=false;soldier.guardHold=0;
    soldier.guardBreak=0;soldier.shieldRecoil=0;soldier.guardBreakFlash=0;
@@ -482,7 +540,7 @@ function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74
   }
   return positions.map(p=>({x:clamp(p.x,18,W-18),y:clamp(p.y,21,H-21)}));
  }
-function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);const soldier={id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,...equipmentFor(team,i),attack:null,guardActive:false,guardHold:0,guardBreak:0,stagger:0,knockVX:0,knockVY:0,shieldRecoil:0,impactLean:0,guardBreakFlash:0,stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,stamina:100,maxStamina:100,recoveryDelay:0,attackCount:0,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:1.5+rnd(i+16)*1.3,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,engageSlot:0,escapeAngle:0,hitFlash:0};setFighterTraining(soldier,team,i);return soldier;}
+function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);const soldier={id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,...equipmentFor(team,i),attack:null,guardActive:false,guardHold:0,guardBreak:0,stagger:0,knockVX:0,knockVY:0,shieldRecoil:0,impactLean:0,guardBreakFlash:0,stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,stamina:100,maxStamina:100,recoveryDelay:0,attackCount:0,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:1.5+rnd(i+16)*1.3,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,engageSlot:0,escapeAngle:0,hitFlash:0};setFighterTraining(soldier,team,i);initializeRangedEquipment(soldier);return soldier;}
 function focusArmy(){
   const h=home('friend');
   camera.x=clamp(h.x-VW*.37,0,Math.max(0,W-VW));
@@ -493,7 +551,7 @@ function focusArmy(){
   const a=home('friend'),b=home('foe');
   friends=formation('friend',a.x,a.y).map((p,i)=>create('friend',i,p));
   foes=formation('foe',b.x,b.y).map((p,i)=>create('foe',i,p));
-  slashes=[];selected=false;mode='idle';marker=null;focusArmy();updateUI();
+  slashes=[];projectiles=[];selected=false;mode='idle';marker=null;focusArmy();updateUI();
  }
 // Enemy reinforcements enter at the right edge in the least crowded lane.
 function respawnEnemy(s){
@@ -757,15 +815,18 @@ document.querySelector('#reset').addEventListener('click',populate);
        equipPanel=document.querySelector('#equipmentPanel'),
        equipFeedback=document.querySelector('#equipmentFeedback');
  const equipControls={
-  friend:{weapon:document.querySelector('#friendWeapon'),shield:document.querySelector('#friendShield'),armor:document.querySelector('#friendArmor'),experience:document.querySelector('#friendExperience'),familiarity:document.querySelector('#friendFamiliarity'),note:document.querySelector('#friendGearNote')},
-  foe:{weapon:document.querySelector('#foeWeapon'),shield:document.querySelector('#foeShield'),armor:document.querySelector('#foeArmor'),experience:document.querySelector('#foeExperience'),familiarity:document.querySelector('#foeFamiliarity'),note:document.querySelector('#foeGearNote')}
+  friend:{weapon:document.querySelector('#friendWeapon'),shield:document.querySelector('#friendShield'),armor:document.querySelector('#friendArmor'),ranged:document.querySelector('#friendRanged'),rangedMastery:document.querySelector('#friendRangedMastery'),experience:document.querySelector('#friendExperience'),familiarity:document.querySelector('#friendFamiliarity'),note:document.querySelector('#friendGearNote')},
+  foe:{weapon:document.querySelector('#foeWeapon'),shield:document.querySelector('#foeShield'),armor:document.querySelector('#foeArmor'),ranged:document.querySelector('#foeRanged'),rangedMastery:document.querySelector('#foeRangedMastery'),experience:document.querySelector('#foeExperience'),familiarity:document.querySelector('#foeFamiliarity'),note:document.querySelector('#foeGearNote')}
  };
  const equipPresets={
   mixed:{friend:{weapon:'mixed',shield:'mixed',armor:'mixed'},foe:{weapon:'mixed',shield:'mixed',armor:'mixed'}},
   plate:{friend:{weapon:'greatsword',shield:'none',armor:'mail'},foe:{weapon:'sword',shield:'tower',armor:'plate'}},
   cleave:{friend:{weapon:'axe',shield:'none',armor:'naked'},foe:{weapon:'shortsword',shield:'none',armor:'naked'}},
   shields:{friend:{weapon:'sword',shield:'round',armor:'mail'},foe:{weapon:'sword',shield:'kite',armor:'mail'}},
-  skill:{friend:{weapon:'sword',shield:'round',armor:'leather',experience:'elite',familiarity:'master'},foe:{weapon:'sword',shield:'round',armor:'leather',experience:'recruit',familiarity:'novice'}}
+  skill:{friend:{weapon:'sword',shield:'round',armor:'leather',experience:'elite',familiarity:'master',ranged:'none'},foe:{weapon:'sword',shield:'round',armor:'leather',experience:'recruit',familiarity:'novice',ranged:'none'}},
+  archers:{friend:{weapon:'shortsword',ranged:'bow',shield:'none',armor:'leather',experience:'veteran',familiarity:'expert'},foe:{weapon:'sword',ranged:'none',shield:'round',armor:'mail',experience:'trained',familiarity:'practiced'}},
+  crossbows:{friend:{weapon:'sword',ranged:'crossbow',shield:'none',armor:'padded',experience:'trained',familiarity:'practiced'},foe:{weapon:'sword',ranged:'none',shield:'kite',armor:'plate',experience:'trained',familiarity:'practiced'}},
+  skirmish:{friend:{weapon:'shortsword',ranged:'javelin',shield:'round',armor:'leather',experience:'veteran',familiarity:'expert'},foe:{weapon:'shortsword',ranged:'bow',shield:'none',armor:'leather',experience:'veteran',familiarity:'expert'}}
  };
  let equipmentOpen=false;
  function syncEquipmentShield(team){
@@ -780,7 +841,7 @@ document.querySelector('#reset').addEventListener('click',populate);
  function showEquipmentValues(values){
   for(const team of ['friend','foe']){
    const controls=equipControls[team],settings=values[team];
-   for(const field of ['weapon','shield','armor','experience','familiarity'])controls[field].value=settings[field]||'mixed';
+   for(const field of ['weapon','shield','armor','experience','familiarity','ranged','rangedMastery'])controls[field].value=settings[field]||(field==='ranged'?'none':field==='rangedMastery'?'same':'mixed');
    syncEquipmentShield(team);
   }
  }
@@ -805,7 +866,7 @@ document.querySelector('#reset').addEventListener('click',populate);
    syncEquipmentShield(team);
    equipFeedback.textContent='Equipment changed. Apply to update the battle.';
   });
-  for(const field of ['shield','armor','experience','familiarity']){
+  for(const field of ['shield','armor','experience','familiarity','ranged','rangedMastery']){
    equipControls[team][field].addEventListener('change',()=>{
     equipFeedback.textContent='Equipment changed. Apply to update the battle.';
    });
@@ -827,7 +888,9 @@ document.querySelector('#reset').addEventListener('click',populate);
     shield:weaponProfiles[weapon]?.twoHand?'none':
       (c.shield.value==='mixed'||c.shield.value==='none'||shieldProfiles[c.shield.value]?c.shield.value:'mixed'),
     experience:experienceProfiles[c.experience.value]?c.experience.value:'mixed',
-    familiarity:familiarityLevels[c.familiarity.value]!=null?c.familiarity.value:'mixed'
+    familiarity:familiarityLevels[c.familiarity.value]!=null?c.familiarity.value:'mixed',
+    ranged:rangedProfiles[c.ranged.value]?c.ranged.value:(c.ranged.value==='mixed'?'mixed':'none'),
+    rangedMastery:familiarityLevels[c.rangedMastery.value]!=null?c.rangedMastery.value:'same'
    };
   }
   return draft;
@@ -939,7 +1002,7 @@ function shieldImpact(attacker,defender,a){
  const delta=Math.abs(Math.atan2(Math.sin(incoming-defender.faceAngle),Math.cos(incoming-defender.faceAngle)));
  const active=defender.guardActive&&delta<=shield.activeArc;
  if(!active&&delta>shield.passiveArc)return {block:0,stop:0,kind:null};
- const weapon=weaponProfiles[attacker.weapon];
+ const weapon=a.projectile?rangedProfiles[a.projectile]:weaponProfiles[attacker.weapon];
  const spend=shield.cost*(active?1.15:.62)*(1+weapon.weight*.19);
  if(defender.stamina<spend)return {block:0,stop:0,kind:null};
  const stop=active?shield.activeStop:shield.passiveStop;
@@ -996,13 +1059,13 @@ function shieldImpact(attacker,defender,a){
 function applyWeaponImpact(attacker,target,a){
  if(target.dead||target.routed||target.broken||target.team===attacker.team||a.hitIds.has(target.id))return false;
  a.hitIds.add(target.id);
- const parry=attemptWeaponParry(attacker,target,a);
+ const parry=a.projectile?null:attemptWeaponParry(attacker,target,a);
  if(parry?.parried)return true;
  const incomingMomentum=a.momentum;
  const shield=shieldImpact(attacker,target,a),damageType=a.move.damageType;
  const afterShield=a.baseDamage*(1-shield.block);
  const actual=mitigatedDamage(afterShield,target.armor,damageType);
- const weapon=weaponProfiles[attacker.weapon],heavy=a.move.style==='heavy';
+ const weapon=a.projectile?rangedProfiles[a.projectile]:weaponProfiles[attacker.weapon],heavy=a.move.style==='heavy';
  // Physical hits and blocks happen regardless of friendly health immunity.
  if(target.team==='foe'){
   target.hp=Math.max(0,target.hp-actual);
@@ -1033,13 +1096,13 @@ function applyWeaponImpact(attacker,target,a){
  }
  const armorStop=armorImpact[target.armor]?.[damageType]??12;
  a.momentum=Math.max(0,a.momentum-armorStop-shield.stop);
- const interrupted=a.momentum<=0||a.hits>=weapon.cleave;
+ const interrupted=a.momentum<=0||a.hits>=(a.projectile?1:weapon.cleave);
  if(interrupted){
   a.momentum=0;a.stopped=true;
   // Strong shield or plate contacts arrest the swing and knock the weapon
   // back toward its owner, while leaving the defender a short counter window.
   const hardStop=blocked||armorStop>=incomingMomentum*.72;
-  if(hardStop){
+  if(hardStop&&!a.projectile){
    reactToImpact(attacker,target,30+weapon.weight*8);
    attacker.stagger=Math.max(attacker.stagger,reactionBalance.reboundStagger);
    attacker.cooldown=Math.max(attacker.cooldown,.38);
@@ -1116,7 +1179,7 @@ function updateShieldGuard(s,dt){
  s.parryWindow=Math.max(0,(s.parryWindow||0)-dt);
  s.parryPose=Math.max(0,(s.parryPose||0)-dt);
  const shield=shieldProfiles[s.shield];
- if(s.broken||s.dead||s.attack||s.stagger>0||s.guardBreak>0){
+ if(s.broken||s.dead||s.attack||(s.rangedAim>0&&rangedProfiles[s.ranged]?.twoHand)||s.stagger>0||s.guardBreak>0){
   s.guardActive=false;
   s.parryAttackId=null;return;
  }
@@ -1150,6 +1213,25 @@ function updateShieldGuard(s,dt){
    if(s.stamina>shield.cost*1.7&&
       rnd(s.id+threat.id*7)<guardChance)
     s.guardHold=Math.max(s.guardHold,.18+shield.weight*.025);
+  }
+ }
+ // Defenders can spot incoming arrows or javelins, but only if facing the
+ // projectile with enough stamina and reaction time to raise their shields.
+ if(shield&&s.stamina>shield.cost*1.7){
+  for(const p of projectiles){
+   if(p.team===s.team)continue;
+   const dx=s.x-p.x,dy=s.y-p.y,dist=Math.hypot(dx,dy);
+   if(dist>115||dist<12)continue;
+   if(dx*p.vx+dy*p.vy<=0)continue;
+   const until=dist/p.speed;
+   const reaction=.06+(100-(s.skill||45))*.0024;
+   if(until<reaction||until>.38)continue;
+   const angle=Math.atan2(p.y-s.y,p.x-s.x);
+   const diff=Math.abs(Math.atan2(Math.sin(angle-s.faceAngle),Math.cos(angle-s.faceAngle)));
+   if(diff>shield.activeArc)continue;
+   const chance=clamp(.20+(s.skill||45)*.0055+weaponFamiliarity(s)*.0012,.20,.90);
+   if(rnd(s.id*83+Math.abs(p.id)*37+5)<chance)
+    s.guardHold=Math.max(s.guardHold,until+.10);
   }
  }
  s.guardActive=!!shield&&s.guardHold>0&&s.stamina>shield.cost*1.3;
@@ -1188,6 +1270,137 @@ function separateSoldiers(){
   for(const s of all){if(!s.broken){s.x=clamp(s.x,11,W-11);s.y=clamp(s.y,11,H-11);}}
  }
 }
+// Bow/crossbow/javelin combat. Projectiles are physical entities: they travel,
+// can miss, and are caught by the first soldier along their path. Allied bodies
+// block shots harmlessly rather than allowing arrows to pass through teammates.
+function hasRangedAmmo(s){return !!rangedProfiles[s.ranged]&&s.ammo>0;}
+function meleeThreatRange(s){return Math.max(57,weaponProfiles[s.weapon].reach+13);}
+function rangedTimeFactor(s){
+ const skill=s.skill||45,familiarity=rangedFamiliarity(s);
+ return clamp(1.23-skill*.0022-familiarity*.0014,.76,1.19);
+}
+function shotLaneBlocker(s,target){
+ const dx=target.x-s.x,dy=target.y-s.y,distSq=dx*dx+dy*dy;
+ if(distSq<1)return null;
+ for(const ally of members(s.team)){
+  if(ally===s||ally.dead||ally.broken||ally.routed)continue;
+  const u=((ally.x-s.x)*dx+(ally.y-s.y)*dy)/distSq;
+  if(u<=.055||u>=.96)continue;
+  const px=s.x+u*dx,py=s.y+u*dy;
+  if(Math.hypot(ally.x-px,ally.y-py)<15)return ally;
+ }
+ return null;
+}
+function launchProjectile(s,target){
+ const profile=rangedProfiles[s.ranged];
+ if(!profile||s.ammo<=0||s.dead||s.broken||!target||target.dead)return false;
+ if(s.stamina<profile.stamina){s.rangedCooldown=.30;return false;}
+ const skill=s.skill||45,familiarity=rangedFamiliarity(s);
+ const dist=Math.max(1,Math.hypot(target.x-s.x,target.y-s.y));
+ const flight=dist/profile.speed;
+ const anticipate=clamp((skill+familiarity)/235,0,.78);
+ const vx=clamp(target.vx||0,-80,80),vy=clamp(target.vy||0,-80,80);
+ const predictedX=target.x+vx*flight*anticipate,predictedY=target.y+vy*flight*anticipate;
+ const errorSize=.012+(100-skill)*.0032+(100-familiarity)*.0021;
+ const error=(rnd(s.id*197+s.shotCount*139+41)-.5)*2*errorSize;
+ const angle=Math.atan2(predictedY-s.y,predictedX-s.x)+error;
+ const ox=s.x+Math.cos(angle)*12,oy=s.y+Math.sin(angle)*12;
+ const projectile={
+  id:-(s.id*64+s.shotCount+1),shooter:s,shooterId:s.id,team:s.team,
+  kind:s.ranged,damage:profile.damage,momentum:profile.momentum,
+  x:ox,y:oy,vx:Math.cos(angle)*profile.speed,vy:Math.sin(angle)*profile.speed,
+  speed:profile.speed,range:profile.range,traveled:0
+ };
+ projectiles.push(projectile);
+ s.ammo--;s.shotCount++;s.fired++;
+ s.stamina=clamp(s.stamina-profile.stamina*rangedTimeFactor(s),0,s.maxStamina);
+ s.recoveryDelay=Math.max(s.recoveryDelay,.28);
+ s.rangedCooldown=profile.reload*rangedTimeFactor(s);
+ s.rangedAim=0;
+ const stats=combatLabStats(s.team);if(stats)stats.shots++;
+ return true;
+}
+function beginRangedAim(s,target,dist){
+ const profile=rangedProfiles[s.ranged];
+ if(!profile||s.ammo<=0||s.rangedCooldown>0||s.attack||s.stagger>0)return false;
+ if(!target||dist>profile.range-12||dist<=meleeThreatRange(s))return false;
+ if(s.stamina<profile.stamina+2)return false;
+ if(shotLaneBlocker(s,target)){s.rangedCooldown=.12;return false;}
+ s.rangedAim=profile.draw*rangedTimeFactor(s);
+ s.rangedTargetId=target.id;
+ s.guardActive=false;s.guardHold=0;
+ return true;
+}
+function advanceRangedAim(s,target,dt){
+ if(!s.rangedAim)return;
+ if(!target||target.dead||target.routed||s.stagger>0||s.broken||
+    !hasRangedAmmo(s)||Math.hypot(target.x-s.x,target.y-s.y)<=meleeThreatRange(s)){
+  s.rangedAim=0;return;
+ }
+ s.rangedAim=Math.max(0,s.rangedAim-dt);
+ if(s.rangedAim===0){
+  if(shotLaneBlocker(s,target))s.rangedCooldown=.16;
+  else launchProjectile(s,target);
+ }
+}
+function updateProjectiles(dt){
+ if(!projectiles.length)return;
+ const active=[];
+ for(const p of projectiles){
+  const remain=p.range-p.traveled;
+  if(remain<=0)continue;
+  const travel=Math.min(remain,p.speed*dt);
+  const x1=p.x,y1=p.y,x2=x1+p.vx*travel/p.speed,y2=y1+p.vy*travel/p.speed;
+  const seg={ax:x1,ay:y1,bx:x2,by:y2};
+  const dx=x2-x1,dy=y2-y1,dsq=dx*dx+dy*dy;
+  let closest=null,at=Infinity;
+  for(const other of [...friends,...foes]){
+   if(other.dead||other.routed||other.broken||
+      (other.team===p.team&&other.id===p.shooterId))continue;
+   const radius=p.kind==='javelin'?10:9.3;
+   if(pointSegmentDistance(other.x,other.y,seg)>radius)continue;
+   const u=dsq>0?clamp(((other.x-x1)*dx+(other.y-y1)*dy)/dsq,0,1):0;
+   if(u<at){at=u;closest=other;}
+  }
+  if(closest){
+   p.x=x1+dx*at;p.y=y1+dy*at;
+   if(closest.team===p.team){
+    const stat=combatLabStats(p.team);if(stat)stat.friendlyStops++;
+   }else{
+    const a={id:p.id,move:{style:p.kind==='bow'?'light':'heavy',damageType:'piercing'},
+      baseDamage:p.damage,momentum:p.momentum,hits:0,hitIds:new Set(),
+      projectile:p.kind,counter:false,stopped:false};
+    const hit=applyWeaponImpact(p.shooter,closest,a);
+    if(hit){
+     p.shooter.rangedHits++;
+     const stat=combatLabStats(p.team);if(stat)stat.rangedHits++;
+    }
+   }
+  }else{
+   p.x=x2;p.y=y2;p.traveled+=travel;
+   if(p.traveled<p.range-1e-6&&
+      p.x>0&&p.y>0&&p.x<W&&p.y<H)active.push(p);
+   else{
+    const stat=combatLabStats(p.team);if(stat)stat.rangedMisses++;
+   }
+  }
+ }
+ projectiles=active;
+}
+function drawRangedProjectiles(ctx,shots){
+ for(const p of shots){
+  const profile=rangedProfiles[p.kind];if(!profile)continue;
+  const a=Math.atan2(p.vy,p.vx),length=p.kind==='javelin'?17:11;
+  ctx.save();ctx.translate(p.x,p.y);ctx.rotate(a);
+  ctx.lineWidth=p.kind==='javelin'?3:1.8;
+  ctx.strokeStyle=profile.color;ctx.beginPath();ctx.moveTo(-length*.7,0);
+  ctx.lineTo(length*.4,0);ctx.stroke();
+  ctx.fillStyle=profile.color;ctx.beginPath();ctx.moveTo(length*.6,0);
+  ctx.lineTo(length*.15,-3);ctx.lineTo(length*.15,3);ctx.closePath();ctx.fill();
+  ctx.restore();
+ }
+}
+
 function step(dt){
  if(t>=nextEngagementPlan){
   planEngagements('friend');
@@ -1198,6 +1411,7 @@ function step(dt){
   if(s.dead||s.routed)continue;s.cooldown-=dt;s.decision-=dt;s.hitFlash=Math.max(0,s.hitFlash-dt);
   // Parry counters last only 0.72s; a waiting fighter cannot bank the bonus.
   s.counterWindow=Math.max(0,(s.counterWindow||0)-dt);
+  s.rangedCooldown=Math.max(0,(s.rangedCooldown||0)-dt);
   advanceReaction(s,dt);
   // Stamina restores while not recovering from a swing; movement uses some.
   s.recoveryDelay=Math.max(0,s.recoveryDelay-dt);
@@ -1226,38 +1440,65 @@ function step(dt){
   else if(command==='retreat'){moveX=s.anchorX;moveY=s.anchorY;pace=1.45;}
   else if(command==='attack'){
     if(target){
-      const slot=engagementPoint(s,target);
-      const distanceToSlot=Math.hypot(slot.x-s.x,slot.y-s.y);
-      if(dist>weaponProfiles[s.weapon].reach*.92||distanceToSlot>18){
-       const clear=avoidCombatCrowd(s,slot,target);
-       moveX=clear.x;moveY=clear.y;
-       pace=dist<=weaponProfiles[s.weapon].reach?.78:1.16;
-      }else{moveX=s.x;moveY=s.y;}
+      const ranged=hasRangedAmmo(s)?rangedProfiles[s.ranged]:null;
+      if(ranged&&dist>meleeThreatRange(s)){
+       const gap=ranged.ideal;
+       const ndx=(target.x-s.x)/Math.max(1,dist),ndy=(target.y-s.y)/Math.max(1,dist);
+       if(dist>gap+24){
+        moveX=s.x+ndx*(dist-gap);moveY=s.y+ndy*(dist-gap);
+        pace=1.07;
+       }else if(dist<gap-28){
+        moveX=clamp(s.x-ndx*(gap-dist+16),14,W-14);
+        moveY=clamp(s.y-ndy*(gap-dist+16),14,H-14);
+        pace=.86;
+       }else if(shotLaneBlocker(s,target)){
+        // Sidestep allied soldiers instead of endlessly shooting into backs.
+        const side=((s.id+s.shotCount)%2===0)?1:-1;
+        moveX=clamp(s.x-ndy*35*side,14,W-14);
+        moveY=clamp(s.y+ndx*35*side,14,H-14);
+        pace=.78;
+       }else{moveX=s.x;moveY=s.y;}
+      }else{
+       const slot=engagementPoint(s,target);
+       const distanceToSlot=Math.hypot(slot.x-s.x,slot.y-s.y);
+       if(dist>weaponProfiles[s.weapon].reach*.92||distanceToSlot>18){
+        const clear=avoidCombatCrowd(s,slot,target);
+        moveX=clear.x;moveY=clear.y;
+        pace=dist<=weaponProfiles[s.weapon].reach?.78:1.16;
+       }else{moveX=s.x;moveY=s.y;}
+      }
     }else{moveX=s.x;moveY=s.y;}
   }
   else if(command==='defend'||command==='move'||command==='idle'||command==='form'){moveX=s.tx;moveY=s.ty;}
   const disciplineControl=.42+s.disc/160;
   const fatiguePace=.76+.24*(s.stamina/s.maxStamina);
-  const equipment=weaponProfiles[s.weapon].weight+(shieldProfiles[s.shield]?.weight||0);
+  const equipment=weaponProfiles[s.weapon].weight+(shieldProfiles[s.shield]?.weight||0)+(hasRangedAmmo(s)?rangedProfiles[s.ranged].weight:0);
   const loadPace=clamp(1-equipment*.038,.70,1);
   const fightingPace=s.stagger>0?0:s.attack?.72:s.guardActive?.73:1;
   const oldX=s.x,oldY=s.y;
   if(command!=='stop')approach(s,moveX,moveY,dt,pace*disciplineControl*fatiguePace*loadPace*fightingPace);
   s.stamina=clamp(s.stamina-Math.hypot(s.x-oldX,s.y-oldY)*(.042+equipment*.004),0,s.maxStamina);
+  s.vx=(s.x-oldX)/Math.max(.001,dt);s.vy=(s.y-oldY)/Math.max(.001,dt);
   updateFacing(s,target,target?Math.hypot(target.x-s.x,target.y-s.y):Infinity,dt*(s.stagger>0?.38:1));
+  if(command==='attack'&&target&&hasRangedAmmo(s)&&dist>meleeThreatRange(s))
+   turnToward(s,Math.atan2(target.y-s.y,target.x-s.x),dt);
   if(command==='stop'||command==='retreat'){
-   s.attack=null;s.guardActive=false;s.guardHold=0;
+   s.attack=null;s.guardActive=false;s.guardHold=0;s.rangedAim=0;
    s.guardBreak=Math.max(0,s.guardBreak-dt);
   }else{
    // Guard timers continue while staggered, but only recovered soldiers
    // can actively defend or begin a new swing.
    updateShieldGuard(s,dt);
-   if(s.stagger>0){s.guardActive=false;}
+   if(s.stagger>0){s.guardActive=false;s.rangedAim=0;}
    else if(s.attack)advanceAttack(s,dt);
+   else if(s.rangedAim>0)advanceRangedAim(s,target,dt);
+   else if(target&&hasRangedAmmo(s)&&dist>meleeThreatRange(s))
+    beginRangedAim(s,target,dist);
    else if(target&&s.cooldown<=0)beginAttack(s,target);
   }
  }
  separateSoldiers();
+ updateProjectiles(dt);
  for(const effect of slashes)effect.life-=dt;slashes=slashes.filter(e=>e.life>0);
 }
 function background(){ctx.fillStyle='#203b30';ctx.fillRect(0,0,W,H);const grad=ctx.createLinearGradient(0,0,W,H);grad.addColorStop(0,'#355746');grad.addColorStop(.45,'#29483a');grad.addColorStop(1,'#244538');ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
@@ -1332,6 +1573,26 @@ function drawUnit(s){if(s.routed)return;
   ctx.restore();
  }
  // Weapons physically move throughout wind-up, active and recovery phases.
+ if(s.rangedAim>0&&s.ranged){
+  const rp=rangedProfiles[s.ranged];
+  ctx.save();ctx.translate(x,y);ctx.rotate(s.faceAngle);
+  ctx.strokeStyle=rp.color;ctx.lineWidth=2.5;ctx.beginPath();
+  if(s.ranged==='bow'){
+   ctx.arc(11,0,14,-1.1,1.1);ctx.stroke();
+   ctx.strokeStyle='#f6e9c7';ctx.lineWidth=1;
+   ctx.beginPath();ctx.moveTo(11+14*Math.cos(-1.1),14*Math.sin(-1.1));
+   ctx.lineTo(4,0);ctx.lineTo(11+14*Math.cos(1.1),14*Math.sin(1.1));ctx.stroke();
+  }else if(s.ranged==='crossbow'){
+   ctx.moveTo(5,0);ctx.lineTo(24,0);ctx.moveTo(17,-11);ctx.lineTo(17,11);ctx.stroke();
+   ctx.strokeStyle='#f9eac7';ctx.lineWidth=1;
+   ctx.beginPath();ctx.moveTo(17,-11);ctx.lineTo(7,0);ctx.lineTo(17,11);ctx.stroke();
+  }else{
+   ctx.moveTo(6,0);ctx.lineTo(30,0);ctx.stroke();
+   ctx.fillStyle=rp.color;ctx.beginPath();ctx.moveTo(32,0);
+   ctx.lineTo(26,-3);ctx.lineTo(26,3);ctx.closePath();ctx.fill();
+  }
+  ctx.restore();
+ }else{
  const wp=weaponPose(s);
  if(s.parryPose>0){
   ctx.save();ctx.translate(x,y);ctx.rotate(s.faceAngle-.62);
@@ -1368,6 +1629,13 @@ function drawUnit(s){if(s.routed)return;
   ctx.beginPath();ctx.moveTo(12,0);ctx.lineTo(wp.length,0);ctx.stroke();
  }
  ctx.restore();
+ }
+ // An amber counter below the fighter shows ammunition remaining.
+ if(s.ranged){
+  ctx.font='bold 9px system-ui';ctx.textAlign='center';
+  ctx.fillStyle=s.ammo>0?rangedProfiles[s.ranged].color:'#b4aba2';
+  ctx.fillText(String(s.ammo),x+17,y+19);
+ }
  // Thin stress arc makes each soldier's personal stress legible.
  if(s.stress>12){ctx.beginPath();ctx.arc(x,y,12,-Math.PI/2,-Math.PI/2+stress*2*Math.PI);ctx.strokeStyle=s.stress>70?'#f16d53':'#e6c368';ctx.lineWidth=2;ctx.stroke();}
  if(s.hp<3&&!s.broken){ctx.fillStyle='#101c18';ctx.fillRect(x-10,y-17,20,3);ctx.fillStyle=s.team==='friend'?'#99e99d':'#f6a4a2';ctx.fillRect(x-10,y-17,20*s.hp/3,3);}
@@ -1383,6 +1651,7 @@ function draw(){
  background();if(marker){const age=t-marker.when;if(age<1.3){ctx.beginPath();ctx.arc(marker.x,marker.y,14+age*11,0,2*Math.PI);ctx.strokeStyle='rgba(211,255,218,'+(1-age/1.3)*.6+')';ctx.lineWidth=2;ctx.stroke();}else marker=null;}
  // Selection means selected soldiers are highlighted, but never hides their stats or swords.
  for(const s of foes)drawUnit(s);for(const s of friends)drawUnit(s);
+ drawRangedProjectiles(ctx,projectiles);
  for(const sl of slashes){
   ctx.save();ctx.translate(sl.x,sl.y);ctx.rotate(sl.a);
   const opacity=clamp(sl.life/sl.duration,0,1);
