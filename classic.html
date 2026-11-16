@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V2.2</title>
+<title>Untitled Armies — V2.3</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -144,6 +144,28 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 #equipmentFeedback{font-size:10px;color:#bfefc6;flex:1;min-width:150px}
 @media(max-height:500px){.equipment-panel{padding:8px 11px}.equipment-header strong{font-size:12px}.equipment-panel p{margin:3px 0 6px}.equipment-presets{margin-bottom:6px}.equipment-side{padding:6px}.equipment-side h3{margin-bottom:3px}.equipment-field{margin:3px 0}.equipment-field select{padding:4px}.equipment-actions{margin-top:7px}.equipment-presets button,.equipment-actions button{padding:4px 8px}}
 @media(max-width:535px){.equipment-grid{grid-template-columns:1fr}.equipment-panel{max-width:420px}}
+
+/* V2.3 compact enemy-control popover: a separate, accessible tactical surface. */
+.enemy-command-panel{position:absolute;z-index:10;top:50%;left:50%;transform:translate(-50%,-50%);
+ width:min(540px,calc(100% - 150px));max-height:calc(100% - 18px);overflow:auto;overscroll-behavior:contain;
+ border:1px solid #d28a83;border-radius:13px;padding:11px 13px;
+ background:#211e1cf2;box-shadow:0 12px 45px #000c;color:#f8e5dd}
+.enemy-command-panel.is-hidden{display:none}
+.enemy-command-header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.enemy-command-header strong{font-size:13px;letter-spacing:.06em}
+.enemy-command-header button{border:1px solid #a77c72;background:#44302e;border-radius:7px;color:#ffebe3;
+ padding:4px 10px;font-weight:700;cursor:pointer}
+.enemy-command-panel p{font-size:11px;line-height:1.35;margin:7px 0;color:#dcc7c0}
+.enemy-command-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin:6px 0}
+.enemy-command-grid button,.enemy-command-foot button{border:1px solid #8e6862;border-radius:8px;
+ background:#3c302e;color:#f7e5df;font:700 11px/1.2 system-ui;min-height:30px;padding:6px 7px;cursor:pointer}
+.enemy-command-grid button[aria-pressed=true]{background:#995044;border-color:#e0a49b;color:#fff6e5}
+.enemy-command-label{font-size:10px;letter-spacing:.12em;font-weight:800;color:#eac6b1;margin:9px 0 2px}
+.enemy-command-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:9px}
+.enemy-command-foot span{font-size:10px;color:#f3bdab}
+#infiniteAmmoButton[aria-pressed=true]{border-color:#ddc66c;background:#594820;color:#fff5c0}
+@media(max-height:600px){.enemy-command-panel{padding:7px 9px}.enemy-command-grid button{min-height:25px;padding:4px}.enemy-command-panel p{margin:3px 0}}
+@media(max-width:570px){.enemy-command-panel{width:calc(100% - 128px)}.enemy-command-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.enemy-command-grid button{font-size:10px}}
 </style>
 </head>
 <body>
@@ -152,13 +174,13 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
     <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Armor · Shields · Physical combat</p></div></div>
     <div class="top-actions">
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 2.2">V2.2</div>
+      <div class="build" aria-label="Version 2.3">V2.3</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
     <canvas id="field"></canvas>
     <canvas id="minimap" width="180" height="102" aria-label="Battlefield minimap: touch or click to pan"></canvas>
-    <div class="map-guide">DRAG MAP TO PAN · TAP TO MOVE</div>
+    <div class="map-guide">3× LARGER WORLD · DRAG TO PAN · MINIMAP TO TRAVEL</div>
     <div class="overlay-top" aria-live="polite"><span class="pill"><span class="light"></span><span id="count">50 SOLDIERS</span></span><span class="pill dim" id="status">IDLE</span><span class="pill dim" id="rangeBadge">⚔ WEAPON REACH</span></div>
     <aside class="rail left">
   <button class="control" type="button" id="select" aria-pressed="false" aria-label="Select all soldiers"><span class="dot" aria-hidden="true">◎</span><span id="select-label">Select</span></button>
@@ -179,6 +201,32 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
       <button class="control retreat" id="retreat" type="button" aria-label="Retreat to left side"><span class="dot" aria-hidden="true">↶</span><span>Retreat</span></button>
     </div></aside>
     <div class="bottom-note" id="hint" aria-live="polite">Select your army · swipe to explore the battlefield</div>
+ <section class="enemy-command-panel is-hidden" id="enemyPanel" aria-label="Enemy army control panel">
+  <div class="enemy-command-header">
+   <strong>🔴 ENEMY ARMY COMMANDS</strong>
+   <button id="enemyClose" type="button" aria-label="Close enemy orders">✕</button>
+  </div>
+  <p>Command the enemy's 50 soldiers independently. They still take damage and can panic.</p>
+  <div class="enemy-command-grid" role="group" aria-label="Enemy orders">
+   <button type="button" data-enemy-order="auto">AI Auto</button>
+   <button type="button" data-enemy-order="attack">Charge</button>
+   <button type="button" data-enemy-order="defend">Hold / Fight</button>
+   <button type="button" data-enemy-order="stop">Stand still</button>
+   <button type="button" data-enemy-order="retreat">Retreat</button>
+   <button type="button" data-enemy-order="move">Tap to move</button>
+  </div>
+  <div class="enemy-command-label">FORMATION</div>
+  <div class="enemy-command-grid" role="group" aria-label="Enemy formations">
+   <button type="button" data-enemy-form="block">Block</button>
+   <button type="button" data-enemy-form="line">Line</button>
+   <button type="button" data-enemy-form="wedge">Wedge</button>
+   <button type="button" data-enemy-form="column">Column</button>
+  </div>
+  <div class="enemy-command-foot">
+   <button type="button" id="enemyFocus">⌖ View enemy army</button>
+   <span id="enemyCommandStatus">AI Auto · Block</span>
+  </div>
+ </section>
      <section class="armor-panel is-hidden" id="armorPanel" aria-label="Armor, weapons and shields reference">
       <div class="armor-panel-header"><strong>⚔ WEAPONS · SHIELDS · ARMOR</strong><button class="armor-close" type="button" id="closeArmor" aria-label="Close armor reference">✕</button></div>
       <p>Each value is <strong>flat reduction / percentage reduction</strong> for that damage category.</p>
@@ -210,7 +258,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
       <tbody><tr><td>War bow</td><td>18</td><td>335</td><td>0.64s</td><td>Light piercing</td></tr>
       <tr><td>Crossbow</td><td>12</td><td>375</td><td>1.90s</td><td>Heavy piercing</td></tr>
       <tr><td>Javelins</td><td>6</td><td>208</td><td>1.05s</td><td>Heavy piercing</td></tr></tbody></table>
-      <p><strong>RANGED COMBAT:</strong> War bows carry 18 arrows (fast), crossbows carry 12 bolts (slow reload, strong piercing), and javelins carry 6 throws (short range, powerful impact). Shots follow lofted trajectories over friendly ranks instead of requiring a clear lane. Low shots near the shooter or impact point can still strike soldiers. Projectiles have travel time, can miss, and interact with directional shields and armor. Experience and independent ranged-weapon familiarity improve accuracy and timing; set Ranged skill separately from melee Mastery in Test gear. Soldiers automatically switch to melee when closely threatened or out of ammunition. A shield is lowered when aiming a two-handed bow or crossbow.</p>
+      <p><strong>RANGED COMBAT:</strong> War bows carry 18 arrows (fast), crossbows carry 12 bolts (slow reload, strong piercing), and javelins carry 6 throws (short range, powerful impact). Shots follow lofted trajectories over friendly ranks and stop when they reach the ground instead of sliding along it. Low shots near the shooter or impact point can still strike soldiers. Projectiles have travel time, can miss, and interact with directional shields and armor. Experience and independent ranged-weapon familiarity improve accuracy and timing; set Ranged skill separately from melee Mastery in Test gear. Soldiers automatically switch to melee when closely threatened or out of ammunition. A shield is lowered when aiming a two-handed bow or crossbow.</p>
       <p><strong>IMPACT REACTIONS:</strong> Heavy hits cause knockback and stagger. A successful active block can create a counterattack opening; a weak shield can suffer a <strong>GUARD BREAK</strong>. Plate and solid shields can stop a swing and recoil the attacker.</p>
       <p>Green and red soldiers wear mixed armor and carry different weapons. One-handed swords can use shields; greatswords and axes occupy both hands. Swing stages: wind-up → active hitbox → recovery. Your troops are still invulnerable.</p>
      </section>
@@ -273,7 +321,9 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
  </section>
 </div>
   </main>
-  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="equipmentButton" class="small-btn" aria-expanded="false" aria-controls="equipmentPanel">⚙ Test gear</button> <button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
+  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="enemyButton" class="small-btn" aria-expanded="false" aria-controls="enemyPanel">🔴 Enemy orders</button>
+    <button type="button" id="infiniteAmmoButton" class="small-btn" aria-pressed="false" title="Unlimited arrows, bolts and javelins for both armies">∞ Ammo: OFF</button>
+    <button type="button" id="equipmentButton" class="small-btn" aria-expanded="false" aria-controls="equipmentPanel">⚙ Test gear</button> <button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
 </div>
 <div id="rotateNotice" role="status" aria-live="polite">
  <div class="rotate-icon" aria-hidden="true">↻</div>
@@ -315,8 +365,10 @@ const orderButtons=['attack','defend','stop','retreat'].map(id=>document.getElem
  });
  document.addEventListener('fullscreenchange',()=>{updateFullscreenButton();resize()});
  document.addEventListener('webkitfullscreenchange',()=>{updateFullscreenButton();resize()});
-let W=0,H=0,VW=0,VH=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],slashes=[],projectiles=[],marker=null,nextId=0,formationType='block',formationDragging=false,nextEngagementPlan=0,nextSwingId=1;
+let W=0,H=0,VW=0,VH=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],slashes=[],projectiles=[],groundedShots=[],marker=null,nextId=0,formationType='block',formationDragging=false,nextEngagementPlan=0,nextSwingId=1;
  const camera={x:0,y:0},cameraKeys=new Set();let fieldPointer=null;
+ let enemyCommand='auto',enemyFormationType='block',enemyMovePending=false;
+ let infiniteAmmo=false;
 const rnd=i=>{const x=Math.sin(i*127.1+91.7)*43758.5453;return x-Math.floor(x)};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) from center to center.
@@ -524,7 +576,7 @@ const gap=()=>clamp(W/17,23,29);
 function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74,W*.65,W-90),y:H*.51};}
 // All formation styles provide fifty unique slots; enemy formations stay as Block.
  function formation(team,cx,cy){
-  const d=gap(),type=team==='friend'?formationType:'block',positions=[];
+  const d=gap(),type=team==='friend'?formationType:enemyFormationType,positions=[];
   if(type==='wedge'){
    const rows=[2,4,6,8,10,10,10];
    for(let depth=0;depth<rows.length;depth++){
@@ -547,11 +599,11 @@ function focusArmy(){
   camera.y=clamp(h.y-VH*.51,0,Math.max(0,H-VH));
  }
  function populate(){
-  nextId=0;nextSwingId=1;nextEngagementPlan=0;formationType='block';setFormationMenu(false);
+  nextId=0;nextSwingId=1;nextEngagementPlan=0;formationType='block';enemyFormationType='block';enemyCommand='auto';enemyMovePending=false;setFormationMenu(false);
   const a=home('friend'),b=home('foe');
   friends=formation('friend',a.x,a.y).map((p,i)=>create('friend',i,p));
   foes=formation('foe',b.x,b.y).map((p,i)=>create('foe',i,p));
-  slashes=[];projectiles=[];selected=false;mode='idle';marker=null;focusArmy();updateUI();
+  slashes=[];projectiles=[];groundedShots=[];selected=false;mode='idle';marker=null;focusArmy();updateUI();updateEnemyUI();
  }
 // Enemy reinforcements enter at the right edge in the least crowded lane.
 function respawnEnemy(s){
@@ -734,13 +786,99 @@ function setMode(m){if(!selected)return;mode=m;marker=null;nextEngagementPlan=0;
  if(m==='stop'){friends.forEach(s=>{if(!s.broken&&!s.dead){s.anchorX=s.x;s.anchorY=s.y;}});}
  if(m==='retreat'){const h=home('friend');setFormation(Math.max(103,h.x*.57),H*.51);}
  updateUI();}
+// Enemy-only tactical orders; the user's army remains separately controlled.
+const enemyButton=document.querySelector('#enemyButton');
+const enemyPanel=document.querySelector('#enemyPanel');
+const enemyStatus=document.querySelector('#enemyCommandStatus');
+const ammoButton=document.querySelector('#infiniteAmmoButton');
+const enemyOrderControls=[...enemyPanel.querySelectorAll('[data-enemy-order]')];
+const enemyFormControls=[...enemyPanel.querySelectorAll('[data-enemy-form]')];
+const enemyOrderLabels={auto:'AI Auto',attack:'Charge',defend:'Hold',stop:'Stand still',retreat:'Retreat',move:'Move'};
+function updateEnemyUI(){
+ enemyStatus.textContent=(enemyMovePending?'Tap the battlefield':enemyOrderLabels[enemyCommand])+
+   ' · '+enemyFormationType[0].toUpperCase()+enemyFormationType.slice(1);
+ enemyOrderControls.forEach(b=>b.setAttribute('aria-pressed',
+  (enemyMovePending?b.dataset.enemyOrder==='move':b.dataset.enemyOrder===enemyCommand)?'true':'false'));
+ enemyFormControls.forEach(b=>b.setAttribute('aria-pressed',
+  b.dataset.enemyForm===enemyFormationType?'true':'false'));
+ ammoButton.setAttribute('aria-pressed',infiniteAmmo?'true':'false');
+ ammoButton.textContent=infiniteAmmo?'∞ Ammo: ON':'∞ Ammo: OFF';
+ ammoButton.title=infiniteAmmo?
+  'Unlimited arrows, bolts and javelins for BOTH armies. Switch off to restore normal ammo.' :
+  'Enable unlimited arrows, bolts and javelins for BOTH armies.';
+}
+function setEnemyPanel(open){
+ enemyPanel.classList.toggle('is-hidden',!open);
+ enemyButton.setAttribute('aria-expanded',open?'true':'false');
+ if(open){setArmorPanel(false);setEquipmentMenu(false);setFormationMenu(false);}
+}
+function enemyCenter(){
+ const alive=living(foes);
+ return alive.length?{
+  x:alive.reduce((sum,s)=>sum+s.x,0)/alive.length,
+  y:alive.reduce((sum,s)=>sum+s.y,0)/alive.length
+ }:home('foe');
+}
+function positionEnemyFormation(cx,cy){
+ const slots=formation('foe',clamp(cx,88,W-88),clamp(cy,65,H-65));
+ foes.forEach((s,i)=>{
+  if(s.dead||s.broken||s.routed)return;
+  s.anchorX=slots[i].x;s.anchorY=slots[i].y;
+  s.tx=slots[i].x;s.ty=slots[i].y;
+ });
+ nextEngagementPlan=0;
+}
+function commandEnemy(order){
+ if(order==='move'){
+  enemyMovePending=true;
+  setEnemyPanel(false);
+  ui.hint.textContent='🔴 Tap the battlefield to choose where the enemy army marches';
+  updateEnemyUI();return;
+ }
+ enemyMovePending=false;enemyCommand=order;
+ if(order==='defend'){
+  const center=enemyCenter();positionEnemyFormation(center.x,center.y);
+ }
+ if(order==='stop')foes.forEach(s=>{
+  if(!s.dead&&!s.broken&&!s.routed){
+   s.anchorX=s.x;s.anchorY=s.y;s.tx=s.x;s.ty=s.y;
+  }
+ });
+ if(order==='retreat')positionEnemyFormation(
+  clamp(Math.max(W*.87,home('foe').x+W*.07),100,W-100),H*.51);
+ nextEngagementPlan=0;
+ updateEnemyUI();
+}
+enemyButton.addEventListener('click',()=>setEnemyPanel(enemyPanel.classList.contains('is-hidden')));
+document.querySelector('#enemyClose').addEventListener('click',()=>setEnemyPanel(false));
+enemyOrderControls.forEach(b=>b.addEventListener('click',()=>commandEnemy(b.dataset.enemyOrder)));
+enemyFormControls.forEach(b=>b.addEventListener('click',()=>{
+ enemyFormationType=b.dataset.enemyForm;
+ const center=enemyCenter();positionEnemyFormation(center.x,center.y);
+ enemyCommand='defend';enemyMovePending=false;updateEnemyUI();
+}));
+document.querySelector('#enemyFocus').addEventListener('click',()=>{
+ const center=enemyCenter();
+ camera.x=clamp(center.x-VW*.5,0,Math.max(0,W-VW));
+ camera.y=clamp(center.y-VH*.5,0,Math.max(0,H-VH));
+ setEnemyPanel(false);
+});
+ammoButton.addEventListener('click',()=>{
+ infiniteAmmo=!infiniteAmmo;
+ updateEnemyUI();
+ ui.hint.textContent=infiniteAmmo?
+  '∞ Unlimited ranged ammo ON for BOTH armies':'Finite ranged ammo restored for both armies';
+});
+window.addEventListener('keydown',e=>{
+ if(e.key==='Escape'){enemyMovePending=false;setEnemyPanel(false);updateEnemyUI();}
+});
 function avgStress(){const live=foes.filter(s=>!s.dead&&!s.routed);return live.length?Math.round(live.reduce((a,s)=>a+s.stress,0)/live.length):0;}
  function avgStamina(){const active=friends.filter(s=>!s.dead&&!s.routed);return active.length?Math.round(active.reduce((a,s)=>a+s.stamina,0)/active.length):0;}
 function updateUI(){ui.select.setAttribute('aria-pressed',selected?'true':'false');ui.label.textContent=selected?'Deselect':'Select';ui.orders.classList.toggle('is-hidden',!selected);ui.status.textContent=mode.toUpperCase();orderButtons.forEach(b=>b.classList.toggle('active',selected&&b.id===mode));const alive=friends.filter(s=>!s.dead&&!s.routed).length,broken=friends.filter(s=>s.broken&&!s.routed).length;
  ui.count.textContent=alive+' SOLDIERS';ui.remaining.textContent=alive+' / 50';ui.enemyCount.textContent=foes.filter(s=>!s.dead&&!s.routed).length+' / 50';ui.stress.textContent=avgStress()+'%';ui.stamina.textContent=avgStamina()+'%';
  let status=({idle:'Drag to explore · select troops to give orders',attack:'Attacking with varied weapon reach and timed strikes',defend:'Holding formation and fighting nearby enemies',stop:'Standing still (your troops cannot panic)',retreat:'Ordered retreat toward your side',move:'Marching to your chosen position',form:'Reforming into '+formationType+' formation'}[mode]||'');
  if(broken)status=broken+' soldier'+(broken>1?'s are':' is')+' panicking and fleeing!';
- ui.hint.textContent=status;ui.mode.textContent=({idle:'Idle',attack:'Attack',defend:'Defend',stop:'Stop',retreat:'Retreat',move:'Move',form:'Formation'}[mode]||'Idle');
+ ui.hint.textContent=enemyMovePending?'🔴 TAP BATTLEFIELD TO MOVE ENEMY ARMY':status;ui.mode.textContent=({idle:'Idle',attack:'Attack',defend:'Defend',stop:'Stop',retreat:'Retreat',move:'Move',form:'Formation'}[mode]||'Idle');
   ui.formationAnchor.classList.toggle('is-hidden',!selected);
   if(!selected)setFormationMenu(false);
   formOptions.forEach(b=>b.classList.toggle('chosen',b.dataset.form===formationType));
@@ -766,7 +904,17 @@ orderButtons.forEach(b=>b.addEventListener('click',()=>setMode(b.id)));
  canvas.addEventListener('pointerup',e=>{
   const p=fieldPointer;if(!p||p.id!==e.pointerId)return;
   fieldPointer=null;
-  if(p.moved||!selected)return;
+  if(p.moved)return;
+  if(enemyMovePending){
+   const r=canvas.getBoundingClientRect();
+   const x=clamp(camera.x+e.clientX-r.left,90,W-90);
+   const y=clamp(camera.y+e.clientY-r.top,65,H-65);
+   positionEnemyFormation(x,y);
+   enemyCommand='move';enemyMovePending=false;
+   updateEnemyUI();
+   return;
+  }
+  if(!selected)return;
   const r=canvas.getBoundingClientRect();
   const x=clamp(camera.x+e.clientX-r.left,96,W-96);
   const y=clamp(camera.y+e.clientY-r.top,40,H-40);
@@ -1273,7 +1421,7 @@ function separateSoldiers(){
 // Bow/crossbow/javelin combat. Projectiles are physical entities: they travel,
 // can miss, and are caught by the first soldier along their path. Allied bodies
 // block shots harmlessly rather than allowing arrows to pass through teammates.
-function hasRangedAmmo(s){return !!rangedProfiles[s.ranged]&&s.ammo>0;}
+function hasRangedAmmo(s){return !!rangedProfiles[s.ranged]&&(infiniteAmmo||s.ammo>0);}
 function meleeThreatRange(s){return Math.max(57,weaponProfiles[s.weapon].reach+13);}
 function rangedTimeFactor(s){
  const skill=s.skill||45,familiarity=rangedFamiliarity(s);
@@ -1286,13 +1434,13 @@ const missileBodyHeight=15;
 const missileMuzzleHeight=8;
 function projectileHeightAt(p,traveled){
  const u=clamp(traveled/Math.max(1,p.arcDistance||p.range),0,1);
- return missileMuzzleHeight+4*(p.loft??0)*u*(1-u);
+ return missileMuzzleHeight*(1-u)+4*(p.loft??0)*u*(1-u);
 }
 // A low shot may still strike a nearby friendly; otherwise infantry can
 // stand in front of archers while arrows and javelins pass above them.
 function launchProjectile(s,target){
  const profile=rangedProfiles[s.ranged];
- if(!profile||s.ammo<=0||s.dead||s.broken||!target||target.dead)return false;
+ if(!profile||!hasRangedAmmo(s)||s.dead||s.broken||!target||target.dead)return false;
  if(s.stamina<profile.stamina){s.rangedCooldown=.30;return false;}
  const skill=s.skill||45,familiarity=rangedFamiliarity(s);
  const dist=Math.max(1,Math.hypot(target.x-s.x,target.y-s.y));
@@ -1312,7 +1460,8 @@ function launchProjectile(s,target){
   loft:profile.loft,arcDistance:Math.max(1,Math.hypot(predictedX-ox,predictedY-oy))
  };
  projectiles.push(projectile);
- s.ammo--;s.shotCount++;s.fired++;
+ if(!infiniteAmmo)s.ammo=Math.max(0,s.ammo-1);
+ s.shotCount++;s.fired++;
  s.stamina=clamp(s.stamina-profile.stamina*rangedTimeFactor(s),0,s.maxStamina);
  s.recoveryDelay=Math.max(s.recoveryDelay,.28);
  s.rangedCooldown=profile.reload*rangedTimeFactor(s);
@@ -1322,7 +1471,7 @@ function launchProjectile(s,target){
 }
 function beginRangedAim(s,target,dist){
  const profile=rangedProfiles[s.ranged];
- if(!profile||s.ammo<=0||s.rangedCooldown>0||s.attack||s.stagger>0)return false;
+ if(!profile||!hasRangedAmmo(s)||s.rangedCooldown>0||s.attack||s.stagger>0)return false;
  if(!target||dist>profile.range-12||dist<=meleeThreatRange(s))return false;
  if(s.stamina<profile.stamina+2)return false;
  s.rangedAim=profile.draw*rangedTimeFactor(s);
@@ -1345,7 +1494,10 @@ function updateProjectiles(dt){
  if(!projectiles.length)return;
  const active=[];
  for(const p of projectiles){
-  const remain=p.range-p.traveled;
+  // The previous version kept moving until max weapon range, even after
+  // the lofted arc ended at the intended landing point. That looked like sliding.
+  const landing=Math.min(p.range,p.arcDistance||p.range);
+  const remain=landing-p.traveled;
   if(remain<=0)continue;
   const travel=Math.min(remain,p.speed*dt);
   const x1=p.x,y1=p.y,x2=x1+p.vx*travel/p.speed,y2=y1+p.vy*travel/p.speed;
@@ -1380,16 +1532,32 @@ function updateProjectiles(dt){
    }
   }else{
    p.x=x2;p.y=y2;p.traveled+=travel;
-   if(p.traveled<p.range-1e-6&&
+   if(p.traveled<landing-1e-6&&
       p.x>0&&p.y>0&&p.x<W&&p.y<H)active.push(p);
    else{
+    // Once a shot reaches the earth, it stops moving. Keep a small
+    // stationary, fading marker to make the impact legible.
+    if(p.x>0&&p.y>0&&p.x<W&&p.y<H){
+     groundedShots.push({x:p.x,y:p.y,angle:Math.atan2(p.vy,p.vx),
+       kind:p.kind,life:1.7});
+     if(groundedShots.length>125)groundedShots.splice(0,groundedShots.length-125);
+    }
     const stat=combatLabStats(p.team);if(stat)stat.rangedMisses++;
    }
   }
  }
  projectiles=active;
 }
-function drawRangedProjectiles(ctx,shots){
+function drawRangedProjectiles(ctx,shots,landed=groundedShots){
+ // Landed arrows remain still for a moment rather than sliding or bouncing.
+ for(const p of landed){
+  const profile=rangedProfiles[p.kind];if(!profile)continue;
+  ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.angle);
+  ctx.globalAlpha=clamp(p.life/1.7,0,1)*.58;
+  ctx.strokeStyle=profile.color;ctx.lineWidth=p.kind==='javelin'?2:1.3;
+  ctx.beginPath();ctx.moveTo(-6,0);ctx.lineTo(5,0);ctx.stroke();
+  ctx.restore();
+ }
  for(const p of shots){
   const profile=rangedProfiles[p.kind];if(!profile)continue;
   const a=Math.atan2(p.vy,p.vx),length=p.kind==='javelin'?17:11;
@@ -1433,7 +1601,7 @@ function step(dt){
    const breakingPoint=stressBalance.breakingBase+s.disc*stressBalance.disciplineResistance+rnd(s.id+23)*5;
    if(s.stress>breakingPoint){panic(s);continue;}
   }else{s.stress=0;}
-  const player=s.team==='friend',command=player?mode:'attack';
+  const player=s.team==='friend',command=player?mode:(enemyCommand==='auto'?'attack':enemyCommand);
   if(s.decision<=0){s.decision=1.7+rnd(s.id+Math.floor(t*.8))*1.6;
    const steadiness=s.disc/100,unease=s.stress/100;
    // Less wandering and fewer direction changes; stress still disrupts ranks.
@@ -1454,7 +1622,7 @@ function step(dt){
        const ndx=(target.x-s.x)/Math.max(1,dist),ndy=(target.y-s.y)/Math.max(1,dist);
        if(dist>gap+24){
         moveX=s.x+ndx*(dist-gap);moveY=s.y+ndy*(dist-gap);
-        pace=1.07;
+        pace=(!player&&enemyCommand==='attack')?1.30:1.07;
        }else if(dist<gap-28){
         moveX=clamp(s.x-ndx*(gap-dist+16),14,W-14);
         moveY=clamp(s.y-ndy*(gap-dist+16),14,H-14);
@@ -1466,7 +1634,7 @@ function step(dt){
        if(dist>weaponProfiles[s.weapon].reach*.92||distanceToSlot>18){
         const clear=avoidCombatCrowd(s,slot,target);
         moveX=clear.x;moveY=clear.y;
-        pace=dist<=weaponProfiles[s.weapon].reach?.78:1.16;
+        pace=dist<=weaponProfiles[s.weapon].reach?.78:(!player&&enemyCommand==='attack'?1.40:1.16);
        }else{moveX=s.x;moveY=s.y;}
       }
     }else{moveX=s.x;moveY=s.y;}
@@ -1501,6 +1669,8 @@ function step(dt){
  }
  separateSoldiers();
  updateProjectiles(dt);
+ for(const p of groundedShots)p.life-=dt;
+ groundedShots=groundedShots.filter(p=>p.life>0);
  for(const effect of slashes)effect.life-=dt;slashes=slashes.filter(e=>e.life>0);
 }
 function background(){ctx.fillStyle='#203b30';ctx.fillRect(0,0,W,H);const grad=ctx.createLinearGradient(0,0,W,H);grad.addColorStop(0,'#355746');grad.addColorStop(.45,'#29483a');grad.addColorStop(1,'#244538');ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
@@ -1635,8 +1805,8 @@ function drawUnit(s){if(s.routed)return;
  // An amber counter below the fighter shows ammunition remaining.
  if(s.ranged){
   ctx.font='bold 9px system-ui';ctx.textAlign='center';
-  ctx.fillStyle=s.ammo>0?rangedProfiles[s.ranged].color:'#b4aba2';
-  ctx.fillText(String(s.ammo),x+17,y+19);
+  ctx.fillStyle=(infiniteAmmo||s.ammo>0)?rangedProfiles[s.ranged].color:'#b4aba2';
+  ctx.fillText(infiniteAmmo?'∞':String(s.ammo),x+17,y+19);
  }
  // Thin stress arc makes each soldier's personal stress legible.
  if(s.stress>12){ctx.beginPath();ctx.arc(x,y,12,-Math.PI/2,-Math.PI/2+stress*2*Math.PI);ctx.strokeStyle=s.stress>70?'#f16d53':'#e6c368';ctx.lineWidth=2;ctx.stroke();}
@@ -1696,7 +1866,11 @@ function drawMinimap(){
   canvas.style.width=VW+'px';canvas.style.height=VH+'px';
   ctx.setTransform(dpr,0,0,dpr,0,0);
   if(!friends.length){
-   W=Math.max(1500,VW*1.7);H=Math.max(860,VH*1.7);
+   // Increase playable battlefield AREA by exactly three times, preserving
+   // the original shape and soldier/weapon scale.
+   const worldScale=Math.sqrt(3);
+   W=Math.max(1500,VW*1.7)*worldScale;
+   H=Math.max(860,VH*1.7)*worldScale;
    populate();
   }else{
    // Keep world coordinates fixed while the phone/browser changes dimensions.
@@ -1711,7 +1885,7 @@ function frame(ts){
   const dt=Math.min((ts-last)/1000,.040);
   last=ts;
   if(!equipmentOpen)t+=dt;
-  const panSpeed=420*dt;
+  const panSpeed=600*dt;
   if(cameraKeys.has('arrowleft')||cameraKeys.has('a'))camera.x-=panSpeed;
   if(cameraKeys.has('arrowright')||cameraKeys.has('d'))camera.x+=panSpeed;
   if(cameraKeys.has('arrowup')||cameraKeys.has('w'))camera.y-=panSpeed;
