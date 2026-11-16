@@ -985,7 +985,7 @@ function advanceAttack(s,dt){
   if(a.phase==='active')scanWeaponArc(s,a,was,now);
   // A sword or axe stops its active sweep on a hard impact; recovery still
   // plays, but there is no invisible hitbox after the blade has been stopped.
-  if(a.stopped){a.phase='recovery';a.elapsed=0;break;}
+  if(a.phase==='active'&&a.stopped){a.phase='recovery';a.elapsed=0;a.stopped=false;break;}
   a.elapsed+=used;remaining-=used;
   if(a.elapsed<duration-1e-6)break;
   if(a.phase==='windup')a.phase='active';
