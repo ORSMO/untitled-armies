@@ -1431,7 +1431,7 @@ function launchProjectile(s,target){
  // a tiny angular error used to turn into a huge miss at long range.
  // Experience and familiarity both tighten the grouping; the projectile
  // still flies straight after release, and moving targets remain harder.
- const scatter=2.2+targetDistance*.0025+
+ const scatter=5+targetDistance*.0045+
   (100-skill)*(.115+targetDistance*.00012)+
   (100-familiarity)*(.10+targetDistance*.00010);
  const lateralError=(rnd(s.id*197+s.shotCount*139+41)-.5)*2*scatter;
