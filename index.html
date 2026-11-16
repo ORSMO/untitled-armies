@@ -1914,7 +1914,7 @@ function startLabRound(ar){
    const x=team==='friend'?135:305;
    const soldier=create(team,i,{x,y});
    Object.assign(soldier,gear);
-   setFighterTraining(soldier,team,i,gear.experience,gear.familiarity);
+   setFighterTraining(soldier,team,i,gear.experience,gear.familiarity,gear.rangedMastery);
    initializeRangedEquipment(soldier);
    // Small individual variations, no extra health or armor from experience.
    const seed=ar.index*7019+ar.rounds*131+i*117+(team==='friend'?23:97);
