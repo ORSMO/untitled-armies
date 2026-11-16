@@ -205,6 +205,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
        <tr><td>Kite</td><td>2.70</td><td>13</td><td>48%</td></tr>
        <tr><td>Tower</td><td>4.00</td><td>16</td><td>62%</td></tr>
       </tbody></table>
+      <p><strong>EXPERIENCE:</strong> Recruit (18), Trained (45), Veteran (72), Elite (92). Rank improves reaction speed, attack precision, defense and stamina efficiency without adding health or armor. <strong>WEAPON MASTERY:</strong> each fighter remembers separate familiarity with shortswords, arming swords, greatswords and axes (18–97). A skilled swordsman can still be new to axes. Experienced fighters may parry telegraphed blows; a successful parry opens a brief counterattack, but insufficient weapon momentum cannot deflect a massive cleave.</p>
       <p><strong>IMPACT REACTIONS:</strong> Heavy hits cause knockback and stagger. A successful active block can create a counterattack opening; a weak shield can suffer a <strong>GUARD BREAK</strong>. Plate and solid shields can stop a swing and recoil the attacker.</p>
       <p>Green and red soldiers wear mixed armor and carry different weapons. One-handed swords can use shields; greatswords and axes occupy both hands. Swing stages: wind-up → active hitbox → recovery. Your troops are still invulnerable.</p>
      </section>
@@ -217,18 +218,27 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
    <button type="button" data-matchup="plate">Plate wall</button>
    <button type="button" data-matchup="cleave">Cleave test</button>
    <button type="button" data-matchup="shields">Shield clash</button>
+   <button type="button" data-matchup="skill">Elite vs recruits</button>
   </div>
   <div class="equipment-grid"><div class="equipment-side">
    <h3>🟢 YOUR ARMY · 50 SOLDIERS</h3>
    <div class="equipment-field"><label for="friendWeapon">Weapon</label><select id="friendWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option></select></div>
 <div class="equipment-field"><label for="friendShield">Shield</label><select id="friendShield"><option value="mixed">Mixed shields</option><option value="none">No shield</option><option value="buckler">Buckler</option><option value="round">Round shield</option><option value="kite">Kite shield</option><option value="tower">Tower shield</option></select></div>
 <div class="equipment-field"><label for="friendArmor">Armor</label><select id="friendArmor"><option value="mixed">Mixed armor</option><option value="naked">Unarmored</option><option value="padded">Padded</option><option value="leather">Leather</option><option value="mail">Mail</option><option value="plate">Plate</option></select></div>
+<div class="equipment-field"><label for="friendExperience">Rank</label><select id="friendExperience">
+<option value="mixed">Mixed ranks</option><option value="recruit">Recruit</option><option value="trained">Trained</option><option value="veteran">Veteran</option><option value="elite">Elite</option></select></div>
+<div class="equipment-field"><label for="friendFamiliarity">Mastery</label><select id="friendFamiliarity">
+<option value="mixed">Individual weapon skills</option><option value="novice">Novice · 18</option><option value="practiced">Practiced · 56</option><option value="expert">Expert · 85</option><option value="master">Master · 97</option></select></div>
    <small id="friendGearNote">Mixed equipment. Two-handed troops carry no shields.</small>
  </div><div class="equipment-side foe-side">
    <h3>🔴 ENEMY ARMY · 50 SOLDIERS</h3>
    <div class="equipment-field"><label for="foeWeapon">Weapon</label><select id="foeWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option></select></div>
 <div class="equipment-field"><label for="foeShield">Shield</label><select id="foeShield"><option value="mixed">Mixed shields</option><option value="none">No shield</option><option value="buckler">Buckler</option><option value="round">Round shield</option><option value="kite">Kite shield</option><option value="tower">Tower shield</option></select></div>
 <div class="equipment-field"><label for="foeArmor">Armor</label><select id="foeArmor"><option value="mixed">Mixed armor</option><option value="naked">Unarmored</option><option value="padded">Padded</option><option value="leather">Leather</option><option value="mail">Mail</option><option value="plate">Plate</option></select></div>
+<div class="equipment-field"><label for="foeExperience">Rank</label><select id="foeExperience">
+<option value="mixed">Mixed ranks</option><option value="recruit">Recruit</option><option value="trained">Trained</option><option value="veteran">Veteran</option><option value="elite">Elite</option></select></div>
+<div class="equipment-field"><label for="foeFamiliarity">Mastery</label><select id="foeFamiliarity">
+<option value="mixed">Individual weapon skills</option><option value="novice">Novice · 18</option><option value="practiced">Practiced · 56</option><option value="expert">Expert · 85</option><option value="master">Master · 97</option></select></div>
    <small id="foeGearNote">Enemy reinforcements inherit these gear settings.</small>
  </div></div>
   <div class="equipment-actions">
@@ -744,14 +754,15 @@ document.querySelector('#reset').addEventListener('click',populate);
        equipPanel=document.querySelector('#equipmentPanel'),
        equipFeedback=document.querySelector('#equipmentFeedback');
  const equipControls={
-  friend:{weapon:document.querySelector('#friendWeapon'),shield:document.querySelector('#friendShield'),armor:document.querySelector('#friendArmor'),note:document.querySelector('#friendGearNote')},
-  foe:{weapon:document.querySelector('#foeWeapon'),shield:document.querySelector('#foeShield'),armor:document.querySelector('#foeArmor'),note:document.querySelector('#foeGearNote')}
+  friend:{weapon:document.querySelector('#friendWeapon'),shield:document.querySelector('#friendShield'),armor:document.querySelector('#friendArmor'),experience:document.querySelector('#friendExperience'),familiarity:document.querySelector('#friendFamiliarity'),note:document.querySelector('#friendGearNote')},
+  foe:{weapon:document.querySelector('#foeWeapon'),shield:document.querySelector('#foeShield'),armor:document.querySelector('#foeArmor'),experience:document.querySelector('#foeExperience'),familiarity:document.querySelector('#foeFamiliarity'),note:document.querySelector('#foeGearNote')}
  };
  const equipPresets={
   mixed:{friend:{weapon:'mixed',shield:'mixed',armor:'mixed'},foe:{weapon:'mixed',shield:'mixed',armor:'mixed'}},
   plate:{friend:{weapon:'greatsword',shield:'none',armor:'mail'},foe:{weapon:'sword',shield:'tower',armor:'plate'}},
   cleave:{friend:{weapon:'axe',shield:'none',armor:'naked'},foe:{weapon:'shortsword',shield:'none',armor:'naked'}},
-  shields:{friend:{weapon:'sword',shield:'round',armor:'mail'},foe:{weapon:'sword',shield:'kite',armor:'mail'}}
+  shields:{friend:{weapon:'sword',shield:'round',armor:'mail'},foe:{weapon:'sword',shield:'kite',armor:'mail'}},
+  skill:{friend:{weapon:'sword',shield:'round',armor:'leather',experience:'elite',familiarity:'master'},foe:{weapon:'sword',shield:'round',armor:'leather',experience:'recruit',familiarity:'novice'}}
  };
  let equipmentOpen=false;
  function syncEquipmentShield(team){
@@ -766,7 +777,7 @@ document.querySelector('#reset').addEventListener('click',populate);
  function showEquipmentValues(values){
   for(const team of ['friend','foe']){
    const controls=equipControls[team],settings=values[team];
-   for(const field of ['weapon','shield','armor'])controls[field].value=settings[field];
+   for(const field of ['weapon','shield','armor','experience','familiarity'])controls[field].value=settings[field]||'mixed';
    syncEquipmentShield(team);
   }
  }
@@ -791,7 +802,7 @@ document.querySelector('#reset').addEventListener('click',populate);
    syncEquipmentShield(team);
    equipFeedback.textContent='Equipment changed. Apply to update the battle.';
   });
-  for(const field of ['shield','armor']){
+  for(const field of ['shield','armor','experience','familiarity']){
    equipControls[team][field].addEventListener('change',()=>{
     equipFeedback.textContent='Equipment changed. Apply to update the battle.';
    });
@@ -811,7 +822,9 @@ document.querySelector('#reset').addEventListener('click',populate);
     weapon:weaponProfiles[weapon]||weapon==='mixed'?weapon:'mixed',
     armor:armorProfiles[c.armor.value]||c.armor.value==='mixed'?c.armor.value:'mixed',
     shield:weaponProfiles[weapon]?.twoHand?'none':
-      (c.shield.value==='mixed'||c.shield.value==='none'||shieldProfiles[c.shield.value]?c.shield.value:'mixed')
+      (c.shield.value==='mixed'||c.shield.value==='none'||shieldProfiles[c.shield.value]?c.shield.value:'mixed'),
+    experience:experienceProfiles[c.experience.value]?c.experience.value:'mixed',
+    familiarity:familiarityLevels[c.familiarity.value]!=null?c.familiarity.value:'mixed'
    };
   }
   return draft;
@@ -1260,7 +1273,7 @@ function weaponPose(s){
   offset=m.thrust?0:m.to*(1-p);
   length=a.reach*(m.thrust?1-.52*p:1-.38*p);
  }
- return {angle:s.faceAngle+offset,length};
+ return {angle:s.faceAngle+offset+(a.aimError||0),length};
 }
 function drawUnit(s){if(s.routed)return;
  const bob=s.dead?0:Math.sin(t*1.5+s.phase)*.09;
@@ -1308,6 +1321,12 @@ function drawUnit(s){if(s.routed)return;
  }
  // Weapons physically move throughout wind-up, active and recovery phases.
  const wp=weaponPose(s);
+ if(s.parryPose>0){
+  ctx.save();ctx.translate(x,y);ctx.rotate(s.faceAngle-.62);
+  ctx.strokeStyle='rgba(154,242,247,'+clamp(s.parryPose/.30,0,1)+')';
+  ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(7,-14);ctx.lineTo(23,6);ctx.stroke();
+  ctx.restore();
+ }
  ctx.save();ctx.translate(x,y);ctx.rotate(wp.angle);
  if(s.attack?.phase==='active'&&!s.attack.move.thrust){
   ctx.strokeStyle=s.attack.move.damageType==='blunt'?'#e8a86866':'#fff0aa66';
@@ -1355,7 +1374,7 @@ function draw(){
  for(const sl of slashes){
   ctx.save();ctx.translate(sl.x,sl.y);ctx.rotate(sl.a);
   const opacity=clamp(sl.life/sl.duration,0,1);
-  ctx.strokeStyle=sl.guardBroken?'rgba(255,103,88,'+opacity+')':sl.block?'rgba(141,235,249,'+opacity+')':
+  ctx.strokeStyle=sl.guardBroken?'rgba(255,103,88,'+opacity+')':sl.kind==='parry'?'rgba(128,255,238,'+opacity+')':sl.block?'rgba(141,235,249,'+opacity+')':
     sl.damageType==='blunt'?'rgba(255,179,103,'+opacity+')':
     sl.team==='friend'?'rgba(251,240,168,'+opacity+')':'rgba(255,181,159,'+opacity+')';
   ctx.lineWidth=sl.block?2.7:sl.type==='heavy'?3.6:2.3;
@@ -1363,11 +1382,11 @@ function draw(){
   if(sl.block){ctx.arc(0,0,8+(1-opacity)*(sl.guardBroken?13:8),0,Math.PI*2);}
   else{ctx.moveTo(-6,-5);ctx.lineTo(6,5);ctx.moveTo(-6,5);ctx.lineTo(6,-5);}
   ctx.stroke();
-   if(sl.guardBroken){
+   if(sl.guardBroken||sl.kind==='parry'){
     ctx.save();ctx.rotate(-sl.a);
     ctx.fillStyle='rgba(255,193,160,'+opacity+')';
     ctx.font='bold 10px system-ui';ctx.textAlign='center';
-    ctx.fillText('GUARD BREAK',0,-20-(1-opacity)*10);
+    ctx.fillText(sl.kind==='parry'?'PARRY!':'GUARD BREAK',0,-20-(1-opacity)*10);
     ctx.restore();
    }
    ctx.restore();
