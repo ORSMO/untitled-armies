@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V1.7</title>
+<title>Untitled Armies — V1.8</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -144,6 +144,53 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 #equipmentFeedback{font-size:10px;color:#bfefc6;flex:1;min-width:150px}
 @media(max-height:500px){.equipment-panel{padding:8px 11px}.equipment-header strong{font-size:12px}.equipment-panel p{margin:3px 0 6px}.equipment-presets{margin-bottom:6px}.equipment-side{padding:6px}.equipment-side h3{margin-bottom:3px}.equipment-field{margin:3px 0}.equipment-field select{padding:4px}.equipment-actions{margin-top:7px}.equipment-presets button,.equipment-actions button{padding:4px 8px}}
 @media(max-width:535px){.equipment-grid{grid-template-columns:1fr}.equipment-panel{max-width:420px}}
+
+/* Six independent skirmish arenas; original 50v50 battlefield at classic.html */
+body.lab-mode .app{height:100dvh;width:min(1600px,100%);max-width:none;gap:5px;overflow:hidden}
+body.lab-mode .board,body.lab-mode .info{display:none}
+.lab-classic-link{border:1px solid #657f70;color:#c9e9d0;text-decoration:none;border-radius:9px;padding:7px 9px;white-space:nowrap;font:700 11px/1.3 system-ui;background:#1c3329}
+.lab-classic-link:hover,.lab-classic-link:focus-visible{background:#295038;outline-color:#b7edc3}
+.lab-area{display:none;position:relative;flex:1;min-height:0;flex-direction:column;gap:6px;padding:0 4px 5px}
+body.lab-mode .lab-area{display:flex}
+.lab-toolbar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:2px 1px}
+.lab-toolbar strong{font-size:12px;letter-spacing:.045em}
+.lab-toolbar span{color:#a9c6b1;font-size:10px}
+.lab-commands{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.lab-commands button{border:1px solid #729e7e;border-radius:8px;background:#234432;color:#eef8e9;font:750 11px system-ui;padding:6px 10px;cursor:pointer}
+.lab-commands button:active{background:#3c6b4e}
+.lab-progress{width:100%;height:6px;appearance:none;border:0;border-radius:9px;overflow:hidden;background:#2b4034}
+.lab-progress::-webkit-progress-bar{background:#2b4034}.lab-progress::-webkit-progress-value{background:#80ce9b}.lab-progress::-moz-progress-bar{background:#80ce9b}
+.lab-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));flex:1;min-height:0;gap:7px}
+.lab-card{display:flex;flex-direction:column;min-height:0;overflow:hidden;border:1px solid #537761;border-radius:11px;background:#142720;padding:5px 7px;gap:3px}
+.lab-card-head{display:flex;justify-content:space-between;align-items:center;gap:5px;min-height:19px}
+.lab-card-head strong{font:800 11px system-ui;color:#e5f1df;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lab-count{font:800 10px ui-monospace,monospace;color:#dfc592;background:#46372b;border:1px solid #796044;border-radius:6px;padding:2px 5px;white-space:nowrap}
+.lab-map{display:block;width:100%;height:100%;object-fit:contain;max-width:none;min-height:0;flex:1;border-radius:6px;border:1px solid #476654;background:#19372a;touch-action:manipulation}
+.lab-matchup{display:flex;justify-content:space-between;gap:5px;font-size:9px;line-height:1.25;min-height:12px}
+.lab-matchup span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lab-green{color:#97f3ad}.lab-red{color:#ffc0b1;text-align:right}
+.lab-score{display:flex;justify-content:space-between;gap:5px;align-items:center;line-height:1.2;font:650 10px ui-monospace,monospace;color:#d7e8d9}
+.lab-score b{color:#f0ddac;font-weight:800}
+.lab-score .lab-winner{font-weight:800;color:#bceaba}
+.lab-summary{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#b4cdbb;font-size:10px;line-height:1.25;white-space:normal}
+.lab-summary strong{color:#f0e1b6}
+@media(max-height:620px){body.lab-mode .top{padding:4px 8px 2px}.lab-toolbar{padding:0}.lab-card{gap:2px;padding:3px 5px}.lab-card-head strong{font-size:10px}.lab-map{min-height:0}.lab-matchup{font-size:8px}.lab-score{font-size:9px}.lab-summary{font-size:9px}.lab-classic-link{font-size:10px;padding:4px 6px}.lab-commands button{font-size:10px;padding:4px 8px}}
+@media(max-width:770px){.lab-classic-link{font-size:9px;padding:5px}.lab-grid{gap:4px}.lab-card-head strong{font-size:9px}.lab-card{padding:3px}.lab-matchup{font-size:8px}.lab-count{font-size:9px}.lab-score{font-size:8px}.lab-toolbar strong{font-size:10px}}
+@media(max-width:570px){.lab-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr))}.lab-summary{font-size:9px}}
+
+.lab-insights-overlay{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:#07140ee6;padding:8px}
+.lab-insights-overlay.is-hidden{display:none}
+.lab-insights-dialog{width:min(870px,100%);max-height:100%;overflow:auto;padding:13px;border:1px solid #87b79a;border-radius:12px;background:#182c24;color:#dfefdf;box-shadow:0 12px 50px #000c}
+.lab-insights-header{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.lab-insights-header strong{font-size:13px}
+.lab-insights-header button{border:1px solid #88a28d;border-radius:7px;padding:4px 10px;background:#264532;color:#eef7e7;cursor:pointer}
+.lab-insights-dialog p{font-size:11px;color:#c0d4c4;line-height:1.4;margin:8px 0}
+.lab-insights-scroll{overflow:auto;max-width:100%}
+.lab-insights-dialog table{border-collapse:collapse;min-width:620px;width:100%;font:650 10px system-ui;color:#e2f2e4}
+.lab-insights-dialog td,.lab-insights-dialog th{padding:6px 8px;border-bottom:1px solid #58786255;text-align:left}
+.lab-insights-dialog th{color:#a8dfbf}
+#labAnalysisNotes{font-size:12px;color:#e4d9a5}
+@media(max-height:460px){.lab-insights-dialog{padding:8px}.lab-insights-dialog td,.lab-insights-dialog th{padding:4px 6px}.lab-insights-dialog p{margin:5px 0;font-size:10px}}
 </style>
 </head>
 <body>
@@ -151,8 +198,9 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
   <header class="top">
     <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Armor · Shields · Physical combat</p></div></div>
     <div class="top-actions">
+      <a class="lab-classic-link" href="classic.html" title="Open original 50v50 battlefield">Classic battlefield</a>
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 1.7">V1.7</div>
+      <div class="build" aria-label="Version 1.8">V1.8</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
@@ -239,6 +287,65 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
  </section>
 </div>
   </main>
+  <section class="lab-area" id="battleLab" aria-label="Six arena balance simulation">
+ <div class="lab-toolbar">
+  <div><strong>⚔ SIX-ARENA BATTLE LAB</strong> <span id="labProgressLabel">Repeated fair fights · 60 simulated minutes per arena</span></div>
+  <div class="lab-commands"><button type="button" id="labAnalysisButton" aria-expanded="false" aria-controls="labAnalysis">📊 Analysis</button><button type="button" id="labPause">Pause</button><button type="button" id="labRerun">↻ Rerun 1 hour</button></div>
+ </div>
+ <progress id="labProgress" class="lab-progress" max="100" value="0" aria-label="Balance simulation progress"></progress>
+ <div class="lab-grid"><article class="lab-card" id="labCard0">
+ <div class="lab-card-head"><strong>Buckler vs round</strong><span class="lab-count">1 vs 1</span></div>
+ <div class="lab-matchup"><span class="lab-green">🟢 Leather · sword/buckler</span><span class="lab-red">🔴 Leather · short/round</span></div>
+ <canvas class="lab-map" id="labCanvas0" width="440" height="210" aria-label="Buckler vs round simulated battlefield"></canvas>
+ <div class="lab-score"><span id="labResult0">0–0 · 0 draws</span><span class="lab-winner" id="labLeader0">Testing…</span></div>
+ <div class="lab-score"><span id="labBattles0">0 fights</span><span id="labBlocks0">0 blocks</span></div>
+</article>
+<article class="lab-card" id="labCard1">
+ <div class="lab-card-head"><strong>Shield vs axe</strong><span class="lab-count">2 vs 2</span></div>
+ <div class="lab-matchup"><span class="lab-green">🟢 Padded · sword/round</span><span class="lab-red">🔴 Leather · axe</span></div>
+ <canvas class="lab-map" id="labCanvas1" width="440" height="210" aria-label="Shield vs axe simulated battlefield"></canvas>
+ <div class="lab-score"><span id="labResult1">0–0 · 0 draws</span><span class="lab-winner" id="labLeader1">Testing…</span></div>
+ <div class="lab-score"><span id="labBattles1">0 fights</span><span id="labBlocks1">0 blocks</span></div>
+</article>
+<article class="lab-card" id="labCard2">
+ <div class="lab-card-head"><strong>Cleave vs numbers</strong><span class="lab-count">2 vs 3</span></div>
+ <div class="lab-matchup"><span class="lab-green">🟢 Naked · greatsword</span><span class="lab-red">🔴 Leather · short/buckler</span></div>
+ <canvas class="lab-map" id="labCanvas2" width="440" height="210" aria-label="Cleave vs numbers simulated battlefield"></canvas>
+ <div class="lab-score"><span id="labResult2">0–0 · 0 draws</span><span class="lab-winner" id="labLeader2">Testing…</span></div>
+ <div class="lab-score"><span id="labBattles2">0 fights</span><span id="labBlocks2">0 blocks</span></div>
+</article>
+<article class="lab-card" id="labCard3">
+ <div class="lab-card-head"><strong>Axes vs numbers</strong><span class="lab-count">3 vs 4</span></div>
+ <div class="lab-matchup"><span class="lab-green">🟢 Leather · axe</span><span class="lab-red">🔴 Padded · sword/round</span></div>
+ <canvas class="lab-map" id="labCanvas3" width="440" height="210" aria-label="Axes vs numbers simulated battlefield"></canvas>
+ <div class="lab-score"><span id="labResult3">0–0 · 0 draws</span><span class="lab-winner" id="labLeader3">Testing…</span></div>
+ <div class="lab-score"><span id="labBattles3">0 fights</span><span id="labBlocks3">0 blocks</span></div>
+</article>
+<article class="lab-card" id="labCard4">
+ <div class="lab-card-head"><strong>Plate vs greatsword</strong><span class="lab-count">4 vs 5</span></div>
+ <div class="lab-matchup"><span class="lab-green">🟢 Plate · short/buckler</span><span class="lab-red">🔴 Mail · greatsword</span></div>
+ <canvas class="lab-map" id="labCanvas4" width="440" height="210" aria-label="Plate vs greatsword simulated battlefield"></canvas>
+ <div class="lab-score"><span id="labResult4">0–0 · 0 draws</span><span class="lab-winner" id="labLeader4">Testing…</span></div>
+ <div class="lab-score"><span id="labBattles4">0 fights</span><span id="labBlocks4">0 blocks</span></div>
+</article>
+<article class="lab-card" id="labCard5">
+ <div class="lab-card-head"><strong>Small sword clash</strong><span class="lab-count">5 vs 5</span></div>
+ <div class="lab-matchup"><span class="lab-green">🟢 Mail · short/buckler</span><span class="lab-red">🔴 Leather · sword/round</span></div>
+ <canvas class="lab-map" id="labCanvas5" width="440" height="210" aria-label="Small sword clash simulated battlefield"></canvas>
+ <div class="lab-score"><span id="labResult5">0–0 · 0 draws</span><span class="lab-winner" id="labLeader5">Testing…</span></div>
+ <div class="lab-score"><span id="labBattles5">0 fights</span><span id="labBlocks5">0 blocks</span></div>
+</article>
+</div>
+ <div class="lab-summary"><span id="labSummary">Both armies can take damage; no reinforcements. All fights use the existing combat engine.</span><strong id="labWinner">Calculating results…</strong></div>
+ <div class="lab-insights-overlay is-hidden" id="labAnalysis">
+  <div class="lab-insights-dialog" role="dialog" aria-modal="true" aria-labelledby="labAnalysisTitle">
+   <div class="lab-insights-header"><strong id="labAnalysisTitle">📊 ONE-HOUR BALANCE ANALYSIS</strong><button id="labAnalysisClose" type="button" aria-label="Close analysis">✕</button></div>
+   <p>Each arena runs repeated fair fights for 60 simulated minutes. A healthy winning advantage is roughly 55–80%; above 85% usually means a hard counter or imbalance.</p>
+   <div class="lab-insights-scroll"><table><thead><tr><th>Matchup</th><th>Leader</th><th>Fights</th><th>Damage</th><th>Shield blocks</th><th>Guard breaks</th></tr></thead><tbody id="labAnalysisRows"></tbody></table></div>
+   <p id="labAnalysisNotes">Recommendations appear as results accumulate.</p>
+  </div>
+ </div>
+</section>
   <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="equipmentButton" class="small-btn" aria-expanded="false" aria-controls="equipmentPanel">⚙ Test gear</button> <button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
 </div>
 <div id="rotateNotice" role="status" aria-live="polite">
@@ -282,6 +389,7 @@ const orderButtons=['attack','defend','stop','retreat'].map(id=>document.getElem
  document.addEventListener('fullscreenchange',()=>{updateFullscreenButton();resize()});
  document.addEventListener('webkitfullscreenchange',()=>{updateFullscreenButton();resize()});
 let W=0,H=0,VW=0,VH=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],slashes=[],marker=null,nextId=0,formationType='block',formationDragging=false,nextEngagementPlan=0,nextSwingId=1;
+ let labMode=true,activeLab=null;
  const camera={x:0,y:0},cameraKeys=new Set();let fieldPointer=null;
 const rnd=i=>{const x=Math.sin(i*127.1+91.7)*43758.5453;return x-Math.floor(x)};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -794,7 +902,7 @@ document.querySelector('#reset').addEventListener('click',populate);
  window.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&equipmentOpen)setEquipmentMenu(false);
  });
-function panic(s){if(s.team==='friend'||s.broken||s.dead)return;s.broken=true;s.targetId=null;s.escapeAngle=0;s.decision=0;for(const n of members(s.team)){if(n===s||n.dead||n.broken)continue;const d=Math.hypot(n.x-s.x,n.y-s.y);if(d<80)n.stress=clamp(n.stress+stressBalance.panicSpread*(1-n.disc/160)*(1-d/100),0,100);} }
+function panic(s){if((!labMode&&s.team==='friend')||s.broken||s.dead)return;s.broken=true;s.targetId=null;s.escapeAngle=0;s.decision=0;for(const n of members(s.team)){if(n===s||n.dead||n.broken)continue;const d=Math.hypot(n.x-s.x,n.y-s.y);if(d<80)n.stress=clamp(n.stress+stressBalance.panicSpread*(1-n.disc/160)*(1-d/100),0,100);} }
 // Move selection balances armor vulnerability, stamina, variety and groups.
 function chooseCombatMove(s,target){
  const weapon=weaponProfiles[s.weapon],available=weapon.moves;
@@ -893,15 +1001,23 @@ function applyWeaponImpact(attacker,target,a){
  const shield=shieldImpact(attacker,target,a),damageType=a.move.damageType;
  const afterShield=a.baseDamage*(1-shield.block);
  const actual=mitigatedDamage(afterShield,target.armor,damageType);
+ if(labMode&&activeLab){
+  const offense=activeLab.stats[attacker.team],defense=activeLab.stats[target.team];
+  offense.hits++;offense.damage+=actual;
+  defense.shieldSaved+=Math.max(0,a.baseDamage-afterShield);
+  defense.armorSaved+=Math.max(0,afterShield-actual);
+  if(shield.kind){defense.blocks++;if(shield.kind==='active')defense.activeBlocks++;}
+  if(shield.guardBroken)defense.guardBreaks++;
+ }
  const weapon=weaponProfiles[attacker.weapon],heavy=a.move.style==='heavy';
  // Physical hits and blocks happen regardless of friendly health immunity.
- if(target.team==='foe'){
+ if(target.team==='foe'||labMode){
   target.hp=Math.max(0,target.hp-actual);
   const style=attackStyles[a.move.style];
   target.stress=clamp(target.stress+style.stress*(.15+.85*actual/Math.max(.01,a.baseDamage)),0,100);
  }
  target.hitFlash=shield.kind?.33:.27;
- if(attacker.team==='foe')attacker.stress=clamp(attacker.stress+stressBalance.givenHit,0,100);
+ if(attacker.team==='foe'||labMode)attacker.stress=clamp(attacker.stress+stressBalance.givenHit,0,100);
  a.hits++;
  // A raised shield transfers the blow into recoil. Heavy unblocked hits can
  // briefly disrupt an enemy's wind-up, creating an opening to counterattack.
@@ -940,14 +1056,15 @@ function applyWeaponImpact(attacker,target,a){
   x:target.x,y:target.y,a:Math.atan2(target.y-attacker.y,target.x-attacker.x),
   life:shield.guardBroken?.48:.26,duration:shield.guardBroken?.48:.26,
   type:a.move.style,team:attacker.team});
- if(target.team==='foe'&&target.hp<=0){
+ if((target.team==='foe'||labMode)&&target.hp<=0){
   target.dead=true;target.stress=100;
-  for(const n of foes){
+  for(const n of members(target.team)){
    if(n===target||n.dead||n.broken||n.routed)continue;
    const d=Math.hypot(n.x-target.x,n.y-target.y);
    if(d<88)n.stress=clamp(n.stress+stressBalance.allyKilled*(1-d/100),0,100);
   }
-  respawnEnemy(target);
+  if(labMode&&activeLab)activeLab.stats[attacker.team].kills++;
+  if(!labMode)respawnEnemy(target);
  }
  return true;
 }
@@ -985,7 +1102,7 @@ function advanceAttack(s,dt){
   if(a.phase==='active')scanWeaponArc(s,a,was,now);
   // A sword or axe stops its active sweep on a hard impact; recovery still
   // plays, but there is no invisible hitbox after the blade has been stopped.
-  if(a.stopped){a.phase='recovery';a.elapsed=0;break;}
+  if(a.phase==='active'&&a.stopped){a.phase='recovery';a.elapsed=0;a.stopped=false;break;}
   a.elapsed+=used;remaining-=used;
   if(a.elapsed<duration-1e-6)break;
   if(a.phase==='windup')a.phase='active';
@@ -1063,9 +1180,9 @@ function step(dt){
   // Stamina restores while not recovering from a swing; movement uses some.
   s.recoveryDelay=Math.max(0,s.recoveryDelay-dt);
   if(s.recoveryDelay===0)s.stamina=clamp(s.stamina+dt*7.4,0,s.maxStamina);
-  if(s.broken){s.attack=null;s.guardActive=false;s.guardHold=0;s.stress=100;fleeFromEnemies(s,dt);if(s.routed&&s.team==='foe')respawnEnemy(s);continue;}
+  if(s.broken){s.attack=null;s.guardActive=false;s.guardHold=0;s.stress=100;fleeFromEnemies(s,dt);if(!labMode&&s.routed&&s.team==='foe')respawnEnemy(s);continue;}
   const {target,dist}=chooseTarget(s);
-  if(s.team==='foe'){
+  if(s.team==='foe'&&!labMode){
    if(dist<reach*1.5)s.stress=clamp(s.stress+dt*stressBalance.closeThreat,0,100);
    else if(dist<72)s.stress=clamp(s.stress+dt*stressBalance.nearThreat,0,100);
    else s.stress=clamp(s.stress-dt*(stressBalance.recovery+s.disc/100),0,100);
@@ -1268,6 +1385,7 @@ function drawMinimap(){
   mctx.strokeRect(camera.x/W*mw,camera.y/H*mh,Math.min(mw,VW/W*mw),Math.min(mh,VH/H*mh));
  }
  function resize(){
+  if(labMode){if(labArenas.length)drawLab();return;}
   const b=board.getBoundingClientRect();
   VW=Math.max(240,b.width);VH=Math.max(180,b.height);
   const dpr=Math.min(window.devicePixelRatio||1,2);
@@ -1285,7 +1403,239 @@ function drawMinimap(){
   }
   draw();
  }
+// --- V1.8 independent six-arena, one-hour fair-battle experiments. ---
+// The exact V1.7 weapon, armor, shield and movement functions above are reused.
+// World globals are switched between isolated arena states before every step.
+const labScenarios=[
+ {name:'Buckler vs round',counts:[1,1],green:{weapon:'sword',shield:'buckler',armor:'leather'},red:{weapon:'shortsword',shield:'round',armor:'leather'}},
+ {name:'Shield vs axe',counts:[2,2],green:{weapon:'sword',shield:'round',armor:'padded'},red:{weapon:'axe',shield:null,armor:'leather'}},
+ {name:'Cleave vs numbers',counts:[2,3],green:{weapon:'greatsword',shield:null,armor:'naked'},red:{weapon:'shortsword',shield:'buckler',armor:'leather'}},
+ {name:'Axes vs numbers',counts:[3,4],green:{weapon:'axe',shield:null,armor:'leather'},red:{weapon:'sword',shield:'round',armor:'padded'}},
+ {name:'Plate vs greatsword',counts:[4,5],green:{weapon:'shortsword',shield:'buckler',armor:'plate'},red:{weapon:'greatsword',shield:null,armor:'mail'}},
+ {name:'Small sword clash',counts:[5,5],green:{weapon:'shortsword',shield:'buckler',armor:'mail'},red:{weapon:'sword',shield:'round',armor:'leather'}}
+];
+// The lab isolates *equipment* strength: morale routing stays in Classic mode.
+// Each fair test round ends through kills or the 75-second draw limit.
+const labSeconds=3600,labStepSeconds=.04,labWorldW=440,labWorldH=210,labMatchTimeout=75;
+let labArenas=[],labPaused=false,labTurn=0,labLastDraw=0,labAnalysisOpen=false,labAnalysisLast=0;
+const labCanvasNodes=Array.from({length:6},(_,i)=>document.getElementById('labCanvas'+i));
+function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0};}
+function activateLab(ar){
+ activeLab=ar;W=labWorldW;H=labWorldH;t=ar.seconds;mode='attack';
+ friends=ar.friends;foes=ar.foes;slashes=ar.slashes;
+ nextId=ar.nextId;nextSwingId=ar.nextSwingId;nextEngagementPlan=ar.nextEngagementPlan;
+}
+function storeLab(ar){
+ ar.friends=friends;ar.foes=foes;ar.slashes=slashes;
+ ar.nextId=nextId;ar.nextSwingId=nextSwingId;ar.nextEngagementPlan=nextEngagementPlan;
+ ar.seconds=t;
+}
+function startLabRound(ar){
+ activateLab(ar);
+ nextId=0;nextSwingId=1;nextEngagementPlan=0;slashes=[];
+ const countGreen=ar.spec.counts[0],countRed=ar.spec.counts[1];
+ function spawn(team,count,gear){
+  return Array.from({length:count},(_,i)=>{
+   const y=H*.5+(i-(count-1)*.5)*28;
+   const x=team==='friend'?135:305;
+   const soldier=create(team,i,{x,y});
+   Object.assign(soldier,gear);
+   // Seed varies each round and equally across both sides: no implicit cheat.
+   const seed=ar.index*7019+ar.rounds*131+i*117+(team==='friend'?23:97);
+   soldier.disc=64+Math.round(rnd(seed)*31);
+   soldier.speed=51+(rnd(seed+17)-.5)*12;
+   soldier.cooldown=.08+rnd(seed+19)*.19;
+   soldier.stress=0;
+   soldier.decision=.9+rnd(seed+41);
+   return soldier;
+  });
+ }
+ friends=spawn('friend',countGreen,ar.spec.green);
+ foes=spawn('foe',countRed,ar.spec.red);
+ ar.roundAge=0;storeLab(ar);
+}
+function initLab(){
+ document.body.classList.add('lab-mode');
+ labPaused=false;labTurn=0;labLastDraw=0;labAnalysisLast=0;labAnalysisOpen=false;
+ document.getElementById('labAnalysis').classList.add('is-hidden');
+ document.getElementById('labAnalysisButton').setAttribute('aria-expanded','false');
+ labArenas=labScenarios.map((spec,index)=>({
+  index,spec,ctx:labCanvasNodes[index].getContext('2d'),
+  seconds:0,roundAge:0,rounds:0,greenWins:0,redWins:0,draws:0,
+  stats:{friend:newLabScore(),foe:newLabScore()},
+  friends:[],foes:[],slashes:[],nextId:0,nextSwingId:1,nextEngagementPlan:0,done:false
+ }));
+ for(const arena of labArenas)startLabRound(arena);
+ document.getElementById('labPause').textContent='Pause';
+ updateLabHUD();drawLab();
+}
+function advanceLab(ar){
+ if(ar.done)return;
+ activateLab(ar);
+ const delta=Math.min(labStepSeconds,labSeconds-ar.seconds);
+ if(delta<=0){ar.done=true;return;}
+ t+=delta;step(delta);
+ ar.roundAge+=delta;
+ const green=living(friends).length,red=living(foes).length;
+ if(green===0||red===0||ar.roundAge>=labMatchTimeout){
+  ar.rounds++;
+  if(green===0&&red>0)ar.redWins++;
+  else if(red===0&&green>0)ar.greenWins++;
+  else ar.draws++;
+  storeLab(ar);
+  if(ar.seconds<labSeconds-1e-6)startLabRound(ar);
+ }else storeLab(ar);
+ if(ar.seconds>=labSeconds-1e-6){ar.seconds=labSeconds;ar.done=true;}
+}
+function labWinner(ar){
+ const decisive=ar.greenWins+ar.redWins;
+ if(!decisive)return ar.done?'Draws only':'Testing…';
+ const greenRate=ar.greenWins/decisive,redRate=ar.redWins/decisive;
+ if(Math.abs(greenRate-.5)<.055||decisive<10)return 'Close matchup';
+ return (greenRate>redRate?'🟢 Green':'🔴 Red')+' '+Math.round(Math.max(greenRate,redRate)*100)+'%';
+}
+function updateLabAnalysis(){
+ const rows=labArenas.map(a=>{
+  const f=a.stats.friend,r=a.stats.foe,decisive=a.greenWins+a.redWins;
+  const leader=decisive?(a.greenWins>a.redWins?'🟢':'🔴')+
+    ' '+Math.round(Math.max(a.greenWins,a.redWins)/decisive*100)+'%':'—';
+  return '<tr><td>'+a.spec.name+' ('+a.spec.counts.join('v')+')</td>'+
+   '<td>'+leader+'</td><td>'+a.rounds+'</td>'+
+   '<td>'+Math.round(f.damage+r.damage)+'</td>'+
+   '<td>'+ (f.blocks+r.blocks)+'</td>'+
+   '<td>'+ (f.guardBreaks+r.guardBreaks)+'</td></tr>';
+ }).join('');
+ document.getElementById('labAnalysisRows').innerHTML=rows;
+ const available=labArenas.reduce((sum,a)=>sum+a.rounds,0),complete=labArenas.every(a=>a.done);
+ const notes=[];
+ if(available<60){notes.push('Collecting enough rounds to interpret equipment advantages.');}
+ else{
+  const a2=labArenas[1],a4=labArenas[3],a5=labArenas[4],a6=labArenas[5];
+  const winRate=(a,team)=>a[team+'Wins']/Math.max(1,a.greenWins+a.redWins);
+  const max=Math.max(...labArenas.map(a=>Math.max(a.greenWins,a.redWins)/Math.max(1,a.greenWins+a.redWins)));
+  if(max>.85)notes.push('An advantage above 85% needs investigation: try a weaker armor or stronger counterweapon.');
+  else notes.push('All tested leaders remain within the target of roughly 55–80%: clear but beatable.');
+  if(winRate(a4,'green')>.75)
+   notes.push('3 axes can beat 4 padded round-shield troops: consider testing about 5% less axe momentum or slightly stronger shield stopping power.');
+  if(winRate(a6,'green')>.75)
+   notes.push('Mail buckler shortswords strongly outperform leather round-shield swords: armor may be more influential than weapon reach.');
+  if(winRate(a5,'red')>.65)
+   notes.push('Five greatswords overcome four plate-armored shortswords: superior reach and numbers can still defeat plate.');
+  if(winRate(a2,'green')>.55&&winRate(a2,'green')<.75)
+   notes.push('The 2v2 round-shield versus axe test is a useful near-balanced benchmark.');
+ }
+ document.getElementById('labAnalysisNotes').textContent=
+   (complete?'Final report: ':'Live sample: ')+notes.join(' ');
+}
+function setLabAnalysis(open){
+ labAnalysisOpen=!!open;
+ document.getElementById('labAnalysis').classList.toggle('is-hidden',!labAnalysisOpen);
+ document.getElementById('labAnalysisButton').setAttribute('aria-expanded',labAnalysisOpen?'true':'false');
+ if(labAnalysisOpen)updateLabAnalysis();
+}
+document.getElementById('labAnalysisButton').addEventListener('click',()=>setLabAnalysis(!labAnalysisOpen));
+document.getElementById('labAnalysisClose').addEventListener('click',()=>setLabAnalysis(false));
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&labAnalysisOpen)setLabAnalysis(false)});
+function updateLabHUD(){
+ const avg=labArenas.reduce((sum,a)=>sum+a.seconds,0)/(labArenas.length||1);
+ const pct=Math.min(100,avg/labSeconds*100);
+ const done=labArenas.every(a=>a.done);
+ document.getElementById('labProgress').value=pct;
+ document.getElementById('labProgressLabel').textContent=
+  (done?'Completed':'Running')+' · '+(avg/60).toFixed(1)+' / 60 simulated min per arena';
+ const aggregate=labArenas.reduce((r,a)=>{
+  r.fights+=a.rounds;r.kills+=a.stats.friend.kills+a.stats.foe.kills;
+  r.blocks+=a.stats.friend.blocks+a.stats.foe.blocks;
+  return r;
+ },{fights:0,kills:0,blocks:0});
+ for(const a of labArenas){
+  document.getElementById('labResult'+a.index).textContent=
+   '🟢 '+a.greenWins+' · 🔴 '+a.redWins+' · = '+a.draws;
+  document.getElementById('labLeader'+a.index).textContent=labWinner(a);
+  document.getElementById('labBattles'+a.index).textContent=
+   a.rounds+' fights · '+(a.stats.friend.damage+a.stats.foe.damage).toFixed(0)+' dmg';
+  document.getElementById('labBlocks'+a.index).textContent=
+   (a.stats.friend.blocks+a.stats.foe.blocks)+' blocks';
+ }
+ document.getElementById('labSummary').textContent=
+  aggregate.fights+' fights · '+aggregate.kills+' kills · '+aggregate.blocks+
+  ' blocks · Fair mode (both sides vulnerable, no reinforcements)';
+ const leaders=labArenas.filter(a=>{const decisive=a.greenWins+a.redWins;return a.done&&decisive>=10&&Math.abs(a.greenWins/decisive-.5)>=.055;}).length;
+ document.getElementById('labWinner').textContent=done?
+  leaders+'/6 matchups have a clear leader':'Testing six equipment matchups…';
+ const pause=document.getElementById('labPause');
+ pause.disabled=done;pause.textContent=done?'Complete':labPaused?'Resume':'Pause';
+}
+function drawLabArena(ar){
+ const ctx=ar.ctx,can=labCanvasNodes[ar.index],ww=can.width,hh=can.height;
+ ctx.clearRect(0,0,ww,hh);
+ ctx.fillStyle='#20392d';ctx.fillRect(0,0,ww,hh);
+ ctx.strokeStyle='#9ac6a61c';ctx.lineWidth=.8;
+ ctx.beginPath();for(let x=0;x<=ww;x+=22){ctx.moveTo(x,0);ctx.lineTo(x,hh);}
+ for(let y=0;y<=hh;y+=22){ctx.moveTo(0,y);ctx.lineTo(ww,y);}ctx.stroke();
+ ctx.strokeStyle='#b5d6b03a';ctx.beginPath();ctx.moveTo(ww/2,0);ctx.lineTo(ww/2,hh);ctx.stroke();
+ for(const s of [...ar.foes,...ar.friends]){
+  if(s.routed)continue;
+  if(s.dead||s.broken){
+   ctx.strokeStyle=s.team==='friend'?'#468b65':'#985952';
+   ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(s.x-6,s.y-6);ctx.lineTo(s.x+6,s.y+6);
+   ctx.moveTo(s.x+6,s.y-6);ctx.lineTo(s.x-6,s.y+6);ctx.stroke();continue;
+  }
+  const armor=armorProfiles[s.armor],shield=shieldProfiles[s.shield];
+  const bodyColor=s.team==='friend'?'#75e8a3':'#ed8a7c';
+  ctx.fillStyle='#0b1f18aa';ctx.beginPath();ctx.ellipse(s.x,s.y+5,10,4,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=s.hitFlash>0?'#fff3aa':bodyColor;
+  ctx.strokeStyle=armor?.color||'#fff';ctx.lineWidth=2.2;
+  ctx.beginPath();ctx.arc(s.x,s.y,9,0,Math.PI*2);ctx.fill();ctx.stroke();
+  if(shield){
+   ctx.save();ctx.translate(s.x,s.y);ctx.rotate(s.faceAngle);
+   ctx.fillStyle=s.guardActive?'#f3f0cf':shield.color;
+   ctx.beginPath();ctx.ellipse(11,0,shield.size*.45,shield.size*.30,0,0,Math.PI*2);ctx.fill();
+   ctx.restore();
+  }
+  const w=weaponPose(s);
+  ctx.strokeStyle=s.weapon==='axe'?'#f3bb87':'#f0f1eb';ctx.lineWidth=s.weapon==='greatsword'||s.weapon==='axe'?3:2;
+  ctx.beginPath();ctx.moveTo(s.x+Math.cos(w.angle)*8,s.y+Math.sin(w.angle)*8);
+  ctx.lineTo(s.x+Math.cos(w.angle)*w.length,s.y+Math.sin(w.angle)*w.length);ctx.stroke();
+  if(s.hp<s.maxHp){
+   ctx.fillStyle='#15221c';ctx.fillRect(s.x-9,s.y-16,18,3);
+   ctx.fillStyle='#fbd58e';ctx.fillRect(s.x-9,s.y-16,18*clamp(s.hp/s.maxHp,0,1),3);
+  }
+  if(s.stagger>0){
+   ctx.strokeStyle='#f4d17d';ctx.lineWidth=1.5;
+   ctx.beginPath();ctx.arc(s.x,s.y,12,0,Math.PI*2);ctx.stroke();
+  }
+ }
+}
+function drawLab(){for(const arena of labArenas)drawLabArena(arena);}
+function frameLab(ts){
+ if(labPaused||labArenas.every(a=>a.done)){
+  if(ts-labLastDraw>180){updateLabHUD();drawLab();labLastDraw=ts;}
+  return;
+ }
+ // Dynamic work budget keeps the landscape UI responsive on weaker phones.
+ const start=performance.now();let batch=0;
+ while(batch<1800&&performance.now()-start<10){
+  const a=labArenas[labTurn%labArenas.length];
+  labTurn++;batch++;
+  if(!a.done)advanceLab(a);
+  if(labArenas.every(q=>q.done))break;
+ }
+ if(ts-labLastDraw>80){
+  updateLabHUD();drawLab();labLastDraw=ts;
+ }
+ if(labAnalysisOpen&&ts-labAnalysisLast>900){
+  updateLabAnalysis();labAnalysisLast=ts;
+ }
+}
+document.getElementById('labPause').addEventListener('click',()=>{
+ if(labArenas.every(a=>a.done))return;
+ labPaused=!labPaused;updateLabHUD();
+});
+document.getElementById('labRerun').addEventListener('click',initLab);
+
 function frame(ts){
+  if(labMode){frameLab(ts);requestAnimationFrame(frame);return;}
   if(!last)last=ts;
   const dt=Math.min((ts-last)/1000,.040);
   last=ts;
@@ -1302,7 +1652,7 @@ function frame(ts){
   if(!equipmentOpen&&Math.floor(t*4)!==Math.floor((t-dt)*4))updateUI();
   requestAnimationFrame(frame);
  }
-window.addEventListener('resize',resize,{passive:true});if('ResizeObserver' in window)new ResizeObserver(resize).observe(board);resize();requestAnimationFrame(frame);
+window.addEventListener('resize',resize,{passive:true});if('ResizeObserver' in window)new ResizeObserver(resize).observe(board);if(labMode)initLab();else resize();requestAnimationFrame(frame);
 })();
 </script>
 </body>
