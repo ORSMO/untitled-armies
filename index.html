@@ -1316,6 +1316,25 @@ function updateShieldGuard(s,dt){
     s.guardHold=Math.max(s.guardHold,.18+shield.weight*.025);
   }
  }
+ // Defenders can spot incoming arrows or javelins, but only if facing the
+ // projectile with enough stamina and reaction time to raise their shields.
+ if(shield&&s.stamina>shield.cost*1.7){
+  for(const p of projectiles){
+   if(p.team===s.team)continue;
+   const dx=s.x-p.x,dy=s.y-p.y,dist=Math.hypot(dx,dy);
+   if(dist>115||dist<12)continue;
+   if(dx*p.vx+dy*p.vy<=0)continue;
+   const until=dist/p.speed;
+   const reaction=.06+(100-(s.skill||45))*.0024;
+   if(until<reaction||until>.38)continue;
+   const angle=Math.atan2(p.y-s.y,p.x-s.x);
+   const diff=Math.abs(Math.atan2(Math.sin(angle-s.faceAngle),Math.cos(angle-s.faceAngle)));
+   if(diff>shield.activeArc)continue;
+   const chance=clamp(.20+(s.skill||45)*.0055+weaponFamiliarity(s)*.0012,.20,.90);
+   if(rnd(s.id*83+Math.abs(p.id)*37+5)<chance)
+    s.guardHold=Math.max(s.guardHold,until+.10);
+  }
+ }
  s.guardActive=!!shield&&s.guardHold>0&&s.stamina>shield.cost*1.3;
  if(s.guardActive){
   s.stamina=clamp(s.stamina-dt*(1.1+shield.weight*.9)*trainingEfficiency(s),0,s.maxStamina);
@@ -1522,38 +1541,65 @@ function step(dt){
   else if(command==='retreat'){moveX=s.anchorX;moveY=s.anchorY;pace=1.45;}
   else if(command==='attack'){
     if(target){
-      const slot=engagementPoint(s,target);
-      const distanceToSlot=Math.hypot(slot.x-s.x,slot.y-s.y);
-      if(dist>weaponProfiles[s.weapon].reach*.92||distanceToSlot>18){
-       const clear=avoidCombatCrowd(s,slot,target);
-       moveX=clear.x;moveY=clear.y;
-       pace=dist<=weaponProfiles[s.weapon].reach?.78:1.16;
-      }else{moveX=s.x;moveY=s.y;}
+      const ranged=hasRangedAmmo(s)?rangedProfiles[s.ranged]:null;
+      if(ranged&&dist>meleeThreatRange(s)){
+       const gap=ranged.ideal;
+       const ndx=(target.x-s.x)/Math.max(1,dist),ndy=(target.y-s.y)/Math.max(1,dist);
+       if(dist>gap+24){
+        moveX=s.x+ndx*(dist-gap);moveY=s.y+ndy*(dist-gap);
+        pace=1.07;
+       }else if(dist<gap-28){
+        moveX=clamp(s.x-ndx*(gap-dist+16),14,W-14);
+        moveY=clamp(s.y-ndy*(gap-dist+16),14,H-14);
+        pace=.86;
+       }else if(shotLaneBlocker(s,target)){
+        // Sidestep allied soldiers instead of endlessly shooting into backs.
+        const side=((s.id+s.shotCount)%2===0)?1:-1;
+        moveX=clamp(s.x-ndy*35*side,14,W-14);
+        moveY=clamp(s.y+ndx*35*side,14,H-14);
+        pace=.78;
+       }else{moveX=s.x;moveY=s.y;}
+      }else{
+       const slot=engagementPoint(s,target);
+       const distanceToSlot=Math.hypot(slot.x-s.x,slot.y-s.y);
+       if(dist>weaponProfiles[s.weapon].reach*.92||distanceToSlot>18){
+        const clear=avoidCombatCrowd(s,slot,target);
+        moveX=clear.x;moveY=clear.y;
+        pace=dist<=weaponProfiles[s.weapon].reach?.78:1.16;
+       }else{moveX=s.x;moveY=s.y;}
+      }
     }else{moveX=s.x;moveY=s.y;}
   }
   else if(command==='defend'||command==='move'||command==='idle'||command==='form'){moveX=s.tx;moveY=s.ty;}
   const disciplineControl=.42+s.disc/160;
   const fatiguePace=.76+.24*(s.stamina/s.maxStamina);
-  const equipment=weaponProfiles[s.weapon].weight+(shieldProfiles[s.shield]?.weight||0);
+  const equipment=weaponProfiles[s.weapon].weight+(shieldProfiles[s.shield]?.weight||0)+(hasRangedAmmo(s)?rangedProfiles[s.ranged].weight:0);
   const loadPace=clamp(1-equipment*.038,.70,1);
   const fightingPace=s.stagger>0?0:s.attack?.72:s.guardActive?.73:1;
   const oldX=s.x,oldY=s.y;
   if(command!=='stop')approach(s,moveX,moveY,dt,pace*disciplineControl*fatiguePace*loadPace*fightingPace);
   s.stamina=clamp(s.stamina-Math.hypot(s.x-oldX,s.y-oldY)*(.042+equipment*.004),0,s.maxStamina);
+  s.vx=(s.x-oldX)/Math.max(.001,dt);s.vy=(s.y-oldY)/Math.max(.001,dt);
   updateFacing(s,target,target?Math.hypot(target.x-s.x,target.y-s.y):Infinity,dt*(s.stagger>0?.38:1));
+  if(command==='attack'&&target&&hasRangedAmmo(s)&&dist>meleeThreatRange(s))
+   turnToward(s,Math.atan2(target.y-s.y,target.x-s.x),dt);
   if(command==='stop'||command==='retreat'){
-   s.attack=null;s.guardActive=false;s.guardHold=0;
+   s.attack=null;s.guardActive=false;s.guardHold=0;s.rangedAim=0;
    s.guardBreak=Math.max(0,s.guardBreak-dt);
   }else{
    // Guard timers continue while staggered, but only recovered soldiers
    // can actively defend or begin a new swing.
    updateShieldGuard(s,dt);
-   if(s.stagger>0){s.guardActive=false;}
+   if(s.stagger>0){s.guardActive=false;s.rangedAim=0;}
    else if(s.attack)advanceAttack(s,dt);
+   else if(s.rangedAim>0)advanceRangedAim(s,target,dt);
+   else if(target&&hasRangedAmmo(s)&&dist>meleeThreatRange(s))
+    beginRangedAim(s,target,dist);
    else if(target&&s.cooldown<=0)beginAttack(s,target);
   }
  }
  separateSoldiers();
+ updateProjectiles(dt);
  for(const effect of slashes)effect.life-=dt;slashes=slashes.filter(e=>e.life>0);
 }
 function background(){ctx.fillStyle='#203b30';ctx.fillRect(0,0,W,H);const grad=ctx.createLinearGradient(0,0,W,H);grad.addColorStop(0,'#355746');grad.addColorStop(.45,'#29483a');grad.addColorStop(1,'#244538');ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
@@ -1679,6 +1725,7 @@ function draw(){
  background();if(marker){const age=t-marker.when;if(age<1.3){ctx.beginPath();ctx.arc(marker.x,marker.y,14+age*11,0,2*Math.PI);ctx.strokeStyle='rgba(211,255,218,'+(1-age/1.3)*.6+')';ctx.lineWidth=2;ctx.stroke();}else marker=null;}
  // Selection means selected soldiers are highlighted, but never hides their stats or swords.
  for(const s of foes)drawUnit(s);for(const s of friends)drawUnit(s);
+ drawRangedProjectiles(ctx,projectiles);
  for(const sl of slashes){
   ctx.save();ctx.translate(sl.x,sl.y);ctx.rotate(sl.a);
   const opacity=clamp(sl.life/sl.duration,0,1);
