@@ -1704,6 +1704,11 @@ function advanceLab(ar){
 }
 function labWinner(ar){
  const decisive=ar.greenWins+ar.redWins;
+ if(labPreset==='mirrors'){
+  if(decisive<100)return 'Checking…';
+  const pct=Math.round(ar.greenWins/decisive*100);
+  return Math.abs(pct-50)<=10?'✓ Fair '+pct+'/'+(100-pct):'⚠ Bias '+pct+'/'+(100-pct);
+ }
  if(!decisive)return ar.done?'Draws only':'Testing…';
  const greenRate=ar.greenWins/decisive,redRate=ar.redWins/decisive;
  if(Math.abs(greenRate-.5)<.055||decisive<10)return 'Close matchup';
@@ -1728,6 +1733,19 @@ function updateLabAnalysis(){
  const parries=labArenas.reduce((sum,a)=>sum+a.stats.friend.parries+a.stats.foe.parries,0);
  const counters=labArenas.reduce((sum,a)=>sum+a.stats.friend.counters+a.stats.foe.counters,0);
  const conclusions=[];
+ if(labPreset==='mirrors'){
+  const ready=labArenas.filter(a=>a.rounds>=100);
+  const biased=ready.filter(a=>Math.abs(a.greenWins/Math.max(1,a.greenWins+a.redWins)-.5)>.10);
+  const worst=ready.reduce((current,a)=>{
+   const d=Math.abs(a.greenWins/Math.max(1,a.greenWins+a.redWins)-.5);
+   return Math.max(current,d);
+  },0);
+  document.getElementById('labAnalysisNotes').textContent=
+   ready.length<6?'Checking identical armies. Each arena needs at least 100 fights before conclusions.':
+   biased.length===0?'All six identical-army controls are close to 50/50. The tester shows no large team bias in this sample.':
+   biased.length+' mirror test(s) differ from 50/50 by more than 10 percentage points. Do not trust detailed balance conclusions yet.';
+  return;
+ }
  if(totalFights<30)conclusions.push('Collecting more rounds before interpreting the advantages.');
  else{
   const skill=labArenas[0],mastery=labArenas[1],armor=labArenas[2],numbers=labArenas[3],parryTest=labArenas[4];
@@ -1779,8 +1797,30 @@ function updateLabHUD(){
   aggregate.fights+' fights · '+aggregate.kills+' kills · '+aggregate.blocks+
   ' blocks · '+aggregate.parries+' parries · Both sides vulnerable';
  const leaders=labArenas.filter(a=>{const decisive=a.greenWins+a.redWins;return a.done&&decisive>=10&&Math.abs(a.greenWins/decisive-.5)>=.055;}).length;
- document.getElementById('labWinner').textContent=done?
-  leaders+'/6 matchups have a clear leader':'Testing experience and gear matchups…';
+ const mirrorPass=labArenas.filter(a=>{
+  const decisive=a.greenWins+a.redWins;
+  return a.done&&decisive>=100&&Math.abs(a.greenWins/decisive-.5)<=.10;
+ }).length;
+ document.getElementById('labWinner').textContent=labPreset==='mirrors'?
+  (done?mirrorPass+'/6 fair controls':'Checking identical fighters…'):
+  (done?leaders+'/6 matchups have a clear leader':'Testing experience and gear matchups…');
+ if(done&&labPreset==='mirrors'){
+  document.getElementById('labPlainExplanation').textContent=
+   mirrorPass===6?'✓ All six identical-fighter arenas finished close to 50/50. This is what a trustworthy fairness test should look like.':
+   '⚠ '+(6-mirrorPass)+' identical-fighter matchup(s) need investigation. In these tests, both armies should win about half their fights.';
+ }else if(done){
+  const strongest=labArenas.reduce((best,a)=>{
+   const decisive=a.greenWins+a.redWins;
+   const margin=decisive?Math.max(a.greenWins,a.redWins)/decisive:0;
+   return margin>best.margin?{a,margin}:best;
+  },{a:null,margin:-1});
+  if(strongest.a){
+   const a=strongest.a,side=a.greenWins>a.redWins?'green':'red';
+   document.getElementById('labPlainExplanation').textContent=
+    'Example: In '+a.spec.name+', the '+side+' army won '+Math.round(strongest.margin*100)+
+    '% of decisive fights. Its different gear, rank or numbers give it an advantage. Unlike identical-army checks, these do NOT need to be 50/50.';
+  }
+ }
  const pause=document.getElementById('labPause');
  pause.disabled=done;pause.textContent=done?'Complete':labPaused?'Resume':'Pause';
 }
