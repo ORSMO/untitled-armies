@@ -462,7 +462,7 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  function initializeRangedEquipment(s){
   s.ranged=rangedProfiles[s.ranged]?s.ranged:null;
   s.ammo=s.ranged?rangedProfiles[s.ranged].ammo:0;
-  s.rangedCooldown=0;s.rangedAim=0;s.rangedTargetId=null;s.rangedRelease=0;s.shotCount=0;
+  s.rangedCooldown=0;s.rangedAim=0;s.rangedTargetId=null;s.rangedRelease=0;s.meleeReady=false;s.shotCount=0;
   s.fired=0;s.rangedHits=0;
  }
  function weaponFamiliarity(s){return clamp(s.weaponSkills?.[s.weapon]??35,0,100);}
@@ -1012,11 +1012,21 @@ document.querySelector('#reset').addEventListener('click',populate);
     'Mixed weapons: two-handed soldiers automatically skip shields.':
     'One-handed weapon: shield can passively or actively block.';
  }
+ function syncEquipmentUnitRole(team){
+  const c=equipControls[team],role=c.unitRole.value;
+  if(role==='infantry'){
+   c.ranged.value='none';c.ranged.disabled=true;
+   c.note.textContent='Infantry: melee only. Choose Archer to enable ranged weapons.';
+  }else{
+   c.ranged.disabled=false;
+   if(c.ranged.value==='none')c.ranged.value=role==='mixed'?'mixed':'bow';
+  }
+ }
  function showEquipmentValues(values){
   for(const team of ['friend','foe']){
    const controls=equipControls[team],settings=values[team];
    for(const field of ['weapon','shield','armor','experience','familiarity','ranged','rangedMastery','unitRole'])controls[field].value=settings[field]||(field==='ranged'?'none':field==='rangedMastery'?'same':field==='unitRole'?'infantry':'mixed');
-   syncEquipmentShield(team);
+   syncEquipmentShield(team);syncEquipmentUnitRole(team);
   }
  }
  function setEquipmentMenu(open){
@@ -1039,6 +1049,10 @@ document.querySelector('#reset').addEventListener('click',populate);
   equipControls[team].weapon.addEventListener('change',()=>{
    syncEquipmentShield(team);
    equipFeedback.textContent='Equipment changed. Apply to update the battle.';
+  });
+  equipControls[team].unitRole.addEventListener('change',()=>{
+   syncEquipmentUnitRole(team);
+   equipFeedback.textContent='Unit role changed. Apply to update the battle.';
   });
   for(const field of ['shield','armor','experience','familiarity','ranged','rangedMastery','unitRole']){
    equipControls[team][field].addEventListener('change',()=>{
@@ -1354,7 +1368,7 @@ function updateShieldGuard(s,dt){
  s.parryWindow=Math.max(0,(s.parryWindow||0)-dt);
  s.parryPose=Math.max(0,(s.parryPose||0)-dt);
  const shield=shieldProfiles[s.shield];
- if(s.broken||s.dead||s.attack||(isArcher(s)&&!s.attack&&rangedProfiles[s.ranged]?.twoHand)||s.stagger>0||s.guardBreak>0){
+ if(s.broken||s.dead||s.attack||(isArcher(s)&&!s.meleeReady&&rangedProfiles[s.ranged]?.twoHand)||s.stagger>0||s.guardBreak>0){
   s.guardActive=false;
   s.parryAttackId=null;return;
  }
@@ -1677,6 +1691,8 @@ function step(dt){
   if(s.recoveryDelay===0)s.stamina=clamp(s.stamina+dt*(6.7+(s.skill||45)*.012),0,s.maxStamina);
   if(s.broken){s.attack=null;s.guardActive=false;s.guardHold=0;s.stress=100;fleeFromEnemies(s,dt);if(s.routed&&s.team==='foe')respawnEnemy(s);continue;}
   const {target,dist}=chooseTarget(s);
+  // Ranged units keep their bow in hand until a genuine melee threat.
+  s.meleeReady=!!(isArcher(s)&&target&&dist<=meleeThreatRange(s));
   if(s.team==='foe'){
    if(dist<reach*1.5)s.stress=clamp(s.stress+dt*stressBalance.closeThreat,0,100);
    else if(dist<72)s.stress=clamp(s.stress+dt*stressBalance.nearThreat,0,100);
@@ -1833,7 +1849,7 @@ function drawUnit(s){if(s.routed)return;
   ctx.restore();
  }
  // Weapons physically move throughout wind-up, active and recovery phases.
- if(isArcher(s)&&s.ranged&&!s.attack){
+ if(isArcher(s)&&s.ranged&&!s.attack&&!s.meleeReady){
   const rp=rangedProfiles[s.ranged];
   ctx.save();ctx.translate(x,y);ctx.rotate(s.faceAngle);
   ctx.strokeStyle=rp.color;ctx.lineWidth=2.5;ctx.beginPath();
