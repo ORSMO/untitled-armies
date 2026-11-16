@@ -1417,7 +1417,7 @@ const labScenarios=[
 // The lab isolates *equipment* strength: morale routing stays in Classic mode.
 // Each fair test round ends through kills or the 75-second draw limit.
 const labSeconds=3600,labStepSeconds=.04,labWorldW=440,labWorldH=210,labMatchTimeout=75;
-let labArenas=[],labPaused=false,labTurn=0,labLastDraw=0;
+let labArenas=[],labPaused=false,labTurn=0,labLastDraw=0,labAnalysisOpen=false,labAnalysisLast=0;
 const labCanvasNodes=Array.from({length:6},(_,i)=>document.getElementById('labCanvas'+i));
 function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0};}
 function activateLab(ar){
@@ -1456,7 +1456,9 @@ function startLabRound(ar){
 }
 function initLab(){
  document.body.classList.add('lab-mode');
- labPaused=false;labTurn=0;labLastDraw=0;
+ labPaused=false;labTurn=0;labLastDraw=0;labAnalysisLast=0;labAnalysisOpen=false;
+ document.getElementById('labAnalysis').classList.add('is-hidden');
+ document.getElementById('labAnalysisButton').setAttribute('aria-expanded','false');
  labArenas=labScenarios.map((spec,index)=>({
   index,spec,ctx:labCanvasNodes[index].getContext('2d'),
   seconds:0,roundAge:0,rounds:0,greenWins:0,redWins:0,draws:0,
@@ -1492,6 +1494,48 @@ function labWinner(ar){
  if(Math.abs(greenRate-.5)<.055||decisive<10)return 'Close matchup';
  return (greenRate>redRate?'🟢 Green':'🔴 Red')+' '+Math.round(Math.max(greenRate,redRate)*100)+'%';
 }
+function updateLabAnalysis(){
+ const rows=labArenas.map(a=>{
+  const f=a.stats.friend,r=a.stats.foe,decisive=a.greenWins+a.redWins;
+  const leader=decisive?(a.greenWins>a.redWins?'🟢':'🔴')+
+    ' '+Math.round(Math.max(a.greenWins,a.redWins)/decisive*100)+'%':'—';
+  return '<tr><td>'+a.spec.name+' ('+a.spec.counts.join('v')+')</td>'+
+   '<td>'+leader+'</td><td>'+a.rounds+'</td>'+
+   '<td>'+Math.round(f.damage+r.damage)+'</td>'+
+   '<td>'+ (f.blocks+r.blocks)+'</td>'+
+   '<td>'+ (f.guardBreaks+r.guardBreaks)+'</td></tr>';
+ }).join('');
+ document.getElementById('labAnalysisRows').innerHTML=rows;
+ const available=labArenas.reduce((sum,a)=>sum+a.rounds,0),complete=labArenas.every(a=>a.done);
+ const notes=[];
+ if(available<60){notes.push('Collecting enough rounds to interpret equipment advantages.');}
+ else{
+  const a2=labArenas[1],a4=labArenas[3],a5=labArenas[4],a6=labArenas[5];
+  const winRate=(a,team)=>a[team+'Wins']/Math.max(1,a.greenWins+a.redWins);
+  const max=Math.max(...labArenas.map(a=>Math.max(a.greenWins,a.redWins)/Math.max(1,a.greenWins+a.redWins)));
+  if(max>.85)notes.push('An advantage above 85% needs investigation: try a weaker armor or stronger counterweapon.');
+  else notes.push('All tested leaders remain within the target of roughly 55–80%: clear but beatable.');
+  if(winRate(a4,'green')>.75)
+   notes.push('3 axes can beat 4 padded round-shield troops: consider testing about 5% less axe momentum or slightly stronger shield stopping power.');
+  if(winRate(a6,'green')>.75)
+   notes.push('Mail buckler shortswords strongly outperform leather round-shield swords: armor may be more influential than weapon reach.');
+  if(winRate(a5,'red')>.65)
+   notes.push('Five greatswords overcome four plate-armored shortswords: superior reach and numbers can still defeat plate.');
+  if(winRate(a2,'green')>.55&&winRate(a2,'green')<.75)
+   notes.push('The 2v2 round-shield versus axe test is a useful near-balanced benchmark.');
+ }
+ document.getElementById('labAnalysisNotes').textContent=
+   (complete?'Final report: ':'Live sample: ')+notes.join(' ');
+}
+function setLabAnalysis(open){
+ labAnalysisOpen=!!open;
+ document.getElementById('labAnalysis').classList.toggle('is-hidden',!labAnalysisOpen);
+ document.getElementById('labAnalysisButton').setAttribute('aria-expanded',labAnalysisOpen?'true':'false');
+ if(labAnalysisOpen)updateLabAnalysis();
+}
+document.getElementById('labAnalysisButton').addEventListener('click',()=>setLabAnalysis(!labAnalysisOpen));
+document.getElementById('labAnalysisClose').addEventListener('click',()=>setLabAnalysis(false));
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&labAnalysisOpen)setLabAnalysis(false)});
 function updateLabHUD(){
  const avg=labArenas.reduce((sum,a)=>sum+a.seconds,0)/(labArenas.length||1);
  const pct=Math.min(100,avg/labSeconds*100);
@@ -1579,6 +1623,9 @@ function frameLab(ts){
  }
  if(ts-labLastDraw>80){
   updateLabHUD();drawLab();labLastDraw=ts;
+ }
+ if(labAnalysisOpen&&ts-labAnalysisLast>900){
+  updateLabAnalysis();labAnalysisLast=ts;
  }
 }
 document.getElementById('labPause').addEventListener('click',()=>{
