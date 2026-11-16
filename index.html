@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V1.6</title>
+<title>Untitled Armies — V1.7</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -115,6 +115,35 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 .armor-chip{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px}
 @media(max-height:630px){.armor-panel{max-height:calc(100% - 20px);padding:7px 10px}.armor-panel th,.armor-panel td{padding:4px 3px}.info>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
 @media(max-width:620px){.armor-panel{width:calc(100% - 140px)}}
+
+/* Landscape equipment matchup tester */
+.equipment-backdrop{position:absolute;inset:0;z-index:12;background:#07120dc7;display:grid;place-items:center;padding:8px;overscroll-behavior:contain}
+.equipment-backdrop.is-hidden{display:none}
+.equipment-panel{width:min(685px,100%);max-height:100%;overflow:auto;overscroll-behavior:contain;border:1px solid #83b99c;border-radius:13px;background:#14271ff7;box-shadow:0 17px 50px #000c;color:#e3f5e6;padding:12px 14px}
+.equipment-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:5px}
+.equipment-header strong{font-size:15px;letter-spacing:.06em}
+.equipment-panel p{margin:5px 0 9px;font-size:11px;color:#bed4c4;line-height:1.4}
+.equipment-presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.equipment-presets button,.equipment-actions button{border:1px solid #749a7f;background:#244535;color:#f1fae8;border-radius:8px;padding:6px 10px;cursor:pointer;font:700 11px system-ui;touch-action:manipulation}
+.equipment-presets button:active,.equipment-actions button:active{background:#3a6950}
+.equipment-presets button:focus-visible,.equipment-actions button:focus-visible,.equipment-field select:focus-visible{outline:2px solid #c8f7ab;outline-offset:1px}
+.equipment-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.equipment-side{padding:9px;border:1px solid #607d6c;border-radius:10px;background:#1b342b}
+.equipment-side h3{margin:0 0 7px;font-size:12px;letter-spacing:.04em;color:#dcf5e1}
+.equipment-side.foe-side{border-color:#986963;background:#392a28}
+.equipment-side.foe-side h3{color:#f9c7bc}
+.equipment-field{display:grid;grid-template-columns:62px minmax(0,1fr);gap:6px;align-items:center;margin:5px 0}
+.equipment-field label{font-size:11px;font-weight:750;color:#cfdfd3}
+.equipment-field select{width:100%;min-width:0;background:#10241c;color:#eef8e9;border:1px solid #73957c;border-radius:7px;padding:6px;font:600 11px system-ui;touch-action:manipulation}
+.equipment-field select:disabled{opacity:.53}
+.equipment-side small{display:block;color:#a7cbb3;font-size:10px;margin-top:5px}
+.equipment-side.foe-side small{color:#e6b8ab}
+.equipment-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:11px}
+.equipment-actions .primary{background:#40825a;border-color:#7ce1a4;color:#fff}
+.equipment-actions .restart{background:#5b4634;border-color:#c8ad76}
+#equipmentFeedback{font-size:10px;color:#bfefc6;flex:1;min-width:150px}
+@media(max-height:500px){.equipment-panel{padding:8px 11px}.equipment-header strong{font-size:12px}.equipment-panel p{margin:3px 0 6px}.equipment-presets{margin-bottom:6px}.equipment-side{padding:6px}.equipment-side h3{margin-bottom:3px}.equipment-field{margin:3px 0}.equipment-field select{padding:4px}.equipment-actions{margin-top:7px}.equipment-presets button,.equipment-actions button{padding:4px 8px}}
+@media(max-width:535px){.equipment-grid{grid-template-columns:1fr}.equipment-panel{max-width:420px}}
 </style>
 </head>
 <body>
@@ -123,7 +152,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
     <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Armor · Shields · Physical combat</p></div></div>
     <div class="top-actions">
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 1.6">V1.6</div>
+      <div class="build" aria-label="Version 1.7">V1.7</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
@@ -179,8 +208,38 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
       <p><strong>IMPACT REACTIONS:</strong> Heavy hits cause knockback and stagger. A successful active block can create a counterattack opening; a weak shield can suffer a <strong>GUARD BREAK</strong>. Plate and solid shields can stop a swing and recoil the attacker.</p>
       <p>Green and red soldiers wear mixed armor and carry different weapons. One-handed swords can use shields; greatswords and axes occupy both hands. Swing stages: wind-up → active hitbox → recovery. Your troops are still invulnerable.</p>
      </section>
+  <div class="equipment-backdrop is-hidden" id="equipmentBackdrop">
+ <section class="equipment-panel" id="equipmentPanel" role="dialog" aria-modal="true" aria-labelledby="equipmentTitle">
+  <div class="equipment-header"><strong id="equipmentTitle">⚙ EQUIPMENT TESTING · 50 VS 50</strong><button type="button" id="closeEquipment" class="armor-close" aria-label="Close equipment testing">✕</button></div>
+  <p>Customize both armies or choose a quick matchup. The battle pauses while this menu is open. Two-handed weapons cannot use shields.</p>
+  <div class="equipment-presets" role="group" aria-label="Quick equipment matchups">
+   <button type="button" data-matchup="mixed">Mixed armies</button>
+   <button type="button" data-matchup="plate">Plate wall</button>
+   <button type="button" data-matchup="cleave">Cleave test</button>
+   <button type="button" data-matchup="shields">Shield clash</button>
+  </div>
+  <div class="equipment-grid"><div class="equipment-side">
+   <h3>🟢 YOUR ARMY · 50 SOLDIERS</h3>
+   <div class="equipment-field"><label for="friendWeapon">Weapon</label><select id="friendWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option></select></div>
+<div class="equipment-field"><label for="friendShield">Shield</label><select id="friendShield"><option value="mixed">Mixed shields</option><option value="none">No shield</option><option value="buckler">Buckler</option><option value="round">Round shield</option><option value="kite">Kite shield</option><option value="tower">Tower shield</option></select></div>
+<div class="equipment-field"><label for="friendArmor">Armor</label><select id="friendArmor"><option value="mixed">Mixed armor</option><option value="naked">Unarmored</option><option value="padded">Padded</option><option value="leather">Leather</option><option value="mail">Mail</option><option value="plate">Plate</option></select></div>
+   <small id="friendGearNote">Mixed equipment. Two-handed troops carry no shields.</small>
+ </div><div class="equipment-side foe-side">
+   <h3>🔴 ENEMY ARMY · 50 SOLDIERS</h3>
+   <div class="equipment-field"><label for="foeWeapon">Weapon</label><select id="foeWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option></select></div>
+<div class="equipment-field"><label for="foeShield">Shield</label><select id="foeShield"><option value="mixed">Mixed shields</option><option value="none">No shield</option><option value="buckler">Buckler</option><option value="round">Round shield</option><option value="kite">Kite shield</option><option value="tower">Tower shield</option></select></div>
+<div class="equipment-field"><label for="foeArmor">Armor</label><select id="foeArmor"><option value="mixed">Mixed armor</option><option value="naked">Unarmored</option><option value="padded">Padded</option><option value="leather">Leather</option><option value="mail">Mail</option><option value="plate">Plate</option></select></div>
+   <small id="foeGearNote">Enemy reinforcements inherit these gear settings.</small>
+ </div></div>
+  <div class="equipment-actions">
+   <button type="button" class="primary" id="applyEquipment">Apply now</button>
+   <button type="button" class="restart" id="restartEquipment">Apply &amp; restart battle</button>
+   <span id="equipmentFeedback" role="status">Choose a preset or customize both armies.</span>
+  </div>
+ </section>
+</div>
   </main>
-  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
+  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="equipmentButton" class="small-btn" aria-expanded="false" aria-controls="equipmentPanel">⚙ Test gear</button> <button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
 </div>
 <div id="rotateNotice" role="status" aria-live="polite">
  <div class="rotate-icon" aria-hidden="true">↻</div>
