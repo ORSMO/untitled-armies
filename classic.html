@@ -357,11 +357,11 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  const weaponOrder=['shortsword','sword','greatsword','axe'];
  // Secondary weapons have limited shots, physical flight and melee fallback.
  const rangedProfiles={
-  bow:{label:'War bow',speed:260,range:335,ideal:215,ammo:18,draw:.62,reload:.64,
+  bow:{label:'War bow',speed:260,range:335,ideal:215,ammo:18,draw:.62,reload:.64,loft:46,
    damage:1.28,momentum:48,stamina:5,weight:1.1,color:'#e8d28e',twoHand:true},
-  crossbow:{label:'Crossbow',speed:365,range:375,ideal:265,ammo:12,draw:.43,reload:1.90,
+  crossbow:{label:'Crossbow',speed:365,range:375,ideal:265,ammo:12,draw:.43,reload:1.90,loft:31,
    damage:2.25,momentum:108,stamina:7,weight:2.7,color:'#e3ebf2',twoHand:true},
-  javelin:{label:'Javelins',speed:190,range:208,ideal:138,ammo:6,draw:.45,reload:1.05,
+  javelin:{label:'Javelins',speed:190,range:208,ideal:138,ammo:6,draw:.45,reload:1.05,loft:47,
    damage:1.72,momentum:94,stamina:10,weight:1.9,color:'#f6ac70',twoHand:false}
  };
  const rangedOrder=['bow','crossbow','javelin'];
@@ -1279,18 +1279,17 @@ function rangedTimeFactor(s){
  const skill=s.skill||45,familiarity=rangedFamiliarity(s);
  return clamp(1.23-skill*.0022-familiarity*.0014,.76,1.19);
 }
-function shotLaneBlocker(s,target){
- const dx=target.x-s.x,dy=target.y-s.y,distSq=dx*dx+dy*dy;
- if(distSq<1)return null;
- for(const ally of members(s.team)){
-  if(ally===s||ally.dead||ally.broken||ally.routed)continue;
-  const u=((ally.x-s.x)*dx+(ally.y-s.y)*dy)/distSq;
-  if(u<=.055||u>=.96)continue;
-  const px=s.x+u*dx,py=s.y+u*dy;
-  if(Math.hypot(ally.x-px,ally.y-py)<15)return ally;
- }
- return null;
+// Height above the ground along a lofted flight path. Shots rise over
+// friendly lines then descend near the intended target; only low flights can
+// collide with soldiers. World-space body height is shared by both teams.
+const missileBodyHeight=15;
+const missileMuzzleHeight=8;
+function projectileHeightAt(p,traveled){
+ const u=clamp(traveled/Math.max(1,p.arcDistance||p.range),0,1);
+ return missileMuzzleHeight+4*(p.loft??0)*u*(1-u);
 }
+// A low shot may still strike a nearby friendly; otherwise infantry can
+// stand in front of archers while arrows and javelins pass above them.
 function launchProjectile(s,target){
  const profile=rangedProfiles[s.ranged];
  if(!profile||s.ammo<=0||s.dead||s.broken||!target||target.dead)return false;
@@ -1309,7 +1308,8 @@ function launchProjectile(s,target){
   id:-(s.id*64+s.shotCount+1),shooter:s,shooterId:s.id,team:s.team,
   kind:s.ranged,damage:profile.damage,momentum:profile.momentum,
   x:ox,y:oy,vx:Math.cos(angle)*profile.speed,vy:Math.sin(angle)*profile.speed,
-  speed:profile.speed,range:profile.range,traveled:0
+  speed:profile.speed,range:profile.range,traveled:0,
+  loft:profile.loft,arcDistance:Math.max(1,Math.hypot(predictedX-ox,predictedY-oy))
  };
  projectiles.push(projectile);
  s.ammo--;s.shotCount++;s.fired++;
@@ -1325,7 +1325,6 @@ function beginRangedAim(s,target,dist){
  if(!profile||s.ammo<=0||s.rangedCooldown>0||s.attack||s.stagger>0)return false;
  if(!target||dist>profile.range-12||dist<=meleeThreatRange(s))return false;
  if(s.stamina<profile.stamina+2)return false;
- if(shotLaneBlocker(s,target)){s.rangedCooldown=.12;return false;}
  s.rangedAim=profile.draw*rangedTimeFactor(s);
  s.rangedTargetId=target.id;
  s.guardActive=false;s.guardHold=0;
@@ -1339,8 +1338,7 @@ function advanceRangedAim(s,target,dt){
  }
  s.rangedAim=Math.max(0,s.rangedAim-dt);
  if(s.rangedAim===0){
-  if(shotLaneBlocker(s,target))s.rangedCooldown=.16;
-  else launchProjectile(s,target);
+  launchProjectile(s,target);
  }
 }
 function updateProjectiles(dt){
@@ -1360,6 +1358,10 @@ function updateProjectiles(dt){
    const radius=p.kind==='javelin'?10:9.3;
    if(pointSegmentDistance(other.x,other.y,seg)>radius)continue;
    const u=dsq>0?clamp(((other.x-x1)*dx+(other.y-y1)*dy)/dsq,0,1):0;
+   // Check height at the instant the projectile crosses this soldier.
+   // Mid-flight shots are overhead, regardless of the soldier's team.
+   const height=projectileHeightAt(p,p.traveled+travel*u);
+   if(height>missileBodyHeight)continue;
    if(u<at){at=u;closest=other;}
   }
   if(closest){
@@ -1391,7 +1393,13 @@ function drawRangedProjectiles(ctx,shots){
  for(const p of shots){
   const profile=rangedProfiles[p.kind];if(!profile)continue;
   const a=Math.atan2(p.vy,p.vx),length=p.kind==='javelin'?17:11;
-  ctx.save();ctx.translate(p.x,p.y);ctx.rotate(a);
+  const z=projectileHeightAt(p,p.traveled);
+  // Shadow stays at the ground position; the missile appears above it.
+  if(z>missileBodyHeight){
+   ctx.fillStyle='rgba(4,20,14,.26)';
+   ctx.beginPath();ctx.ellipse(p.x,p.y,3,1.5,a,0,Math.PI*2);ctx.fill();
+  }
+  ctx.save();ctx.translate(p.x,p.y-z*.34);ctx.rotate(a);
   ctx.lineWidth=p.kind==='javelin'?3:1.8;
   ctx.strokeStyle=profile.color;ctx.beginPath();ctx.moveTo(-length*.7,0);
   ctx.lineTo(length*.4,0);ctx.stroke();
@@ -1451,12 +1459,6 @@ function step(dt){
         moveX=clamp(s.x-ndx*(gap-dist+16),14,W-14);
         moveY=clamp(s.y-ndy*(gap-dist+16),14,H-14);
         pace=.86;
-       }else if(shotLaneBlocker(s,target)){
-        // Sidestep allied soldiers instead of endlessly shooting into backs.
-        const side=((s.id+s.shotCount)%2===0)?1:-1;
-        moveX=clamp(s.x-ndy*35*side,14,W-14);
-        moveY=clamp(s.y+ndx*35*side,14,H-14);
-        pace=.78;
        }else{moveX=s.x;moveY=s.y;}
       }else{
        const slot=engagementPoint(s,target);
