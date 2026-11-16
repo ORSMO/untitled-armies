@@ -1746,6 +1746,15 @@ function drawLabArena(ar){
    ctx.strokeStyle='#f4d17d';ctx.lineWidth=1.5;
    ctx.beginPath();ctx.arc(s.x,s.y,12,0,Math.PI*2);ctx.stroke();
   }
+  if(s.parryPose>0){
+   ctx.strokeStyle='rgba(145,255,232,'+clamp(s.parryPose/.30,0,1)+')';
+   ctx.lineWidth=2.5;ctx.beginPath();
+   ctx.arc(s.x,s.y,15,s.faceAngle-.9,s.faceAngle+.9);ctx.stroke();
+  }
+  if(s.experience==='elite'||s.experience==='veteran'){
+   ctx.fillStyle=s.experience==='elite'?'#e8d487':'#c0ddd1';
+   ctx.beginPath();ctx.arc(s.x,s.y-12,2.3,0,Math.PI*2);ctx.fill();
+  }
  }
 }
 function drawLab(){for(const arena of labArenas)drawLabArena(arena);}
