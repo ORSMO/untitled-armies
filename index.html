@@ -1601,7 +1601,7 @@ function updateLabTitles(){
  btn.textContent=labPreset==='matchups'?'⚖ Fairness check':'⚔ Skill matchups';
  btn.setAttribute('aria-pressed',labPreset==='mirrors'?'true':'false');
  document.getElementById('labPlainExplanation').textContent=labPreset==='mirrors'?
-  'FAIRNESS CHECK: Both teams are identical. A result near 50/50 means the combat test is trustworthy. Large differences after 100 fights need investigation.':
+  'FAIRNESS CHECK: Both teams are identical. A result near 50/50 means the combat test is trustworthy. Large differences need investigation, allowing more variation for small samples.':
   'SKILL MATCHUPS: Experience, armor, equipment, numbers or mastery are different. Big win rates are okay when there is a real advantage.';
  document.getElementById('labAnalysisHowToRead').textContent=labPreset==='mirrors'?
   'Same gear, rank, proficiency and numbers on both sides. Green and red should each win about half the fights. Minor differences are normal; large consistent differences mean the test is biased.':
@@ -1702,12 +1702,17 @@ function advanceLab(ar){
  }else storeLab(ar);
  if(ar.seconds>=labSeconds-1e-6){ar.seconds=labSeconds;ar.done=true;}
 }
+function mirrorTolerance(n){
+ // For small match samples allow ordinary 95% binomial variation. Beyond
+ // ~100 fights, a minimum ten-point diagnostic tolerance avoids false alarms.
+ return Math.max(.10,1.96*Math.sqrt(.25/Math.max(1,n)));
+}
 function labWinner(ar){
  const decisive=ar.greenWins+ar.redWins;
  if(labPreset==='mirrors'){
-  if(decisive<100)return 'Checking…';
+  if(decisive<30)return 'Need more fights';
   const pct=Math.round(ar.greenWins/decisive*100);
-  return Math.abs(pct-50)<=10?'✓ Fair '+pct+'/'+(100-pct):'⚠ Bias '+pct+'/'+(100-pct);
+  return Math.abs(ar.greenWins/decisive-.5)<=mirrorTolerance(decisive)?'✓ Fair '+pct+'/'+(100-pct):'⚠ Bias '+pct+'/'+(100-pct);
  }
  if(!decisive)return ar.done?'Draws only':'Testing…';
  const greenRate=ar.greenWins/decisive,redRate=ar.redWins/decisive;
@@ -1734,16 +1739,19 @@ function updateLabAnalysis(){
  const counters=labArenas.reduce((sum,a)=>sum+a.stats.friend.counters+a.stats.foe.counters,0);
  const conclusions=[];
  if(labPreset==='mirrors'){
-  const ready=labArenas.filter(a=>a.rounds>=100);
-  const biased=ready.filter(a=>Math.abs(a.greenWins/Math.max(1,a.greenWins+a.redWins)-.5)>.10);
+  const ready=labArenas.filter(a=>a.rounds>=30);
+  const biased=ready.filter(a=>{
+   const n=a.greenWins+a.redWins;
+   return Math.abs(a.greenWins/n-.5)>mirrorTolerance(n);
+  });
   const worst=ready.reduce((current,a)=>{
    const d=Math.abs(a.greenWins/Math.max(1,a.greenWins+a.redWins)-.5);
    return Math.max(current,d);
   },0);
   document.getElementById('labAnalysisNotes').textContent=
-   ready.length<6?'Checking identical armies. Each arena needs at least 100 fights before conclusions.':
+   ready.length<6?'Checking identical armies. Each arena needs at least 30 fights, and small samples are allowed a wider normal variation.':
    biased.length===0?'All six identical-army controls are close to 50/50. The tester shows no large team bias in this sample.':
-   biased.length+' mirror test(s) differ from 50/50 by more than 10 percentage points. Do not trust detailed balance conclusions yet.';
+   biased.length+' mirror test(s) differ from 50/50 by more than expected from sampling. Investigate before trusting balance conclusions.';
   return;
  }
  if(totalFights<30)conclusions.push('Collecting more rounds before interpreting the advantages.');
@@ -1799,7 +1807,7 @@ function updateLabHUD(){
  const leaders=labArenas.filter(a=>{const decisive=a.greenWins+a.redWins;return a.done&&decisive>=10&&Math.abs(a.greenWins/decisive-.5)>=.055;}).length;
  const mirrorPass=labArenas.filter(a=>{
   const decisive=a.greenWins+a.redWins;
-  return a.done&&decisive>=100&&Math.abs(a.greenWins/decisive-.5)<=.10;
+  return a.done&&decisive>=30&&Math.abs(a.greenWins/decisive-.5)<=mirrorTolerance(decisive);
  }).length;
  document.getElementById('labWinner').textContent=labPreset==='mirrors'?
   (done?mirrorPass+'/6 fair controls':'Checking identical fighters…'):
