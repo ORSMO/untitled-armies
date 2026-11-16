@@ -283,11 +283,7 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   const defense=armorProfiles[armor]?.[damageType]||{flat:0,pct:0};
   return Math.max(0,raw-defense.flat)*(1-clamp(defense.pct,0,100)/100);
  }
- function attackDamageType(attacker,style){
-  const swing=attacker.attackCount+attacker.id;
-  return style==='heavy'?['slash','piercing','blunt'][Math.floor(swing/3)%3]:
-    (swing%3===1?'piercing':'slash');
- }
+ // Damage type is now part of each individual attack move.
 const gap=()=>clamp(W/17,23,29);
 function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74,W*.65,W-90),y:H*.51};}
 // All formation styles provide fifty unique slots; enemy formations stay as Block.
