@@ -252,7 +252,7 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   padded:{slash:11,piercing:11,blunt:14},
   leather:{slash:22,piercing:18,blunt:26},
   mail:{slash:57,piercing:38,blunt:39},
-  plate:{slash:180,piercing:105,blunt:112}
+  plate:{slash:260,piercing:135,blunt:135}
  };
  const weaponProfiles={
   shortsword:{label:'Short sword',weight:1.0,reach:31,power:.91,momentum:38,speed:.83,twoHand:false,moves:['slashRight','slashLeft','thrust','pommel'],cleave:1},
@@ -265,7 +265,7 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   buckler:{label:'Buckler',size:8,weight:.85,passiveArc:.40,activeArc:.83,passiveBlock:.20,passiveStop:16,activeStop:68,cost:5,color:'#cda779'},
   round:{label:'Round shield',size:11,weight:1.8,passiveArc:.66,activeArc:1.20,passiveBlock:.35,passiveStop:31,activeStop:115,cost:8,color:'#b1b9a6'},
   kite:{label:'Kite shield',size:13,weight:2.7,passiveArc:.83,activeArc:1.42,passiveBlock:.48,passiveStop:50,activeStop:155,cost:11,color:'#d5ad81'},
-  tower:{label:'Tower shield',size:16,weight:4.0,passiveArc:1.04,activeArc:1.59,passiveBlock:.62,passiveStop:76,activeStop:205,cost:16,color:'#a5c4d1'}
+  tower:{label:'Tower shield',size:16,weight:4.0,passiveArc:1.04,activeArc:1.59,passiveBlock:.62,passiveStop:76,activeStop:260,cost:16,color:'#a5c4d1'}
  };
  const shieldOrder=['buckler','round','kite','tower'];
  // Attack timing is split into wind-up, physical active frames and recovery.
