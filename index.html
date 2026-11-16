@@ -1043,9 +1043,47 @@ function shieldImpact(attacker,defender,a){
  }
  return {block,stop,kind:active?'active':'passive',guardBroken};
 }
+// Skilled fighters may anticipate a visible strike and redirect the weapon.
+ // Parrying is not a chance-to-ignore-damage roll at the moment of impact:
+ // AI must read the wind-up, raise its weapon in time and meet a momentum test.
+ function combatLabStats(team){
+  return typeof labMode!=='undefined'&&labMode&&activeLab?activeLab.stats[team]:null;
+ }
+ function attemptWeaponParry(attacker,defender,a){
+  if(defender.parryAttackId!==a.id||defender.parryWindow<=0)return null;
+  defender.parryAttackId=null;defender.parryWindow=0;
+  const familiarity=weaponFamiliarity(defender),skill=defender.skill||45;
+  const cost=(7+weaponProfiles[attacker.weapon].weight*2.1)*trainingEfficiency(defender);
+  const resistance=weaponProfiles[defender.weapon].momentum*
+    (.53+skill*.0047+familiarity*.0038);
+  const success=defender.stamina>=cost&&resistance>=a.momentum*.84;
+  defender.stamina=clamp(defender.stamina-cost,0,defender.maxStamina);
+  defender.recoveryDelay=Math.max(defender.recoveryDelay,.22);
+  defender.parryPose=.30;
+  if(!success){
+   const stats=combatLabStats(defender.team);if(stats)stats.failedParries++;
+   defender.stagger=Math.max(defender.stagger,.12);
+   return {parried:false};
+  }
+  const stats=combatLabStats(defender.team);
+  if(stats)stats.parries++;
+  defender.counterWindow=.72;
+  defender.guardActive=false;defender.guardHold=0;
+  attacker.stagger=Math.max(attacker.stagger,.18+skill*.00065);
+  attacker.cooldown=Math.max(attacker.cooldown,.28);
+  reactToImpact(attacker,defender,22+weaponProfiles[attacker.weapon].weight*4);
+  a.hits++;a.momentum=0;a.stopped=true;
+  slashes.push({kind:'parry',block:'parry',x:defender.x,y:defender.y,
+   a:Math.atan2(attacker.y-defender.y,attacker.x-defender.x),
+   life:.36,duration:.36,type:a.move.style,team:defender.team});
+  return {parried:true};
+ }
+
 function applyWeaponImpact(attacker,target,a){
  if(target.dead||target.routed||target.broken||target.team===attacker.team||a.hitIds.has(target.id))return false;
  a.hitIds.add(target.id);
+ const parry=attemptWeaponParry(attacker,target,a);
+ if(parry?.parried)return true;
  const incomingMomentum=a.momentum;
  const shield=shieldImpact(attacker,target,a),damageType=a.move.damageType;
  const afterShield=a.baseDamage*(1-shield.block);
@@ -1068,9 +1106,14 @@ function applyWeaponImpact(attacker,target,a){
  target.hitFlash=shield.kind?.33:.27;
  if(attacker.team==='foe'||labMode)attacker.stress=clamp(attacker.stress+stressBalance.givenHit,0,100);
  a.hits++;
+ if(counterImpact){
+  const metrics=combatLabStats(attacker.team);
+  if(metrics&&!a.counterCounted){metrics.counters++;a.counterCounted=true;}
+ }
  // A raised shield transfers the blow into recoil. Heavy unblocked hits can
  // briefly disrupt an enemy's wind-up, creating an opening to counterattack.
  const blocked=!!shield.kind;
+ const counterImpact=!!a.counter;
  const force=blocked?reactionBalance.blockedImpulse+weapon.weight*5:
    (heavy?reactionBalance.heavyImpulse:reactionBalance.lightImpulse)+weapon.weight*6;
  reactToImpact(target,attacker,force,{blocked,guardBroken:!!shield.guardBroken});
@@ -1156,38 +1199,62 @@ function advanceAttack(s,dt){
   if(a.elapsed<duration-1e-6)break;
   if(a.phase==='windup')a.phase='active';
   else if(a.phase==='active')a.phase='recovery';
-  else{s.attack=null;break;}
+  else{
+   if(a.hits===0){const stats=combatLabStats(s.team);if(stats)stats.misses++;}
+   s.attack=null;break;
+  }
   a.elapsed=0;
  }
 }
 function updateShieldGuard(s,dt){
  s.guardBreak=Math.max(0,s.guardBreak-dt);
  s.guardHold=Math.max(0,s.guardHold-dt);
+ s.parryWindow=Math.max(0,(s.parryWindow||0)-dt);
+ s.parryPose=Math.max(0,(s.parryPose||0)-dt);
  const shield=shieldProfiles[s.shield];
- if(!shield||s.broken||s.dead||s.attack||s.stagger>0||s.guardBreak>0){
-  s.guardActive=false;return;
+ if(s.broken||s.dead||s.attack||s.stagger>0||s.guardBreak>0){
+  s.guardActive=false;
+  s.parryAttackId=null;return;
  }
  for(const other of opponents(s)){
   if(other.dead||other.routed||other.broken||!other.attack)continue;
   const threat=other.attack,weapon=weaponProfiles[other.weapon];
-  if(Math.hypot(other.x-s.x,other.y-s.y)>weapon.reach+16)continue;
+  if(Math.hypot(other.x-s.x,other.y-s.y)>weapon.reach+17)continue;
   const angle=Math.atan2(other.y-s.y,other.x-s.x);
   const diff=Math.abs(Math.atan2(Math.sin(angle-s.faceAngle),Math.cos(angle-s.faceAngle)));
-  if(diff>shield.activeArc+.12)continue;
-  // Discipline affects reaction; wind-up gives defenders a readable warning.
-  const reaction=.08+(1-s.disc/100)*.21+shield.weight*.014;
-  if(threat.phase==='active'||threat.phase==='windup'&&threat.elapsed>=reaction){
-   if(s.stamina>shield.cost*1.7&&rnd(s.id+threat.id*7)<.59+s.disc*.0036){
-    s.guardHold=Math.max(s.guardHold,.18+shield.weight*.025);
+  const skill=s.skill||45,fam=weaponFamiliarity(s);
+  const reaction=.052+(100-skill)*.0024+(100-fam)*.0006+
+    (shield?.weight||0)*.009;
+  if(threat.phase==='windup'&&threat.elapsed>=reaction&&
+     threat.wind-threat.elapsed<.24&&diff<.95&&
+     s.lastParryThreat!==threat.id&&s.stamina>13){
+   // One decision per incoming swing. Training helps see the attack and
+   // mastery enables the correctly timed weapon deflection.
+   s.lastParryThreat=threat.id;
+   const chance=clamp((skill-38)*.0105+(fam-42)*.0040,0,.82);
+   if(rnd(s.id*37+other.id*13+threat.id*113+3)<chance){
+    s.parryAttackId=threat.id;
+    s.parryWindow=clamp(threat.wind-threat.elapsed+threat.active*.95,.19,.57);
+    s.parryPose=.27;
+    s.guardActive=false;s.guardHold=0;
    }
   }
+  if(!shield||s.parryAttackId===threat.id)continue;
+  if(diff>shield.activeArc+.12)continue;
+  if(threat.phase==='active'||threat.phase==='windup'&&threat.elapsed>=reaction){
+   const guardChance=clamp(.31+skill*.0045+fam*.0017,.25,.95);
+   if(s.stamina>shield.cost*1.7&&
+      rnd(s.id+threat.id*7)<guardChance)
+    s.guardHold=Math.max(s.guardHold,.18+shield.weight*.025);
+  }
  }
- s.guardActive=s.guardHold>0&&s.stamina>shield.cost*1.3;
+ s.guardActive=!!shield&&s.guardHold>0&&s.stamina>shield.cost*1.3;
  if(s.guardActive){
-  s.stamina=clamp(s.stamina-dt*(1.1+shield.weight*.9),0,s.maxStamina);
+  s.stamina=clamp(s.stamina-dt*(1.1+shield.weight*.9)*trainingEfficiency(s),0,s.maxStamina);
   s.recoveryDelay=Math.max(s.recoveryDelay,.08);
  }
 }
+
 function approach(s,x,y,dt,mult=1){const dx=x-s.x,dy=y-s.y,dist=Math.hypot(dx,dy);if(dist<.45)return;const n=Math.min(dist,s.speed*mult*dt);s.x+=dx/dist*n;s.y+=dy/dist*n;s.facing=dx>=0?1:-1;}
 // Soldiers occupy physical space. Separate living soldiers after movement, even
 // if both teams or multiple soldiers try to reach exactly the same spot.
