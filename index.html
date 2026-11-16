@@ -364,7 +364,7 @@ body.lab-mode .lab-area{display:flex}
    <div class="lab-insights-header"><strong id="labAnalysisTitle">📊 WHAT THESE FIGHTS MEAN</strong><button id="labAnalysisClose" type="button" aria-label="Close analysis">✕</button></div>
    <p>Each arena runs repeated vulnerable, no-respawn bouts for 60 simulated minutes. Extreme wins are intentional when skill, weapon familiarity, armor or numbers differ. Experience never grants extra health or armor.</p>
    <div class="lab-insights-scroll"><table><thead><tr><th>Matchup</th><th>Leader</th><th>Fights</th><th>Shots</th><th>Contacts</th><th>Damage</th><th>Shield blocks</th><th>Parries</th><th>Counters</th><th>Failed parries</th><th>Guard breaks</th></tr></thead><tbody id="labAnalysisRows"></tbody></table></div>
-   <p id="labAnalysisHowToRead"><strong>How to read it:</strong> Green and red are simply the two teams. Battle win percentages are separate from individual ranged accuracy. Shots and enemy contacts are listed below. Armor, numbers and skill can create huge advantages. Only identical opponents are expected to split wins about 50/50.</p>
+   <p id="labAnalysisHowToRead"><strong>How to read it:</strong> Green and red are simply the two teams. Battle win percentages are separate from individual ranged accuracy. Shots and enemy contacts are listed below. Armor, numbers and skill can create huge advantages. Only identical opponents are expected to split wins about 50/50. Ranged contacts can be blocked by shields, so they do not all cause damage.</p>
    <p id="labAnalysisNotes">Recommendations appear as results accumulate.</p>
   </div>
  </div>
@@ -1960,41 +1960,38 @@ function updateLabAnalysis(){
     '<td>'+(green.guardBreaks+red.guardBreaks)+'</td></tr>';
  }).join('');
  document.getElementById('labAnalysisRows').innerHTML=rows;
- const finished=labArenas.every(a=>a.done),totalFights=labArenas.reduce((sum,a)=>sum+a.rounds,0);
- const parries=labArenas.reduce((sum,a)=>sum+a.stats.friend.parries+a.stats.foe.parries,0);
- const counters=labArenas.reduce((sum,a)=>sum+a.stats.friend.counters+a.stats.foe.counters,0);
- const conclusions=[];
+ const finished=labArenas.every(a=>a.done);
+ const totalFights=labArenas.reduce((n,a)=>n+a.rounds,0);
  if(labPreset==='mirrors'){
   const ready=labArenas.filter(a=>a.rounds>=30);
   const biased=ready.filter(a=>{
    const n=a.greenWins+a.redWins;
    return Math.abs(a.greenWins/n-.5)>mirrorTolerance(n);
   });
-  const worst=ready.reduce((current,a)=>{
-   const d=Math.abs(a.greenWins/Math.max(1,a.greenWins+a.redWins)-.5);
-   return Math.max(current,d);
-  },0);
   document.getElementById('labAnalysisNotes').textContent=
-   ready.length<6?'Checking identical armies. Each arena needs at least 30 fights, and small samples are allowed a wider normal variation.':
-   biased.length===0?'All six identical-army controls are close to 50/50. The tester shows no large team bias in this sample.':
-   biased.length+' mirror test(s) differ from 50/50 by more than expected from sampling. Investigate before trusting balance conclusions.';
+   ready.length<6?'Checking identical armies. More fights help confirm fairness.':
+   biased.length===0?'All six identical-army controls are close to 50/50. No large team bias appeared in this sample.':
+   biased.length+' identical-army controls differ from 50/50 beyond sampling uncertainty. Investigate before balancing weapons.';
   return;
  }
- if(totalFights<30)conclusions.push('Collecting more rounds before interpreting the advantages.');
+ const conclusions=[];
+ if(totalFights<30)conclusions.push('Gathering more ranged fights before interpreting the equipment.');
  else{
-  const skill=labArenas[0],mastery=labArenas[1],armor=labArenas[2],numbers=labArenas[3],parryTest=labArenas[4];
-  const rate=(a,team)=>a[team+'Wins']/Math.max(1,a.greenWins+a.redWins);
-  if(rate(skill,'red')>.6)conclusions.push('Equal equipment: Elite fighters overcome Recruits because they aim and recover better.');
-  if(rate(mastery,'red')>.6)conclusions.push('Equal veteran rank: mastery of the equipped weapon improves performance.');
-  if(rate(armor,'red')>.65)conclusions.push('Plate and heavy axes remain an overwhelming advantage against naked elite swordsmen despite the experience gap—equipment still matters.');
-  if(rate(numbers,'green')>.5)conclusions.push('Veterans can offset a numbers disadvantage, especially when equipped with stronger armor.');
-  if(rate(parryTest,'red')>.7&&parryTest.stats.friend.parries>0)
-   conclusions.push('Successful parries do not replace shields: five trained shield users can overwhelm four elite unshielded swordsmen.');
-  conclusions.push('Experience affects precision, reactions, decisions and stamina—not health, armor reduction or magical damage bonuses.');
+  const shots=labArenas.reduce((n,a)=>n+a.stats.friend.shots+a.stats.foe.shots,0);
+  const contacts=labArenas.reduce((n,a)=>n+a.stats.friend.rangedHits+a.stats.foe.rangedHits,0);
+  conclusions.push(shots+' arrows, bolts and javelins fired; '+contacts+' enemy contacts ('+
+    Math.round(100*contacts/Math.max(1,shots))+'% contact rate).');
+  for(const ar of labArenas){
+   const decisive=ar.greenWins+ar.redWins;if(!decisive)continue;
+   const lead=ar.greenWins>ar.redWins?'green':'red';
+   const pct=Math.round(100*Math.max(ar.greenWins,ar.redWins)/decisive);
+   if(pct>=80)conclusions.push(ar.spec.name+': '+lead+' army strongly favored ('+pct+
+    '%). This may be a legitimate range, armor, shield, skill or numbers advantage.');
+  }
+  conclusions.push('Ranged ammo runs out. Survivors automatically use their melee weapons. Shields face the incoming shot, while armor reduces piercing damage.');
  }
  document.getElementById('labAnalysisNotes').textContent=
-  (finished?'Final analysis: ':'Live assessment: ')+
-  conclusions.join(' ')+' '+parries+' timed parries and '+counters+' successful counter-hits recorded.';
+  (finished?'Final analysis: ':'Live analysis: ')+conclusions.join(' ');
 }
 function setLabAnalysis(open){
  labAnalysisOpen=!!open;
