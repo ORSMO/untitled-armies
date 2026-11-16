@@ -688,37 +688,71 @@ function shieldImpact(attacker,defender,a){
  const block=active?clamp(stop/Math.max(1,a.momentum),0,1):shield.passiveBlock;
  defender.stamina=clamp(defender.stamina-spend,0,defender.maxStamina);
  defender.recoveryDelay=Math.max(defender.recoveryDelay,active?.28:.12);
+ let guardBroken=false;
  if(active){
   defender.guardHold=Math.max(0,defender.guardHold-.13);
   if(block<.65||defender.stamina<9){
-   defender.guardBreak=.36+weapon.weight*.075;
+   defender.guardBreak=Math.max(defender.guardBreak,.36+weapon.weight*.075);
    defender.guardActive=false;
+   guardBroken=true;
   }
  }
- return {block,stop,kind:active?'active':'passive'};
+ return {block,stop,kind:active?'active':'passive',guardBroken};
 }
 function applyWeaponImpact(attacker,target,a){
  if(target.dead||target.routed||target.broken||target.team===attacker.team||a.hitIds.has(target.id))return false;
  a.hitIds.add(target.id);
+ const incomingMomentum=a.momentum;
  const shield=shieldImpact(attacker,target,a),damageType=a.move.damageType;
  const afterShield=a.baseDamage*(1-shield.block);
  const actual=mitigatedDamage(afterShield,target.armor,damageType);
- // Even when allies are invulnerable, they visibly block and expend stamina.
+ const weapon=weaponProfiles[attacker.weapon],heavy=a.move.style==='heavy';
+ // Physical hits and blocks happen regardless of friendly health immunity.
  if(target.team==='foe'){
   target.hp=Math.max(0,target.hp-actual);
   const style=attackStyles[a.move.style];
   target.stress=clamp(target.stress+style.stress*(.15+.85*actual/Math.max(.01,a.baseDamage)),0,100);
  }
- target.hitFlash=shield.kind? .32:.27;
+ target.hitFlash=shield.kind?.33:.27;
  if(attacker.team==='foe')attacker.stress=clamp(attacker.stress+stressBalance.givenHit,0,100);
  a.hits++;
+ // A raised shield transfers the blow into recoil. Heavy unblocked hits can
+ // briefly disrupt an enemy's wind-up, creating an opening to counterattack.
+ const blocked=!!shield.kind;
+ const force=blocked?reactionBalance.blockedImpulse+weapon.weight*5:
+   (heavy?reactionBalance.heavyImpulse:reactionBalance.lightImpulse)+weapon.weight*6;
+ reactToImpact(target,attacker,force,{blocked,guardBroken:!!shield.guardBroken});
+ const stun=shield.guardBroken?reactionBalance.guardBreakStagger:
+   blocked?.07+(heavy?.045:0):
+   (heavy?reactionBalance.heavyStagger:reactionBalance.lightStagger)+
+      (damageType==='blunt'?reactionBalance.bluntStagger:0);
+ target.stagger=Math.max(target.stagger,stun);
+ if(target.attack&&stun>=.16){
+  target.attack=null;
+  target.cooldown=Math.max(target.cooldown,stun+.18);
+ }
  const armorStop=armorImpact[target.armor]?.[damageType]??12;
  a.momentum=Math.max(0,a.momentum-armorStop-shield.stop);
- const interrupted=a.momentum<=0||a.hits>=weaponProfiles[attacker.weapon].cleave;
- if(interrupted)a.momentum=0;
- slashes.push({kind:shield.kind?'block':'impact',damageType,block:shield.kind,
+ const interrupted=a.momentum<=0||a.hits>=weapon.cleave;
+ if(interrupted){
+  a.momentum=0;a.stopped=true;
+  // Strong shield or plate contacts arrest the swing and knock the weapon
+  // back toward its owner, while leaving the defender a short counter window.
+  const hardStop=blocked||armorStop>=incomingMomentum*.72;
+  if(hardStop){
+   reactToImpact(attacker,target,30+weapon.weight*8);
+   attacker.stagger=Math.max(attacker.stagger,reactionBalance.reboundStagger);
+   attacker.cooldown=Math.max(attacker.cooldown,.38);
+   if(shield.kind==='active'&&!shield.guardBroken){
+    target.cooldown=Math.min(Math.max(0,target.cooldown),.14);
+   }
+  }
+ }
+ slashes.push({kind:shield.guardBroken?'guardbreak':blocked?'block':'impact',
+  damageType,block:shield.kind,guardBroken:!!shield.guardBroken,
   x:target.x,y:target.y,a:Math.atan2(target.y-attacker.y,target.x-attacker.x),
-  life:.23,duration:.23,type:a.move.style,team:attacker.team});
+  life:shield.guardBroken?.48:.26,duration:shield.guardBroken?.48:.26,
+  type:a.move.style,team:attacker.team});
  if(target.team==='foe'&&target.hp<=0){
   target.dead=true;target.stress=100;
   for(const n of foes){
@@ -762,6 +796,9 @@ function advanceAttack(s,dt){
   const used=Math.min(remaining,Math.max(0,duration-a.elapsed));
   const was=a.elapsed/duration,now=(a.elapsed+used)/duration;
   if(a.phase==='active')scanWeaponArc(s,a,was,now);
+  // A sword or axe stops its active sweep on a hard impact; recovery still
+  // plays, but there is no invisible hitbox after the blade has been stopped.
+  if(a.stopped){a.phase='recovery';a.elapsed=0;break;}
   a.elapsed+=used;remaining-=used;
   if(a.elapsed<duration-1e-6)break;
   if(a.phase==='windup')a.phase='active';
@@ -774,7 +811,7 @@ function updateShieldGuard(s,dt){
  s.guardBreak=Math.max(0,s.guardBreak-dt);
  s.guardHold=Math.max(0,s.guardHold-dt);
  const shield=shieldProfiles[s.shield];
- if(!shield||s.broken||s.dead||s.attack||s.guardBreak>0){
+ if(!shield||s.broken||s.dead||s.attack||s.stagger>0||s.guardBreak>0){
   s.guardActive=false;return;
  }
  for(const other of opponents(s)){
