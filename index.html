@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V1.9</title>
+<title>Untitled Armies — V2.0</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -200,7 +200,7 @@ body.lab-mode .lab-area{display:flex}
     <div class="top-actions">
       <a class="lab-classic-link" href="classic.html" title="Open original 50v50 battlefield">Classic battlefield</a>
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 1.9">V1.9</div>
+      <div class="build" aria-label="Version 2.0">V2.0</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
@@ -1308,6 +1308,8 @@ function step(dt){
  }
  for(const s of [...friends,...foes]){
   if(s.dead||s.routed)continue;s.cooldown-=dt;s.decision-=dt;s.hitFlash=Math.max(0,s.hitFlash-dt);
+  // Parry counters last only 0.72s; a waiting fighter cannot bank the bonus.
+  s.counterWindow=Math.max(0,(s.counterWindow||0)-dt);
   advanceReaction(s,dt);
   // Stamina restores while not recovering from a swing; movement uses some.
   s.recoveryDelay=Math.max(0,s.recoveryDelay-dt);
@@ -1575,7 +1577,10 @@ function storeLab(ar){
 }
 function startLabRound(ar){
  activateLab(ar);
- nextId=0;nextSwingId=1;nextEngagementPlan=0;slashes=[];
+ // Don't replay the same seeded AI sequence every round: it creates false
+ // 100%-win mirrors despite identical fighters. Distinct per-round IDs make
+ // choices vary while remaining deterministic/reproducible.
+ nextId=ar.rounds*16;nextSwingId=1+ar.rounds*7919;nextEngagementPlan=0;slashes=[];
  const countGreen=ar.spec.counts[0],countRed=ar.spec.counts[1];
  function spawn(team,count,gear){
   return Array.from({length:count},(_,i)=>{
@@ -1595,8 +1600,15 @@ function startLabRound(ar){
    return soldier;
   });
  }
- friends=spawn('friend',countGreen,ar.spec.green);
- foes=spawn('foe',countRed,ar.spec.red);
+ // Alternate which team receives the first IDs, removing systematic
+ // green/red advantage from modulo-based weapon decision cycles.
+ if(ar.rounds%2){
+  foes=spawn('foe',countRed,ar.spec.red);
+  friends=spawn('friend',countGreen,ar.spec.green);
+ }else{
+  friends=spawn('friend',countGreen,ar.spec.green);
+  foes=spawn('foe',countRed,ar.spec.red);
+ }
  ar.roundAge=0;storeLab(ar);
 }
 function initLab(){
