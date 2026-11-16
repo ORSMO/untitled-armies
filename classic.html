@@ -384,7 +384,7 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   const fluency=clamp((familiarity-80)/17,0,1);
   return clamp(1.16-(s.skill||45)*.0022-familiarity*.00125-fluency*.035,.80,1.18);
  }
- function setFighterTraining(s,team,index,rank,focus){
+ function setFighterTraining(s,team,index,rank,focus,rangedFocus){
   const config=equipmentConfig[team]||{};
   const choice=rank||config.experience||'mixed';
   const experience=experienceProfiles[choice]?choice:
@@ -409,8 +409,12 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
     s.rangedSkills[ranged]=Math.round(19+rnd(seed)*65);
    }
   }
-  if(s.ranged&&familiarityLevels[focusChoice]!=null)
-   s.rangedSkills[s.ranged]=familiarityLevels[focusChoice];
+  if(s.ranged){
+   const choice=rangedFocus||config.rangedMastery||'same';
+   if(familiarityLevels[choice]!=null)s.rangedSkills[s.ranged]=familiarityLevels[choice];
+   else if(choice==='same'&&familiarityLevels[focusChoice]!=null)
+    s.rangedSkills[s.ranged]=familiarityLevels[focusChoice];
+  }
   s.parryAttackId=null;s.parryWindow=0;s.parryPose=0;
   s.lastParryThreat=-1;s.counterWindow=0;
  }
@@ -418,8 +422,8 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  // Applied matchup settings persist through Reset and enemy reinforcements.
  // "mixed" uses the original 50-soldier distribution for each category.
  const equipmentConfig={
-  friend:{weapon:'mixed',shield:'mixed',armor:'mixed',ranged:'none',experience:'mixed',familiarity:'mixed'},
-  foe:{weapon:'mixed',shield:'mixed',armor:'mixed',ranged:'none',experience:'mixed',familiarity:'mixed'}
+  friend:{weapon:'mixed',shield:'mixed',armor:'mixed',ranged:'none',rangedMastery:'same',experience:'mixed',familiarity:'mixed'},
+  foe:{weapon:'mixed',shield:'mixed',armor:'mixed',ranged:'none',rangedMastery:'same',experience:'mixed',familiarity:'mixed'}
  };
  function equipmentFor(team,index){
   const settings=equipmentConfig[team],offset=team==='friend'?0:1;
