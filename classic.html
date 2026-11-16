@@ -990,14 +990,13 @@ function applyWeaponImpact(attacker,target,a){
  target.hitFlash=shield.kind?.33:.27;
  if(attacker.team==='foe')attacker.stress=clamp(attacker.stress+stressBalance.givenHit,0,100);
  a.hits++;
- if(counterImpact){
+ if(a.counter){
   const metrics=combatLabStats(attacker.team);
   if(metrics&&!a.counterCounted){metrics.counters++;a.counterCounted=true;}
  }
  // A raised shield transfers the blow into recoil. Heavy unblocked hits can
  // briefly disrupt an enemy's wind-up, creating an opening to counterattack.
  const blocked=!!shield.kind;
- const counterImpact=!!a.counter;
  const force=blocked?reactionBalance.blockedImpulse+weapon.weight*5:
    (heavy?reactionBalance.heavyImpulse:reactionBalance.lightImpulse)+weapon.weight*6;
  reactToImpact(target,attacker,force,{blocked,guardBroken:!!shield.guardBroken});
