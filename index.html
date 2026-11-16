@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V2.3</title>
+<title>Untitled Armies — V2.4</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -201,7 +201,7 @@ body.lab-mode .lab-area{display:flex}
     <div class="top-actions">
       <a class="lab-classic-link" href="classic.html" title="Open original 50v50 battlefield">Classic battlefield</a>
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 2.3">V2.3</div>
+      <div class="build" aria-label="Version 2.4">V2.4</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
@@ -256,10 +256,10 @@ body.lab-mode .lab-area{display:flex}
       </tbody></table>
       <p><strong>EXPERIENCE:</strong> Recruit (18), Trained (45), Veteran (72), Elite (92). Rank improves reaction speed, attack precision, defense and stamina efficiency without adding health or armor. <strong>WEAPON MASTERY:</strong> each fighter remembers separate familiarity with shortswords, arming swords, greatswords and axes (18–97). A skilled swordsman can still be new to axes. Experienced fighters may parry telegraphed blows; a successful parry gives only 0.72 seconds to begin a counterattack. Mastery improves weapon timing and stamina use, but cannot create extra health or damage. A light weapon still cannot deflect an overwhelmingly powerful cleave.</p>
       <table><thead><tr><th>Ranged</th><th>Ammo</th><th>Range</th><th>Reload</th><th>Impact</th></tr></thead>
-      <tbody><tr><td>War bow</td><td>18</td><td>335</td><td>0.64s</td><td>Light piercing</td></tr>
-      <tr><td>Crossbow</td><td>12</td><td>375</td><td>1.90s</td><td>Heavy piercing</td></tr>
-      <tr><td>Javelins</td><td>6</td><td>208</td><td>1.05s</td><td>Heavy piercing</td></tr></tbody></table>
-      <p><strong>RANGED COMBAT:</strong> War bows carry 18 arrows (fast), crossbows carry 12 bolts (slow reload, strong piercing), and javelins carry 6 throws (short range, powerful impact). Shots follow lofted trajectories over friendly ranks and stop when they reach the ground instead of sliding along it. Low shots near the shooter or impact point can still strike soldiers. Projectiles have travel time, can miss, and interact with directional shields and armor. Experience and independent ranged-weapon familiarity improve accuracy and timing; set Ranged skill separately from melee Mastery in Test gear. Soldiers automatically switch to melee when closely threatened or out of ammunition. A shield is lowered when aiming a two-handed bow or crossbow.</p>
+      <tbody><tr><td>War bow</td><td>18</td><td>1005</td><td>0.64s</td><td>Light piercing</td></tr>
+      <tr><td>Crossbow</td><td>12</td><td>1125</td><td>1.90s</td><td>Heavy piercing</td></tr>
+      <tr><td>Javelins</td><td>6</td><td>624</td><td>1.05s</td><td>Heavy piercing</td></tr></tbody></table>
+      <p><strong>RANGED COMBAT:</strong> V2.4 triples maximum and ideal shooting distances. Better experience and ranged familiarity now produce tighter shot groups, and experienced archers lead moving targets instead of firing behind them. Projectiles still travel physically and can miss. War bows carry 18 arrows (fast), crossbows carry 12 bolts (slow reload, strong piercing), and javelins carry 6 throws (short range, powerful impact). Shots follow lofted trajectories over friendly ranks and stop when they reach the ground instead of sliding along it. Low shots near the shooter or impact point can still strike soldiers. Projectiles have travel time, can miss, and interact with directional shields and armor. Experience and independent ranged-weapon familiarity improve accuracy and timing; set Ranged skill separately from melee Mastery in Test gear. Soldiers automatically switch to melee when closely threatened or out of ammunition. A shield is lowered when aiming a two-handed bow or crossbow.</p>
       <p><strong>IMPACT REACTIONS:</strong> Heavy hits cause knockback and stagger. A successful active block can create a counterattack opening; a weak shield can suffer a <strong>GUARD BREAK</strong>. Plate and solid shields can stop a swing and recoil the attacker.</p>
       <p>Green and red soldiers wear mixed armor and carry different weapons. One-handed swords can use shields; greatswords and axes occupy both hands. Swing stages: wind-up → active hitbox → recovery. Your troops are still invulnerable.</p>
      </section>
@@ -468,11 +468,11 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  const weaponOrder=['shortsword','sword','greatsword','axe'];
  // Secondary weapons have limited shots, physical flight and melee fallback.
  const rangedProfiles={
-  bow:{label:'War bow',speed:260,range:335,ideal:215,ammo:18,draw:.62,reload:.64,loft:46,
+  bow:{label:'War bow',speed:520,range:1005,ideal:645,ammo:18,draw:.62,reload:.64,loft:46,
    damage:1.28,momentum:48,stamina:5,weight:1.1,color:'#e8d28e',twoHand:true},
-  crossbow:{label:'Crossbow',speed:365,range:375,ideal:265,ammo:12,draw:.43,reload:1.90,loft:31,
+  crossbow:{label:'Crossbow',speed:730,range:1125,ideal:795,ammo:12,draw:.43,reload:1.90,loft:31,
    damage:2.25,momentum:108,stamina:7,weight:2.7,color:'#e3ebf2',twoHand:true},
-  javelin:{label:'Javelins',speed:190,range:208,ideal:138,ammo:6,draw:.45,reload:1.05,loft:47,
+  javelin:{label:'Javelins',speed:380,range:624,ideal:414,ammo:6,draw:.45,reload:1.05,loft:47,
    damage:1.72,momentum:94,stamina:10,weight:1.9,color:'#f6ac70',twoHand:false}
  };
  const rangedOrder=['bow','crossbow','javelin'];
@@ -1416,13 +1416,27 @@ function launchProjectile(s,target){
  if(s.stamina<profile.stamina){s.rangedCooldown=.30;return false;}
  const skill=s.skill||45,familiarity=rangedFamiliarity(s);
  const dist=Math.max(1,Math.hypot(target.x-s.x,target.y-s.y));
- const flight=dist/profile.speed;
- const anticipate=clamp((skill+familiarity)/235,0,.78);
+ // Predict where the target will be when the shot arrives. Earlier aiming
+ // consistently under-led moving targets, even for elite archers.
  const vx=clamp(target.vx||0,-80,80),vy=clamp(target.vy||0,-80,80);
- const predictedX=target.x+vx*flight*anticipate,predictedY=target.y+vy*flight*anticipate;
- const errorSize=.012+(100-skill)*.0032+(100-familiarity)*.0021;
- const error=(rnd(s.id*197+s.shotCount*139+41)-.5)*2*errorSize;
- const angle=Math.atan2(predictedY-s.y,predictedX-s.x)+error;
+ const lead=clamp(.25+(skill-18)*.0065+(familiarity-18)*.0045,.20,1);
+ let flight=dist/profile.speed;
+ let predictedX=target.x+vx*flight*lead,predictedY=target.y+vy*flight*lead;
+ // Correct travel time once for targets moving toward/away from the archer.
+ flight=Math.hypot(predictedX-s.x,predictedY-s.y)/profile.speed;
+ predictedX=target.x+vx*flight*lead;
+ predictedY=target.y+vy*flight*lead;
+ const targetDistance=Math.max(1,Math.hypot(predictedX-s.x,predictedY-s.y));
+ // Model accuracy as a *world-space lateral miss*, not a fixed angle:
+ // a tiny angular error used to turn into a huge miss at long range.
+ // Experience and familiarity both tighten the grouping; the projectile
+ // still flies straight after release, and moving targets remain harder.
+ const scatter=2.2+targetDistance*.0025+
+  (100-skill)*(.115+targetDistance*.00012)+
+  (100-familiarity)*(.10+targetDistance*.00010);
+ const lateralError=(rnd(s.id*197+s.shotCount*139+41)-.5)*2*scatter;
+ const angle=Math.atan2(predictedY-s.y,predictedX-s.x)+
+  Math.atan2(lateralError,targetDistance);
  const ox=s.x+Math.cos(angle)*12,oy=s.y+Math.sin(angle)*12;
  const projectile={
   id:-(s.id*64+s.shotCount+1),shooter:s,shooterId:s.id,team:s.team,
@@ -1452,13 +1466,20 @@ function beginRangedAim(s,target,dist){
 }
 function advanceRangedAim(s,target,dt){
  if(!s.rangedAim)return;
- if(!target||target.dead||target.routed||s.stagger>0||s.broken||
-    !hasRangedAmmo(s)||Math.hypot(target.x-s.x,target.y-s.y)<=meleeThreatRange(s)){
+ // Lock onto the soldier being aimed at until release, instead of switching
+ // targets mid-draw as the army's nearest-enemy selection changes.
+ const tracked=opponents(s).find(e=>e.id===s.rangedTargetId);
+ if(!tracked||tracked.dead||tracked.routed||tracked.broken||
+    s.stagger>0||s.broken||!hasRangedAmmo(s)||
+    Math.hypot(tracked.x-s.x,tracked.y-s.y)<=meleeThreatRange(s)){
   s.rangedAim=0;return;
  }
  s.rangedAim=Math.max(0,s.rangedAim-dt);
  if(s.rangedAim===0){
-  launchProjectile(s,target);
+  const profile=rangedProfiles[s.ranged];
+  if(Math.hypot(tracked.x-s.x,tracked.y-s.y)<=profile.range)
+   launchProjectile(s,tracked);
+  else s.rangedCooldown=.14;
  }
 }
 function updateProjectiles(dt){
