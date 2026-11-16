@@ -560,30 +560,117 @@ document.querySelector('#reset').addEventListener('click',populate);
  armorPanel.addEventListener('pointerdown',e=>e.stopPropagation());
  window.addEventListener('keydown',e=>{if(e.key==='Escape')setArmorPanel(false)});
 function panic(s){if(s.team==='friend'||s.broken||s.dead)return;s.broken=true;s.targetId=null;s.escapeAngle=0;s.decision=0;for(const n of members(s.team)){if(n===s||n.dead||n.broken)continue;const d=Math.hypot(n.x-s.x,n.y-s.y);if(d<80)n.stress=clamp(n.stress+stressBalance.panicSpread*(1-n.disc/160)*(1-d/100),0,100);} }
-function hit(attacker,target){
- if(target.dead||attacker.dead||attacker.broken||target.broken)return;
- const dist=Math.hypot(target.x-attacker.x,target.y-attacker.y);if(dist>reach)return;
- // Soldiers mix in heavy blows every few swings when they have the stamina.
- const heavy=attacker.stamina>=52&&(attacker.attackCount+attacker.id)%3===0;
- const type=heavy?'heavy':'light',style=attackStyles[type];
- if(attacker.stamina<style.cost)return; // Exhaustion: recover before swinging again.
- const damageType=attackDamageType(attacker,type);
- attacker.attackCount++;
- attacker.stamina=clamp(attacker.stamina-style.cost,0,attacker.maxStamina);
- attacker.recoveryDelay=type==='heavy'?.78:.42;
- attacker.cooldown=style.cooldown+(1-attacker.disc/100)*.22;
- // Apply flat reduction first, then percentage reduction. Armor works on
- // every damage channel; friendly troops still have their cheat invulnerability.
- const actualDamage=mitigatedDamage(style.damage,target.armor,damageType);
- if(target.team==='foe'){
-  target.hp=Math.max(0,target.hp-actualDamage);
-  const impact=style.damage>0?actualDamage/style.damage:0;
-  target.stress=clamp(target.stress+style.stress*(.25+.75*impact),0,100);
+// Move selection balances armor vulnerability, stamina, variety and groups.
+function chooseCombatMove(s,target){
+ const weapon=weaponProfiles[s.weapon],available=weapon.moves;
+ const threatArmor=target?.armor||'padded';
+ let best=null,bestScore=-Infinity;
+ const nearby=opponents(s).filter(e=>!e.dead&&!e.broken&&!e.routed&&Math.hypot(e.x-s.x,e.y-s.y)<weapon.reach+22).length;
+ for(let j=0;j<available.length;j++){
+  const name=available[j],m=attackMoves[name],style=attackStyles[m.style];
+  const cost=style.cost*m.stamina*(.60+weapon.weight*.30);
+  if(s.stamina<cost)continue;
+  const raw=style.damage*weapon.power*m.mult;
+  const expected=mitigatedDamage(raw,threatArmor,m.damageType);
+  const choiceIndex=(s.id+s.attackCount)%available.length;
+  // Rotation makes the full moveset visible while armor rewards weak spots.
+  let score=expected*.70-cost*.017+(j===choiceIndex?1.12:0);
+  if(name==='cleave'&&nearby>1)score+=Math.min(nearby,5)*.33;
+  if(m.style==='heavy'&&s.stamina<48)score-=.75;
+  if(name===s.lastMove)score-=.33;
+  if(target?.shield&&m.damageType==='blunt')score+=.30;
+  if(score>bestScore){best=name;bestScore=score;}
  }
- target.hitFlash=type==='heavy'?.42:.25;
+ return best;
+}
+function beginAttack(s,target){
+ if(s.attack||s.cooldown>0||s.guardActive)return false;
+ const weapon=weaponProfiles[s.weapon];
+ if(!target||Math.hypot(target.x-s.x,target.y-s.y)>weapon.reach+9)return false;
+ const name=chooseCombatMove(s,target);
+ if(!name)return false;
+ const move=attackMoves[name],style=attackStyles[move.style];
+ const cost=style.cost*move.stamina*(.60+weapon.weight*.30);
+ if(s.stamina<cost)return false;
+ s.stamina=clamp(s.stamina-cost,0,s.maxStamina);
+ s.attackCount++;
+ s.lastMove=name;
+ s.guardActive=false;s.guardHold=0;
+ const rate=weapon.speed*(s.stamina<24?1.16:1);
+ const wind=move.wind*rate,active=move.active*rate,recover=move.recover*rate;
+ s.attack={
+  id:nextSwingId++,name,move,phase:'windup',elapsed:0,
+  wind,active,recover,hitIds:new Set(),hits:0,
+  // Momentum gets spent on armor and shields, NOT on dealing damage.
+  // Thus several naked targets can each take the complete base damage.
+  momentum:weapon.momentum*move.momentum*(move.style==='heavy'?1.12:1),
+  baseDamage:style.damage*weapon.power*move.mult,
+  reach:weapon.reach*(move.short?.62:1)
+ };
+ s.cooldown=wind+active+recover+.08;
+ s.recoveryDelay=wind+active+recover*.5;
+ return true;
+}
+function weaponSegment(s,a,progress){
+ const m=a.move,p=clamp(progress,0,1);
+ const angle=s.faceAngle+(m.thrust?0:m.from+(m.to-m.from)*p);
+ const reachNow=a.reach*(m.thrust?.48+.52*p:1);
+ const ux=Math.cos(angle),uy=Math.sin(angle);
+ return {ax:s.x+ux*9,ay:s.y+uy*9,bx:s.x+ux*reachNow,by:s.y+uy*reachNow};
+}
+function pointSegmentDistance(px,py,seg){
+ const dx=seg.bx-seg.ax,dy=seg.by-seg.ay;
+ const lenSq=dx*dx+dy*dy;
+ const u=lenSq>0?clamp(((px-seg.ax)*dx+(py-seg.ay)*dy)/lenSq,0,1):0;
+ return Math.hypot(px-seg.ax-dx*u,py-seg.ay-dy*u);
+}
+// A directional shield can catch hits passively, or be deliberately raised
+// for a larger block arc, greater stopping power and more stamina spent.
+function shieldImpact(attacker,defender,a){
+ const shield=shieldProfiles[defender.shield];
+ if(!shield||defender.guardBreak>0||defender.stamina<2)return {block:0,stop:0,kind:null};
+ const incoming=Math.atan2(attacker.y-defender.y,attacker.x-defender.x);
+ const delta=Math.abs(Math.atan2(Math.sin(incoming-defender.faceAngle),Math.cos(incoming-defender.faceAngle)));
+ const active=defender.guardActive&&delta<=shield.activeArc;
+ if(!active&&delta>shield.passiveArc)return {block:0,stop:0,kind:null};
+ const weapon=weaponProfiles[attacker.weapon];
+ const spend=shield.cost*(active?1.15:.62)*(1+weapon.weight*.19);
+ if(defender.stamina<spend)return {block:0,stop:0,kind:null};
+ const stop=active?shield.activeStop:shield.passiveStop;
+ const block=active?clamp(stop/Math.max(1,a.momentum),0,1):shield.passiveBlock;
+ defender.stamina=clamp(defender.stamina-spend,0,defender.maxStamina);
+ defender.recoveryDelay=Math.max(defender.recoveryDelay,active?.28:.12);
+ if(active){
+  defender.guardHold=Math.max(0,defender.guardHold-.13);
+  if(block<.65||defender.stamina<9){
+   defender.guardBreak=.36+weapon.weight*.075;
+   defender.guardActive=false;
+  }
+ }
+ return {block,stop,kind:active?'active':'passive'};
+}
+function applyWeaponImpact(attacker,target,a){
+ if(target.dead||target.routed||target.broken||target.team===attacker.team||a.hitIds.has(target.id))return false;
+ a.hitIds.add(target.id);
+ const shield=shieldImpact(attacker,target,a),damageType=a.move.damageType;
+ const afterShield=a.baseDamage*(1-shield.block);
+ const actual=mitigatedDamage(afterShield,target.armor,damageType);
+ // Even when allies are invulnerable, they visibly block and expend stamina.
+ if(target.team==='foe'){
+  target.hp=Math.max(0,target.hp-actual);
+  const style=attackStyles[a.move.style];
+  target.stress=clamp(target.stress+style.stress*(.15+.85*actual/Math.max(.01,a.baseDamage)),0,100);
+ }
+ target.hitFlash=shield.kind? .32:.27;
  if(attacker.team==='foe')attacker.stress=clamp(attacker.stress+stressBalance.givenHit,0,100);
- const angle=Math.atan2(target.y-attacker.y,target.x-attacker.x);
- slashes.push({x:attacker.x,y:attacker.y,a:angle,life:style.effect,duration:style.effect,type,damageType,team:attacker.team});
+ a.hits++;
+ const armorStop=armorImpact[target.armor]?.[damageType]??12;
+ a.momentum=Math.max(0,a.momentum-armorStop-shield.stop);
+ const interrupted=a.momentum<=0||a.hits>=weaponProfiles[attacker.weapon].cleave;
+ if(interrupted)a.momentum=0;
+ slashes.push({kind:shield.kind?'block':'impact',damageType,block:shield.kind,
+  x:target.x,y:target.y,a:Math.atan2(target.y-attacker.y,target.x-attacker.x),
+  life:.23,duration:.23,type:a.move.style,team:attacker.team});
  if(target.team==='foe'&&target.hp<=0){
   target.dead=true;target.stress=100;
   for(const n of foes){
@@ -591,7 +678,76 @@ function hit(attacker,target){
    const d=Math.hypot(n.x-target.x,n.y-target.y);
    if(d<88)n.stress=clamp(n.stress+stressBalance.allyKilled*(1-d/100),0,100);
   }
-  respawnEnemy(target); // Fifty enemy slots continually replenish.
+  respawnEnemy(target);
+ }
+ return true;
+}
+// Sweep the moving blade through actual battlefield positions. Each target
+// is hit at most once per swing, in traversal order, until momentum runs out.
+function scanWeaponArc(s,a,from,to){
+ if(a.momentum<=0)return;
+ const contacts=[],samples=Math.max(4,Math.ceil(Math.abs(to-from)*14));
+ const enemies=opponents(s);
+ for(const e of enemies){
+  if(e.dead||e.routed||e.broken||a.hitIds.has(e.id))continue;
+  if(Math.hypot(e.x-s.x,e.y-s.y)>a.reach+13)continue;
+  let first=Infinity;
+  for(let n=0;n<=samples;n++){
+   const p=from+(to-from)*n/samples;
+   if(pointSegmentDistance(e.x,e.y,weaponSegment(s,a,p))<=10.1){
+    first=p;break;
+   }
+  }
+  if(first<Infinity)contacts.push({target:e,p:first,range:Math.hypot(e.x-s.x,e.y-s.y)});
+ }
+ contacts.sort((a,b)=>a.p-b.p||a.range-b.range);
+ for(const contact of contacts){
+  if(a.momentum<=0)break;
+  applyWeaponImpact(s,contact.target,a);
+ }
+}
+function advanceAttack(s,dt){
+ const a=s.attack;if(!a)return;
+ let remaining=dt;
+ for(let passes=0;passes<4&&s.attack&&remaining>0;passes++){
+  const duration=a.phase==='windup'?a.wind:a.phase==='active'?a.active:a.recover;
+  const used=Math.min(remaining,Math.max(0,duration-a.elapsed));
+  const was=a.elapsed/duration,now=(a.elapsed+used)/duration;
+  if(a.phase==='active')scanWeaponArc(s,a,was,now);
+  a.elapsed+=used;remaining-=used;
+  if(a.elapsed<duration-1e-6)break;
+  if(a.phase==='windup')a.phase='active';
+  else if(a.phase==='active')a.phase='recovery';
+  else{s.attack=null;break;}
+  a.elapsed=0;
+ }
+}
+function updateShieldGuard(s,dt){
+ s.guardBreak=Math.max(0,s.guardBreak-dt);
+ s.guardHold=Math.max(0,s.guardHold-dt);
+ const shield=shieldProfiles[s.shield];
+ if(!shield||s.broken||s.dead||s.attack||s.guardBreak>0){
+  s.guardActive=false;return;
+ }
+ for(const other of opponents(s)){
+  if(other.dead||other.routed||other.broken||!other.attack)continue;
+  const threat=other.attack,weapon=weaponProfiles[other.weapon];
+  if(Math.hypot(other.x-s.x,other.y-s.y)>weapon.reach+16)continue;
+  const angle=Math.atan2(other.y-s.y,other.x-s.x);
+  const diff=Math.abs(Math.atan2(Math.sin(angle-s.faceAngle),Math.cos(angle-s.faceAngle)));
+  if(diff>shield.activeArc+.12)continue;
+  // Discipline affects reaction; wind-up gives defenders a readable warning.
+  const reaction=.08+(1-s.disc/100)*.21+shield.weight*.014;
+  if(threat.phase==='active'||threat.phase==='windup'&&threat.elapsed>=reaction){
+   if(s.stamina>shield.cost*1.7&&rnd(s.id+threat.id*7)<.59+s.disc*.0036){
+    s.guardHold=Math.max(s.guardHold,.18+shield.weight*.025);
+   }
+  }
+ }
+ s.guardActive=s.guardHold>0&&s.stamina>shield.cost*1.3;
+ if(s.guardActive){
+  s.stamina=clamp(s.stamina-dt*(1.1+shield.weight*.9),0,s.maxStamina);
+  s.recoveryDelay=Math.max(s.recoveryDelay,.08);
  }
 }
 function approach(s,x,y,dt,mult=1){const dx=x-s.x,dy=y-s.y,dist=Math.hypot(dx,dy);if(dist<.45)return;const n=Math.min(dist,s.speed*mult*dt);s.x+=dx/dist*n;s.y+=dy/dist*n;s.facing=dx>=0?1:-1;}
