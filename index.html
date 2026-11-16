@@ -352,7 +352,7 @@ function planEngagements(team){
 }
 function chooseTarget(s){
  const enemies=opponents(s);
- let planned=null,dist=Infinity,urgent=null,urgentDist=reach*.9;
+ let planned=null,dist=Infinity,urgent=null,urgentDist=weaponProfiles[s.weapon].reach*.86;
  for(const e of enemies){
   if(e.dead||e.broken||e.routed)continue;
   const d=Math.hypot(e.x-s.x,e.y-s.y);
@@ -360,7 +360,7 @@ function chooseTarget(s){
   if(d<urgentDist){urgent=e;urgentDist=d;}
  }
  // A real threat directly beside a soldier overrides a distant assignment.
- if(urgent&&dist>reach*1.4)return {target:urgent,dist:urgentDist};
+ if(urgent&&dist>weaponProfiles[s.weapon].reach*1.4)return {target:urgent,dist:urgentDist};
  if(planned)return {target:planned,dist};
  nextEngagementPlan=0;
  let nearest=null,nearestDistance=Infinity;
@@ -376,7 +376,7 @@ function engagementPoint(s,target){
  const side=s.team==='friend'?-1:1;
  const flanks=[0,-.62,.62,-1.17,1.17,-1.5,1.5];
  const angle=(side<0?Math.PI:0)+flanks[s.engageSlot%flanks.length];
- const radius=reach*.83;
+ const radius=weaponProfiles[s.weapon].reach*.79;
  const x=target.x+Math.cos(angle)*radius;
  let y=target.y+Math.sin(angle)*radius;
  if(Math.hypot(target.x-s.x,target.y-s.y)>115)y=y*.78+s.anchorY*.22;
@@ -790,7 +790,7 @@ function step(dt){
   // Stamina restores while not recovering from a swing; movement uses some.
   s.recoveryDelay=Math.max(0,s.recoveryDelay-dt);
   if(s.recoveryDelay===0)s.stamina=clamp(s.stamina+dt*7.4,0,s.maxStamina);
-  if(s.broken){s.stress=100;fleeFromEnemies(s,dt);if(s.routed&&s.team==='foe')respawnEnemy(s);continue;}
+  if(s.broken){s.attack=null;s.guardActive=false;s.guardHold=0;s.stress=100;fleeFromEnemies(s,dt);if(s.routed&&s.team==='foe')respawnEnemy(s);continue;}
   const {target,dist}=chooseTarget(s);
   if(s.team==='foe'){
    if(dist<reach*1.5)s.stress=clamp(s.stress+dt*stressBalance.closeThreat,0,100);
@@ -816,22 +816,29 @@ function step(dt){
     if(target){
       const slot=engagementPoint(s,target);
       const distanceToSlot=Math.hypot(slot.x-s.x,slot.y-s.y);
-      if(dist>reach*.9||distanceToSlot>18){
+      if(dist>weaponProfiles[s.weapon].reach*.92||distanceToSlot>18){
        const clear=avoidCombatCrowd(s,slot,target);
        moveX=clear.x;moveY=clear.y;
-       pace=dist<=reach?.78:1.16;
+       pace=dist<=weaponProfiles[s.weapon].reach?.78:1.16;
       }else{moveX=s.x;moveY=s.y;}
     }else{moveX=s.x;moveY=s.y;}
   }
   else if(command==='defend'||command==='move'||command==='idle'||command==='form'){moveX=s.tx;moveY=s.ty;}
   const disciplineControl=.42+s.disc/160;
   const fatiguePace=.76+.24*(s.stamina/s.maxStamina);
+  const equipment=weaponProfiles[s.weapon].weight+(shieldProfiles[s.shield]?.weight||0);
+  const loadPace=clamp(1-equipment*.038,.70,1);
+  const fightingPace=s.attack?.72:s.guardActive?.73:1;
   const oldX=s.x,oldY=s.y;
-  if(command!=='stop')approach(s,moveX,moveY,dt,pace*disciplineControl*fatiguePace);
-  s.stamina=clamp(s.stamina-Math.hypot(s.x-oldX,s.y-oldY)*.048,0,s.maxStamina);
-  // All fighting soldiers carry swords. Attacks connect only within exactly three cells.
+  if(command!=='stop')approach(s,moveX,moveY,dt,pace*disciplineControl*fatiguePace*loadPace*fightingPace);
+  s.stamina=clamp(s.stamina-Math.hypot(s.x-oldX,s.y-oldY)*(.042+equipment*.004),0,s.maxStamina);
   updateFacing(s,target,target?Math.hypot(target.x-s.x,target.y-s.y):Infinity,dt);
-   if(command!=='retreat'&&command!=='stop'&&target&&s.cooldown<=0&&Math.hypot(target.x-s.x,target.y-s.y)<=reach)hit(s,target);
+  if(command==='stop'||command==='retreat'){s.attack=null;s.guardActive=false;}
+  else{
+   updateShieldGuard(s,dt);
+   if(s.attack)advanceAttack(s,dt);
+   else if(target&&s.cooldown<=0)beginAttack(s,target);
+  }
  }
  separateSoldiers();
  for(const effect of slashes)effect.life-=dt;slashes=slashes.filter(e=>e.life>0);
