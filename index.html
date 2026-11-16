@@ -459,7 +459,10 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  const weaponSkillKey={shortsword:11,sword:23,greatsword:37,axe:53};
  function weaponFamiliarity(s){return clamp(s.weaponSkills?.[s.weapon]??35,0,100);}
  function trainingEfficiency(s){
-  return clamp(1.16-(s.skill||45)*.0022-weaponFamiliarity(s)*.00125,.80,1.18);
+  const familiarity=weaponFamiliarity(s);
+  // Weapon mastery should make handling smoother, not add fake damage/HP.
+  const fluency=clamp((familiarity-80)/17,0,1);
+  return clamp(1.16-(s.skill||45)*.0022-familiarity*.00125-fluency*.035,.80,1.18);
  }
  function setFighterTraining(s,team,index,rank,focus){
   const config=equipmentConfig[team]||{};
@@ -1000,8 +1003,10 @@ function beginAttack(s,target){
  s.guardActive=false;s.guardHold=0;
  const familiarity=weaponFamiliarity(s),mastery=s.skill||45;
  const counter=s.counterWindow>0;
+ // Master-level familiarity smooths wind-up and recovery by ~4%.
+ const fluency=clamp((familiarity-80)/17,0,1);
  const rate=weapon.speed*(1.10-mastery*.0015-familiarity*.0008)*
-   (s.stamina<24?1.16:1)*(counter?.82:1);
+   (1-fluency*.04)*(s.stamina<24?1.16:1)*(counter?.82:1);
  const wind=move.wind*rate,active=move.active*rate,recover=move.recover*rate;
  // Precision is geometrical: poorer fighters visibly swing off-target.
  const imprecision=(100-mastery)*.0031+(100-familiarity)*.0015;
