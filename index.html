@@ -919,13 +919,15 @@ function step(dt){
   if(command!=='stop')approach(s,moveX,moveY,dt,pace*disciplineControl*fatiguePace*loadPace*fightingPace);
   s.stamina=clamp(s.stamina-Math.hypot(s.x-oldX,s.y-oldY)*(.042+equipment*.004),0,s.maxStamina);
   updateFacing(s,target,target?Math.hypot(target.x-s.x,target.y-s.y):Infinity,dt*(s.stagger>0?.38:1));
-  if(command==='stop'||command==='retreat'){s.attack=null;s.guardActive=false;}
-  // Guard timers continue ticking while staggered, but only recovered soldiers
-  // may swing or actively defend.
-  updateShieldGuard(s,dt);
-  if(s.stagger>0){s.guardActive=false;}
-  else if(command!=='stop'&&command!=='retreat'){
-   if(s.attack)advanceAttack(s,dt);
+  if(command==='stop'||command==='retreat'){
+   s.attack=null;s.guardActive=false;s.guardHold=0;
+   s.guardBreak=Math.max(0,s.guardBreak-dt);
+  }else{
+   // Guard timers continue while staggered, but only recovered soldiers
+   // can actively defend or begin a new swing.
+   updateShieldGuard(s,dt);
+   if(s.stagger>0){s.guardActive=false;}
+   else if(s.attack)advanceAttack(s,dt);
    else if(target&&s.cooldown<=0)beginAttack(s,target);
   }
  }
