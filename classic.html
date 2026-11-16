@@ -842,6 +842,10 @@ function chooseCombatMove(s,target){
  const nearby=opponents(s).filter(e=>!e.dead&&!e.broken&&!e.routed&&Math.hypot(e.x-s.x,e.y-s.y)<weapon.reach+22).length;
  for(let j=0;j<available.length;j++){
   const name=available[j],m=attackMoves[name],style=attackStyles[m.style];
+  // Never select a short pommel attack from full sword distance. Previously
+  // high-skill fighters preferred its damage but repeatedly struck empty air.
+  const distance=target?Math.hypot(target.x-s.x,target.y-s.y):0;
+  if(m.short&&distance>weapon.reach*.62+8)continue;
   const cost=style.cost*m.stamina*(.60+weapon.weight*.30)*trainingEfficiency(s);
   if(s.stamina<cost)continue;
   const raw=style.damage*weapon.power*m.mult;
