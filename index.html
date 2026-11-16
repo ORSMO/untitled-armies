@@ -335,7 +335,7 @@ body.lab-mode .lab-area{display:flex}
   </main>
   <section class="lab-area" id="battleLab" aria-label="Six arena balance simulation">
  <div class="lab-toolbar">
-  <div><strong>🏹 RANGED COMBAT & WEAPON MASTERY LAB</strong> <span id="labProgressLabel">Repeated fair fights · 60 simulated minutes per arena</span></div>
+  <div><strong>⚔ UNIT ROLES & RANGED COMBAT LAB</strong> <span id="labProgressLabel">Repeated fair fights · 60 simulated minutes per arena</span></div>
   <div class="lab-commands"><button type="button" id="labPresetButton" aria-pressed="false">⚖ Fairness check</button><button type="button" id="labAnalysisButton" aria-expanded="false" aria-controls="labAnalysis">📊 Explain results</button><button type="button" id="labPause">Pause</button><button type="button" id="labRerun">↻ Rerun 1 hour</button></div>
  </div>
  <progress id="labProgress" class="lab-progress" max="100" value="0" aria-label="Balance simulation progress"></progress>
@@ -1975,7 +1975,8 @@ const labMirrorScenarios=[
 ].map(s=>({name:s.name,counts:s.counts,green:{...s.gear},red:{...s.gear}}));
 let labPreset='matchups';
 function labGearLabel(gear){
- return (gear.experience||'mixed')+' / '+(gear.familiarity||'mixed')+' · '+
+ return ((gear.unitRole|| (rangedProfiles[gear.ranged]?'Archer':'Infantry')))+' · '+
+  (gear.experience||'mixed')+' / '+(gear.familiarity||'mixed')+' · '+
   gear.weapon+' · '+gear.armor+(gear.shield?' / '+gear.shield:'')+(gear.ranged?' · 🏹 '+gear.ranged:'');
 }
 function updateLabTitles(){
@@ -2036,6 +2037,12 @@ function startLabRound(ar){
    const x=team==='friend'?135:305;
    const soldier=create(team,i,{x,y});
    Object.assign(soldier,gear);
+   // Existing lab scenarios define ranged gear without explicit role tags.
+   // Infer Archer for equipped missile fighters; Infantry otherwise.
+   soldier.unitRole=['infantry','archer'].includes(gear.unitRole)?
+    gear.unitRole:(rangedProfiles[gear.ranged]?'archer':'infantry');
+   soldier.ranged=soldier.unitRole==='archer'?
+    (rangedProfiles[soldier.ranged]?soldier.ranged:'bow'):null;
    setFighterTraining(soldier,team,i,gear.experience,gear.familiarity,gear.rangedMastery);
    initializeRangedEquipment(soldier);
    // Small individual variations, no extra health or armor from experience.
@@ -2252,7 +2259,7 @@ function drawLabArena(ar){
    ctx.beginPath();ctx.ellipse(11,0,shield.size*.45,shield.size*.30,0,0,Math.PI*2);ctx.fill();
    ctx.restore();
   }
-  if(s.ranged&&(s.ammo>0||s.rangedRelease>0)){
+  if(isArcher(s)&&s.ranged){
    const p=rangedProfiles[s.ranged];
    ctx.fillStyle=p.color;ctx.font='bold 10px system-ui';
    ctx.textAlign='center';ctx.fillText(s.ammo,s.x,s.y+23);
@@ -2261,10 +2268,29 @@ function drawLabArena(ar){
     ctx.beginPath();ctx.arc(s.x,s.y,15,s.faceAngle-.7,s.faceAngle+.7);ctx.stroke();
    }
   }
-  const w=weaponPose(s);
-  ctx.strokeStyle=s.weapon==='axe'?'#f3bb87':'#f0f1eb';ctx.lineWidth=s.weapon==='greatsword'||s.weapon==='axe'?3:2;
-  ctx.beginPath();ctx.moveTo(s.x+Math.cos(w.angle)*8,s.y+Math.sin(w.angle)*8);
-  ctx.lineTo(s.x+Math.cos(w.angle)*w.length,s.y+Math.sin(w.angle)*w.length);ctx.stroke();
+  if(isArcher(s)&&s.ranged&&!s.attack&&!s.meleeReady){
+   const profile=rangedProfiles[s.ranged];
+   ctx.save();ctx.translate(s.x,s.y);ctx.rotate(s.faceAngle);
+   ctx.strokeStyle=profile.color;ctx.lineWidth=2;
+   ctx.beginPath();
+   if(s.ranged==='bow'){
+    ctx.arc(11,0,13,-1.1,1.1);ctx.stroke();
+    ctx.strokeStyle='#eee0b6';ctx.lineWidth=1;ctx.beginPath();
+    ctx.moveTo(11+13*Math.cos(-1.1),13*Math.sin(-1.1));
+    ctx.lineTo(s.rangedAim>0?4:11,0);
+    ctx.lineTo(11+13*Math.cos(1.1),13*Math.sin(1.1));ctx.stroke();
+   }else if(s.ranged==='crossbow'){
+    ctx.moveTo(5,0);ctx.lineTo(24,0);ctx.moveTo(16,-9);ctx.lineTo(16,9);ctx.stroke();
+   }else{
+    ctx.moveTo(7,0);ctx.lineTo(28,0);ctx.stroke();
+   }
+   ctx.restore();
+  }else{
+   const w=weaponPose(s);
+   ctx.strokeStyle=s.weapon==='axe'?'#f3bb87':'#f0f1eb';ctx.lineWidth=s.weapon==='greatsword'||s.weapon==='axe'?3:2;
+   ctx.beginPath();ctx.moveTo(s.x+Math.cos(w.angle)*8,s.y+Math.sin(w.angle)*8);
+   ctx.lineTo(s.x+Math.cos(w.angle)*w.length,s.y+Math.sin(w.angle)*w.length);ctx.stroke();
+  }
   if(s.hp<s.maxHp){
    ctx.fillStyle='#15221c';ctx.fillRect(s.x-9,s.y-16,18,3);
    ctx.fillStyle='#fbd58e';ctx.fillRect(s.x-9,s.y-16,18*clamp(s.hp/s.maxHp,0,1),3);
