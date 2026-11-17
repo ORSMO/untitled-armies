@@ -2341,6 +2341,15 @@ function step(dt){
          pace=.96;
         }else{moveX=s.x;moveY=s.y;}
       }else if(isCavalry(s)){
+       // Mounted bowmen retreat from close threats to reopen a shooting
+       // lane, but can still draw their sword if trapped alongside an enemy.
+       if(s.unitRole==='horseArcher'&&dist<125){
+        const dx=(s.x-target.x)/Math.max(1,dist),dy=(s.y-target.y)/Math.max(1,dist);
+        const side=s.id%2===0?1:-1;
+        moveX=clamp(s.x+dx*145-dy*58*side,25,W-25);
+        moveY=clamp(s.y+dy*145+dx*58*side,25,H-25);
+        pace=1.14;
+       }else{
        // Hooves need a line of travel: ride through the target rather than
        // braking at the foot-soldier's melee slot before making contact.
        // Maintain a committed pass target briefly; don't turn instantly
@@ -2357,6 +2366,21 @@ function step(dt){
        // At the end of a pass, choose a new approach rather than trying
        // to reverse direction while still at full gallop.
        if(Math.hypot(moveX-s.x,moveY-s.y)<16)s.mountPassUntil=0;
+       // If cavalry become entangled without a run-up, first disengage
+       // instead of indefinitely standing and sword-fighting on horseback.
+       if((s.mountSpeed||0)<33&&dist<100&&s.chargeCooldown<=.25&&
+          s.stagger<=0&&t>=s.regroupUntil){
+        const awayX=(s.x-target.x)/Math.max(1,dist);
+        const awayY=(s.y-target.y)/Math.max(1,dist);
+        const side=s.id%2===0?1:-1;
+        s.regroupX=clamp(s.x+awayX*145-awayY*48*side,25,W-25);
+        s.regroupY=clamp(s.y+awayY*145+awayX*48*side,25,H-25);
+        if(Math.hypot(s.regroupX-s.x,s.regroupY-s.y)>40){
+         s.regroupUntil=t+1.75;s.mountPassUntil=0;
+         moveX=s.regroupX;moveY=s.regroupY;pace=1.30;
+        }
+       }
+       }
       }else{
        const slot=engagementPoint(s,target);
        const distanceToSlot=Math.hypot(slot.x-s.x,slot.y-s.y);
@@ -2420,7 +2444,7 @@ function step(dt){
     }
    }
    if(command==='attack'&&target&&!target.dead&&!target.routed&&
-      dist<66&&dist>13&&s.gallop>.38&&
+      dist<66&&dist>13&&s.gallop>.31&&
       // A horse's forward motion must actually close the gap: passing a
       // target after a turn is not an automatic second charge.
       ((target.x-s.x)*s.vx+(target.y-s.y)*s.vy)/
