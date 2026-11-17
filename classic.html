@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V2.7</title>
+<title>Untitled Armies — V2.8</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -166,6 +166,16 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 #infiniteAmmoButton[aria-pressed=true]{border-color:#ddc66c;background:#594820;color:#fff5c0}
 @media(max-height:600px){.enemy-command-panel{padding:7px 9px}.enemy-command-grid button{min-height:25px;padding:4px}.enemy-command-panel p{margin:3px 0}}
 @media(max-width:570px){.enemy-command-panel{width:calc(100% - 128px)}.enemy-command-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.enemy-command-grid button{font-size:10px}}
+
+.commander-panel{border-color:#baad78;width:min(570px,calc(100% - 125px))}
+.commander-status{display:flex;justify-content:space-between;align-items:center;gap:7px;margin:10px 0 4px;
+ padding:7px 9px;background:#3c3830;border-radius:7px;font-size:11px}
+.commander-status span{color:#eddfbc;font-size:10px;text-align:right}
+.commander-panel .enemy-command-foot{flex-wrap:wrap}
+.commander-panel .enemy-command-foot button{flex:1;min-width:112px}
+.commander-panel .enemy-command-grid button[aria-pressed=true]{background:#806c39;border-color:#f1d595}
+#commanderButton[aria-expanded=true]{background:#51482c;border-color:#e2c475}
+@media(max-width:580px){.commander-panel{width:calc(100% - 105px)}}
 </style>
 </head>
 <body>
@@ -174,14 +184,14 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
     <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Armor · Shields · Physical combat</p></div></div>
     <div class="top-actions">
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 2.7">V2.7</div>
+      <div class="build" aria-label="Version 2.8">V2.8</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
     <canvas id="field"></canvas>
     <canvas id="minimap" width="180" height="102" aria-label="Battlefield minimap: touch or click to pan"></canvas>
     <div class="map-guide">3× LARGER WORLD · DRAG TO PAN · MINIMAP TO TRAVEL</div>
-    <div class="overlay-top" aria-live="polite"><span class="pill"><span class="light"></span><span id="count">50 SOLDIERS</span></span><span class="pill dim" id="status">IDLE</span><span class="pill dim" id="rangeBadge">⚔ WEAPON REACH</span></div>
+    <div class="overlay-top" aria-live="polite"><span class="pill"><span class="light"></span><span id="count">50 SOLDIERS</span></span><span class="pill dim" id="status">IDLE</span><span class="pill dim" id="rangeBadge">⚔ WEAPON REACH</span><span class="pill dim" id="commandHeadline">👑 Commander AI</span></div>
     <aside class="rail left">
   <button class="control" type="button" id="select" aria-pressed="false" aria-label="Select all soldiers"><span class="dot" aria-hidden="true">◎</span><span id="select-label">Select</span></button>
   <div class="formation-anchor is-hidden" id="formationAnchor">
@@ -201,6 +211,36 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
       <button class="control retreat" id="retreat" type="button" aria-label="Retreat to left side"><span class="dot" aria-hidden="true">↶</span><span>Retreat</span></button>
     </div></aside>
     <div class="bottom-note" id="hint" aria-live="polite">Select your army · swipe to explore the battlefield</div>
+ <section class="enemy-command-panel commander-panel is-hidden" id="commanderPanel" aria-label="Commander and general controls">
+  <div class="enemy-command-header"><strong>👑 COMMANDERS & THE GENERAL</strong>
+   <button id="commanderClose" type="button" aria-label="Close commander panel">✕</button></div>
+  <p>Your commander runs the battle automatically. Choose a group and issue a manual order to override him. Your order remains until you return that group to AI.</p>
+  <div class="commander-status"><strong>🟢 Your commander</strong><span id="friendCommanderStatus">Tactical · Assessing</span></div>
+  <div class="enemy-command-grid" aria-label="Your commander style">
+   <button type="button" data-commander-team="friend" data-style="aggressive">Aggressive</button>
+   <button type="button" data-commander-team="friend" data-style="defensive">Defensive</button>
+   <button type="button" data-commander-team="friend" data-style="tactical">Tactical</button>
+  </div>
+  <div class="commander-status"><strong>🔴 Enemy commander</strong><span id="foeCommanderStatus">Aggressive · Assessing</span></div>
+  <div class="enemy-command-grid" aria-label="Enemy commander style">
+   <button type="button" data-commander-team="foe" data-style="aggressive">Aggressive</button>
+   <button type="button" data-commander-team="foe" data-style="defensive">Defensive</button>
+   <button type="button" data-commander-team="foe" data-style="tactical">Tactical</button>
+  </div>
+  <div class="enemy-command-label">YOUR GENERAL ORDERS APPLY TO</div>
+  <div class="enemy-command-grid" role="group" aria-label="Manual command group">
+   <button type="button" data-general-group="all">All soldiers</button>
+   <button type="button" data-general-group="infantry">⚔ Infantry</button>
+   <button type="button" data-general-group="archer">🏹 Archers</button>
+   <button type="button" data-general-group="cavalry">🐎 Cavalry</button>
+  </div>
+  <p id="generalOverrideStatus">All groups currently follow Commander AI.</p>
+  <div class="enemy-command-foot">
+   <button type="button" id="takeGeneral">Take command of group</button>
+   <button type="button" id="releaseGeneral">Return group to AI</button>
+   <button type="button" id="releaseAll">Return all to AI</button>
+  </div>
+ </section>
  <section class="enemy-command-panel is-hidden" id="enemyPanel" aria-label="Enemy army control panel">
   <div class="enemy-command-header">
    <strong>🔴 ENEMY ARMY COMMANDS</strong>
@@ -258,7 +298,8 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
       <tbody><tr><td>War bow</td><td>18</td><td>1005</td><td>0.64s</td><td>Light piercing</td></tr>
       <tr><td>Crossbow</td><td>12</td><td>1125</td><td>1.90s</td><td>Heavy piercing</td></tr>
       <tr><td>Javelins</td><td>6</td><td>624</td><td>1.05s</td><td>Heavy piercing</td></tr></tbody></table>
-      <p><strong>UNIT ROLES:</strong> <strong>Infantry</strong> fight with swords, axes or other melee weapons and never switch to ranged attacks. <strong>Archers</strong> always carry their selected bow, crossbow or javelins, prefer firing from a distance, and use their melee sidearm only when an enemy enters close-combat range. If out of ammunition, they keep their ranged weapon ready instead of charging with swords. Choose the mixed unit type to deploy both roles in an army. <strong>Cavalry</strong> is reserved for a future mounted-combat update.</p>
+      <p><strong>UNIT ROLES:</strong> <strong>Infantry</strong> fight with swords, axes or other melee weapons and never switch to ranged attacks. <strong>Archers</strong> always carry their selected bow, crossbow or javelins, prefer firing from a distance, and use their melee sidearm only when an enemy enters close-combat range. If out of ammunition, they keep their ranged weapon ready instead of charging with swords. Choose the mixed unit type for infantry and archers. <strong>Cavalry</strong> ride faster than infantry, hold wider spacing, charge with momentum, and become less effective in sustained close combat. Choose a pure Cavalry or a combined army of 20 infantry, 20 archers and 10 cavalry.</p>
+      <p><strong>COMMANDERS:</strong> Each side has a separate, mortal commander with a battlefield banner. Tactical, Aggressive and Defensive personalities read the battle, issue orders to Infantry, Archers and Cavalry, and protect threatened units. Distant units receive the command later; Leadership reduces communication delay. Use <strong>👑 Commanders</strong> to override a class or your whole army. Your General orders apply immediately and persist until you press Return to AI. The enemy army can also be manually controlled.</p>
       <p><strong>RANGED COMBAT:</strong> V2.4 triples maximum and ideal shooting distances. Better experience and ranged familiarity produce tighter shot groups, and experienced archers lead moving targets. Archers can switch to a new enemy during an existing draw rather than repeatedly cancelling shots when their target disappears. Projectiles still travel physically and can miss. War bows carry 18 arrows (fast), crossbows carry 12 bolts (slow reload, strong piercing), and javelins carry 6 throws (short range, powerful impact). Shots follow lofted trajectories over friendly ranks and stop when they reach the ground instead of sliding along it. Lofted attacks fly over allied soldiers throughout their flight; enemy soldiers, shields and armor can still intercept them. Projectiles have travel time, can miss, and interact with directional shields and armor. Experience and independent ranged-weapon familiarity improve accuracy and timing; set Ranged skill separately from melee Mastery in Test gear. Archers draw their melee sidearm only when enemies enter close-combat range; running out of ammunition does not make them charge with swords. A shield is lowered when aiming a two-handed bow or crossbow.</p>
       <p><strong>IMPACT REACTIONS:</strong> Heavy hits cause knockback and stagger. A successful active block can create a counterattack opening; a weak shield can suffer a <strong>GUARD BREAK</strong>. Plate and solid shields can stop a swing and recoil the attacker.</p>
       <p>Green and red soldiers wear mixed armor and carry different weapons. One-handed swords can use shields; greatswords and axes occupy both hands. Swing stages: wind-up → active hitbox → recovery. Your troops are still invulnerable.</p>
@@ -276,6 +317,8 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
    <button type="button" data-matchup="archers">Archers vs infantry</button>
    <button type="button" data-matchup="crossbows">Crossbows vs plate</button>
    <button type="button" data-matchup="skirmish">Javelins vs bows</button>
+   <button type="button" data-matchup="cavalry">Cavalry vs infantry</button>
+   <button type="button" data-matchup="combined">Combined armies</button>
   </div>
   <div class="equipment-grid"><div class="equipment-side">
    <h3>🟢 YOUR ARMY · 50 SOLDIERS</h3>
@@ -283,8 +326,8 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 <select id="friendUnitRole"><option value="infantry">⚔ Infantry — melee first</option>
 <option value="archer">🏹 Archer — ranged first</option>
 <option value="mixed">Infantry + Archers (half each)</option>
-<option value="cavalry" disabled>🐎 Cavalry — coming later</option></select></div>
-<div class="equipment-field"><label for="friendWeapon">Weapon</label><select id="friendWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option></select></div>
+<option value="cavalry">🐎 Cavalry — mounted charges</option><option value="combined">Combined army (20/20/10)</option></select></div>
+<div class="equipment-field"><label for="friendWeapon">Weapon</label><select id="friendWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option><option value="lance">Cavalry lance</option></select></div>
 <div class="equipment-field"><label for="friendRanged">Ranged</label><select id="friendRanged">
 <option value="none">No ranged weapon</option><option value="bow">War bow · 18 arrows</option><option value="crossbow">Crossbow · 12 bolts</option><option value="javelin">Javelins · 6 throws</option><option value="mixed">Mixed ranged weapons</option>
 </select></div>
@@ -306,8 +349,8 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 <select id="foeUnitRole"><option value="infantry">⚔ Infantry — melee first</option>
 <option value="archer">🏹 Archer — ranged first</option>
 <option value="mixed">Infantry + Archers (half each)</option>
-<option value="cavalry" disabled>🐎 Cavalry — coming later</option></select></div>
-<div class="equipment-field"><label for="foeWeapon">Weapon</label><select id="foeWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option></select></div>
+<option value="cavalry">🐎 Cavalry — mounted charges</option><option value="combined">Combined army (20/20/10)</option></select></div>
+<div class="equipment-field"><label for="foeWeapon">Weapon</label><select id="foeWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option><option value="lance">Cavalry lance</option></select></div>
 <div class="equipment-field"><label for="foeRanged">Ranged</label><select id="foeRanged">
 <option value="none">No ranged weapon</option><option value="bow">War bow · 18 arrows</option><option value="crossbow">Crossbow · 12 bolts</option><option value="javelin">Javelins · 6 throws</option><option value="mixed">Mixed ranged weapons</option>
 </select></div>
@@ -332,7 +375,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
  </section>
 </div>
   </main>
-  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="enemyButton" class="small-btn" aria-expanded="false" aria-controls="enemyPanel">🔴 Enemy orders</button>
+  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="commanderButton" class="small-btn" aria-expanded="false" aria-controls="commanderPanel">👑 Commanders</button> <button type="button" id="enemyButton" class="small-btn" aria-expanded="false" aria-controls="enemyPanel">🔴 Enemy orders</button>
     <button type="button" id="infiniteAmmoButton" class="small-btn" aria-pressed="false" title="Unlimited arrows, bolts and javelins for both armies">∞ Ammo: OFF</button>
     <button type="button" id="equipmentButton" class="small-btn" aria-expanded="false" aria-controls="equipmentPanel">⚙ Test gear</button> <button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
 </div>
@@ -380,6 +423,16 @@ let W=0,H=0,VW=0,VH=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],s
  const camera={x:0,y:0},cameraKeys=new Set();let fieldPointer=null;
  let enemyCommand='auto',enemyFormationType='block',enemyMovePending=false;
  let infiniteAmmo=false;
+ // Two physical commanders are separate from the 50 soldiers on each team.
+ let commanders={friend:null,foe:null};
+ function newBrain(personality='tactical'){
+  return {personality,phase:'advance',orders:{infantry:'attack',archer:'attack',cavalry:'attack'},
+    elapsed:0,next:0,lastChange:-20,decisions:0,news:'Reading battlefield'};
+ }
+ let commanderBrains={friend:newBrain('tactical'),foe:newBrain('aggressive')};
+ // As General you override a role indefinitely, until explicitly released.
+ let generalOrders={all:null,infantry:null,archer:null,cavalry:null};
+ let selectedGroup='all';
 const rnd=i=>{const x=Math.sin(i*127.1+91.7)*43758.5453;return x-Math.floor(x)};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) from center to center.
@@ -415,9 +468,10 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   shortsword:{label:'Short sword',weight:1.0,reach:31,power:.91,momentum:38,speed:.83,twoHand:false,moves:['slashRight','slashLeft','thrust','pommel'],cleave:1},
   sword:{label:'Arming sword',weight:1.55,reach:36,power:1,momentum:68,speed:1,twoHand:false,moves:['slashRight','slashLeft','overhead','thrust','pommel'],cleave:1},
   greatsword:{label:'Greatsword',weight:3.35,reach:47,power:1.25,momentum:115,speed:1.24,twoHand:true,moves:['slashRight','slashLeft','overhead','thrust','cleave','pommel'],cleave:5},
-  axe:{label:'Battle axe',weight:3.8,reach:43,power:1.38,momentum:143,speed:1.38,twoHand:true,moves:['slashRight','slashLeft','overhead','cleave','pommel'],cleave:6}
+  axe:{label:'Battle axe',weight:3.8,reach:43,power:1.38,momentum:143,speed:1.38,twoHand:true,moves:['slashRight','slashLeft','overhead','cleave','pommel'],cleave:6},
+  lance:{label:'Cavalry lance',weight:2.5,reach:56,power:1.23,momentum:142,speed:1.24,twoHand:false,moves:['thrust','slashRight'],cleave:1}
  };
- const weaponOrder=['shortsword','sword','greatsword','axe'];
+ const weaponOrder=['shortsword','sword','greatsword','axe','lance'];
  // Secondary weapons have limited shots, physical flight and melee fallback.
  const rangedProfiles={
   bow:{label:'War bow',speed:520,range:1005,ideal:645,ammo:18,draw:.62,reload:.64,loft:46,
@@ -431,11 +485,13 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  // Unit classes determine combat priorities independently of equipment.
  // Cavalry is a reserved class for the future mounted-combat update.
  const unitRoles=['infantry','archer','cavalry'];
- function soldierRole(s){return s.unitRole==='archer'?'archer':'infantry';}
+ function soldierRole(s){return ['archer','cavalry'].includes(s.unitRole)?s.unitRole:'infantry';}
+ function isCavalry(s){return soldierRole(s)==='cavalry';}
  function isArcher(s){return soldierRole(s)==='archer';}
  function activeRangedProfile(s){return isArcher(s)?rangedProfiles[s.ranged]||null:null;}
  function assignedRole(config,index){
-  if(config.unitRole==='archer')return 'archer';
+  if(config.unitRole==='archer'||config.unitRole==='cavalry')return config.unitRole;
+  if(config.unitRole==='combined')return index<20?'infantry':index<40?'archer':'cavalry';
   if(config.unitRole==='mixed')return index%2===0?'infantry':'archer';
   return 'infantry';
  }
@@ -456,7 +512,7 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  };
  const experienceOrder=['recruit','trained','veteran','elite'];
  const familiarityLevels={novice:18,practiced:56,expert:85,master:97};
- const weaponSkillKey={shortsword:11,sword:23,greatsword:37,axe:53};
+ const weaponSkillKey={shortsword:11,sword:23,greatsword:37,axe:53,lance:61};
  const rangedSkillKey={bow:67,crossbow:79,javelin:89};
  function rangedFamiliarity(s){return clamp(s.rangedSkills?.[s.ranged]??35,0,100);}
  function initializeRangedEquipment(s){
@@ -515,8 +571,8 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  };
  function equipmentFor(team,index){
   const settings=equipmentConfig[team],offset=team==='friend'?0:1;
-  const weapon=settings.weapon==='mixed'?
-    weaponOrder[(index+(team==='friend'?0:2))%weaponOrder.length]:settings.weapon;
+  let weapon=settings.weapon==='mixed'?
+    weaponOrder[(index+(team==='friend'?0:2))%(weaponOrder.length-1)]:settings.weapon;
   const armor=settings.armor==='mixed'?
     armorOrder[(index+offset)%armorOrder.length]:settings.armor;
   const defaultShield=(index+(team==='friend'?0:2))%4>=2?null:
@@ -526,6 +582,7 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   // A shield cannot coexist with a two-handed weapon, including in mixed armies.
   if(weaponProfiles[weapon].twoHand)shield=null;
   const unitRole=assignedRole(settings,index);
+  if(unitRole==='cavalry'&&(settings.weapon==='mixed'||!weaponProfiles[weapon]))weapon='lance';
   // Infantry never carry/use a ranged weapon. The Archer role can select
   // bow, crossbow or javelins; a bow is the default if nothing was selected.
   const chosenRanged=settings.ranged==='mixed'?rangedOrder[index%rangedOrder.length]:settings.ranged;
@@ -541,6 +598,7 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
    initializeRangedEquipment(soldier);
    // Switching equipment safely ends any attack/guard using the old item.
    soldier.attack=null;soldier.guardActive=false;soldier.guardHold=0;
+   soldier.lastCommanderOrder=null;soldier.currentCommanderOrder='attack';soldier.pendingCommanderOrder=null;
    soldier.guardBreak=0;soldier.shieldRecoil=0;soldier.guardBreakFlash=0;
    soldier.cooldown=Math.min(Math.max(soldier.cooldown,0),.26);
   });
@@ -631,9 +689,10 @@ function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74
   // reserve wider firing lanes; in mixed armies infantry take the front
   // and archers deploy in separate rear ranks instead of interleaving.
   const roles=Array.from({length:50},(_,i)=>assignedRole(equipmentConfig[team],i));
-  if(roles.includes('archer')){
+  if(roles.includes('archer')||roles.includes('cavalry')){
    const infantry=roles.map((role,i)=>role==='infantry'?i:-1).filter(i=>i>=0);
    const archers=roles.map((role,i)=>role==='archer'?i:-1).filter(i=>i>=0);
+   const cavalry=roles.map((role,i)=>role==='cavalry'?i:-1).filter(i=>i>=0);
    const forward=team==='friend'?1:-1;
    function place(indices,isBow){
     const count=indices.length;if(!count)return;
@@ -652,10 +711,30 @@ function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74
     });
    }
    place(infantry,false);place(archers,true);
+   // Horsemen form a mobile wing beyond the infantry/archer ranks.
+   const horseStride=46,horseRows=Math.max(1,Math.ceil(cavalry.length/8));
+   cavalry.forEach((index,j)=>{
+    const lane=j%8,row=Math.floor(j/8);
+    const side=(j%2===0?-1:1);
+    const y=cy+side*(Math.max(120,(roles.includes('archer')?235:160))+(Math.floor(j/2)%4)*horseStride);
+    positions[index]={x:cx-forward*(d*3+row*horseStride),y};
+   });
   }
   return positions.map(p=>({x:clamp(p.x,18,W-18),y:clamp(p.y,21,H-21)}));
  }
-function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);const soldier={id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,...equipmentFor(team,i),attack:null,guardActive:false,guardHold:0,guardBreak:0,stagger:0,knockVX:0,knockVY:0,shieldRecoil:0,impactLean:0,guardBreakFlash:0,stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,stamina:100,maxStamina:100,recoveryDelay:0,attackCount:0,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:1.5+rnd(i+16)*1.3,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,engageSlot:0,escapeAngle:0,hitFlash:0};setFighterTraining(soldier,team,i);initializeRangedEquipment(soldier);return soldier;}
+function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);const soldier={id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,...equipmentFor(team,i),attack:null,lastCommanderOrder:null,currentCommanderOrder:'attack',pendingCommanderOrder:null,gallop:0,chargeCooldown:0,chargeHits:0,guardActive:false,guardHold:0,guardBreak:0,stagger:0,knockVX:0,knockVY:0,shieldRecoil:0,impactLean:0,guardBreakFlash:0,stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,stamina:100,maxStamina:100,recoveryDelay:0,attackCount:0,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:1.5+rnd(i+16)*1.3,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,engageSlot:0,escapeAngle:0,hitFlash:0};setFighterTraining(soldier,team,i);initializeRangedEquipment(soldier);return soldier;}
+function createCommander(team){
+  const h=home(team),rear=team==='friend'?-1:1;
+  const c=create(team,50,{x:clamp(h.x+rear*125,30,W-30),y:clamp(h.y-40,30,H-30)});
+  Object.assign(c,{isCommander:true,unitRole:'infantry',weapon:'sword',
+   shield:'round',armor:'mail',ranged:null,leadership:team==='friend'?84:76,
+   experience:'veteran',skill:76,disc:92,stamina:100,maxStamina:100,
+   hp:5,maxHp:5,speed:49,targetId:null,chargeHits:0});
+  setFighterTraining(c,team,50,'veteran','expert');
+  initializeRangedEquipment(c);
+  c.anchorX=c.tx=c.x;c.anchorY=c.ty=c.y;
+  return c;
+}
 function focusArmy(){
   const h=home('friend');
   camera.x=clamp(h.x-VW*.37,0,Math.max(0,W-VW));
@@ -666,7 +745,12 @@ function focusArmy(){
   const a=home('friend'),b=home('foe');
   friends=formation('friend',a.x,a.y).map((p,i)=>create('friend',i,p));
   foes=formation('foe',b.x,b.y).map((p,i)=>create('foe',i,p));
-  slashes=[];projectiles=[];groundedShots=[];selected=false;mode='idle';marker=null;focusArmy();updateUI();updateEnemyUI();
+   // Preserve configured personalities across battles; clear stale orders.
+  commanders.friend=createCommander('friend');commanders.foe=createCommander('foe');
+  commanderBrains.friend=newBrain(commanderBrains.friend.personality);
+  commanderBrains.foe=newBrain(commanderBrains.foe.personality);
+  generalOrders={all:null,infantry:null,archer:null,cavalry:null};selectedGroup='all';
+  slashes=[];projectiles=[];groundedShots=[];selected=false;mode='idle';marker=null;focusArmy();updateUI();updateEnemyUI();updateCommanderUI();
  }
 // Enemy reinforcements enter at the right edge in the least crowded lane.
 function respawnEnemy(s){
@@ -688,9 +772,133 @@ function respawnEnemy(s){
  Object.assign(s,fresh,{anchorX:slot.x,anchorY:slot.y,tx:slot.x,ty:slot.y,hitFlash:.22});
  nextEngagementPlan=0;
 }
-function members(team){return team==='friend'?friends:foes;}
-function opponents(s){return s.team==='friend'?foes:friends;}
+function members(team){return [...(team==='friend'?friends:foes),...(
+  commanders[team]?[commanders[team]]:[])];}
+function opponents(s){return members(s.team==='friend'?'foe':'friend');}
 function living(list){return list.filter(s=>!s.dead&&!s.broken&&!s.routed);}
+// Commanders evaluate actual units and threats rather than accessing perfect
+// information about future combat. They decide by class every ~1.5 seconds.
+function troopCenter(troops,backup){
+ return troops.length?{
+  x:troops.reduce((n,u)=>n+u.x,0)/troops.length,
+  y:troops.reduce((n,u)=>n+u.y,0)/troops.length
+ }:backup;
+}
+function setCommanderAnchors(team,orders){
+ const troops=(team==='friend'?friends:foes),alive=living(troops);
+ if(!alive.length)return;
+ const center=troopCenter(alive,home(team));
+ const slots=formation(team,center.x,center.y),rear=home(team);
+ for(let i=0;i<troops.length;i++){
+  const u=troops[i];if(u.dead||u.broken||u.routed)continue;
+  const order=orders[u.unitRole]||'attack';
+  if(order==='retreat'){
+   // Retreat moves toward the team's side while still preserving each slot.
+   u.anchorX=clamp(rear.x+(slots[i].x-center.x),24,W-24);
+   u.anchorY=clamp(rear.y+(slots[i].y-center.y),24,H-24);
+  }else if(order==='defend'){
+   u.anchorX=slots[i].x;u.anchorY=slots[i].y;
+  }
+  if(order==='defend'||order==='retreat'){
+   u.tx=u.anchorX;u.ty=u.anchorY;
+  }
+ }
+}
+function decideCommander(team,dt){
+ const brain=commanderBrains[team],leader=commanders[team];
+ brain.elapsed+=dt;
+ if(brain.elapsed<brain.next)return;
+ brain.next=brain.elapsed+1.35+(100-(leader?.leadership||60))*.008;
+ brain.decisions++;
+ if(!leader||leader.dead||leader.routed||leader.broken){
+  brain.phase='leaderless';brain.news='Commander lost — soldiers act independently';
+  brain.orders={infantry:'attack',archer:'attack',cavalry:'attack'};
+  updateCommanderUI();return;
+ }
+ const troops=living(team==='friend'?friends:foes);
+ const enemies=living(team==='friend'?foes:friends);
+ const a=troopCenter(troops,home(team));
+ const b=troopCenter(enemies,home(team==='friend'?'foe':'friend'));
+ const distance=Math.hypot(a.x-b.x,a.y-b.y);
+ const archerUnits=troops.filter(u=>isArcher(u));
+ const cavalryUnits=troops.filter(u=>isCavalry(u));
+ const enemyArchers=enemies.filter(u=>isArcher(u));
+ const pressured=archerUnits.filter(u=>enemies.some(e=>
+  Math.hypot(e.x-u.x,e.y-u.y)<155)).length;
+ const threatened=archerUnits.length&&pressured/archerUnits.length>.25;
+ const ratio=troops.length/Math.max(1,enemies.length);
+ const panicRate=troops.length?troops.filter(u=>u.stress>67).length/troops.length:1;
+ const ammo=archerUnits.reduce((n,u)=>n+(infiniteAmmo?18:u.ammo),0);
+ let phase='hold';
+ if(ratio<.58||panicRate>.43)phase='withdraw';
+ else if(threatened)phase='protect';
+ else if(distance>360)phase='advance';
+ else if(cavalryUnits.length>3&&enemyArchers.length>3&&distance<500)phase='flank';
+ else if(brain.personality==='aggressive'&&ratio>.70)phase='press';
+ else if(brain.personality==='defensive')phase='hold';
+ else if(ratio>1.35&&distance<310)phase='press';
+ // Commit to a plan; urgent withdrawal/protection can interrupt it.
+ const urgent=phase==='withdraw'||phase==='protect';
+ if(phase!==brain.phase&&brain.elapsed-brain.lastChange<4&&!urgent)
+  phase=brain.phase;
+ if(phase!==brain.phase){
+  brain.phase=phase;brain.lastChange=brain.elapsed;
+  const plans={
+   advance:{infantry:'attack',archer:'attack',cavalry:'attack'},
+   press:{infantry:'attack',archer:'attack',cavalry:'attack'},
+   hold:{infantry:'defend',archer:'attack',cavalry:'defend'},
+   protect:{infantry:'defend',archer:'retreat',cavalry:'attack'},
+   flank:{infantry:'defend',archer:'attack',cavalry:'attack'},
+   withdraw:{infantry:'retreat',archer:'retreat',cavalry:'retreat'}
+  };
+  brain.orders=plans[phase]||plans.advance;
+  setCommanderAnchors(team,brain.orders);
+ }
+ brain.news=phase==='advance'?'Approaching the enemy':
+  phase==='press'?'Pressing the attack':
+  phase==='hold'?'Holding a disciplined line':
+  phase==='protect'?'Protecting threatened archers':
+  phase==='flank'?'Cavalry exploiting an exposed wing':
+  'Ordered withdrawal';
+ if(archerUnits.length&&ammo===0)brain.news+=' · archers out of ammunition';
+ updateCommanderUI();
+}
+function resolveCombatCommand(s){
+ if(s.isCommander)return 'defend';
+ const role=s.unitRole||'infantry';
+ if(s.team==='foe'&&enemyCommand!=='auto')return enemyCommand;
+ if(s.team==='friend'){
+  const manual=generalOrders[role]||generalOrders.all;
+  if(manual)return manual; // The General's authority is immediate.
+ }
+ const brain=commanderBrains[s.team],leader=commanders[s.team];
+ const intended=brain?.orders[role]||'attack';
+ if(!brain)return intended;
+ // Relay a new order rather than magically changing a distant unit's mind.
+ // Leadership makes messages faster; troops further away hear later.
+ if(s.lastCommanderOrder!==intended){
+  s.lastCommanderOrder=intended;
+  s.pendingCommanderOrder=intended;
+  const distance=leader?Math.hypot(leader.x-s.x,leader.y-s.y):0;
+  const skill=(s.disc||50)/100,lead=(leader?.leadership||60)/100;
+  const delay=clamp(.12+distance/320*(1.12-lead*.52)+(1-skill)*.30,.12,3.2);
+  s.receiveCommanderAt=brain.elapsed+delay;
+ }
+ if(s.pendingCommanderOrder&&brain.elapsed>=s.receiveCommanderAt){
+  s.currentCommanderOrder=s.pendingCommanderOrder;
+  s.pendingCommanderOrder=null;
+ }
+ return s.currentCommanderOrder||'attack';
+}
+function selectedTroops(){
+ return friends.filter(s=>selectedGroup==='all'||s.unitRole===selectedGroup);
+}
+function returnToCommander(group){
+ if(group==='all')generalOrders={all:null,infantry:null,archer:null,cavalry:null};
+ else generalOrders[group]=null;
+ mode='idle';selected=false;updateUI();updateCommanderUI();
+}
+
 // Shared awareness: choose opponents across the entire enemy front.
 // This runs a few times a second, so soldiers do not jitter between targets.
 function planEngagements(team){
@@ -815,7 +1023,7 @@ function setFormation(cx,cy){
   formationType=type;setFormationMenu(false);
   const cx=friends.reduce((a,s)=>a+s.anchorX,0)/friends.length;
   const cy=friends.reduce((a,s)=>a+s.anchorY,0)/friends.length;
-  setFormation(cx,cy);mode='form';updateUI();
+  setFormation(cx,cy);mode='form';generalOrders={all:'form',infantry:null,archer:null,cavalry:null};updateUI();updateCommanderUI();
  }
  function hoveredFormation(e){
   const el=document.elementFromPoint(e.clientX,e.clientY);
@@ -844,11 +1052,76 @@ function setFormation(cx,cy){
  ui.formationBtn.addEventListener('click',e=>{
   if(e.detail===0&&selected)setFormationMenu(ui.formationMenu.classList.contains('is-hidden'));
  });
-function setMode(m){if(!selected)return;mode=m;marker=null;nextEngagementPlan=0;
- if(m==='defend'){const alive=living(friends);const x=alive.reduce((a,s)=>a+s.x,0)/Math.max(alive.length,1),y=alive.reduce((a,s)=>a+s.y,0)/Math.max(alive.length,1);setFormation(x||home('friend').x,y||H*.5);}
- if(m==='stop'){friends.forEach(s=>{if(!s.broken&&!s.dead){s.anchorX=s.x;s.anchorY=s.y;}});}
- if(m==='retreat'){const h=home('friend');setFormation(Math.max(103,h.x*.57),H*.51);}
- updateUI();}
+function setMode(m){
+ if(!selected)return;
+ mode=m;marker=null;nextEngagementPlan=0;
+ if(selectedGroup==='all')generalOrders={all:m,infantry:null,archer:null,cavalry:null};
+ else generalOrders[selectedGroup]=m;
+ const troops=selectedTroops();
+ if(m==='defend'||m==='stop'||m==='retreat'){
+  const h=home('friend');
+  for(const u of troops){
+   if(u.dead||u.broken||u.routed)continue;
+   if(m==='retreat'){
+    u.anchorX=clamp(h.x-(u.unitRole==='cavalry'?40:0),25,W-25);
+    u.anchorY=clamp(h.y+(u.y-H*.5)*.45,25,H-25);
+   }else if(m==='stop'){u.anchorX=u.x;u.anchorY=u.y;}
+   else{u.anchorX=u.x;u.anchorY=u.y;}
+   u.tx=u.anchorX;u.ty=u.anchorY;
+  }
+ }
+ updateUI();updateCommanderUI();
+}
+const commanderButton=document.querySelector('#commanderButton'),
+ commanderPanel=document.querySelector('#commanderPanel');
+const commanderStyleButtons=[...commanderPanel.querySelectorAll('[data-commander-team]')];
+const generalGroupButtons=[...commanderPanel.querySelectorAll('[data-general-group]')];
+function updateCommanderUI(){
+ const describe=team=>{
+  const leader=commanders[team],brain=commanderBrains[team];
+  if(!leader||leader.dead||leader.broken||leader.routed)
+   return 'FALLEN · troops acting independently';
+  return brain.personality.toUpperCase()+' · '+brain.news+
+   ' · HP '+Math.ceil(Math.max(0,leader.hp))+'/'+leader.maxHp;
+ };
+ document.querySelector('#friendCommanderStatus').textContent=describe('friend');
+ document.querySelector('#foeCommanderStatus').textContent=describe('foe');
+ commanderStyleButtons.forEach(b=>b.setAttribute('aria-pressed',
+  commanderBrains[b.dataset.commanderTeam].personality===b.dataset.style?'true':'false'));
+ generalGroupButtons.forEach(b=>b.setAttribute('aria-pressed',
+  selectedGroup===b.dataset.generalGroup?'true':'false'));
+ const locked=Object.entries(generalOrders).filter(([,v])=>!!v);
+ document.querySelector('#generalOverrideStatus').textContent=locked.length?
+  'Your standing orders: '+locked.map(([k,v])=>k+' '+v.toUpperCase()).join(' · '):
+  'All groups currently follow Commander AI.';
+ document.querySelector('#commandHeadline').textContent=
+  '👑 '+(locked.length?'GENERAL OVERRIDE':commanderBrains.friend.phase.toUpperCase());
+}
+function setCommanderPanel(open){
+ commanderPanel.classList.toggle('is-hidden',!open);
+ commanderButton.setAttribute('aria-expanded',open?'true':'false');
+ if(open){setEnemyPanel(false);setArmorPanel(false);setEquipmentMenu(false);setFormationMenu(false);}
+}
+commanderButton.addEventListener('click',()=>setCommanderPanel(commanderPanel.classList.contains('is-hidden')));
+document.querySelector('#commanderClose').addEventListener('click',()=>setCommanderPanel(false));
+commanderStyleButtons.forEach(b=>b.addEventListener('click',()=>{
+ const brain=commanderBrains[b.dataset.commanderTeam];
+ brain.personality=b.dataset.style;brain.lastChange=-20;brain.next=0;
+ updateCommanderUI();
+}));
+generalGroupButtons.forEach(b=>b.addEventListener('click',()=>{
+ selectedGroup=b.dataset.generalGroup;updateCommanderUI();
+}));
+document.querySelector('#takeGeneral').addEventListener('click',()=>{
+ selected=true;mode='idle';setCommanderPanel(false);updateUI();updateCommanderUI();
+ ui.hint.textContent='GENERAL: select Attack, Defend, Stop, Retreat or tap the map for '+selectedGroup;
+});
+document.querySelector('#releaseGeneral').addEventListener('click',()=>returnToCommander(selectedGroup));
+document.querySelector('#releaseAll').addEventListener('click',()=>returnToCommander('all'));
+window.addEventListener('keydown',e=>{
+ if(e.key==='Escape')setCommanderPanel(false);
+});
+
 // Enemy-only tactical orders; the user's army remains separately controlled.
 const enemyButton=document.querySelector('#enemyButton');
 const enemyPanel=document.querySelector('#enemyPanel');
@@ -937,16 +1210,23 @@ window.addEventListener('keydown',e=>{
 });
 function avgStress(){const live=foes.filter(s=>!s.dead&&!s.routed);return live.length?Math.round(live.reduce((a,s)=>a+s.stress,0)/live.length):0;}
  function avgStamina(){const active=friends.filter(s=>!s.dead&&!s.routed);return active.length?Math.round(active.reduce((a,s)=>a+s.stamina,0)/active.length):0;}
-function updateUI(){ui.select.setAttribute('aria-pressed',selected?'true':'false');ui.label.textContent=selected?'Deselect':'Select';ui.orders.classList.toggle('is-hidden',!selected);ui.status.textContent=mode.toUpperCase();orderButtons.forEach(b=>b.classList.toggle('active',selected&&b.id===mode));const alive=friends.filter(s=>!s.dead&&!s.routed).length,broken=friends.filter(s=>s.broken&&!s.routed).length;
+function updateUI(){ui.select.setAttribute('aria-pressed',selected?'true':'false');ui.label.textContent=selected?'Deselect':'Select';ui.orders.classList.toggle('is-hidden',!selected);ui.status.textContent=Object.values(generalOrders).some(Boolean)?'GENERAL':('AI '+commanderBrains.friend.phase.toUpperCase());orderButtons.forEach(b=>b.classList.toggle('active',selected&&b.id===mode));const alive=friends.filter(s=>!s.dead&&!s.routed).length,broken=friends.filter(s=>s.broken&&!s.routed).length;
  ui.count.textContent=alive+' SOLDIERS';ui.remaining.textContent=alive+' / 50';ui.enemyCount.textContent=foes.filter(s=>!s.dead&&!s.routed).length+' / 50';ui.stress.textContent=avgStress()+'%';ui.stamina.textContent=avgStamina()+'%';
  let status=({idle:'Drag to explore · select troops to give orders',attack:'Attacking with varied weapon reach and timed strikes',defend:'Holding formation and fighting nearby enemies',stop:'Standing still (your troops cannot panic)',retreat:'Ordered retreat toward your side',move:'Marching to your chosen position',form:'Reforming into '+formationType+' formation'}[mode]||'');
  if(broken)status=broken+' soldier'+(broken>1?'s are':' is')+' panicking and fleeing!';
- ui.hint.textContent=enemyMovePending?'🔴 TAP BATTLEFIELD TO MOVE ENEMY ARMY':status;ui.mode.textContent=({idle:'Idle',attack:'Attack',defend:'Defend',stop:'Stop',retreat:'Retreat',move:'Move',form:'Formation'}[mode]||'Idle');
+ ui.hint.textContent=enemyMovePending?'🔴 TAP BATTLEFIELD TO MOVE ENEMY ARMY':
+   Object.values(generalOrders).some(Boolean)?'General overriding '+selectedGroup+' · '+status:
+   'Commander: '+commanderBrains.friend.news;ui.mode.textContent=({idle:'Idle',attack:'Attack',defend:'Defend',stop:'Stop',retreat:'Retreat',move:'Move',form:'Formation'}[mode]||'Idle');
   ui.formationAnchor.classList.toggle('is-hidden',!selected);
   if(!selected)setFormationMenu(false);
   formOptions.forEach(b=>b.classList.toggle('chosen',b.dataset.form===formationType));
 }
-ui.select.addEventListener('click',()=>{selected=!selected;if(selected){mode='stop';friends.forEach(s=>{s.anchorX=s.x;s.anchorY=s.y;});}else{mode='idle';}updateUI()});
+ui.select.addEventListener('click',()=>{
+ selected=!selected;
+ // Merely selecting troops does not override an autonomous commander.
+ if(!selected)mode='idle';
+ updateUI();updateCommanderUI();
+});
 orderButtons.forEach(b=>b.addEventListener('click',()=>setMode(b.id)));
 // Tap orders soldiers to a world position; swipe pans the camera instead.
  canvas.addEventListener('pointerdown',e=>{
@@ -981,7 +1261,18 @@ orderButtons.forEach(b=>b.addEventListener('click',()=>setMode(b.id)));
   const r=canvas.getBoundingClientRect();
   const x=clamp(camera.x+e.clientX-r.left,96,W-96);
   const y=clamp(camera.y+e.clientY-r.top,40,H-40);
-  mode='move';setFormation(x,y);marker={x,y,when:t};updateUI();
+  mode='move';
+  if(selectedGroup==='all'){setFormation(x,y);generalOrders={all:'move',infantry:null,archer:null,cavalry:null};}
+  else{
+   const group=selectedTroops(),center=troopCenter(group,{x,y});
+   for(const u of group){
+    u.anchorX=clamp(u.x+(x-center.x),24,W-24);
+    u.anchorY=clamp(u.y+(y-center.y),24,H-24);
+    u.tx=u.anchorX;u.ty=u.anchorY;
+   }
+   generalOrders[selectedGroup]='move';
+  }
+  marker={x,y,when:t};updateUI();updateCommanderUI();
  });
  canvas.addEventListener('pointercancel',()=>{fieldPointer=null});
  canvas.addEventListener('wheel',e=>{
@@ -1037,7 +1328,9 @@ document.querySelector('#reset').addEventListener('click',populate);
   skill:{friend:{weapon:'sword',shield:'round',armor:'leather',experience:'elite',familiarity:'master',ranged:'none'},foe:{weapon:'sword',shield:'round',armor:'leather',experience:'recruit',familiarity:'novice',ranged:'none'}},
   archers:{friend:{unitRole:'archer',weapon:'shortsword',ranged:'bow',shield:'none',armor:'leather',experience:'veteran',familiarity:'expert'},foe:{weapon:'sword',ranged:'none',shield:'round',armor:'mail',experience:'trained',familiarity:'practiced',unitRole:'infantry'}},
   crossbows:{friend:{unitRole:'archer',weapon:'sword',ranged:'crossbow',shield:'none',armor:'padded',experience:'trained',familiarity:'practiced'},foe:{weapon:'sword',ranged:'none',shield:'kite',armor:'plate',experience:'trained',familiarity:'practiced',unitRole:'infantry'}},
-  skirmish:{friend:{unitRole:'archer',weapon:'shortsword',ranged:'javelin',shield:'round',armor:'leather',experience:'veteran',familiarity:'expert'},foe:{unitRole:'archer',weapon:'shortsword',ranged:'bow',shield:'none',armor:'leather',experience:'veteran',familiarity:'expert'}}
+  skirmish:{friend:{unitRole:'archer',weapon:'shortsword',ranged:'javelin',shield:'round',armor:'leather',experience:'veteran',familiarity:'expert'},foe:{unitRole:'archer',weapon:'shortsword',ranged:'bow',shield:'none',armor:'leather',experience:'veteran',familiarity:'expert'}},
+  cavalry:{friend:{unitRole:'cavalry',weapon:'lance',ranged:'none',shield:'round',armor:'mail',experience:'veteran',familiarity:'expert'},foe:{unitRole:'infantry',weapon:'sword',ranged:'none',shield:'kite',armor:'mail',experience:'trained',familiarity:'practiced'}},
+  combined:{friend:{unitRole:'combined',weapon:'mixed',ranged:'bow',shield:'mixed',armor:'mixed',experience:'trained',familiarity:'practiced'},foe:{unitRole:'combined',weapon:'mixed',ranged:'bow',shield:'mixed',armor:'mixed',experience:'trained',familiarity:'practiced'}}
  };
  let equipmentOpen=false;
  function syncEquipmentShield(team){
@@ -1051,12 +1344,12 @@ document.querySelector('#reset').addEventListener('click',populate);
  }
  function syncEquipmentUnitRole(team){
   const c=equipControls[team],role=c.unitRole.value;
-  if(role==='infantry'){
+  if(role==='infantry'||role==='cavalry'){
    c.ranged.value='none';c.ranged.disabled=true;
-   c.note.textContent='Infantry: melee only. Choose Archer to enable ranged weapons.';
+   c.note.textContent=role==='cavalry'?'Cavalry: mounted charges and melee. Set Cavalry lance for the best charge.':'Infantry: melee only. Choose Archer to enable ranged weapons.';
   }else{
    c.ranged.disabled=false;
-   if(c.ranged.value==='none')c.ranged.value=role==='mixed'?'mixed':'bow';
+   if(c.ranged.value==='none')c.ranged.value=['mixed','combined'].includes(role)?'mixed':'bow';
   }
  }
  function showEquipmentValues(values){
@@ -1116,7 +1409,7 @@ document.querySelector('#reset').addEventListener('click',populate);
     familiarity:familiarityLevels[c.familiarity.value]!=null?c.familiarity.value:'mixed',
     ranged:rangedProfiles[c.ranged.value]?c.ranged.value:(c.ranged.value==='mixed'?'mixed':'none'),
     rangedMastery:familiarityLevels[c.rangedMastery.value]!=null?c.rangedMastery.value:'same',
-    unitRole:['infantry','archer','mixed'].includes(c.unitRole.value)?c.unitRole.value:'infantry'
+    unitRole:['infantry','archer','mixed','cavalry','combined'].includes(c.unitRole.value)?c.unitRole.value:'infantry'
    };
   }
   return draft;
@@ -1187,7 +1480,8 @@ function beginAttack(s,target){
  // Master-level familiarity smooths wind-up and recovery by ~4%.
  const fluency=clamp((familiarity-80)/17,0,1);
  const rate=weapon.speed*(1.10-mastery*.0015-familiarity*.0008)*
-   (1-fluency*.04)*(s.stamina<24?1.16:1)*(counter?.82:1);
+   (1-fluency*.04)*(s.stamina<24?1.16:1)*(counter?.82:1)*
+   (isCavalry(s)&&s.gallop<.24?1.24:1);
  const wind=move.wind*rate,active=move.active*rate,recover=move.recover*rate;
  // Precision is geometrical: poorer fighters visibly swing off-target.
  const imprecision=(100-mastery)*.0031+(100-familiarity)*.0015;
@@ -1293,7 +1587,7 @@ function applyWeaponImpact(attacker,target,a){
  const actual=mitigatedDamage(afterShield,target.armor,damageType);
  const weapon=a.projectile?rangedProfiles[a.projectile]:weaponProfiles[attacker.weapon],heavy=a.move.style==='heavy';
  // Physical hits and blocks happen regardless of friendly health immunity.
- if(target.team==='foe'){
+ if(target.team==='foe'||target.isCommander){
   target.hp=Math.max(0,target.hp-actual);
   const style=attackStyles[a.move.style];
   target.stress=clamp(target.stress+style.stress*(.15+.85*actual/Math.max(.01,a.baseDamage)),0,100);
@@ -1342,14 +1636,15 @@ function applyWeaponImpact(attacker,target,a){
   x:target.x,y:target.y,a:Math.atan2(target.y-attacker.y,target.x-attacker.x),
   life:shield.guardBroken?.48:.26,duration:shield.guardBroken?.48:.26,
   type:a.move.style,team:attacker.team});
- if(target.team==='foe'&&target.hp<=0){
+ if((target.team==='foe'||target.isCommander)&&target.hp<=0){
   target.dead=true;target.stress=100;
   for(const n of foes){
    if(n===target||n.dead||n.broken||n.routed)continue;
    const d=Math.hypot(n.x-target.x,n.y-target.y);
    if(d<88)n.stress=clamp(n.stress+stressBalance.allyKilled*(1-d/100),0,100);
   }
-  respawnEnemy(target);
+  if(!target.isCommander)respawnEnemy(target);
+  else if(target.team==='friend')updateCommanderUI();
  }
  return true;
 }
@@ -1475,7 +1770,7 @@ function approach(s,x,y,dt,mult=1){const dx=x-s.x,dy=y-s.y,dist=Math.hypot(dx,dy
 // Giving panicking and undisciplined soldiers more yield keeps disciplined
 // formations a little steadier without allowing any bodies to overlap.
 function separateSoldiers(){
- const all=[...friends,...foes].filter(s=>!s.dead&&!s.routed);
+ const all=[...members('friend'),...members('foe')].filter(s=>!s.dead&&!s.routed);
  const minDistance=20.7;
  for(let pass=0;pass<4;pass++){
   for(let i=0;i<all.length;i++){
@@ -1486,7 +1781,9 @@ function separateSoldiers(){
     // Archers need wider firing stances, both beside other archers and
     // beside friendly infantry. Keep old collision for melee opponents.
     const friendly=a.team===b.team;
-    const clearance=friendly&&(isArcher(a)||isArcher(b))?
+    const clearance=(isCavalry(a)||isCavalry(b))?
+      (isCavalry(a)&&isCavalry(b)?43:36):
+      friendly&&(isArcher(a)||isArcher(b))?
       (isArcher(a)&&isArcher(b)?33:26):minDistance;
     if(sq>=clearance*clearance)continue;
     if(sq<.000001){const angle=(a.id*73+b.id*151)*.33;dx=Math.cos(angle);dy=Math.sin(angle);sq=1;}
@@ -1643,7 +1940,7 @@ function updateProjectiles(dt){
   const seg={ax:x1,ay:y1,bx:x2,by:y2};
   const dx=x2-x1,dy=y2-y1,dsq=dx*dx+dy*dy;
   let closest=null,at=Infinity;
-  for(const other of [...friends,...foes]){
+  for(const other of [...members('friend'),...members('foe')]){
    if(other.dead||other.routed||other.broken||
       (other.team===p.team&&other.id===p.shooterId))continue;
    // Lofted arrows, bolts and javelins are fired OVER friendly ranks,
@@ -1652,7 +1949,7 @@ function updateProjectiles(dt){
    // on a teammate whose 2D ground position overlaps the flight path.
    // Deliberately flat shots (loft=0) still use physical ally collisions.
    if(other.team===p.team&&p.loft>0)continue;
-   const radius=p.kind==='javelin'?10:9.3;
+   const radius=(p.kind==='javelin'?10:9.3)+(isCavalry(other)?4:0);
    if(pointSegmentDistance(other.x,other.y,seg)>radius)continue;
    const u=dsq>0?clamp(((other.x-x1)*dx+(other.y-y1)*dy)/dsq,0,1):0;
    // Check height at the instant the projectile crosses this soldier.
@@ -1723,12 +2020,13 @@ function drawRangedProjectiles(ctx,shots,landed=groundedShots){
 }
 
 function step(dt){
+ decideCommander('friend',dt);decideCommander('foe',dt);
  if(t>=nextEngagementPlan){
   planEngagements('friend');
   planEngagements('foe');
   nextEngagementPlan=t+.65;
  }
- for(const s of [...friends,...foes]){
+ for(const s of [...members('friend'),...members('foe')]){
   if(s.dead||s.routed)continue;s.cooldown-=dt;s.decision-=dt;s.hitFlash=Math.max(0,s.hitFlash-dt);
   // Parry counters last only 0.72s; a waiting fighter cannot bank the bonus.
   s.counterWindow=Math.max(0,(s.counterWindow||0)-dt);
@@ -1738,7 +2036,7 @@ function step(dt){
   // Stamina restores while not recovering from a swing; movement uses some.
   s.recoveryDelay=Math.max(0,s.recoveryDelay-dt);
   if(s.recoveryDelay===0)s.stamina=clamp(s.stamina+dt*(6.7+(s.skill||45)*.012),0,s.maxStamina);
-  if(s.broken){s.attack=null;s.guardActive=false;s.guardHold=0;s.stress=100;fleeFromEnemies(s,dt);if(s.routed&&s.team==='foe')respawnEnemy(s);continue;}
+  if(s.broken){s.attack=null;s.guardActive=false;s.guardHold=0;s.stress=100;fleeFromEnemies(s,dt);if(s.routed&&s.team==='foe'&&!s.isCommander)respawnEnemy(s);continue;}
   const {target,dist}=chooseTarget(s);
   // Ranged units keep their bow in hand until a genuine melee threat.
   s.meleeReady=!!(isArcher(s)&&target&&dist<=meleeThreatRange(s));
@@ -1749,7 +2047,7 @@ function step(dt){
    const breakingPoint=stressBalance.breakingBase+s.disc*stressBalance.disciplineResistance+rnd(s.id+23)*5;
    if(s.stress>breakingPoint){panic(s);continue;}
   }else{s.stress=0;}
-  const player=s.team==='friend',command=player?mode:(enemyCommand==='auto'?'attack':enemyCommand);
+  const player=s.team==='friend',command=resolveCombatCommand(s);
   if(s.decision<=0){s.decision=1.7+rnd(s.id+Math.floor(t*.8))*1.6;
    const steadiness=s.disc/100,unease=s.stress/100;
    // Less wandering and fewer direction changes; stress still disrupts ranks.
@@ -1795,10 +2093,28 @@ function step(dt){
   const equipment=weaponProfiles[s.weapon].weight+(shieldProfiles[s.shield]?.weight||0)+(activeRangedProfile(s)?rangedProfiles[s.ranged].weight:0);
   const loadPace=clamp(1-equipment*.038,.70,1);
   const fightingPace=s.stagger>0?0:s.attack?.72:s.guardActive?.73:1;
+  const mountPace=isCavalry(s)?(dist<100?1.20:2.00):1;
   const oldX=s.x,oldY=s.y;
-  if(command!=='stop')approach(s,moveX,moveY,dt,pace*disciplineControl*fatiguePace*loadPace*fightingPace);
+  if(command!=='stop')approach(s,moveX,moveY,dt,pace*disciplineControl*fatiguePace*loadPace*fightingPace*mountPace);
   s.stamina=clamp(s.stamina-Math.hypot(s.x-oldX,s.y-oldY)*(.042+equipment*.004),0,s.maxStamina);
-  s.vx=(s.x-oldX)/Math.max(.001,dt);s.vy=(s.y-oldY)/Math.max(.001,dt);
+   s.vx=(s.x-oldX)/Math.max(.001,dt);s.vy=(s.y-oldY)/Math.max(.001,dt);
+  if(isCavalry(s)){
+   const velocity=Math.hypot(s.vx,s.vy);
+   s.gallop=clamp(s.gallop+(velocity>45?dt*.63:-dt*1.4),0,1);
+   s.chargeCooldown=Math.max(0,(s.chargeCooldown||0)-dt);
+   if(command==='attack'&&target&&!target.dead&&!target.routed&&
+      dist<62&&dist>13&&s.gallop>.36&&s.chargeCooldown<=0&&s.stamina>=12){
+    // One physical charge impact after building movement momentum. Shields
+    // and armor mitigate it normally; a stopped rider cannot spam charges.
+    const impact={id:nextSwingId++,move:{style:'heavy',damageType:'piercing'},
+     baseDamage:1.45+s.gallop*.65,momentum:140+s.gallop*100,hits:0,
+     hitIds:new Set(),counter:false,stopped:false,charge:true};
+    applyWeaponImpact(s,target,impact);
+    s.chargeHits++;s.chargeCooldown=3.7;s.gallop=0;
+    s.stamina=clamp(s.stamina-12,0,s.maxStamina);
+    s.recoveryDelay=Math.max(s.recoveryDelay,.45);
+   }
+  }
   updateFacing(s,target,target?Math.hypot(target.x-s.x,target.y-s.y):Infinity,dt*(s.stagger>0?.38:1));
   if(command==='attack'&&target&&hasRangedAmmo(s)&&dist>meleeThreatRange(s))
    turnToward(s,Math.atan2(target.y-s.y,target.x-s.x),dt);
@@ -1854,6 +2170,27 @@ function drawUnit(s){if(s.routed)return;
  // moves their actual battlefield position smoothly over multiple frames.
  const lean=s.impactLean*2.7;
  const x=s.x-Math.cos(s.faceAngle)*lean,y=s.y+bob-Math.sin(s.faceAngle)*lean;
+ if(s.isCommander){
+  // Distinct gold command ring and battlefield banner, even on foot.
+  ctx.strokeStyle=s.team==='friend'?'#ffe69b':'#ffb4a6';
+  ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,15,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x+9,y-2);ctx.lineTo(x+9,y-30);ctx.stroke();
+  ctx.fillStyle=s.team==='friend'?'#e2bd64':'#d66d63';
+  ctx.beginPath();ctx.moveTo(x+9,y-30);ctx.lineTo(x+26,y-26);ctx.lineTo(x+9,y-20);ctx.closePath();ctx.fill();
+ }
+
+ if(isCavalry(s)&&!s.dead){
+  // Horse body, head, and legs, visually distinct from a foot soldier.
+  ctx.save();ctx.translate(x,y+5);ctx.rotate(s.faceAngle);
+  ctx.fillStyle=s.team==='friend'?'#947654':'#84634d';
+  ctx.beginPath();ctx.ellipse(-3,2,19,9,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(16,-1,8,5,-.2,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#534437';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(-13,5);ctx.lineTo(-18,17);
+  ctx.moveTo(7,5);ctx.lineTo(12,17);
+  ctx.moveTo(-18,-1);ctx.lineTo(-25,-5);ctx.stroke();
+  ctx.restore();
+ }
  if(s.dead){ctx.fillStyle='#101f1ac0';ctx.beginPath();ctx.ellipse(x,y+3,8,4,.4,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ba9d92a6';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-4,y-4);ctx.lineTo(x+4,y+4);ctx.moveTo(x+4,y-4);ctx.lineTo(x-4,y+4);ctx.stroke();return;}
  if(selected&&s.team==='friend'){ctx.beginPath();ctx.arc(x,y,13,0,2*Math.PI);ctx.lineWidth=1.4;ctx.strokeStyle=s.broken?'#ffb28b':'#d2ffe0c2';ctx.stroke();}
  if(s.broken){ctx.strokeStyle='#ff795e';ctx.lineWidth=1.9;ctx.beginPath();ctx.arc(x,y,14,0,2*Math.PI);ctx.stroke();}
@@ -1978,6 +2315,7 @@ function draw(){
  background();if(marker){const age=t-marker.when;if(age<1.3){ctx.beginPath();ctx.arc(marker.x,marker.y,14+age*11,0,2*Math.PI);ctx.strokeStyle='rgba(211,255,218,'+(1-age/1.3)*.6+')';ctx.lineWidth=2;ctx.stroke();}else marker=null;}
  // Selection means selected soldiers are highlighted, but never hides their stats or swords.
  for(const s of foes)drawUnit(s);for(const s of friends)drawUnit(s);
+ for(const team of ['foe','friend'])if(commanders[team])drawUnit(commanders[team]);
  drawRangedProjectiles(ctx,projectiles);
  for(const sl of slashes){
   ctx.save();ctx.translate(sl.x,sl.y);ctx.rotate(sl.a);
@@ -2010,6 +2348,8 @@ function drawMinimap(){
   mctx.strokeStyle='#6e957d';mctx.lineWidth=2;mctx.strokeRect(1,1,mw-2,mh-2);
   for(const s of foes){if(s.routed||s.dead)continue;mctx.fillStyle='#e47b74';mctx.fillRect(s.x/W*mw-2,s.y/H*mh-2,4,4);}
   for(const s of friends){if(s.routed||s.dead)continue;mctx.fillStyle='#65e4a5';mctx.fillRect(s.x/W*mw-2,s.y/H*mh-2,4,4);}
+  for(const team of ['friend','foe']){const c=commanders[team];if(!c||c.dead)continue;
+   mctx.fillStyle='#ffe497';mctx.fillRect(c.x/W*mw-4,c.y/H*mh-4,8,8);}
   mctx.strokeStyle='#f5ebbd';mctx.lineWidth=1.8;
   mctx.strokeRect(camera.x/W*mw,camera.y/H*mh,Math.min(mw,VW/W*mw),Math.min(mh,VH/H*mh));
  }
