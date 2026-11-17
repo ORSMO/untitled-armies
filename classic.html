@@ -2131,6 +2131,76 @@ function drawRangedProjectiles(ctx,shots,landed=groundedShots){
  }
 }
 
+// A prepared spear line is a physical counter to a horse's forward momentum.
+// Bracing requires a visible approaching mount, planted feet, facing and time.
+function updatePolearmBrace(s,dt,command){
+ if(!isPolearm(s)||s.dead||s.broken||s.routed||s.stagger>0||
+    s.attack||s.stamina<9||command==='retreat'||command==='move'){
+  s.braceReady=Math.max(0,(s.braceReady||0)-dt*2.5);
+  s.braceThreatId=null;return;
+ }
+ let threat=null,nearest=Infinity;
+ for(const e of opponents(s)){
+  if(e.dead||e.routed||e.broken||!isCavalry(e))continue;
+  const d=Math.hypot(e.x-s.x,e.y-s.y);
+  if(d>185||d<10)continue;
+  const vx=e.vx||0,vy=e.vy||0,speed=Math.hypot(vx,vy);
+  const toward=((s.x-e.x)*vx+(s.y-e.y)*vy)/Math.max(1,d*speed);
+  if((e.gallop||0)<.18&&!(speed>43&&toward>.30))continue;
+  if(d<nearest){nearest=d;threat=e;}
+ }
+ if(!threat){
+  s.braceThreatId=null;s.braceReady=Math.max(0,(s.braceReady||0)-dt*1.9);
+  return;
+ }
+ s.braceThreatId=threat.id;
+ turnToward(s,Math.atan2(threat.y-s.y,threat.x-s.x),dt*1.3);
+ const planted=Math.hypot(s.vx||0,s.vy||0)<28;
+ const old=s.braceReady||0;
+ s.braceReady=clamp(old+dt*(planted?(1.1+s.disc*.006):-.9),0,1);
+ if(old<.65&&s.braceReady>=.65){
+  s.braceCount++;
+  const stats=combatLabStats(s.team);if(stats)stats.braces++;
+ }
+}
+function canBraceCharge(rider,defender){
+ if(!defender||!isCavalry(rider)||!isPolearm(defender)||
+    defender.dead||defender.broken||defender.routed||
+    defender.stagger>0||(defender.braceReady||0)<.65||
+    defender.stamina<8)return false;
+ const dx=rider.x-defender.x,dy=rider.y-defender.y;
+ const distance=Math.hypot(dx,dy);
+ if(distance>76||distance<7)return false;
+ const bearing=Math.atan2(dy,dx);
+ const facing=Math.abs(Math.atan2(
+  Math.sin(bearing-defender.faceAngle),Math.cos(bearing-defender.faceAngle)));
+ if(facing>1.00)return false;
+ const vx=rider.vx||0,vy=rider.vy||0,speed=Math.hypot(vx,vy);
+ const closing=((defender.x-rider.x)*vx+(defender.y-rider.y)*vy)/
+  Math.max(1,distance*speed);
+ return speed>35&&closing>.25&&rider.gallop>.27;
+}
+function stopChargeWithPolearm(rider,defender){
+ if(!canBraceCharge(rider,defender))return false;
+ const pike=defender.weapon==='pike';
+ // The point strikes the horse: barding absorbs part of the wound.
+ // An unarmored mount can be dismounted, while armor may save it.
+ const wound=(pike?1.60:1.10)+(rider.gallop||0)*(pike?.90:.67);
+ applyHorseDamage(rider,wound,'piercing');
+ rider.stagger=Math.max(rider.stagger,pike?.73:.51);
+ rider.recoveryDelay=Math.max(rider.recoveryDelay,.48);
+ rider.knockVX=(rider.knockVX||0)+(rider.x-defender.x)*.50;
+ rider.knockVY=(rider.knockVY||0)+(rider.y-defender.y)*.50;
+ defender.stamina=Math.max(0,defender.stamina-(pike?10:8));
+ defender.recoveryDelay=Math.max(defender.recoveryDelay,.24);
+ defender.braceReady=0;defender.braceThreatId=null;
+ defender.braceStops++;
+ const stats=combatLabStats(defender.team);if(stats)stats.chargeStops++;
+ slashes.push({kind:'parry',block:'parry',x:defender.x,y:defender.y,
+  a:Math.atan2(rider.y-defender.y,rider.x-defender.x),
+  life:.48,duration:.48,type:'heavy',team:defender.team});
+ return true;
+}
 function step(dt){
  decideCommander('friend',dt);decideCommander('foe',dt);
  if(t>=nextEngagementPlan){
@@ -2160,6 +2230,7 @@ function step(dt){
    if(s.stress>breakingPoint){panic(s);continue;}
   }else{s.stress=0;}
   const player=s.team==='friend',command=resolveCombatCommand(s);
+  updatePolearmBrace(s,dt,command);
   if(s.decision<=0){s.decision=1.7+rnd(s.id+Math.floor(t*.8))*1.6;
    const steadiness=s.disc/100,unease=s.stress/100;
    // Less wandering and fewer direction changes; stress still disrupts ranks.
@@ -2208,6 +2279,10 @@ function step(dt){
     }else{moveX=s.x;moveY=s.y;}
   }
   else if(command==='defend'||command==='move'||command==='idle'||command==='form'){moveX=s.tx;moveY=s.ty;}
+  // Plant a polearm line when a real mounted threat approaches.
+  if(isPolearm(s)&&s.braceThreatId!=null&&command!=='retreat'){
+   moveX=s.x;moveY=s.y;pace=.48;
+  }
   const disciplineControl=.42+s.disc/160;
   const fatiguePace=.76+.24*(s.stamina/s.maxStamina);
   const equipment=weaponProfiles[s.weapon].weight+(shieldProfiles[s.shield]?.weight||0)+(activeRangedProfile(s)?rangedProfiles[s.ranged].weight:0);
@@ -2233,6 +2308,17 @@ function step(dt){
    if(command==='attack'&&target&&!target.dead&&!target.routed&&
       dist<66&&dist>13&&s.gallop>.38&&s.chargeCooldown<=0&&
       s.stamina>=12&&s.horseStamina>=12){
+    // Only a planted forward-facing spear can interrupt a physical charge.
+    // Pikes and spears still need a clear line of contact.
+    let braceDefender=null,braceDistance=Infinity;
+    for(const e of opponents(s)){
+     const d=Math.hypot(e.x-s.x,e.y-s.y);
+     if(d<braceDistance&&canBraceCharge(s,e)){
+      braceDefender=e;braceDistance=d;
+     }
+    }
+    const stoppedByBrace=!!(braceDefender&&stopChargeWithPolearm(s,braceDefender));
+    if(!stoppedByBrace){
     const horseImpact={id:nextSwingId++,move:{style:'heavy',damageType:'blunt'},
      baseDamage:.66+s.gallop*.67,momentum:118+s.gallop*87,hits:0,
      hitIds:new Set(),counter:false,stopped:false,charge:true,horseImpact:true};
@@ -2245,6 +2331,7 @@ function step(dt){
       hitIds:new Set(),counter:false,stopped:false,charge:true};
      applyWeaponImpact(s,target,lanceHit);
     }
+    }else{s.chargeStops=(s.chargeStops||0)+1;}
     s.chargeHits++;s.chargeCooldown=4.1;s.gallop=0;
     const chargesStat=combatLabStats(s.team);
     if(chargesStat)chargesStat.horseCharges++;
