@@ -927,7 +927,7 @@ function determineBattleOutcome(){
  const wiped=winner==='friend'?foe:friend;
  const reason=winner==='draw'?'Both armies became unable to fight':
   wiped.surrendered>0||wiped.escaped>0||wiped.shaken>0?
-  ''+(winner==='friend'?'Enemy':'Friendly')+' cohesion collapsed through casualties, routs and surrender':
+  (winner==='friend'?'Enemy':'Friendly')+' cohesion collapsed through casualties, routs and surrender':
   'All opposing combatants were incapacitated';
  battleOutcome={winner,reason,seconds:t,friend,foe};
  refreshBattleRulesUI();updateUI();
