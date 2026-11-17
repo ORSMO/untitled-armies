@@ -62,6 +62,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 .formation-option[data-form="wedge"]{left:90px;top:40px}
 .formation-option[data-form="block"]{left:90px;top:101px}
 .formation-option[data-form="column"]{left:3px;top:140px}
+.formation-option[data-form="spearwall"]{left:3px;top:91px}
 .formation-option.hover,.formation-option:focus-visible{background:#3d7956;border-color:#d9f5a9;outline:2px solid #b9ebad;outline-offset:1px}
 .formation-option.chosen{color:#b7f8c2;border-color:#8cd9a8}
 #formationBtn .dot{color:#b6f3ce}
@@ -201,6 +202,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
     <button class="formation-option" type="button" data-form="wedge">Wedge</button>
     <button class="formation-option" type="button" data-form="block">Block</button>
     <button class="formation-option" type="button" data-form="column">Column</button>
+    <button class="formation-option" type="button" data-form="spearwall">Spear wall</button>
    </div>
   </div>
  </aside>
@@ -260,7 +262,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
    <button type="button" data-enemy-form="block">Block</button>
    <button type="button" data-enemy-form="line">Line</button>
    <button type="button" data-enemy-form="wedge">Wedge</button>
-   <button type="button" data-enemy-form="column">Column</button>
+   <button type="button" data-enemy-form="column">Column</button><button type="button" data-enemy-form="spearwall">Spear wall</button>
   </div>
   <div class="enemy-command-foot">
    <button type="button" id="enemyFocus">⌖ View enemy army</button>
@@ -1108,11 +1110,11 @@ function setFormation(cx,cy){
   if(!visible)ui.formationMenu.querySelectorAll('.formation-option').forEach(b=>b.classList.remove('hover'));
  }
  function chooseFormation(type){
-  if(!selected||!['block','line','column','wedge'].includes(type))return;
+  if(!selected||!['block','line','column','wedge','spearwall'].includes(type))return;
   formationType=type;setFormationMenu(false);
   const cx=friends.reduce((a,s)=>a+s.anchorX,0)/friends.length;
   const cy=friends.reduce((a,s)=>a+s.anchorY,0)/friends.length;
-  setFormation(cx,cy);mode='form';generalOrders={all:'form',infantry:null,archer:null,cavalry:null};updateUI();updateCommanderUI();
+  setFormation(cx,cy);mode='form';generalOrders={all:'form',infantry:null,archer:null,cavalry:null,horseArcher:null};updateUI();updateCommanderUI();
  }
  function hoveredFormation(e){
   const el=document.elementFromPoint(e.clientX,e.clientY);
@@ -1144,7 +1146,7 @@ function setFormation(cx,cy){
 function setMode(m){
  if(!selected)return;
  mode=m;marker=null;nextEngagementPlan=0;
- if(selectedGroup==='all')generalOrders={all:m,infantry:null,archer:null,cavalry:null};
+ if(selectedGroup==='all')generalOrders={all:m,infantry:null,archer:null,cavalry:null,horseArcher:null};
  else generalOrders[selectedGroup]=m;
  const troops=selectedTroops();
  if(m==='defend'||m==='stop'||m==='retreat'){
@@ -2544,6 +2546,16 @@ function drawUnit(s){if(s.routed)return;
   ctx.fillStyle='#d8e2e4';ctx.strokeStyle='#f4eded';ctx.lineWidth=1.2;
   ctx.beginPath();ctx.moveTo(wp.length-9,-8);ctx.lineTo(wp.length+2,-11);
   ctx.lineTo(wp.length+2,11);ctx.lineTo(wp.length-9,8);ctx.closePath();ctx.fill();ctx.stroke();
+ }else if(isPolearm(s)){
+  // Spear shafts and bright forward tips stay visible even in a dense wall.
+  const length=wp.length;
+  ctx.strokeStyle='#ad8555';ctx.lineWidth=s.weapon==='pike'?3.2:2.8;
+  ctx.beginPath();ctx.moveTo(6,0);ctx.lineTo(length-8,0);ctx.stroke();
+  ctx.fillStyle='#e1eaf0';ctx.strokeStyle='#f5fbff';ctx.lineWidth=1.1;
+  ctx.beginPath();ctx.moveTo(length+4,0);
+  ctx.lineTo(length-9,-(s.weapon==='pike'?4.4:3.6));
+  ctx.lineTo(length-9,s.weapon==='pike'?4.4:3.6);
+  ctx.closePath();ctx.fill();ctx.stroke();
  }else{
   ctx.strokeStyle='#aa7b55';ctx.lineWidth=3.2;ctx.beginPath();ctx.moveTo(7,0);ctx.lineTo(12,0);ctx.stroke();
   ctx.strokeStyle='#f1d2a2';ctx.lineWidth=2.1;
@@ -2558,6 +2570,13 @@ function drawUnit(s){if(s.routed)return;
   ctx.font='bold 9px system-ui';ctx.textAlign='center';
   ctx.fillStyle=(infiniteAmmo||s.ammo>0)?rangedProfiles[s.ranged].color:'#b4aba2';
   ctx.fillText(infiniteAmmo?'∞':String(s.ammo),x+17,y+19);
+ }
+ // A golden arc fills as the soldier plants a ready anti-horse point.
+ if(isPolearm(s)&&(s.braceReady||0)>.05){
+  ctx.beginPath();ctx.arc(x,y,14,s.faceAngle-.77,
+   s.faceAngle-.77+1.54*clamp(s.braceReady,0,1));
+  ctx.strokeStyle=s.braceReady>=.65?'#f6de8b':'#bcaa7366';
+  ctx.lineWidth=2.8;ctx.stroke();
  }
  // Thin stress arc makes each soldier's personal stress legible.
  if(s.stress>12){ctx.beginPath();ctx.arc(x,y,12,-Math.PI/2,-Math.PI/2+stress*2*Math.PI);ctx.strokeStyle=s.stress>70?'#f16d53':'#e6c368';ctx.lineWidth=2;ctx.stroke();}
