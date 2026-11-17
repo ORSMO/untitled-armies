@@ -177,6 +177,13 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 .commander-panel .enemy-command-grid button[aria-pressed=true]{background:#806c39;border-color:#f1d595}
 #commanderButton[aria-expanded=true]{background:#51482c;border-color:#e2c475}
 @media(max-width:580px){.commander-panel{width:calc(100% - 105px)}}
+.battle-outcome{position:fixed;z-index:900;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,520px);padding:22px;border:1px solid #b4d5ad;border-radius:16px;background:#182d25f2;box-shadow:0 10px 70px #000a;color:#eefbe9;display:flex;flex-direction:column;gap:12px;text-align:center}
+.battle-outcome.is-hidden{display:none}
+.battle-outcome h2{margin:0;font-size:1.5rem}
+.battle-outcome p{margin:0;line-height:1.5}
+.battle-outcome button{background:#87c7a2;color:#12291d;border:0;border-radius:10px;padding:12px;font-weight:800;cursor:pointer}
+.battle-outcome .tally{display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:left;font-size:.85rem}
+.battle-outcome .tally>div{padding:12px;background:#274536;border-radius:10px}
 </style>
 </head>
 <body>
@@ -396,9 +403,15 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
  </section>
 </div>
   </main>
-  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="commanderButton" class="small-btn" aria-expanded="false" aria-controls="commanderPanel">👑 Commanders</button> <button type="button" id="enemyButton" class="small-btn" aria-expanded="false" aria-controls="enemyPanel">🔴 Enemy orders</button>
+ <section id="battleOutcome" class="battle-outcome is-hidden" role="dialog" aria-modal="true" aria-live="polite" aria-labelledby="battleOutcomeTitle">
+  <h2 id="battleOutcomeTitle">Battle concluded</h2>
+  <p id="battleOutcomeReason">Both armies have finished fighting.</p>
+  <div class="tally"><div><strong>🟢 Friendly army</strong><p id="battleOutcomeFriend"></p></div><div><strong>🔴 Enemy army</strong><p id="battleOutcomeFoe"></p></div></div>
+  <button type="button" id="battleOutcomeRestart">↻ Fight another battle</button>
+ </section>
+  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="commanderButton" class="small-btn" aria-expanded="false" aria-controls="commanderPanel">👑 Commanders</button> <button type="button" id="enemyButton" class="small-btn" aria-expanded="false" aria-controls="enemyPanel">🔴 Enemy orders</button>
     <button type="button" id="infiniteAmmoButton" class="small-btn" aria-pressed="false" title="Unlimited arrows, bolts and javelins for both armies">∞ Ammo: OFF</button>
-    <button type="button" id="equipmentButton" class="small-btn" aria-expanded="false" aria-controls="equipmentPanel">⚙ Test gear</button> <button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
+    <button type="button" id="equipmentButton" class="small-btn" aria-expanded="false" aria-controls="equipmentPanel">⚙ Test gear</button> <button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="battleRules" class="small-btn" aria-pressed="false" title="Training: immortal friendlies and enemy reinforcements. Real battle: vulnerable troops, no respawns, morale, surrender and victory. Switching resets the test.">🛡 Training mode</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
 </div>
 <div id="rotateNotice" role="status" aria-live="polite">
  <div class="rotate-icon" aria-hidden="true">↻</div>
@@ -885,7 +898,37 @@ function focusArmy(){
   camera.x=clamp(h.x-VW*.37,0,Math.max(0,W-VW));
   camera.y=clamp(h.y-VH*.51,0,Math.max(0,H-VH));
  }
- function populate(){
+ function refreshBattleRulesUI(){
+ const button=document.querySelector('#battleRules');
+ button.textContent=realisticBattle?'⚔ Real battle':'🛡 Training mode';
+ button.setAttribute('aria-pressed',realisticBattle?'true':'false');
+ document.querySelector('#battleOutcome').classList.toggle('is-hidden',!battleOutcome);
+ if(battleOutcome){
+  document.querySelector('#battleOutcomeTitle').textContent=battleOutcome.winner==='friend'?
+   '🟢 Victory':battleOutcome.winner==='foe'?'🔴 Defeat':'⚖ Draw';
+  document.querySelector('#battleOutcomeReason').textContent=battleOutcome.reason+
+   ' · '+battleOutcome.seconds.toFixed(1)+' seconds';
+  document.querySelector('#battleOutcomeFriend').textContent=tallyLabel(battleOutcome.friend);
+  document.querySelector('#battleOutcomeFoe').textContent=tallyLabel(battleOutcome.foe);
+ }
+}
+function determineBattleOutcome(){
+ if(!realisticBattle||battleOutcome)return battleOutcome;
+ const friend=battleTally('friend'),foe=battleTally('foe');
+ if(friend.standing>0&&foe.standing>0)return null;
+ const winner=friend.standing&&foe.standing===0?'friend':
+  foe.standing&&friend.standing===0?'foe':'draw';
+ const wiped=winner==='friend'?foe:friend;
+ const reason=winner==='draw'?'Both armies became unable to fight':
+  wiped.surrendered>0||wiped.escaped>0||wiped.shaken>0?
+  'Enemy cohesion collapsed through casualties, routs and surrender':
+  'All opposing combatants were incapacitated';
+ battleOutcome={winner,reason,seconds:t,friend,foe};
+ refreshBattleRulesUI();updateUI();
+ return battleOutcome;
+}
+function populate(){
+  battleOutcome=null;refreshBattleRulesUI();
   nextId=0;nextSwingId=1;nextEngagementPlan=0;formationType='block';enemyFormationType='block';enemyCommand='auto';enemyMovePending=false;setFormationMenu(false);
   const a=home('friend'),b=home('foe');
   friends=formation('friend',a.x,a.y).map((p,i)=>create('friend',i,p));
@@ -1513,8 +1556,8 @@ window.addEventListener('keydown',e=>{
 });
 function avgStress(){const live=foes.filter(s=>!s.dead&&!s.routed);return live.length?Math.round(live.reduce((a,s)=>a+s.stress,0)/live.length):0;}
  function avgStamina(){const active=friends.filter(s=>!s.dead&&!s.routed);return active.length?Math.round(active.reduce((a,s)=>a+s.stamina,0)/active.length):0;}
-function updateUI(){ui.select.setAttribute('aria-pressed',selected?'true':'false');ui.label.textContent=selected?'Deselect':'Select';ui.orders.classList.toggle('is-hidden',!selected);ui.status.textContent=Object.values(generalOrders).some(Boolean)?'GENERAL':('AI '+commanderBrains.friend.phase.toUpperCase());orderButtons.forEach(b=>b.classList.toggle('active',selected&&b.id===mode));const alive=friends.filter(s=>!s.dead&&!s.routed).length,broken=friends.filter(s=>s.broken&&!s.routed).length;
- ui.count.textContent=alive+' SOLDIERS';ui.remaining.textContent=alive+' / 50';ui.enemyCount.textContent=foes.filter(s=>!s.dead&&!s.routed).length+' / 50';ui.stress.textContent=avgStress()+'%';ui.stamina.textContent=avgStamina()+'%';
+function updateUI(){ui.select.setAttribute('aria-pressed',selected?'true':'false');ui.label.textContent=selected?'Deselect':'Select';ui.orders.classList.toggle('is-hidden',!selected);ui.status.textContent=battleOutcome?(battleOutcome.winner==='friend'?'VICTORY':battleOutcome.winner==='foe'?'DEFEAT':'DRAW'):(Object.values(generalOrders).some(Boolean)?'GENERAL':('AI '+commanderBrains.friend.phase.toUpperCase()));orderButtons.forEach(b=>b.classList.toggle('active',selected&&b.id===mode));const alive=friends.filter(s=>!s.dead&&!s.routed).length,broken=friends.filter(s=>s.broken&&!s.routed).length;
+ ui.count.textContent=alive+' SOLDIERS';ui.remaining.textContent=alive+' / 50';ui.enemyCount.textContent=foes.filter(s=>!s.dead&&!s.routed).length+' / 50';ui.stress.textContent=realisticBattle?Math.round(friends.reduce((n,u)=>n+u.stress,0)/Math.max(1,friends.length))+'%':avgStress()+'%';ui.stamina.textContent=avgStamina()+'%';
  let status=({idle:'Drag to explore · select troops to give orders',attack:'Attacking with varied weapon reach and timed strikes',defend:'Holding formation and fighting nearby enemies',stop:'Standing still (your troops cannot panic)',retreat:'Ordered retreat toward your side',move:'Marching to your chosen position',form:'Reforming into '+formationType+' formation'}[mode]||'');
  if(broken)status=broken+' soldier'+(broken>1?'s are':' is')+' panicking and fleeing!';
  ui.hint.textContent=enemyMovePending?'🔴 TAP BATTLEFIELD TO MOVE ENEMY ARMY':
@@ -1604,6 +1647,13 @@ orderButtons.forEach(b=>b.addEventListener('click',()=>setMode(b.id)));
  window.addEventListener('blur',()=>cameraKeys.clear());
 document.querySelector('#stressTest').addEventListener('click',()=>{for(const s of foes){if(!s.dead&&!s.broken){const frontline=foes.indexOf(s)%5===0; s.stress=clamp(s.stress+(frontline?94+rnd(s.id+Math.floor(t)*3)*6:6),0,100);}}updateUI()});
 document.querySelector('#reset').addEventListener('click',populate);
+ document.querySelector('#battleRules').addEventListener('click',()=>{
+  realisticBattle=!realisticBattle;populate();
+  ui.hint.textContent=realisticBattle?
+   'Real battle: both armies vulnerable; no respawns. Watch morale and the casualty report.':
+   'Training: your army is invulnerable and enemies replenish. Reset complete.';
+ });
+ document.querySelector('#battleOutcomeRestart').addEventListener('click',populate);
  const armorBtn=document.querySelector('#armorButton'),armorPanel=document.querySelector('#armorPanel');
  function setArmorPanel(open){
   armorPanel.classList.toggle('is-hidden',!open);
@@ -2792,6 +2842,7 @@ function step(dt){
  for(const p of groundedShots)p.life-=dt;
  groundedShots=groundedShots.filter(p=>p.life>0);
  for(const effect of slashes)effect.life-=dt;slashes=slashes.filter(e=>e.life>0);
+ if(realisticBattle)determineBattleOutcome();
 }
 function background(){ctx.fillStyle='#203b30';ctx.fillRect(0,0,W,H);const grad=ctx.createLinearGradient(0,0,W,H);grad.addColorStop(0,'#355746');grad.addColorStop(.45,'#29483a');grad.addColorStop(1,'#244538');ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
  ctx.beginPath();for(let x=.5;x<=W;x+=cell){ctx.moveTo(x,0);ctx.lineTo(x,H)}for(let y=.5;y<=H;y+=cell){ctx.moveTo(0,y);ctx.lineTo(W,y)}ctx.lineWidth=.7;ctx.strokeStyle='#c3e2b22a';ctx.stroke();
@@ -2868,7 +2919,7 @@ function drawUnit(s){if(s.routed)return;
   ctx.fillStyle=s.horseStamina<25?'#eda66c':'#91d6d1';
   ctx.fillRect(x-17,y+30,34*clamp(s.horseStamina/100,0,1),2);
  }
- if(s.dead){ctx.fillStyle='#101f1ac0';ctx.beginPath();ctx.ellipse(x,y+3,8,4,.4,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ba9d92a6';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-4,y-4);ctx.lineTo(x+4,y+4);ctx.moveTo(x+4,y-4);ctx.lineTo(x-4,y+4);ctx.stroke();return;}
+ if(s.dead){ctx.fillStyle=s.woundedOut?'#163d35b8':'#101f1ac0';ctx.beginPath();ctx.ellipse(x,y+3,8,4,.4,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ba9d92a6';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-4,y-4);ctx.lineTo(x+4,y+4);ctx.moveTo(x+4,y-4);ctx.lineTo(x-4,y+4);ctx.stroke();return;}
  if(selected&&s.team==='friend'){ctx.beginPath();ctx.arc(x,y,13,0,2*Math.PI);ctx.lineWidth=1.4;ctx.strokeStyle=s.broken?'#ffb28b':'#d2ffe0c2';ctx.stroke();}
  if(s.broken){ctx.strokeStyle='#ff795e';ctx.lineWidth=1.9;ctx.beginPath();ctx.arc(x,y,14,0,2*Math.PI);ctx.stroke();}
  if(s.stagger>0){
@@ -3074,7 +3125,7 @@ function frame(ts){
   if(!last)last=ts;
   const dt=Math.min((ts-last)/1000,.040);
   last=ts;
-  if(!equipmentOpen)t+=dt;
+  if(!equipmentOpen&&!battleOutcome)t+=dt;
   const panSpeed=600*dt;
   if(cameraKeys.has('arrowleft')||cameraKeys.has('a'))camera.x-=panSpeed;
   if(cameraKeys.has('arrowright')||cameraKeys.has('d'))camera.x+=panSpeed;
@@ -3082,7 +3133,7 @@ function frame(ts){
   if(cameraKeys.has('arrowdown')||cameraKeys.has('s'))camera.y+=panSpeed;
   camera.x=clamp(camera.x,0,Math.max(0,W-VW));
   camera.y=clamp(camera.y,0,Math.max(0,H-VH));
-  if(!equipmentOpen)step(dt);
+  if(!equipmentOpen&&!battleOutcome)step(dt);
   draw();
   if(!equipmentOpen&&Math.floor(t*4)!==Math.floor((t-dt)*4))updateUI();
   requestAnimationFrame(frame);
