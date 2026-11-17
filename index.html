@@ -912,7 +912,7 @@ function updateSquadState(team){
  const flankSide=fewerBottom<fewerTop?1:fewerTop<fewerBottom?-1:team==='friend'?1:-1;
  squadStates[team]={groups,enemyCenter,pressure,initialInfantryCount:initialInfantry,
   archerPressure:archers.length?pressed/archers.length:0,
-  reserveReleased:release,flankSide,
+  reserveReleased:release,flankSide,enemyArchers:enemy.filter(e=>isArcher(e)).length,
   cohesion:own.length?squadRoles.reduce((n,r)=>n+groups[r].cohesion*groups[r].count,0)/own.length:1};
  return squadStates[team];
 }
@@ -956,8 +956,10 @@ function squadMovement(s,command,target,dist,x,y,pace){
  }
  // Mounted troops move to a flank waypoint first, then commit to a
  // real charge pass using the horse acceleration/turning physics.
- const tacticalFlank=typeof commanderBrains!=='undefined'&&
-  commanderBrains[s.team]?.phase==='flank';
+ const tacticalFlank=typeof commanderBrains!=='undefined'?
+  commanderBrains[s.team]?.phase==='flank':
+  state.groups.cavalry.count>=3&&state.groups.infantry.count>=3&&
+   state.enemyArchers>=3;
  if(isCavalry(s)&&tacticalFlank&&group.count>=3&&dist>100){
   const side=state.flankSide;
   const flankY=clamp(state.enemyCenter.y+side*Math.min(175,H*.34),26,H-26);
