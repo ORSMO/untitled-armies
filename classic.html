@@ -216,7 +216,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
  <section class="enemy-command-panel commander-panel is-hidden" id="commanderPanel" aria-label="Commander and general controls">
   <div class="enemy-command-header"><strong>👑 COMMANDERS & THE GENERAL</strong>
    <button id="commanderClose" type="button" aria-label="Close commander panel">✕</button></div>
-  <p>Your commander runs the battle automatically. Choose a group and issue a manual order to override him. Your order remains until you return that group to AI.</p>
+  <p>Your commander runs the battle automatically. Choose a group, including the infantry reserve, and issue a manual order to override him. Your order remains until you return that group to AI.</p>
   <div class="commander-status"><strong>🟢 Your commander</strong><span id="friendCommanderStatus">Tactical · Assessing</span></div>
   <div class="enemy-command-grid" aria-label="Your commander style">
    <button type="button" data-commander-team="friend" data-style="aggressive">Aggressive</button>
@@ -234,7 +234,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
    <button type="button" data-general-group="all">All soldiers</button>
    <button type="button" data-general-group="infantry">⚔ Infantry</button>
    <button type="button" data-general-group="archer">🏹 Archers</button>
-   <button type="button" data-general-group="cavalry">🐎 Cavalry</button><button type="button" data-general-group="horseArcher">🏇 Horse Archers</button>
+   <button type="button" data-general-group="cavalry">🐎 Cavalry</button><button type="button" data-general-group="horseArcher">🏇 Horse Archers</button><button type="button" data-general-group="reserve">🛡 Infantry Reserve</button>
   </div>
   <p id="generalOverrideStatus">All groups currently follow Commander AI.</p>
   <div class="enemy-command-foot">
@@ -452,7 +452,7 @@ let W=0,H=0,VW=0,VH=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],s
  }
  let commanderBrains={friend:newBrain('tactical'),foe:newBrain('aggressive')};
  // As General you override a role indefinitely, until explicitly released.
- let generalOrders={all:null,infantry:null,archer:null,cavalry:null,horseArcher:null};
+ let generalOrders={all:null,infantry:null,archer:null,cavalry:null,horseArcher:null,reserve:null};
  let selectedGroup='all';
 const rnd=i=>{const x=Math.sin(i*127.1+91.7)*43758.5453;return x-Math.floor(x)};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -850,7 +850,7 @@ function focusArmy(){
   commanders.friend=createCommander('friend');commanders.foe=createCommander('foe');
   commanderBrains.friend=newBrain(commanderBrains.friend.personality);
   commanderBrains.foe=newBrain(commanderBrains.foe.personality);
-  generalOrders={all:null,infantry:null,archer:null,cavalry:null,horseArcher:null};selectedGroup='all';
+  generalOrders={all:null,infantry:null,archer:null,cavalry:null,horseArcher:null,reserve:null};selectedGroup='all';
   slashes=[];projectiles=[];groundedShots=[];selected=false;mode='idle';marker=null;focusArmy();updateUI();updateEnemyUI();updateCommanderUI();
  }
 // Enemy reinforcements enter at the right edge in the least crowded lane.
@@ -938,7 +938,8 @@ function updateSquadState(team){
 }
 function isManualSquadOrder(s){
  if(s.team==='friend'&&typeof generalOrders!=='undefined')
-  return !!(generalOrders.all||generalOrders[s.unitRole]);
+  return !!(generalOrders.all||generalOrders[s.unitRole]||
+   (s.squadReserve&&generalOrders.reserve));
  if(s.team==='foe'&&typeof enemyCommand!=='undefined')
   return enemyCommand!=='auto';
  return false;
@@ -1022,7 +1023,8 @@ function setCommanderAnchors(team,orders){
  for(let i=0;i<troops.length;i++){
   const u=troops[i];if(u.dead||u.broken||u.routed)continue;
   // Autonomous formation changes never rewrite a standing General order.
-  if(team==='friend'&&(generalOrders.all||generalOrders[u.unitRole]))continue;
+  if(team==='friend'&&(generalOrders.all||generalOrders[u.unitRole]||
+    (u.squadReserve&&generalOrders.reserve)))continue;
   const order=orders[u.unitRole]||'attack';
   if(order==='retreat'){
    // Retreat moves toward the team's side while still preserving each slot.
@@ -1111,7 +1113,7 @@ function resolveCombatCommand(s){
  const role=s.unitRole||'infantry';
  if(s.team==='foe'&&enemyCommand!=='auto')return enemyCommand;
  if(s.team==='friend'){
-  const manual=generalOrders[role]||generalOrders.all;
+  const manual=(s.squadReserve&&generalOrders.reserve)||generalOrders[role]||generalOrders.all;
   if(manual)return manual; // The General's authority is immediate.
  }
  const brain=commanderBrains[s.team],leader=commanders[s.team];
@@ -1134,10 +1136,11 @@ function resolveCombatCommand(s){
  return s.currentCommanderOrder||'attack';
 }
 function selectedTroops(){
- return friends.filter(s=>selectedGroup==='all'||s.unitRole===selectedGroup);
+ return friends.filter(s=>selectedGroup==='all'||
+   (selectedGroup==='reserve'?s.squadReserve:s.unitRole===selectedGroup));
 }
 function returnToCommander(group){
- if(group==='all')generalOrders={all:null,infantry:null,archer:null,cavalry:null,horseArcher:null};
+ if(group==='all')generalOrders={all:null,infantry:null,archer:null,cavalry:null,horseArcher:null,reserve:null};
  else generalOrders[group]=null;
  mode='idle';selected=false;updateUI();updateCommanderUI();
 }
@@ -1266,7 +1269,7 @@ function setFormation(cx,cy){
   formationType=type;setFormationMenu(false);
   const cx=friends.reduce((a,s)=>a+s.anchorX,0)/friends.length;
   const cy=friends.reduce((a,s)=>a+s.anchorY,0)/friends.length;
-  setFormation(cx,cy);mode='form';generalOrders={all:'form',infantry:null,archer:null,cavalry:null,horseArcher:null};updateUI();updateCommanderUI();
+  setFormation(cx,cy);mode='form';generalOrders={all:'form',infantry:null,archer:null,cavalry:null,horseArcher:null,reserve:null};updateUI();updateCommanderUI();
  }
  function hoveredFormation(e){
   const el=document.elementFromPoint(e.clientX,e.clientY);
@@ -1298,7 +1301,7 @@ function setFormation(cx,cy){
 function setMode(m){
  if(!selected)return;
  mode=m;marker=null;nextEngagementPlan=0;
- if(selectedGroup==='all')generalOrders={all:m,infantry:null,archer:null,cavalry:null,horseArcher:null};
+ if(selectedGroup==='all')generalOrders={all:m,infantry:null,archer:null,cavalry:null,horseArcher:null,reserve:null};
  else generalOrders[selectedGroup]=m;
  const troops=selectedTroops();
  if(m==='defend'||m==='stop'||m==='retreat'){
@@ -1510,7 +1513,7 @@ orderButtons.forEach(b=>b.addEventListener('click',()=>setMode(b.id)));
   const x=clamp(camera.x+e.clientX-r.left,96,W-96);
   const y=clamp(camera.y+e.clientY-r.top,40,H-40);
   mode='move';
-  if(selectedGroup==='all'){setFormation(x,y);generalOrders={all:'move',infantry:null,archer:null,cavalry:null};}
+  if(selectedGroup==='all'){setFormation(x,y);generalOrders={all:'move',infantry:null,archer:null,cavalry:null,horseArcher:null,reserve:null};}
   else{
    const group=selectedTroops(),center=troopCenter(group,{x,y});
    for(const u of group){
