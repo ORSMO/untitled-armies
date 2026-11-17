@@ -493,7 +493,7 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   lance:{label:'Cavalry lance',weight:2.5,reach:56,power:1.23,momentum:142,speed:1.24,twoHand:false,moves:['thrust','slashRight'],cleave:1}
  };
  const weaponOrder=['shortsword','sword','greatsword','axe','spear','pike','lance'];
- function isPolearm(s){return !isCavalry(s)&&(s.weapon==='spear'||s.weapon==='pike');}
+ function isPolearm(s){return !isCavalry(s)&&(s.weapon==='spear'||s.weapon==='pike')&&(!isArcher(s)||s.meleeReady||!s.ranged);}
  function polearmMinRange(s){return s.weapon==='pike'?40:25;}
  // Secondary weapons have limited shots, physical flight and melee fallback.
  const rangedProfiles={
@@ -646,10 +646,8 @@ const shieldProfiles={
     shieldOrder[(Math.floor(index/2)+offset)%shieldOrder.length];
   let shield=settings.shield==='mixed'?defaultShield:
     settings.shield==='none'?null:settings.shield;
-  // A shield cannot coexist with a two-handed weapon, including in mixed armies.
-  if(weaponProfiles[weapon].twoHand)shield=null;
   const unitRole=assignedRole(settings,index);
-  if(unitRole==='horseArcher'&&(settings.weapon==='mixed'||weapon==='lance'||weapon==='pike'))weapon='shortsword';
+  if(unitRole==='horseArcher'&&(settings.weapon==='mixed'||weapon==='lance'||weapon==='pike'||weapon==='spear'))weapon='shortsword';
   if(unitRole==='cavalry'&&(settings.weapon==='mixed'||weapon==='pike'||!weaponProfiles[weapon]))weapon='lance';
   // Infantry never carry/use a ranged weapon. The Archer role can select
   // bow, crossbow or javelins; a bow is the default if nothing was selected.
@@ -657,7 +655,9 @@ const shieldProfiles={
   const ranged=unitRole==='horseArcher'?'horsebow':
    unitRole==='archer'?(chosenRanged==='horsebow'?'bow':
     rangedProfiles[chosenRanged]?chosenRanged:'bow'):null;
-  if(rangedProfiles[ranged]?.twoHand)shield=null;
+  // Resolve the *final* equipment first, then remove shields only for
+  // genuinely two-handed items; a forbidden cavalry pike becomes a lance.
+  if(weaponProfiles[weapon].twoHand||rangedProfiles[ranged]?.twoHand)shield=null;
   const horseArmor=['none','leather','mail','plate'].includes(settings.horseArmor)?
    settings.horseArmor:'none';
   return {weapon,shield,armor,ranged,unitRole,horseArmor};
