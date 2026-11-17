@@ -543,7 +543,12 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   const actual=Math.max(.07,(base*armorBonus-barding.flat)*(1-barding.block));
   target.mountHp=Math.max(0,target.mountHp-actual);
   target.horseHits++;target.hitFlash=.32;
-  if(target.mountHp<=0)dismount(target);
+  const labStat=combatLabStats(target.team);
+  if(labStat)labStat.mountHits++;
+  if(target.mountHp<=0){
+   if(labStat)labStat.dismounts++;
+   dismount(target);
+  }
   return true;
  }
 const shieldProfiles={
@@ -2226,6 +2231,8 @@ function step(dt){
      applyWeaponImpact(s,target,lanceHit);
     }
     s.chargeHits++;s.chargeCooldown=4.1;s.gallop=0;
+    const chargesStat=combatLabStats(s.team);
+    if(chargesStat)chargesStat.horseCharges++;
     s.horseStamina=clamp(s.horseStamina-18,0,100);
     s.stamina=clamp(s.stamina-10,0,s.maxStamina);
     // Disengage sideways and back, then rebuild speed for another pass.
