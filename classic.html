@@ -732,6 +732,113 @@ function members(team){return [...(team==='friend'?friends:foes),...(
   commanders[team]?[commanders[team]]:[])];}
 function opponents(s){return members(s.team==='friend'?'foe':'friend');}
 function living(list){return list.filter(s=>!s.dead&&!s.broken&&!s.routed);}
+// Commanders evaluate actual units and threats rather than accessing perfect
+// information about future combat. They decide by class every ~1.5 seconds.
+function troopCenter(troops,backup){
+ return troops.length?{
+  x:troops.reduce((n,u)=>n+u.x,0)/troops.length,
+  y:troops.reduce((n,u)=>n+u.y,0)/troops.length
+ }:backup;
+}
+function setCommanderAnchors(team,orders){
+ const troops=(team==='friend'?friends:foes),alive=living(troops);
+ if(!alive.length)return;
+ const center=troopCenter(alive,home(team));
+ const slots=formation(team,center.x,center.y),rear=home(team);
+ for(let i=0;i<troops.length;i++){
+  const u=troops[i];if(u.dead||u.broken||u.routed)continue;
+  const order=orders[u.unitRole]||'attack';
+  if(order==='retreat'){
+   // Retreat moves toward the team's side while still preserving each slot.
+   u.anchorX=clamp(rear.x+(slots[i].x-center.x),24,W-24);
+   u.anchorY=clamp(rear.y+(slots[i].y-center.y),24,H-24);
+  }else if(order==='defend'){
+   u.anchorX=slots[i].x;u.anchorY=slots[i].y;
+  }
+  if(order==='defend'||order==='retreat'){
+   u.tx=u.anchorX;u.ty=u.anchorY;
+  }
+ }
+}
+function decideCommander(team,dt){
+ const brain=commanderBrains[team],leader=commanders[team];
+ brain.elapsed+=dt;
+ if(brain.elapsed<brain.next)return;
+ brain.next=brain.elapsed+1.35+(100-(leader?.leadership||60))*.008;
+ brain.decisions++;
+ if(!leader||leader.dead||leader.routed||leader.broken){
+  brain.phase='leaderless';brain.news='Commander lost — soldiers act independently';
+  brain.orders={infantry:'attack',archer:'attack',cavalry:'attack'};
+  updateCommanderUI();return;
+ }
+ const troops=living(team==='friend'?friends:foes);
+ const enemies=living(team==='friend'?foes:friends);
+ const a=troopCenter(troops,home(team));
+ const b=troopCenter(enemies,home(team==='friend'?'foe':'friend'));
+ const distance=Math.hypot(a.x-b.x,a.y-b.y);
+ const archerUnits=troops.filter(u=>isArcher(u));
+ const cavalryUnits=troops.filter(u=>isCavalry(u));
+ const enemyArchers=enemies.filter(u=>isArcher(u));
+ const pressured=archerUnits.filter(u=>enemies.some(e=>
+  Math.hypot(e.x-u.x,e.y-u.y)<155)).length;
+ const threatened=archerUnits.length&&pressured/archerUnits.length>.25;
+ const ratio=troops.length/Math.max(1,enemies.length);
+ const panicRate=troops.length?troops.filter(u=>u.stress>67).length/troops.length:1;
+ const ammo=archerUnits.reduce((n,u)=>n+(infiniteAmmo?18:u.ammo),0);
+ let phase='hold';
+ if(ratio<.58||panicRate>.43)phase='withdraw';
+ else if(threatened)phase='protect';
+ else if(distance>360)phase='advance';
+ else if(cavalryUnits.length>3&&enemyArchers.length>3&&distance<500)phase='flank';
+ else if(brain.personality==='aggressive'&&ratio>.70)phase='press';
+ else if(brain.personality==='defensive')phase='hold';
+ else if(ratio>1.35&&distance<310)phase='press';
+ // Commit to a plan; urgent withdrawal/protection can interrupt it.
+ const urgent=phase==='withdraw'||phase==='protect';
+ if(phase!==brain.phase&&brain.elapsed-brain.lastChange<4&&!urgent)
+  phase=brain.phase;
+ if(phase!==brain.phase){
+  brain.phase=phase;brain.lastChange=brain.elapsed;
+  const plans={
+   advance:{infantry:'attack',archer:'attack',cavalry:'attack'},
+   press:{infantry:'attack',archer:'attack',cavalry:'attack'},
+   hold:{infantry:'defend',archer:'attack',cavalry:'defend'},
+   protect:{infantry:'defend',archer:'retreat',cavalry:'attack'},
+   flank:{infantry:'defend',archer:'attack',cavalry:'attack'},
+   withdraw:{infantry:'retreat',archer:'retreat',cavalry:'retreat'}
+  };
+  brain.orders=plans[phase]||plans.advance;
+  setCommanderAnchors(team,brain.orders);
+ }
+ brain.news=phase==='advance'?'Approaching the enemy':
+  phase==='press'?'Pressing the attack':
+  phase==='hold'?'Holding a disciplined line':
+  phase==='protect'?'Protecting threatened archers':
+  phase==='flank'?'Cavalry exploiting an exposed wing':
+  'Ordered withdrawal';
+ if(archerUnits.length&&ammo===0)brain.news+=' · archers out of ammunition';
+ updateCommanderUI();
+}
+function resolveCombatCommand(s){
+ if(s.isCommander)return 'defend';
+ const role=s.unitRole||'infantry';
+ if(s.team==='foe'&&enemyCommand!=='auto')return enemyCommand;
+ if(s.team==='friend'){
+  const manual=generalOrders[role]||generalOrders.all;
+  if(manual)return manual;
+ }
+ const brain=commanderBrains[s.team];
+ return brain?.orders[role]||'attack';
+}
+function selectedTroops(){
+ return friends.filter(s=>selectedGroup==='all'||s.unitRole===selectedGroup);
+}
+function returnToCommander(group){
+ if(group==='all')generalOrders={all:null,infantry:null,archer:null,cavalry:null};
+ else generalOrders[group]=null;
+ mode='idle';selected=false;updateUI();updateCommanderUI();
+}
+
 // Shared awareness: choose opponents across the entire enemy front.
 // This runs a few times a second, so soldiers do not jitter between targets.
 function planEngagements(team){
@@ -856,7 +963,7 @@ function setFormation(cx,cy){
   formationType=type;setFormationMenu(false);
   const cx=friends.reduce((a,s)=>a+s.anchorX,0)/friends.length;
   const cy=friends.reduce((a,s)=>a+s.anchorY,0)/friends.length;
-  setFormation(cx,cy);mode='form';updateUI();
+  setFormation(cx,cy);mode='form';generalOrders={all:'form',infantry:null,archer:null,cavalry:null};updateUI();updateCommanderUI();
  }
  function hoveredFormation(e){
   const el=document.elementFromPoint(e.clientX,e.clientY);
@@ -885,11 +992,26 @@ function setFormation(cx,cy){
  ui.formationBtn.addEventListener('click',e=>{
   if(e.detail===0&&selected)setFormationMenu(ui.formationMenu.classList.contains('is-hidden'));
  });
-function setMode(m){if(!selected)return;mode=m;marker=null;nextEngagementPlan=0;
- if(m==='defend'){const alive=living(friends);const x=alive.reduce((a,s)=>a+s.x,0)/Math.max(alive.length,1),y=alive.reduce((a,s)=>a+s.y,0)/Math.max(alive.length,1);setFormation(x||home('friend').x,y||H*.5);}
- if(m==='stop'){friends.forEach(s=>{if(!s.broken&&!s.dead){s.anchorX=s.x;s.anchorY=s.y;}});}
- if(m==='retreat'){const h=home('friend');setFormation(Math.max(103,h.x*.57),H*.51);}
- updateUI();}
+function setMode(m){
+ if(!selected)return;
+ mode=m;marker=null;nextEngagementPlan=0;
+ if(selectedGroup==='all')generalOrders={all:m,infantry:null,archer:null,cavalry:null};
+ else generalOrders[selectedGroup]=m;
+ const troops=selectedTroops();
+ if(m==='defend'||m==='stop'||m==='retreat'){
+  const h=home('friend');
+  for(const u of troops){
+   if(u.dead||u.broken||u.routed)continue;
+   if(m==='retreat'){
+    u.anchorX=clamp(h.x-(u.unitRole==='cavalry'?40:0),25,W-25);
+    u.anchorY=clamp(h.y+(u.y-H*.5)*.45,25,H-25);
+   }else if(m==='stop'){u.anchorX=u.x;u.anchorY=u.y;}
+   else{u.anchorX=u.x;u.anchorY=u.y;}
+   u.tx=u.anchorX;u.ty=u.anchorY;
+  }
+ }
+ updateUI();updateCommanderUI();
+}
 // Enemy-only tactical orders; the user's army remains separately controlled.
 const enemyButton=document.querySelector('#enemyButton');
 const enemyPanel=document.querySelector('#enemyPanel');
@@ -987,7 +1109,12 @@ function updateUI(){ui.select.setAttribute('aria-pressed',selected?'true':'false
   if(!selected)setFormationMenu(false);
   formOptions.forEach(b=>b.classList.toggle('chosen',b.dataset.form===formationType));
 }
-ui.select.addEventListener('click',()=>{selected=!selected;if(selected){mode='stop';friends.forEach(s=>{s.anchorX=s.x;s.anchorY=s.y;});}else{mode='idle';}updateUI()});
+ui.select.addEventListener('click',()=>{
+ selected=!selected;
+ // Merely selecting troops does not override an autonomous commander.
+ if(!selected)mode='idle';
+ updateUI();updateCommanderUI();
+});
 orderButtons.forEach(b=>b.addEventListener('click',()=>setMode(b.id)));
 // Tap orders soldiers to a world position; swipe pans the camera instead.
  canvas.addEventListener('pointerdown',e=>{
@@ -1022,7 +1149,18 @@ orderButtons.forEach(b=>b.addEventListener('click',()=>setMode(b.id)));
   const r=canvas.getBoundingClientRect();
   const x=clamp(camera.x+e.clientX-r.left,96,W-96);
   const y=clamp(camera.y+e.clientY-r.top,40,H-40);
-  mode='move';setFormation(x,y);marker={x,y,when:t};updateUI();
+  mode='move';
+  if(selectedGroup==='all'){setFormation(x,y);generalOrders={all:'move',infantry:null,archer:null,cavalry:null};}
+  else{
+   const group=selectedTroops(),center=troopCenter(group,{x,y});
+   for(const u of group){
+    u.anchorX=clamp(u.x+(x-center.x),24,W-24);
+    u.anchorY=clamp(u.y+(y-center.y),24,H-24);
+    u.tx=u.anchorX;u.ty=u.anchorY;
+   }
+   generalOrders[selectedGroup]='move';
+  }
+  marker={x,y,when:t};updateUI();updateCommanderUI();
  });
  canvas.addEventListener('pointercancel',()=>{fieldPointer=null});
  canvas.addEventListener('wheel',e=>{
@@ -1767,6 +1905,7 @@ function drawRangedProjectiles(ctx,shots,landed=groundedShots){
 }
 
 function step(dt){
+ decideCommander('friend',dt);decideCommander('foe',dt);
  if(t>=nextEngagementPlan){
   planEngagements('friend');
   planEngagements('foe');
@@ -1793,7 +1932,7 @@ function step(dt){
    const breakingPoint=stressBalance.breakingBase+s.disc*stressBalance.disciplineResistance+rnd(s.id+23)*5;
    if(s.stress>breakingPoint){panic(s);continue;}
   }else{s.stress=0;}
-  const player=s.team==='friend',command=player?mode:(enemyCommand==='auto'?'attack':enemyCommand);
+  const player=s.team==='friend',command=resolveCombatCommand(s);
   if(s.decision<=0){s.decision=1.7+rnd(s.id+Math.floor(t*.8))*1.6;
    const steadiness=s.disc/100,unease=s.stress/100;
    // Less wandering and fewer direction changes; stress still disrupts ranks.
