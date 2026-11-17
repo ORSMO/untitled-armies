@@ -537,6 +537,7 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   // Forward-only horse locomotion: heading, momentum, and braking persist.
   s.mountHeading=s.team==='friend'?0:Math.PI;
   s.mountSpeed=0;s.mountTurn=0;s.mountDistance=0;
+  s.mountPassX=null;s.mountPassY=null;s.mountPassUntil=0;s.mountPassTargetId=null;
   s.chargeHits=0;s.horseHits=0;s.dismounts=0;
  }
  function dismount(s){
@@ -2339,6 +2340,23 @@ function step(dt){
          moveY=clamp(s.y+ndx*110*side,24,H-24);
          pace=.96;
         }else{moveX=s.x;moveY=s.y;}
+      }else if(isCavalry(s)){
+       // Hooves need a line of travel: ride through the target rather than
+       // braking at the foot-soldier's melee slot before making contact.
+       // Maintain a committed pass target briefly; don't turn instantly
+       // every time the opponent moves or the target planner changes.
+       if(s.mountPassUntil<t||s.mountPassTargetId!==target.id||
+          s.mountPassX==null){
+        const dx=(target.x-s.x)/Math.max(1,dist),dy=(target.y-s.y)/Math.max(1,dist);
+        const extra=clamp(72+(s.mountSpeed||0)*.45,82,135);
+        s.mountPassX=clamp(target.x+dx*extra,26,W-26);
+        s.mountPassY=clamp(target.y+dy*extra,26,H-26);
+        s.mountPassTargetId=target.id;s.mountPassUntil=t+2.3;
+       }
+       moveX=s.mountPassX;moveY=s.mountPassY;pace=1.23;
+       // At the end of a pass, choose a new approach rather than trying
+       // to reverse direction while still at full gallop.
+       if(Math.hypot(moveX-s.x,moveY-s.y)<16)s.mountPassUntil=0;
       }else{
        const slot=engagementPoint(s,target);
        const distanceToSlot=Math.hypot(slot.x-s.x,slot.y-s.y);
@@ -2402,7 +2420,12 @@ function step(dt){
     }
    }
    if(command==='attack'&&target&&!target.dead&&!target.routed&&
-      dist<66&&dist>13&&s.gallop>.38&&s.chargeCooldown<=0&&
+      dist<66&&dist>13&&s.gallop>.38&&
+      // A horse's forward motion must actually close the gap: passing a
+      // target after a turn is not an automatic second charge.
+      ((target.x-s.x)*s.vx+(target.y-s.y)*s.vy)/
+       Math.max(1,dist*Math.hypot(s.vx,s.vy))>.34&&
+      s.chargeCooldown<=0&&
       s.stamina>=12&&s.horseStamina>=12){
     // Only a planted forward-facing spear can interrupt a physical charge.
     // Pikes and spears still need a clear line of contact.
