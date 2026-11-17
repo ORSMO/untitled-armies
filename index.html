@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V3.2</title>
+<title>Untitled Armies — V3.3</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -201,7 +201,7 @@ body.lab-mode .lab-area{display:flex}
     <div class="top-actions">
       <a class="lab-classic-link" href="classic.html" title="Open original 50v50 battlefield">Classic battlefield</a>
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 3.2">V3.2</div>
+      <div class="build" aria-label="Version 3.3">V3.3</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
@@ -262,11 +262,12 @@ body.lab-mode .lab-area{display:flex}
        <tr><td>Compact horse bow</td><td>24</td><td>710</td><td>0.52s</td><td>Light piercing</td></tr></tbody></table>
       <p><strong>HORSE MOVEMENT (V3.1):</strong> Mounted troops now accelerate and brake instead of instantly changing speed or direction. A horse turns much wider at full gallop, especially when heavily armored or wounded. A mounted charge requires real forward closing speed, and body-to-body collisions absorb momentum. Cavalry ride through an enemy on a committed attack line, break away when surrounded, and regroup for another charge. Mounted archers try to ride out of close threats to recover their shooting distance. Gait animation and hoof dust show speed; the amber bar is horse health and the smaller turquoise bar is horse stamina. Rider and horse health remain separate. A fallen horse cannot be instantly remounted.</p>
       <p><strong>REAL SQUADS (V3.2):</strong> Infantry now hold lateral formation lanes when advancing; archers try to stay behind a surviving infantry screen; cavalry stage flanking routes before attacking ranged units; a fifth of sufficiently large infantry groups remain behind as reserves until the frontline is pressured. Use the <strong>Squad Tests</strong> mode to observe six mixed-class battles with independently equipped sub-squads. Smaller fairness tests keep the original 1-to-5-soldier behavior. The simulation remains the foundation for the future campaign game.</p>
+      <p><strong>MORALE &amp; OUTCOMES (V3.3):</strong> The sixth Battle Lab mode runs six scenarios where both sides can be killed, incapacitated, rout, surrender or rally. Discipline, nearby support and casualties affect morale. Each battle ends naturally when one army has no fighters willing to continue. Old Fairness, Mount, Polearm, Squad and Ranged tests keep their existing conditions so previous balance measurements remain comparable.</p>
       <p><strong>POLEARMS & BRACING:</strong> <strong>Infantry spears</strong> have 65 reach and can pair with shields. <strong>Long pikes</strong> have 89 reach and occupy both hands. Polearm tips cannot hit reliably inside their minimum range, so crowded soldiers use weaker blunt butt strikes. A spearman or pikeman facing a fast-approaching horse automatically plants his feet and raises the weapon over time. A ready frontal brace can halt a charge and wound or dismount the horse, while flanking, attacking before the spear is ready, or exhausting the soldier can break through. The <strong>🛡 Spear Wall</strong> formation is available in Classic. Try the new Spears vs Swords and Pikes vs Cavalry presets.</p>
       <p><strong>UNIT ROLES:</strong> <strong>Infantry</strong> always prioritize melee weapons and never shoot. <strong>Archers</strong> keep their ranged weapon in hand and fire from a distance; they draw a sword only against a nearby enemy. Without ammunition, they avoid charging distant enemies. Mixed armies alternate infantry and archers. <strong>Cavalry</strong> are mounted melee troops with wide spacing, fast movement, and charges that deal horse-impact damage even without a lance; a lance adds piercing damage. <strong>Mounted archers</strong> use the lighter compact horse bow (24 arrows, 710-unit range) and circle enemies while shooting. Horse armour can be none, leather, mail or plate; barding trades speed for protection. Horses have their own stamina and health, and riders continue on foot if dismounted. Combined armies have 20 infantry, 20 archers and 10 cavalry; a Grand Army adds 5 horse archers (20/15/10/5). Click the Battle Lab's mode button twice to reach six dedicated Mount Tests.</p>
       <p><strong>RANGED COMBAT:</strong> V2.4 triples maximum and ideal shooting distances. Better experience and ranged familiarity produce tighter shot groups, and experienced archers lead moving targets. Archers can switch to a new enemy during an existing draw rather than repeatedly cancelling shots when their target disappears. Projectiles still travel physically and can miss. War bows carry 18 arrows (fast), crossbows carry 12 bolts (slow reload, strong piercing), and javelins carry 6 throws (short range, powerful impact). Shots follow lofted trajectories over friendly ranks and stop when they reach the ground instead of sliding along it. Lofted attacks fly over allied soldiers throughout their flight; enemy soldiers, shields and armor can still intercept them. Projectiles have travel time, can miss, and interact with directional shields and armor. Experience and independent ranged-weapon familiarity improve accuracy and timing; set Ranged skill separately from melee Mastery in Test gear. Archers draw their melee sidearm only when enemies enter close-combat range; running out of ammunition does not make them charge with swords. A shield is lowered when aiming a two-handed bow or crossbow.</p>
       <p><strong>IMPACT REACTIONS:</strong> Heavy hits cause knockback and stagger. A successful active block can create a counterattack opening; a weak shield can suffer a <strong>GUARD BREAK</strong>. Plate and solid shields can stop a swing and recoil the attacker.</p>
-      <p>Green and red soldiers wear mixed armor and carry different weapons. One-handed swords can use shields; greatswords and axes occupy both hands. Swing stages: wind-up → active hitbox → recovery. Your troops are still invulnerable.</p>
+      <p>Green and red soldiers wear mixed armor and carry different weapons. One-handed swords can use shields; greatswords and axes occupy both hands. Swing stages: wind-up → active hitbox → recovery. In Classic Training Mode your army is invulnerable; Real Battle Mode makes both armies vulnerable.</p>
      </section>
   <div class="equipment-backdrop is-hidden" id="equipmentBackdrop">
  <section class="equipment-panel" id="equipmentPanel" role="dialog" aria-modal="true" aria-labelledby="equipmentTitle">
@@ -344,7 +345,7 @@ body.lab-mode .lab-area{display:flex}
 <option value="mixed">Mixed ranks</option><option value="recruit">Recruit</option><option value="trained">Trained</option><option value="veteran">Veteran</option><option value="elite">Elite</option></select></div>
 <div class="equipment-field"><label for="foeFamiliarity">Mastery</label><select id="foeFamiliarity">
 <option value="mixed">Individual weapon skills</option><option value="novice">Novice · 18</option><option value="practiced">Practiced · 56</option><option value="expert">Expert · 85</option><option value="master">Master · 97</option></select></div>
-   <small id="foeGearNote">Enemy reinforcements inherit these gear settings.</small>
+   <small id="foeGearNote">Training-mode enemy reinforcements inherit these gear settings.</small>
  </div></div>
   <div class="equipment-actions">
    <button type="button" class="primary" id="applyEquipment">Apply now</button>
@@ -467,6 +468,54 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  const maxTurnRate=3.7; // Radians per second; no instant snapping of the sword or facing marker.
  // V0.6: stress is mostly driven by combat and losses rather than passive proximity.
  const stressBalance={takenHit:10,givenHit:1,allyKilled:8,panicSpread:7,closeThreat:1.3,nearThreat:.25,recovery:5.5,breakingBase:68,disciplineResistance:.28};
+ // Training keeps familiar immortal-allies / replenishing-enemies behavior.
+ // Realistic battle rules opt into casualties, morale and terminal outcomes.
+ let realisticBattle=false,battleOutcome=null;
+ function realismActive(){return labMode?labPreset==='outcomes':realisticBattle;}
+ function combatants(team){return team==='friend'?friends:foes;}
+ function armyLossFraction(team){
+  const units=combatants(team);
+  if(!units.length)return 0;
+  return units.filter(u=>u.dead||u.surrendered||u.routed).length/units.length;
+ }
+ function nearbyFighting(s,radius,allies){
+  const troop=allies?combatants(s.team):combatants(s.team==='friend'?'foe':'friend');
+  let count=0;
+  for(const u of troop)if(u!==s&&!u.dead&&!u.broken&&!u.routed&&!u.surrendered&&
+     Math.hypot(u.x-s.x,u.y-s.y)<radius)count++;
+  return count;
+ }
+ function combatMoraleTick(s,dt,dist){
+  if(!realismActive()||s.dead||s.routed||s.surrendered)return;
+  const fraction=armyLossFraction(s.team);
+  const friendsNear=nearbyFighting(s,110,true),foesNear=nearbyFighting(s,110,false);
+  const commander=null;
+  const leaderLost=commander&&(commander.dead||commander.broken||commander.routed);
+  const support=Math.min(friendsNear,4)*.85+(commander&&!leaderLost&&
+   Math.hypot(commander.x-s.x,commander.y-s.y)<210?2.4:0);
+  const pressure=Math.max(0,foesNear-friendsNear)*1.25+
+   fraction*12+(leaderLost?6:0);
+  // Fear accumulates from casualties, isolation and enemy pressure, while
+  // nearby allies and a living commander help disciplined troops recover.
+  const change=pressure-support-(dist>155?2.8:1.35)-s.disc*.023;
+  s.stress=clamp(s.stress+dt*change,0,100);
+ }
+ function battleTally(team){
+  const units=combatants(team);
+  return {
+   original:units.length,standing:units.filter(u=>!u.dead&&!u.routed&&!u.broken&&!u.surrendered).length,
+   killed:units.filter(u=>u.dead&&!u.woundedOut).length,
+   wounded:units.filter(u=>u.woundedOut).length,
+   woundedStanding:units.filter(u=>!u.dead&&!u.routed&&!u.surrendered&&u.hp<u.maxHp).length,
+   escaped:units.filter(u=>u.routed&&!u.surrendered).length,
+   surrendered:units.filter(u=>u.surrendered).length,
+   shaken:units.filter(u=>u.broken&&!u.dead&&!u.routed&&!u.surrendered).length
+  };
+ }
+ function tallyLabel(t){return t.standing+' standing · '+t.killed+' killed · '+
+  t.wounded+' incapacitated · '+t.escaped+' escaped · '+
+  t.surrendered+' surrendered · '+t.shaken+' still routing · '+
+  t.woundedStanding+' injured survivors';}
  // Two attack styles share the same three-cell range. Heavy hits cost more
  // stamina, deal two damage, and have longer recovery than quick light hits.
  const attackStyles={
@@ -824,7 +873,7 @@ function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74
   }
   return positions.map(p=>({x:clamp(p.x,18,W-18),y:clamp(p.y,21,H-21)}));
  }
-function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);const soldier={id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,...equipmentFor(team,i),attack:null,braceReady:0,braceThreatId:null,braceStops:0,braceCount:0,gallop:0,chargeCooldown:0,chargeHits:0,guardActive:false,guardHold:0,guardBreak:0,stagger:0,knockVX:0,knockVY:0,shieldRecoil:0,impactLean:0,guardBreakFlash:0,stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,stamina:100,maxStamina:100,recoveryDelay:0,attackCount:0,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:1.5+rnd(i+16)*1.3,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,engageSlot:0,escapeAngle:0,hitFlash:0};setFighterTraining(soldier,team,i);initializeRangedEquipment(soldier);initMount(soldier);return soldier;}
+function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);const soldier={id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,...equipmentFor(team,i),attack:null,braceReady:0,braceThreatId:null,braceStops:0,braceCount:0,gallop:0,chargeCooldown:0,chargeHits:0,guardActive:false,guardHold:0,guardBreak:0,stagger:0,knockVX:0,knockVY:0,shieldRecoil:0,impactLean:0,guardBreakFlash:0,stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),surrendered:false,woundedOut:false,fatal:false,brokenAt:-1,rallies:0,hp:3,maxHp:3,stamina:100,maxStamina:100,recoveryDelay:0,attackCount:0,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:1.5+rnd(i+16)*1.3,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,engageSlot:0,escapeAngle:0,hitFlash:0};setFighterTraining(soldier,team,i);initializeRangedEquipment(soldier);initMount(soldier);return soldier;}
 function focusArmy(){
   const h=home('friend');
   camera.x=clamp(h.x-VW*.37,0,Math.max(0,W-VW));
@@ -1098,7 +1147,11 @@ function avoidCombatCrowd(s,goal,target){
   const dx=side*Math.cos(best),dy=Math.sin(best);
   approach(s,s.x+dx*100,s.y+dy*100,dt,1.95);
   turnToward(s,Math.atan2(dy,dx),dt);
-  if(s.x< -12||s.x>W+12)s.routed=true;
+  if(realismActive()){
+   // approach() clamps inside the map; resolve routing when reaching the
+   // retreat-side exit rather than waiting for impossible out-of-bounds x.
+   if(s.team==='friend'?s.x<=14:s.x>=W-14)s.routed=true;
+  }else if(s.x< -12||s.x>W+12)s.routed=true;
  }
 function setFormation(cx,cy){
   const p=formation('friend',cx,cy);
@@ -1361,7 +1414,49 @@ document.querySelector('#reset').addEventListener('click',populate);
  window.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&equipmentOpen)setEquipmentMenu(false);
  });
-function panic(s){if((!labMode&&s.team==='friend')||s.broken||s.dead)return;s.broken=true;s.targetId=null;s.escapeAngle=0;s.decision=0;for(const n of members(s.team)){if(n===s||n.dead||n.broken)continue;const d=Math.hypot(n.x-s.x,n.y-s.y);if(d<80)n.stress=clamp(n.stress+stressBalance.panicSpread*(1-n.disc/160)*(1-d/100),0,100);} }
+function panic(s){
+ if((!realismActive()&&s.team==='friend')||s.broken||s.dead||s.routed||s.surrendered)return;
+ s.broken=true;s.brokenAt=t;s.targetId=null;s.escapeAngle=0;s.decision=0;
+ const stats=combatLabStats(s.team);if(stats)stats.panics++;
+ for(const n of members(s.team)){
+  if(n===s||n.dead||n.broken||n.routed)continue;
+  const d=Math.hypot(n.x-s.x,n.y-s.y);
+  if(d<90)n.stress=clamp(n.stress+
+   stressBalance.panicSpread*(1-n.disc/160)*(1-d/100),0,100);
+ }
+}
+function handleBrokenSoldier(s,dt){
+ s.attack=null;s.guardActive=false;s.guardHold=0;
+ if(!realismActive()){
+  s.stress=100;fleeFromEnemies(s,dt);
+  if(s.routed&&s.team==='foe'&&!labMode&&!s.isCommander)respawnEnemy(s);
+  return;
+ }
+ const enemies=nearbyFighting(s,85,false),allies=nearbyFighting(s,85,true);
+ const commander=null;
+ // A trapped, exhausted fleeing fighter may throw down his weapon.
+ if(enemies>=2&&enemies>allies+1&&
+    (s.stress>=87||s.stamina<22)&&!s.isCommander){
+  s.surrendered=true;s.routed=true;s.broken=false;
+  const stat=combatLabStats(s.team);if(stat)stat.surrenders++;
+  return;
+ }
+ // A broken soldier may rally, but only with space and meaningful support.
+ const commanderCanRally=commander&&!commander.dead&&!commander.routed&&
+  Math.hypot(commander.x-s.x,commander.y-s.y)<230;
+ const nearbySupport=!commander&&allies>=2&&s.disc>=55;
+ if(t-s.brokenAt>2.2&&enemies===0&&(commanderCanRally||nearbySupport)){
+  s.stress=Math.max(0,s.stress-dt*(13+s.disc*.11));
+  if(s.stress<52){
+   s.broken=false;s.brokenAt=-1;s.rallies++;s.decision=.2;
+   s.cooldown=Math.max(s.cooldown,.45);
+   const stat=combatLabStats(s.team);if(stat)stat.rallies++;
+   return;
+  }
+ }
+ fleeFromEnemies(s,dt);
+ if(s.routed){const stat=combatLabStats(s.team);if(stat)stat.routes++;}
+}
 // Move selection balances armor vulnerability, stamina, variety and groups.
 function chooseCombatMove(s,target){
  const weapon=weaponProfiles[s.weapon],available=weapon.moves;
@@ -1542,7 +1637,7 @@ function applyWeaponImpact(attacker,target,a){
  }
  const weapon=a.projectile?rangedProfiles[a.projectile]:weaponProfiles[attacker.weapon],heavy=a.move.style==='heavy';
  // Physical hits and blocks happen regardless of friendly health immunity.
- if(target.team==='foe'||labMode){
+ if(target.team==='foe'||labMode||realismActive()){
   target.hp=Math.max(0,target.hp-actual);
   const style=attackStyles[a.move.style];
   target.stress=clamp(target.stress+style.stress*(.15+.85*actual/Math.max(.01,a.baseDamage)),0,100);
@@ -1591,15 +1686,23 @@ function applyWeaponImpact(attacker,target,a){
   x:target.x,y:target.y,a:Math.atan2(target.y-attacker.y,target.x-attacker.x),
   life:shield.guardBroken?.48:.26,duration:shield.guardBroken?.48:.26,
   type:a.move.style,team:attacker.team});
- if((target.team==='foe'||labMode)&&target.hp<=0){
+ if((target.team==='foe'||labMode||realismActive())&&target.hp<=0&&!target.dead){
   target.dead=true;target.stress=100;
-  for(const n of members(target.team)){
+  // Some casualties survive their wounds but are unable to keep fighting.
+  // They are removed from combat exactly like fatalities, never respawned.
+  target.woundedOut=realismActive()&&rnd(target.id*37+a.id*17+9)<.28;
+  target.fatal=!target.woundedOut;
+  for(const n of (realismActive()?members(target.team):members(target.team))){
    if(n===target||n.dead||n.broken||n.routed)continue;
    const d=Math.hypot(n.x-target.x,n.y-target.y);
-   if(d<88)n.stress=clamp(n.stress+stressBalance.allyKilled*(1-d/100),0,100);
+   if(d<110)n.stress=clamp(n.stress+
+     stressBalance.allyKilled*(target.isCommander?2.3:1)*(1-d/130),0,100);
   }
-  if(labMode&&activeLab)activeLab.stats[attacker.team].kills++;
-  if(!labMode)respawnEnemy(target);
+  if(labMode&&activeLab){
+   if(target.woundedOut)activeLab.stats[target.team].incapacitated++;
+   else activeLab.stats[attacker.team].kills++;
+  }
+  if(!labMode&&!realismActive())respawnEnemy(target);
  }
  return true;
 }
@@ -2129,11 +2232,16 @@ function step(dt){
   // Stamina restores while not recovering from a swing; movement uses some.
   s.recoveryDelay=Math.max(0,s.recoveryDelay-dt);
   if(s.recoveryDelay===0)s.stamina=clamp(s.stamina+dt*(6.7+(s.skill||45)*.012),0,s.maxStamina);
-  if(s.broken){s.attack=null;s.guardActive=false;s.guardHold=0;s.stress=100;fleeFromEnemies(s,dt);if(!labMode&&s.routed&&s.team==='foe')respawnEnemy(s);continue;}
+  if(s.broken){handleBrokenSoldier(s,dt);continue;}
   const {target,dist}=chooseTarget(s);
   // Ranged units keep their bow in hand until a genuine melee threat.
   s.meleeReady=!!(isArcher(s)&&target&&dist<=meleeThreatRange(s));
-  if(s.team==='foe'&&!labMode){
+  if(realismActive()){
+   combatMoraleTick(s,dt,dist);
+   const breakingPoint=stressBalance.breakingBase+s.disc*stressBalance.disciplineResistance+
+    rnd(s.id+23)*5;
+   if(s.stress>breakingPoint){panic(s);continue;}
+  }else if(s.team==='foe'&&!labMode){
    if(dist<reach*1.5)s.stress=clamp(s.stress+dt*stressBalance.closeThreat,0,100);
    else if(dist<72)s.stress=clamp(s.stress+dt*stressBalance.nearThreat,0,100);
    else s.stress=clamp(s.stress-dt*(stressBalance.recovery+s.disc/100),0,100);
@@ -2714,6 +2822,34 @@ const labSquadScenarios=[
    {count:3,unitRole:'cavalry',weapon:'sword',shield:'round',armor:'mail',horseArmor:'mail'},
    {count:3,unitRole:'horseArcher',weapon:'shortsword',ranged:'horsebow',shield:null,armor:'leather',horseArmor:'none'}]}}
 ];
+const labOutcomeScenarios=[
+ {name:'Recruit panic vs veterans',counts:[8,8],
+  green:{unitRole:'infantry',weapon:'sword',shield:'round',armor:'leather',experience:'recruit',familiarity:'novice'},
+  red:{unitRole:'infantry',weapon:'sword',shield:'round',armor:'mail',experience:'veteran',familiarity:'expert'}},
+ {name:'Surrounded militia surrender',counts:[5,10],
+  green:{unitRole:'infantry',weapon:'spear',shield:'round',armor:'padded',experience:'recruit',familiarity:'novice'},
+  red:{unitRole:'infantry',weapon:'sword',shield:'round',armor:'mail',experience:'veteran',familiarity:'expert'}},
+ {name:'Disciplined shieldwall',counts:[8,10],
+  green:{unitRole:'infantry',weapon:'spear',shield:'round',armor:'mail',experience:'elite',familiarity:'expert'},
+  red:{unitRole:'infantry',weapon:'axe',shield:null,armor:'leather',experience:'recruit',familiarity:'novice'}},
+ {name:'Archer volleys and morale',counts:[9,9],
+  green:{experience:'trained',familiarity:'practiced',squads:[
+   {count:5,unitRole:'infantry',weapon:'sword',shield:'round',armor:'leather'},
+   {count:4,unitRole:'archer',weapon:'shortsword',ranged:'bow',shield:null,armor:'leather'}]},
+  red:{unitRole:'infantry',weapon:'sword',shield:'round',armor:'padded',experience:'recruit',familiarity:'novice'}},
+ {name:'Cavalry shock breaks infantry',counts:[6,9],
+  green:{unitRole:'cavalry',weapon:'lance',shield:'round',horseArmor:'mail',armor:'mail',experience:'veteran',familiarity:'expert'},
+  red:{unitRole:'infantry',weapon:'sword',shield:'round',armor:'leather',experience:'recruit',familiarity:'novice'}},
+ {name:'Combined arms attrition',counts:[12,12],
+  green:{experience:'trained',familiarity:'practiced',squads:[
+   {count:6,unitRole:'infantry',weapon:'spear',shield:'round',armor:'mail'},
+   {count:4,unitRole:'archer',weapon:'shortsword',ranged:'bow',shield:null,armor:'leather'},
+   {count:2,unitRole:'cavalry',weapon:'sword',shield:'round',horseArmor:'leather',armor:'mail'}]},
+  red:{experience:'trained',familiarity:'practiced',squads:[
+   {count:7,unitRole:'infantry',weapon:'sword',shield:'round',armor:'mail'},
+   {count:3,unitRole:'archer',weapon:'shortsword',ranged:'crossbow',shield:null,armor:'leather'},
+   {count:2,unitRole:'cavalry',weapon:'lance',shield:'round',horseArmor:'leather',armor:'mail'}]}}
+];
 let labPreset='matchups';
 function labGearLabel(gear){
  if(gear.squads)return gear.squads.map(s=>s.count+' '+s.unitRole).join(' + ');
@@ -2735,7 +2871,8 @@ function updateLabTitles(){
  btn.textContent=labPreset==='matchups'?'⚖ Fairness check':
   labPreset==='mirrors'?'🐎 Mount tests':
   labPreset==='mounts'?'⚔ Polearm tests':
-  labPreset==='polearms'?'🛡 Squad tests':'⚔ Skill matchups';
+  labPreset==='polearms'?'🛡 Squad tests':
+  labPreset==='squads'?'🏳 Morale & outcomes':'⚔ Skill matchups';
  btn.setAttribute('aria-pressed',labPreset==='mirrors'?'true':'false');
  document.getElementById('labPlainExplanation').textContent=labPreset==='mirrors'?
   'FAIRNESS CHECK: Both teams are identical. A result near 50/50 means the combat test is trustworthy. Large differences need investigation, allowing more variation for small samples.':
@@ -2745,6 +2882,8 @@ function updateLabTitles(){
   'POLEARM TESTS: Spears, pikes, shielded infantry, mounted charges, bracing and minimum-reach weaknesses are tested together.':
  labPreset==='squads'?
   'SQUAD TESTS: Infantry retain formation lanes, archers use infantry screens, mounted troops flank exposed bows, and reserves deploy under pressure.':
+ labPreset==='outcomes'?
+  'OUTCOME TESTS: Both armies can die, become incapacitated, flee, surrender or rally. Casualties cause morale pressure and complete battles have a victor.':
   'RANGED MATCHUPS: Arrows, bolts and javelins have travel time. Shields, armor, skill, ammo and melee rushes affect who wins.';
  document.getElementById('labAnalysisHowToRead').textContent=labPreset==='mirrors'?
   'Same gear, rank, proficiency and numbers on both sides. Green and red should each win about half the fights. Minor differences are normal; large consistent differences mean the test is biased.':
@@ -2754,23 +2893,25 @@ function updateLabTitles(){
    'A ready pike can wound a horse and stop its hooves before impact. A close swordsman can exploit the long weapon minimum reach. Use braces and stopped charges to judge this match-up.':
   labPreset==='squads'?
    'Mixed forces are real infantry, archer, cavalry and mounted-archer squads. Compare their movement, infantry cohesion, ranged shots and charge outcomes.':
+  labPreset==='outcomes'?
+   'A losing army can surrender or flee instead of dying to the last soldier. Record killed, incapacitated, routes and surrenders; compare veteran discipline against recruits.':
    'Green and red are the two sides. A 70% win rate means 7 wins out of 10 decisive fights. Bigger armor, weapon, number or skill advantages may legitimately cause one-sided results.';
 }
 function setLabPreset(mode){
  labPreset=mode;
- const options=mode==='mirrors'?labMirrorScenarios:mode==='mounts'?labMountScenarios:mode==='polearms'?labPolearmScenarios:mode==='squads'?labSquadScenarios:labMatchupScenarios;
+ const options=mode==='mirrors'?labMirrorScenarios:mode==='mounts'?labMountScenarios:mode==='polearms'?labPolearmScenarios:mode==='squads'?labSquadScenarios:mode==='outcomes'?labOutcomeScenarios:labMatchupScenarios;
  options.forEach((v,i)=>Object.assign(labScenarios[i],{
   name:v.name,counts:[...v.counts],green:{...v.green},red:{...v.red}
  }));
  initLab();
 }
 document.getElementById('labPresetButton').addEventListener('click',()=>{
- setLabPreset(labPreset==='matchups'?'mirrors':labPreset==='mirrors'?'mounts':labPreset==='mounts'?'polearms':labPreset==='polearms'?'squads':'matchups');
+ setLabPreset(labPreset==='matchups'?'mirrors':labPreset==='mirrors'?'mounts':labPreset==='mounts'?'polearms':labPreset==='polearms'?'squads':labPreset==='squads'?'outcomes':'matchups');
 });
 const labSeconds=3600,labStepSeconds=.04,labWorldW=440,labWorldH=210,labMatchTimeout=75;
 let labArenas=[],labPaused=false,labTurn=0,labLastDraw=0,labAnalysisOpen=false,labAnalysisLast=0;
 const labCanvasNodes=Array.from({length:6},(_,i)=>document.getElementById('labCanvas'+i));
-function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0,parries:0,failedParries:0,counters:0,misses:0,shots:0,rangedHits:0,rangedMisses:0,friendlyStops:0,mountHits:0,dismounts:0,horseCharges:0,braces:0,chargeStops:0,flankArrivals:0,reserveDeployments:0};}
+function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0,parries:0,failedParries:0,counters:0,misses:0,shots:0,rangedHits:0,rangedMisses:0,friendlyStops:0,mountHits:0,dismounts:0,horseCharges:0,braces:0,chargeStops:0,flankArrivals:0,reserveDeployments:0,panics:0,surrenders:0,routes:0,rallies:0,incapacitated:0};}
 function activateLab(ar){
  activeLab=ar;W=labWorldW;H=labWorldH;t=ar.seconds;mode='attack';
  friends=ar.friends;foes=ar.foes;slashes=ar.slashes;projectiles=ar.projectiles;groundedShots=ar.groundedShots;
@@ -2974,17 +3115,22 @@ function updateLabHUD(){
    a.rounds+' fights · '+(a.stats.friend.damage+a.stats.foe.damage).toFixed(0)+' dmg'+
     (labPreset==='mounts'?' · '+(a.stats.friend.horseCharges+a.stats.foe.horseCharges)+' charges':
      labPreset==='polearms'?' · '+(a.stats.friend.braces+a.stats.foe.braces)+' braces':
-     labPreset==='squads'?' · '+(a.stats.friend.flankArrivals+a.stats.foe.flankArrivals)+' flank arrivals':'');
+     labPreset==='squads'?' · '+(a.stats.friend.flankArrivals+a.stats.foe.flankArrivals)+' flank arrivals':
+     labPreset==='outcomes'?' · '+(a.stats.friend.panics+a.stats.foe.panics)+' morale breaks':'');
   document.getElementById('labBlocks'+a.index).textContent=
    (a.stats.friend.blocks+a.stats.foe.blocks)+' blocks · '+
     (labPreset==='mounts'?((a.stats.friend.dismounts+a.stats.foe.dismounts)+' dismounts'):
      labPreset==='polearms'?((a.stats.friend.chargeStops+a.stats.foe.chargeStops)+' horse stops'):
      labPreset==='squads'?((a.stats.friend.reserveDeployments+a.stats.foe.reserveDeployments)+' reserve deployments'):
+     labPreset==='outcomes'?((a.stats.friend.surrenders+a.stats.foe.surrenders)+' surrendered · '+
+       (a.stats.friend.routes+a.stats.foe.routes)+' fled · '+
+       (a.stats.friend.incapacitated+a.stats.foe.incapacitated)+' incapacitated'):
      ((a.stats.friend.parries+a.stats.foe.parries)+' parries'));
  }
  document.getElementById('labSummary').textContent=
   aggregate.fights+' fights · '+aggregate.kills+' kills · '+aggregate.blocks+
-  ' blocks · '+aggregate.parries+' parries · '+aggregate.rangedHits+'/'+aggregate.shots+' ranged hits/shots · Both sides vulnerable';
+  ' blocks · '+aggregate.parries+' parries · '+aggregate.rangedHits+'/'+aggregate.shots+' ranged hits/shots · Both sides vulnerable'+
+   (labPreset==='outcomes'?' · casualties, morale and surrender ENABLED':'');
  const leaders=labArenas.filter(a=>{const decisive=a.greenWins+a.redWins;return a.done&&decisive>=10&&Math.abs(a.greenWins/decisive-.5)>=.055;}).length;
  const mirrorPass=labArenas.filter(a=>{
   const decisive=a.greenWins+a.redWins;
