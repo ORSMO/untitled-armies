@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V3.0</title>
+<title>Untitled Armies — V3.1</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -201,7 +201,7 @@ body.lab-mode .lab-area{display:flex}
     <div class="top-actions">
       <a class="lab-classic-link" href="classic.html" title="Open original 50v50 battlefield">Classic battlefield</a>
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 3.0">V3.0</div>
+      <div class="build" aria-label="Version 3.1">V3.1</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
@@ -540,11 +540,15 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   s.mountHp=s.mounted?3.6:0;s.mountMaxHp=s.mounted?3.6:0;
   s.horseStamina=s.mounted?100:0;
   s.gallop=0;s.chargeCooldown=0;s.regroupUntil=0;
+  // Forward-only horse locomotion: heading, momentum, and braking persist.
+  s.mountHeading=s.team==='friend'?0:Math.PI;
+  s.mountSpeed=0;s.mountTurn=0;s.mountDistance=0;
   s.chargeHits=0;s.horseHits=0;s.dismounts=0;
  }
  function dismount(s){
   if(!isCavalry(s))return;
   s.mounted=false;s.mountHp=0;s.horseStamina=0;s.gallop=0;
+  s.mountSpeed=0;s.mountTurn=0;
   s.regroupUntil=0;s.chargeCooldown=0;s.dismounts++;
   s.unitRole=s.unitRole==='horseArcher'?'archer':'infantry';
   if(s.weapon==='lance')s.weapon='sword';
@@ -1578,7 +1582,53 @@ function updateShieldGuard(s,dt){
  }
 }
 
-function approach(s,x,y,dt,mult=1){const dx=x-s.x,dy=y-s.y,dist=Math.hypot(dx,dy);if(dist<.45)return;const n=Math.min(dist,s.speed*mult*dt);s.x+=dx/dist*n;s.y+=dy/dist*n;s.facing=dx>=0?1:-1;}
+// Horses have mass and a forward heading. They accelerate, brake and turn
+// over time, unlike foot soldiers who can change direction immediately.
+const horseMotion={accel:127,brake:173,coast:133,turnLow:3.15,turnFast:1.00};
+function moveMount(s,x,y,dt,mult=1){
+ const dx=x-s.x,dy=y-s.y,distance=Math.hypot(dx,dy);
+ const barding=horseArmorProfiles[s.horseArmor]||horseArmorProfiles.none;
+ const agility=clamp(1-barding.weight*.083, .69,1);
+ const health=clamp(s.mountHp/Math.max(.1,s.mountMaxHp),.35,1);
+ const speed=Math.max(0,s.mountSpeed||0);
+ const heading=Number.isFinite(s.mountHeading)?s.mountHeading:s.faceAngle;
+ const maxSpeed=Math.max(0,s.speed*Math.max(0,mult));
+ // The turn rate falls as the horse gathers speed. Heavy barding and wounds
+ // make wide galloping turns, but do not prevent a slow pivot.
+ const ratio=clamp(speed/Math.max(60,s.speed*2.15),0,1);
+ const turnRate=(horseMotion.turnLow-(horseMotion.turnLow-horseMotion.turnFast)*ratio)*agility*
+   (.82+.18*health);
+ const bearing=distance>.4?Math.atan2(dy,dx):heading;
+ const angleError=Math.atan2(Math.sin(bearing-heading),Math.cos(bearing-heading));
+ const yaw=clamp(angleError,-turnRate*dt,turnRate*dt);
+ s.mountHeading=heading+yaw;
+ s.mountTurn=yaw/Math.max(dt,.001);
+ const braking=horseMotion.brake*(.83+.17*agility);
+ const turningFactor=clamp(1-Math.abs(angleError)/Math.PI*.90,.21,1);
+ // Slow down BEFORE the target rather than instantly stopping or reversing.
+ const stoppingSpeed=Math.sqrt(2*braking*Math.max(0,distance-6));
+ const wantedSpeed=(distance<.8||mult<=0||s.stagger>0)?0:
+  Math.min(maxSpeed*turningFactor,stoppingSpeed);
+ const acceleration=horseMotion.accel*(.85+.15*agility)*(.78+.22*health);
+ const change=wantedSpeed>speed?acceleration:braking;
+ s.mountSpeed=clamp(speed+clamp(wantedSpeed-speed,-change*dt,change*dt),0,Math.max(0,maxSpeed+5));
+ const step=s.mountSpeed*dt;
+ const nx=clamp(s.x+Math.cos(s.mountHeading)*step,11,W-11);
+ const ny=clamp(s.y+Math.sin(s.mountHeading)*step,11,H-11);
+ const traveled=Math.hypot(nx-s.x,ny-s.y);
+ s.x=nx;s.y=ny;s.mountDistance+=traveled;
+ // Hitting an arena edge absorbs momentum. A horse cannot gallop forever
+ // through the boundary, and can still steer away to continue moving.
+ if(step>2&&traveled<step*.45)s.mountSpeed=Math.min(s.mountSpeed,12);
+ s.facing=Math.cos(s.mountHeading)>=0?1:-1;
+}
+function approach(s,x,y,dt,mult=1){
+ if(isCavalry(s))return moveMount(s,x,y,dt,mult);
+ const dx=x-s.x,dy=y-s.y,dist=Math.hypot(dx,dy);
+ if(dist<.45)return;
+ const n=Math.min(dist,s.speed*mult*dt);
+ s.x+=dx/dist*n;s.y+=dy/dist*n;s.facing=dx>=0?1:-1;
+}
 // Soldiers occupy physical space. Separate living soldiers after movement, even
 // if both teams or multiple soldiers try to reach exactly the same spot.
 // Giving panicking and undisciplined soldiers more yield keeps disciplined
@@ -2000,14 +2050,20 @@ function step(dt){
   const mountPace=isCavalry(s)?(dist<100?1.18:2.04)*
    barding.speed*staminaFactor*woundFactor:1;
   const oldX=s.x,oldY=s.y;
-  if(command!=='stop')approach(s,moveX,moveY,dt,pace*disciplineControl*fatiguePace*loadPace*fightingPace*mountPace);
+  // STOP brakes an actual horse; foot soldiers still stop immediately.
+  if(command!=='stop'||isCavalry(s))
+   approach(s,moveX,moveY,dt,command==='stop'?0:
+    pace*disciplineControl*fatiguePace*loadPace*fightingPace*mountPace);
   s.stamina=clamp(s.stamina-Math.hypot(s.x-oldX,s.y-oldY)*(.042+equipment*.004),0,s.maxStamina);
   s.vx=(s.x-oldX)/Math.max(.001,dt);s.vy=(s.y-oldY)/Math.max(.001,dt);
   if(isCavalry(s)){
    const speed=Math.hypot(s.vx,s.vy);
    s.horseStamina=clamp(s.horseStamina+
     dt*(speed>52?-7.4:speed<18?13:2.5),0,100);
-   s.gallop=clamp(s.gallop+(speed>53&&s.horseStamina>13?dt*.68:-dt*1.35),0,1);
+   // Charge momentum reflects *actual forward speed* and horse fatigue.
+   const strideFactor=clamp((speed-34)/68,0,1);
+   s.gallop=clamp(s.gallop+clamp(
+    (s.horseStamina>13?strideFactor:0)-s.gallop,-dt*1.9,dt*1.25),0,1);
    s.chargeCooldown=Math.max(0,(s.chargeCooldown||0)-dt);
    // A horse collides with a prepared spear point before it gets inside
    // its normal 66-unit trampling radius. A moving flank bypasses this.
@@ -2118,7 +2174,7 @@ function drawUnit(s){if(s.routed)return;
  const x=s.x-Math.cos(s.faceAngle)*lean,y=s.y+bob-Math.sin(s.faceAngle)*lean;
  if(isCavalry(s)&&!s.dead){
   // Horse body, head, and legs, visually distinct from a foot soldier.
-  ctx.save();ctx.translate(x,y+5);ctx.rotate(s.faceAngle);
+  ctx.save();ctx.translate(x,y+5);ctx.rotate(s.mountHeading??s.faceAngle);
   ctx.fillStyle=s.team==='friend'?'#947654':'#84634d';
   ctx.beginPath();ctx.ellipse(-3,2,19,9,0,0,Math.PI*2);ctx.fill();
   ctx.beginPath();ctx.ellipse(16,-1,8,5,-.2,0,Math.PI*2);ctx.fill();
