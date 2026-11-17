@@ -693,6 +693,7 @@ const shieldProfiles={
     u.tx=slots[i].x;u.ty=slots[i].y;
    });
   }
+  allocateSquadReserves(team);squadStates[team]=null;
   nextEngagementPlan=0;
  }
  // Attack timing is split into wind-up, physical active frames and recovery.
@@ -843,6 +844,8 @@ function focusArmy(){
   friends=formation('friend',a.x,a.y).map((p,i)=>create('friend',i,p));
   foes=formation('foe',b.x,b.y).map((p,i)=>create('foe',i,p));
    // Preserve configured personalities across battles; clear stale orders.
+  squadStates={friend:null,foe:null};
+  allocateSquadReserves('friend');allocateSquadReserves('foe');
   commanders.friend=createCommander('friend');commanders.foe=createCommander('foe');
   commanderBrains.friend=newBrain(commanderBrains.friend.personality);
   commanderBrains.foe=newBrain(commanderBrains.foe.personality);
@@ -867,6 +870,7 @@ function respawnEnemy(s){
  const fresh=create('foe',index,{x,y});
  const slot=formation('foe',home('foe').x,home('foe').y)[index];
  Object.assign(s,fresh,{anchorX:slot.x,anchorY:slot.y,tx:slot.x,ty:slot.y,hitFlash:.22});
+ squadStates.foe=null;allocateSquadReserves('foe');
  nextEngagementPlan=0;
 }
 function members(team){return [...(team==='friend'?friends:foes),...(
@@ -911,16 +915,17 @@ function updateSquadState(team){
  const pressed=archers.filter(a=>enemy.some(e=>Math.hypot(e.x-a.x,e.y-a.y)<110)).length;
  const frontline=groups.infantry.troops;
  const threatenedLine=frontline.filter(a=>enemy.some(e=>Math.hypot(e.x-a.x,e.y-a.y)<125)).length;
- const initialInfantry=frontline.filter(s=>s.squadInitialInfantry!==false).length;
  const pressure=frontline.length?threatenedLine/frontline.length:0;
  const previous=squadStates[team];
+ const initialInfantry=previous?.initialInfantryCount||
+   (team==='friend'?friends:foes).filter(s=>s.squadInitialInfantry).length;
  const release=!!previous?.reserveReleased||
   (frontline.length>=6&&(pressure>.32||pressed>=Math.max(2,archers.length*.23)))||
   (initialInfantry>0&&frontline.length<initialInfantry*.72);
  const fewerTop=enemy.filter(s=>s.y<enemyCenter.y).length;
  const fewerBottom=enemy.length-fewerTop;
  const flankSide=fewerBottom<fewerTop?1:fewerTop<fewerBottom?-1:team==='friend'?1:-1;
- squadStates[team]={groups,enemyCenter,pressure,
+ squadStates[team]={groups,enemyCenter,pressure,initialInfantryCount:initialInfantry,
   archerPressure:archers.length?pressed/archers.length:0,
   reserveReleased:release,flankSide,
   cohesion:own.length?squadRoles.reduce((n,r)=>n+groups[r].cohesion*groups[r].count,0)/own.length:1};
