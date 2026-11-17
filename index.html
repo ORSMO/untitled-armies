@@ -1979,11 +1979,21 @@ function drawUnit(s){if(s.routed)return;
   ctx.fillStyle=s.team==='friend'?'#947654':'#84634d';
   ctx.beginPath();ctx.ellipse(-3,2,19,9,0,0,Math.PI*2);ctx.fill();
   ctx.beginPath();ctx.ellipse(16,-1,8,5,-.2,0,Math.PI*2);ctx.fill();
+  const barding=horseArmorProfiles[s.horseArmor]||horseArmorProfiles.none;
+  if(s.horseArmor&&s.horseArmor!=='none'){
+   ctx.fillStyle=barding.color;
+   ctx.beginPath();ctx.ellipse(-4,0,13,7,0,0,Math.PI*2);ctx.fill();
+   ctx.strokeStyle='#3d3a36';ctx.lineWidth=1;ctx.stroke();
+  }
   ctx.strokeStyle='#534437';ctx.lineWidth=3;
   ctx.beginPath();ctx.moveTo(-13,5);ctx.lineTo(-18,17);
   ctx.moveTo(7,5);ctx.lineTo(12,17);
   ctx.moveTo(-18,-1);ctx.lineTo(-25,-5);ctx.stroke();
   ctx.restore();
+  // The mount's amber health bar is separate from the rider's health bar.
+  ctx.fillStyle='#2b2115';ctx.fillRect(x-17,y+25,34,3.5);
+  ctx.fillStyle=s.mountHp<s.mountMaxHp*.33?'#f09a73':'#e8c779';
+  ctx.fillRect(x-17,y+25,34*clamp(s.mountHp/s.mountMaxHp,0,1),3.5);
  }
  if(s.dead){ctx.fillStyle='#101f1ac0';ctx.beginPath();ctx.ellipse(x,y+3,8,4,.4,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ba9d92a6';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-4,y-4);ctx.lineTo(x+4,y+4);ctx.moveTo(x+4,y-4);ctx.lineTo(x-4,y+4);ctx.stroke();return;}
  if(selected&&s.team==='friend'){ctx.beginPath();ctx.arc(x,y,13,0,2*Math.PI);ctx.lineWidth=1.4;ctx.strokeStyle=s.broken?'#ffb28b':'#d2ffe0c2';ctx.stroke();}
@@ -2193,7 +2203,7 @@ let labPreset='matchups';
 function labGearLabel(gear){
  return ((gear.unitRole|| (rangedProfiles[gear.ranged]?'Archer':'Infantry')))+' · '+
   (gear.experience||'mixed')+' / '+(gear.familiarity||'mixed')+' · '+
-  gear.weapon+' · '+gear.armor+(gear.shield?' / '+gear.shield:'')+(gear.ranged?' · 🏹 '+gear.ranged:'');
+  gear.weapon+' · '+gear.armor+(gear.horseArmor&&gear.horseArmor!=='none'?' · horse '+gear.horseArmor:'')+(gear.shield?' / '+gear.shield:'')+(gear.ranged?' · 🏹 '+gear.ranged:'');
 }
 function updateLabTitles(){
  for(let i=0;i<labScenarios.length;i++){
@@ -2255,12 +2265,14 @@ function startLabRound(ar){
    Object.assign(soldier,gear);
    // Existing lab scenarios define ranged gear without explicit role tags.
    // Infer Archer for equipped missile fighters; Infantry otherwise.
-   soldier.unitRole=['infantry','archer','cavalry'].includes(gear.unitRole)?
+    soldier.unitRole=['infantry','archer','cavalry','horseArcher'].includes(gear.unitRole)?
     gear.unitRole:(rangedProfiles[gear.ranged]?'archer':'infantry');
-   soldier.ranged=soldier.unitRole==='archer'?
-    (rangedProfiles[soldier.ranged]?soldier.ranged:'bow'):null;
+   soldier.ranged=soldier.unitRole==='horseArcher'?'horsebow':
+    soldier.unitRole==='archer'?
+     (rangedProfiles[soldier.ranged]?soldier.ranged:'bow'):null;
+   soldier.horseArmor=horseArmorProfiles[gear.horseArmor]?gear.horseArmor:'none';
    setFighterTraining(soldier,team,i,gear.experience,gear.familiarity,gear.rangedMastery);
-   initializeRangedEquipment(soldier);
+   initializeRangedEquipment(soldier);initMount(soldier);
    // Small individual variations, no extra health or armor from experience.
    const seed=ar.index*7019+ar.rounds*131+i*117+(team==='friend'?23:97);
    soldier.skill=clamp(soldier.skill+Math.round((rnd(seed)-.5)*8),8,98);
@@ -2466,6 +2478,19 @@ function drawLabArena(ar){
   const armor=armorProfiles[s.armor],shield=shieldProfiles[s.shield];
   const bodyColor=s.team==='friend'?'#75e8a3':'#ed8a7c';
   ctx.fillStyle='#0b1f18aa';ctx.beginPath();ctx.ellipse(s.x,s.y+5,10,4,0,0,Math.PI*2);ctx.fill();
+  if(isCavalry(s)){
+   const horseBarding=horseArmorProfiles[s.horseArmor]||horseArmorProfiles.none;
+   ctx.save();ctx.translate(s.x,s.y+4);ctx.rotate(s.faceAngle);
+   ctx.fillStyle=s.team==='friend'?'#967551':'#846048';
+   ctx.beginPath();ctx.ellipse(-3,1,18,8,0,0,Math.PI*2);ctx.fill();
+   ctx.beginPath();ctx.ellipse(14,0,7,5,0,0,Math.PI*2);ctx.fill();
+   if(s.horseArmor!=='none'){
+    ctx.fillStyle=horseBarding.color;ctx.beginPath();ctx.ellipse(-5,0,12,6,0,0,Math.PI*2);ctx.fill();
+   }
+   ctx.restore();
+   ctx.fillStyle='#271d13';ctx.fillRect(s.x-14,s.y+27,28,3);
+   ctx.fillStyle='#e4c27a';ctx.fillRect(s.x-14,s.y+27,28*clamp(s.mountHp/s.mountMaxHp,0,1),3);
+  }
   ctx.fillStyle=s.hitFlash>0?'#fff3aa':bodyColor;
   ctx.strokeStyle=armor?.color||'#fff';ctx.lineWidth=2.2;
   ctx.beginPath();ctx.arc(s.x,s.y,9,0,Math.PI*2);ctx.fill();ctx.stroke();
