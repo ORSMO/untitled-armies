@@ -1716,6 +1716,8 @@ function advanceRangedAim(s,target,dt){
 
 function updateProjectiles(dt){
  if(!projectiles.length)return;
+ // A collision roster is shared by all arrows in the current timestep.
+ const targets=[...friends,...foes];
  const active=[];
  for(const p of projectiles){
   // The previous version kept moving until max weapon range, even after
@@ -1728,7 +1730,7 @@ function updateProjectiles(dt){
   const seg={ax:x1,ay:y1,bx:x2,by:y2};
   const dx=x2-x1,dy=y2-y1,dsq=dx*dx+dy*dy;
   let closest=null,at=Infinity;
-  for(const other of [...friends,...foes]){
+  for(const other of targets){
    if(other.dead||other.routed||other.broken||
       (other.team===p.team&&other.id===p.shooterId))continue;
    // Lofted arrows, bolts and javelins are fired OVER friendly ranks,
