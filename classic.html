@@ -319,6 +319,10 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
    <button type="button" data-matchup="skirmish">Javelins vs bows</button>
    <button type="button" data-matchup="cavalry">Cavalry vs infantry</button>
    <button type="button" data-matchup="combined">Combined armies</button>
+   <button type="button" data-matchup="horseArchers">Horse archers</button>
+   <button type="button" data-matchup="armoredCavalry">Armored cavalry</button>
+   <button type="button" data-matchup="swordCharge">Horse charges · swords</button>
+   <button type="button" data-matchup="grandArmy">Grand army · all four</button>
   </div>
   <div class="equipment-grid"><div class="equipment-side">
    <h3>🟢 YOUR ARMY · 50 SOLDIERS</h3>
@@ -326,15 +330,19 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 <select id="friendUnitRole"><option value="infantry">⚔ Infantry — melee first</option>
 <option value="archer">🏹 Archer — ranged first</option>
 <option value="mixed">Infantry + Archers (half each)</option>
-<option value="cavalry">🐎 Cavalry — mounted charges</option><option value="combined">Combined army (20/20/10)</option></select></div>
+<option value="cavalry">🐎 Cavalry — mounted charges</option><option value="combined">Combined army (20/20/10)</option><option value="horseArcher">🏇 Mounted archer — compact bow</option><option value="grandArmy">Grand army (20/15/10/5)</option></select></div>
 <div class="equipment-field"><label for="friendWeapon">Weapon</label><select id="friendWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option><option value="lance">Cavalry lance</option></select></div>
 <div class="equipment-field"><label for="friendRanged">Ranged</label><select id="friendRanged">
-<option value="none">No ranged weapon</option><option value="bow">War bow · 18 arrows</option><option value="crossbow">Crossbow · 12 bolts</option><option value="javelin">Javelins · 6 throws</option><option value="mixed">Mixed ranged weapons</option>
+<option value="none">No ranged weapon</option><option value="bow">War bow · 18 arrows</option><option value="crossbow">Crossbow · 12 bolts</option><option value="javelin">Javelins · 6 throws</option><option value="horsebow">Compact horse bow · 24 arrows</option><option value="mixed">Mixed ranged weapons</option>
 </select></div>
 <div class="equipment-field"><label for="friendRangedMastery">Ranged skill</label><select id="friendRangedMastery">
 <option value="same">Same as melee skill</option>
 <option value="novice">Novice · 18</option><option value="practiced">Practiced · 56</option>
 <option value="expert">Expert · 85</option><option value="master">Master · 97</option>
+</select></div>
+<div class="equipment-field"><label for="friendHorseArmor">Horse armour</label><select id="friendHorseArmor">
+<option value="none">No barding · fastest</option><option value="leather">Leather barding · light</option>
+<option value="mail">Mail barding · medium</option><option value="plate">Plate barding · armored, slow</option>
 </select></div>
 <div class="equipment-field"><label for="friendShield">Shield</label><select id="friendShield"><option value="mixed">Mixed shields</option><option value="none">No shield</option><option value="buckler">Buckler</option><option value="round">Round shield</option><option value="kite">Kite shield</option><option value="tower">Tower shield</option></select></div>
 <div class="equipment-field"><label for="friendArmor">Armor</label><select id="friendArmor"><option value="mixed">Mixed armor</option><option value="naked">Unarmored</option><option value="padded">Padded</option><option value="leather">Leather</option><option value="mail">Mail</option><option value="plate">Plate</option></select></div>
@@ -349,15 +357,19 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 <select id="foeUnitRole"><option value="infantry">⚔ Infantry — melee first</option>
 <option value="archer">🏹 Archer — ranged first</option>
 <option value="mixed">Infantry + Archers (half each)</option>
-<option value="cavalry">🐎 Cavalry — mounted charges</option><option value="combined">Combined army (20/20/10)</option></select></div>
+<option value="cavalry">🐎 Cavalry — mounted charges</option><option value="combined">Combined army (20/20/10)</option><option value="horseArcher">🏇 Mounted archer — compact bow</option><option value="grandArmy">Grand army (20/15/10/5)</option></select></div>
 <div class="equipment-field"><label for="foeWeapon">Weapon</label><select id="foeWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option><option value="lance">Cavalry lance</option></select></div>
 <div class="equipment-field"><label for="foeRanged">Ranged</label><select id="foeRanged">
-<option value="none">No ranged weapon</option><option value="bow">War bow · 18 arrows</option><option value="crossbow">Crossbow · 12 bolts</option><option value="javelin">Javelins · 6 throws</option><option value="mixed">Mixed ranged weapons</option>
+<option value="none">No ranged weapon</option><option value="bow">War bow · 18 arrows</option><option value="crossbow">Crossbow · 12 bolts</option><option value="javelin">Javelins · 6 throws</option><option value="horsebow">Compact horse bow · 24 arrows</option><option value="mixed">Mixed ranged weapons</option>
 </select></div>
 <div class="equipment-field"><label for="foeRangedMastery">Ranged skill</label><select id="foeRangedMastery">
 <option value="same">Same as melee skill</option>
 <option value="novice">Novice · 18</option><option value="practiced">Practiced · 56</option>
 <option value="expert">Expert · 85</option><option value="master">Master · 97</option>
+</select></div>
+<div class="equipment-field"><label for="foeHorseArmor">Horse armour</label><select id="foeHorseArmor">
+<option value="none">No barding · fastest</option><option value="leather">Leather barding · light</option>
+<option value="mail">Mail barding · medium</option><option value="plate">Plate barding · armored, slow</option>
 </select></div>
 <div class="equipment-field"><label for="foeShield">Shield</label><select id="foeShield"><option value="mixed">Mixed shields</option><option value="none">No shield</option><option value="buckler">Buckler</option><option value="round">Round shield</option><option value="kite">Kite shield</option><option value="tower">Tower shield</option></select></div>
 <div class="equipment-field"><label for="foeArmor">Armor</label><select id="foeArmor"><option value="mixed">Mixed armor</option><option value="naked">Unarmored</option><option value="padded">Padded</option><option value="leather">Leather</option><option value="mail">Mail</option><option value="plate">Plate</option></select></div>
@@ -1368,8 +1380,8 @@ document.querySelector('#reset').addEventListener('click',populate);
        equipPanel=document.querySelector('#equipmentPanel'),
        equipFeedback=document.querySelector('#equipmentFeedback');
  const equipControls={
-  friend:{weapon:document.querySelector('#friendWeapon'),shield:document.querySelector('#friendShield'),armor:document.querySelector('#friendArmor'),ranged:document.querySelector('#friendRanged'),unitRole:document.querySelector('#friendUnitRole'),rangedMastery:document.querySelector('#friendRangedMastery'),experience:document.querySelector('#friendExperience'),familiarity:document.querySelector('#friendFamiliarity'),note:document.querySelector('#friendGearNote')},
-  foe:{weapon:document.querySelector('#foeWeapon'),shield:document.querySelector('#foeShield'),armor:document.querySelector('#foeArmor'),ranged:document.querySelector('#foeRanged'),unitRole:document.querySelector('#foeUnitRole'),rangedMastery:document.querySelector('#foeRangedMastery'),experience:document.querySelector('#foeExperience'),familiarity:document.querySelector('#foeFamiliarity'),note:document.querySelector('#foeGearNote')}
+  friend:{weapon:document.querySelector('#friendWeapon'),shield:document.querySelector('#friendShield'),armor:document.querySelector('#friendArmor'),ranged:document.querySelector('#friendRanged'),unitRole:document.querySelector('#friendUnitRole'),horseArmor:document.querySelector('#friendHorseArmor'),rangedMastery:document.querySelector('#friendRangedMastery'),experience:document.querySelector('#friendExperience'),familiarity:document.querySelector('#friendFamiliarity'),note:document.querySelector('#friendGearNote')},
+  foe:{weapon:document.querySelector('#foeWeapon'),shield:document.querySelector('#foeShield'),armor:document.querySelector('#foeArmor'),ranged:document.querySelector('#foeRanged'),unitRole:document.querySelector('#foeUnitRole'),horseArmor:document.querySelector('#foeHorseArmor'),rangedMastery:document.querySelector('#foeRangedMastery'),experience:document.querySelector('#foeExperience'),familiarity:document.querySelector('#foeFamiliarity'),note:document.querySelector('#foeGearNote')}
  };
  const equipPresets={
   mixed:{friend:{weapon:'mixed',shield:'mixed',armor:'mixed'},foe:{weapon:'mixed',shield:'mixed',armor:'mixed'}},
@@ -1381,7 +1393,11 @@ document.querySelector('#reset').addEventListener('click',populate);
   crossbows:{friend:{unitRole:'archer',weapon:'sword',ranged:'crossbow',shield:'none',armor:'padded',experience:'trained',familiarity:'practiced'},foe:{weapon:'sword',ranged:'none',shield:'kite',armor:'plate',experience:'trained',familiarity:'practiced',unitRole:'infantry'}},
   skirmish:{friend:{unitRole:'archer',weapon:'shortsword',ranged:'javelin',shield:'round',armor:'leather',experience:'veteran',familiarity:'expert'},foe:{unitRole:'archer',weapon:'shortsword',ranged:'bow',shield:'none',armor:'leather',experience:'veteran',familiarity:'expert'}},
   cavalry:{friend:{unitRole:'cavalry',weapon:'lance',ranged:'none',shield:'round',armor:'mail',experience:'veteran',familiarity:'expert'},foe:{unitRole:'infantry',weapon:'sword',ranged:'none',shield:'kite',armor:'mail',experience:'trained',familiarity:'practiced'}},
-  combined:{friend:{unitRole:'combined',weapon:'mixed',ranged:'bow',shield:'mixed',armor:'mixed',experience:'trained',familiarity:'practiced'},foe:{unitRole:'combined',weapon:'mixed',ranged:'bow',shield:'mixed',armor:'mixed',experience:'trained',familiarity:'practiced'}}
+  combined:{friend:{unitRole:'combined',weapon:'mixed',ranged:'bow',shield:'mixed',armor:'mixed',experience:'trained',familiarity:'practiced'},foe:{unitRole:'combined',weapon:'mixed',ranged:'bow',shield:'mixed',armor:'mixed',experience:'trained',familiarity:'practiced'}},
+  horseArchers:{friend:{unitRole:'horseArcher',weapon:'shortsword',ranged:'horsebow',horseArmor:'leather',shield:'none',armor:'leather',experience:'veteran',familiarity:'expert'},foe:{unitRole:'archer',weapon:'shortsword',ranged:'bow',horseArmor:'none',shield:'none',armor:'leather',experience:'veteran',familiarity:'expert'}},
+  armoredCavalry:{friend:{unitRole:'cavalry',weapon:'lance',ranged:'none',horseArmor:'plate',shield:'round',armor:'mail',experience:'veteran',familiarity:'expert'},foe:{unitRole:'cavalry',weapon:'lance',ranged:'none',horseArmor:'none',shield:'round',armor:'mail',experience:'veteran',familiarity:'expert'}},
+  swordCharge:{friend:{unitRole:'cavalry',weapon:'sword',ranged:'none',horseArmor:'leather',shield:'round',armor:'mail',experience:'veteran',familiarity:'expert'},foe:{unitRole:'infantry',weapon:'sword',ranged:'none',horseArmor:'none',shield:'kite',armor:'mail',experience:'trained',familiarity:'practiced'}},
+  grandArmy:{friend:{unitRole:'grandArmy',weapon:'mixed',ranged:'bow',horseArmor:'leather',shield:'mixed',armor:'mixed',experience:'trained',familiarity:'practiced'},foe:{unitRole:'grandArmy',weapon:'mixed',ranged:'bow',horseArmor:'mail',shield:'mixed',armor:'mixed',experience:'trained',familiarity:'practiced'}}
  };
  let equipmentOpen=false;
  function syncEquipmentShield(team){
@@ -1395,18 +1411,25 @@ document.querySelector('#reset').addEventListener('click',populate);
  }
  function syncEquipmentUnitRole(team){
   const c=equipControls[team],role=c.unitRole.value;
-  if(role==='infantry'||role==='cavalry'){
+  if(role==='horseArcher'){
+   c.ranged.value='horsebow';c.ranged.disabled=true;
+   c.note.textContent='Horse archers use the compact bow and carry a short sword.';
+  }else if(role==='infantry'||role==='cavalry'){
    c.ranged.value='none';c.ranged.disabled=true;
-   c.note.textContent=role==='cavalry'?'Cavalry: mounted charges and melee. Set Cavalry lance for the best charge.':'Infantry: melee only. Choose Archer to enable ranged weapons.';
+   c.note.textContent=role==='cavalry'?
+    'Cavalry charges with horse impact even when carrying a sword.':
+    'Infantry use close combat weapons only.';
   }else{
    c.ranged.disabled=false;
-   if(c.ranged.value==='none')c.ranged.value=['mixed','combined'].includes(role)?'mixed':'bow';
+   if(c.ranged.value==='none'||c.ranged.value==='horsebow')
+    c.ranged.value=['mixed','combined','grandArmy'].includes(role)?'mixed':'bow';
   }
+  c.horseArmor.disabled=!['cavalry','horseArcher','combined','grandArmy'].includes(role);
  }
  function showEquipmentValues(values){
   for(const team of ['friend','foe']){
    const controls=equipControls[team],settings=values[team];
-   for(const field of ['weapon','shield','armor','experience','familiarity','ranged','rangedMastery','unitRole'])controls[field].value=settings[field]||(field==='ranged'?'none':field==='rangedMastery'?'same':field==='unitRole'?'infantry':'mixed');
+   for(const field of ['weapon','shield','armor','horseArmor','experience','familiarity','ranged','rangedMastery','unitRole'])controls[field].value=settings[field]||(field==='ranged'||field==='horseArmor'?'none':field==='rangedMastery'?'same':field==='unitRole'?'infantry':'mixed');
    syncEquipmentShield(team);syncEquipmentUnitRole(team);
   }
  }
@@ -1435,7 +1458,7 @@ document.querySelector('#reset').addEventListener('click',populate);
    syncEquipmentUnitRole(team);
    equipFeedback.textContent='Unit role changed. Apply to update the battle.';
   });
-  for(const field of ['shield','armor','experience','familiarity','ranged','rangedMastery','unitRole']){
+  for(const field of ['shield','armor','horseArmor','experience','familiarity','ranged','rangedMastery','unitRole']){
    equipControls[team][field].addEventListener('change',()=>{
     equipFeedback.textContent='Equipment changed. Apply to update the battle.';
    });
@@ -1460,7 +1483,8 @@ document.querySelector('#reset').addEventListener('click',populate);
     familiarity:familiarityLevels[c.familiarity.value]!=null?c.familiarity.value:'mixed',
     ranged:rangedProfiles[c.ranged.value]?c.ranged.value:(c.ranged.value==='mixed'?'mixed':'none'),
     rangedMastery:familiarityLevels[c.rangedMastery.value]!=null?c.rangedMastery.value:'same',
-    unitRole:['infantry','archer','mixed','cavalry','combined'].includes(c.unitRole.value)?c.unitRole.value:'infantry'
+    unitRole:['infantry','archer','mixed','cavalry','combined','horseArcher','grandArmy'].includes(c.unitRole.value)?c.unitRole.value:'infantry',
+    horseArmor:horseArmorProfiles[c.horseArmor.value]?c.horseArmor.value:'none'
    };
   }
   return draft;
