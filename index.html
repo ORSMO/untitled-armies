@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V3.1</title>
+<title>Untitled Armies — V3.2</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -201,7 +201,7 @@ body.lab-mode .lab-area{display:flex}
     <div class="top-actions">
       <a class="lab-classic-link" href="classic.html" title="Open original 50v50 battlefield">Classic battlefield</a>
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 3.1">V3.1</div>
+      <div class="build" aria-label="Version 3.2">V3.2</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
@@ -858,6 +858,120 @@ function respawnEnemy(s){
 function members(team){return team==='friend'?friends:foes;}
 function opponents(s){return s.team==='friend'?foes:friends;}
 function living(list){return list.filter(s=>!s.dead&&!s.broken&&!s.routed);}
+// V3.2 squad coordination. The four roles share a compact tactical plan;
+// individuals still retain reaction, targeting, stamina, and physical movement.
+let squadStates={friend:null,foe:null};
+const squadRoles=['infantry','archer','cavalry','horseArcher'];
+function updateSquadState(team){
+ const own=living(team==='friend'?friends:foes).filter(s=>!s.isCommander);
+ const enemy=living(team==='friend'?foes:friends);
+ const fallback=home(team),enemyFallback=home(team==='friend'?'foe':'friend');
+ const enemyCenter=enemy.length?{
+  x:enemy.reduce((n,s)=>n+s.x,0)/enemy.length,
+  y:enemy.reduce((n,s)=>n+s.y,0)/enemy.length
+ }:enemyFallback;
+ const groups={};
+ for(const role of squadRoles){
+  const troops=own.filter(s=>s.unitRole===role);
+  const center=troops.length?{
+   x:troops.reduce((n,s)=>n+s.x,0)/troops.length,
+   y:troops.reduce((n,s)=>n+s.y,0)/troops.length
+  }:fallback;
+  // Keep initial ranks relative to the squad rather than each soldier
+  // selecting a new formation slot every time the frontline advances.
+  for(const s of troops){
+   if(s.squadSlotRole!==role){
+    s.squadSlotRole=role;
+    s.squadOffsetX=clamp(s.anchorX-center.x,-Math.min(W*.18,130),Math.min(W*.18,130));
+    s.squadOffsetY=clamp(s.anchorY-center.y,-Math.min(H*.40,190),Math.min(H*.40,190));
+    s.squadFlankDone=false;
+   }
+  }
+  const stragglers=troops.filter(s=>Math.hypot(
+   s.x-center.x-s.squadOffsetX,s.y-center.y-s.squadOffsetY)>Math.min(68,H*.3)).length;
+  groups[role]={troops,center,count:troops.length,
+   cohesion:troops.length?1-stragglers/troops.length:1};
+ }
+ const archers=[...groups.archer.troops,...groups.horseArcher.troops];
+ const pressed=archers.filter(a=>enemy.some(e=>Math.hypot(e.x-a.x,e.y-a.y)<110)).length;
+ const frontline=groups.infantry.troops;
+ const threatenedLine=frontline.filter(a=>enemy.some(e=>Math.hypot(e.x-a.x,e.y-a.y)<125)).length;
+ const initialInfantry=frontline.filter(s=>s.squadInitialInfantry!==false).length;
+ const pressure=frontline.length?threatenedLine/frontline.length:0;
+ const previous=squadStates[team];
+ const release=!!previous?.reserveReleased||
+  (frontline.length>=6&&(pressure>.32||pressed>=Math.max(2,archers.length*.23)))||
+  (initialInfantry>0&&frontline.length<initialInfantry*.72);
+ const fewerTop=enemy.filter(s=>s.y<enemyCenter.y).length;
+ const fewerBottom=enemy.length-fewerTop;
+ const flankSide=fewerBottom<fewerTop?1:fewerTop<fewerBottom?-1:team==='friend'?1:-1;
+ squadStates[team]={groups,enemyCenter,pressure,
+  archerPressure:archers.length?pressed/archers.length:0,
+  reserveReleased:release,flankSide,
+  cohesion:own.length?squadRoles.reduce((n,r)=>n+groups[r].cohesion*groups[r].count,0)/own.length:1};
+ return squadStates[team];
+}
+function isManualSquadOrder(s){
+ if(s.team==='friend'&&typeof generalOrders!=='undefined')
+  return !!(generalOrders.all||generalOrders[s.unitRole]);
+ if(s.team==='foe'&&typeof enemyCommand!=='undefined')
+  return enemyCommand!=='auto';
+ return false;
+}
+function squadMovement(s,command,target,dist,x,y,pace){
+ if(s.isCommander||!squadStates[s.team]||isManualSquadOrder(s)||
+    command!=='attack'||s.broken||s.routed||s.dead)return {x,y,pace};
+ const state=squadStates[s.team],group=state.groups[s.unitRole];
+ if(!group)return {x,y,pace};
+ const ownInfantry=state.groups.infantry;
+ const forward=s.team==='friend'?1:-1;
+ // An infantry reserve is a real subgroup, not a magic damage bonus. It
+ // waits behind the first line until losses or ranged threats demand help.
+ if(s.squadReserve&&!state.reserveReleased){
+  return {x:clamp(ownInfantry.center.x-forward*Math.min(95,W*.17),22,W-22),
+   y:clamp(ownInfantry.center.y+s.squadOffsetY*.70,22,H-22),pace:.91};
+ }
+ // Infantry correct lateral drift while marching, but close-range combat,
+ // shield/parry reactions and routing always take precedence.
+ if(s.unitRole==='infantry'&&group.count>=6&&dist>115){
+  const lane=clamp(group.center.y+s.squadOffsetY,22,H-22);
+  y=y*.54+lane*.46;
+  const depth=clamp(group.center.x+s.squadOffsetX,22,W-22);
+  x=x*.83+depth*.17;
+ }
+ // Archers remain behind the friendly infantry line if a real shield
+ // screen exists. They still shoot from their normal tactical range.
+ if(s.unitRole==='archer'&&group.count>=2&&ownInfantry.count>=3&&dist>115){
+  const protectedX=ownInfantry.center.x-forward*Math.min(95,W*.19);
+  if((s.x-protectedX)*forward>18){
+   x=clamp(protectedX,22,W-22);
+   y=clamp(group.center.y+s.squadOffsetY,22,H-22);
+   pace=Math.max(pace,1.08);
+  }
+ }
+ // Mounted troops move to a flank waypoint first, then commit to a
+ // real charge pass using the horse acceleration/turning physics.
+ const tacticalFlank=typeof commanderBrains!=='undefined'&&
+  commanderBrains[s.team]?.phase==='flank';
+ if(isCavalry(s)&&tacticalFlank&&group.count>=3&&dist>100){
+  const side=state.flankSide;
+  const flankY=clamp(state.enemyCenter.y+side*Math.min(175,H*.34),26,H-26);
+  const flankX=clamp(state.enemyCenter.x-forward*Math.min(155,W*.19),26,W-26);
+  if(!s.squadFlankDone){
+   if(Math.hypot(s.x-flankX,s.y-flankY)<Math.min(58,H*.20))
+    s.squadFlankDone=true;
+   else return {x:flankX,y:flankY,pace:1.17};
+  }
+ }else if(!tacticalFlank)s.squadFlankDone=false;
+ return {x,y,pace};
+}
+function allocateSquadReserves(team){
+ const infantry=(team==='friend'?friends:foes).filter(s=>s.unitRole==='infantry');
+ // Keep the last fifth in reserve, but don't split tiny test formations.
+ const n=infantry.length>=12?Math.min(10,Math.floor(infantry.length*.20)):0;
+ infantry.forEach((s,i)=>{s.squadReserve=i>=infantry.length-n;s.squadInitialInfantry=true;});
+}
+
 // Shared awareness: choose opponents across the entire enemy front.
 // This runs a few times a second, so soldiers do not jitter between targets.
 function planEngagements(team){
@@ -1981,6 +2095,7 @@ function step(dt){
  if(t>=nextEngagementPlan){
   planEngagements('friend');
   planEngagements('foe');
+  updateSquadState('friend');updateSquadState('foe');
   nextEngagementPlan=t+.65;
  }
  for(const s of [...friends,...foes]){
@@ -2098,6 +2213,8 @@ function step(dt){
   if(isPolearm(s)&&s.braceThreatId!=null&&command!=='retreat'){
    moveX=s.x;moveY=s.y;pace=.48;
   }
+  const tactical=squadMovement(s,command,target,dist,moveX,moveY,pace);
+  moveX=tactical.x;moveY=tactical.y;pace=tactical.pace;
   const disciplineControl=.42+s.disc/160;
   const fatiguePace=.76+.24*(s.stamina/s.maxStamina);
   const equipment=weaponProfiles[s.weapon].weight+(shieldProfiles[s.shield]?.weight||0)+(activeRangedProfile(s)?rangedProfiles[s.ranged].weight:0);
