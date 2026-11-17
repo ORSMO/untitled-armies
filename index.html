@@ -1473,8 +1473,8 @@ function separateSoldiers(){
  }
 }
 // Bow/crossbow/javelin combat. Projectiles are physical entities: they travel,
-// can miss, and are caught by the first soldier along their path. Allied bodies
-// block shots harmlessly rather than allowing arrows to pass through teammates.
+// can miss, and strike enemy soldiers along their path. Normal lofted shots
+// clear friendly ranks, even near the landing point; flat shots can be obstructed.
 function hasRangedAmmo(s){return !!activeRangedProfile(s)&&s.ammo>0;}
 function meleeThreatRange(s){return Math.max(57,weaponProfiles[s.weapon].reach+13);}
 function rangedTimeFactor(s){
@@ -1614,6 +1614,12 @@ function updateProjectiles(dt){
   for(const other of [...friends,...foes]){
    if(other.dead||other.routed||other.broken||
       (other.team===p.team&&other.id===p.shooterId))continue;
+   // Lofted arrows, bolts and javelins are fired OVER friendly ranks,
+   // including infantry fighting at the landing point. In this top-down
+   // model there is no friendly-fire damage, so don't waste ammunition
+   // on a teammate whose 2D ground position overlaps the flight path.
+   // Deliberately flat shots (loft=0) still use physical ally collisions.
+   if(other.team===p.team&&p.loft>0)continue;
    const radius=p.kind==='javelin'?10:9.3;
    if(pointSegmentDistance(other.x,other.y,seg)>radius)continue;
    const u=dsq>0?clamp(((other.x-x1)*dx+(other.y-y1)*dy)/dsq,0,1):0;
