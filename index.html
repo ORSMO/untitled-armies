@@ -2199,6 +2199,28 @@ const labMirrorScenarios=[
  {name:'Plate towers',counts:[5,5],gear:{"weapon":"sword","armor":"plate","shield":"tower","experience":"trained","familiarity":"practiced","ranged":null}},
  {name:'Elite swords',counts:[4,4],gear:{"weapon":"sword","armor":"naked","shield":null,"experience":"elite","familiarity":"master","ranged":null}}
 ].map(s=>({name:s.name,counts:s.counts,green:{...s.gear},red:{...s.gear}}));
+// Third Lab mode exercises mounted combat without changing the original
+// six balance matchups or six identical-army fairness controls.
+const labMountScenarios=[
+ {name:'Horse bow vs war bow',counts:[3,3],
+  green:{unitRole:'horseArcher',weapon:'shortsword',ranged:'horsebow',armor:'leather',horseArmor:'leather',shield:null,experience:'veteran',familiarity:'expert'},
+  red:{unitRole:'archer',weapon:'shortsword',ranged:'bow',armor:'leather',horseArmor:'none',shield:null,experience:'veteran',familiarity:'expert'}},
+ {name:'Plate barding vs bare mounts',counts:[2,2],
+  green:{unitRole:'cavalry',weapon:'sword',ranged:null,armor:'mail',horseArmor:'plate',shield:'round',experience:'trained',familiarity:'practiced'},
+  red:{unitRole:'cavalry',weapon:'sword',ranged:null,armor:'mail',horseArmor:'none',shield:'round',experience:'trained',familiarity:'practiced'}},
+ {name:'Horse charge without lance',counts:[3,4],
+  green:{unitRole:'cavalry',weapon:'sword',ranged:null,armor:'mail',horseArmor:'leather',shield:'round',experience:'veteran',familiarity:'expert'},
+  red:{unitRole:'infantry',weapon:'sword',ranged:null,armor:'mail',shield:'kite',experience:'trained',familiarity:'practiced'}},
+ {name:'Lance vs sword cavalry',counts:[2,2],
+  green:{unitRole:'cavalry',weapon:'lance',ranged:null,armor:'leather',horseArmor:'leather',shield:'round',experience:'veteran',familiarity:'expert'},
+  red:{unitRole:'cavalry',weapon:'sword',ranged:null,armor:'leather',horseArmor:'leather',shield:'round',experience:'veteran',familiarity:'expert'}},
+ {name:'Mounted archers vs shields',counts:[3,5],
+  green:{unitRole:'horseArcher',weapon:'shortsword',ranged:'horsebow',armor:'leather',horseArmor:'mail',shield:null,experience:'veteran',familiarity:'expert'},
+  red:{unitRole:'infantry',weapon:'sword',ranged:null,armor:'mail',shield:'round',experience:'trained',familiarity:'practiced'}},
+ {name:'Light vs armored horse bows',counts:[3,3],
+  green:{unitRole:'horseArcher',weapon:'shortsword',ranged:'horsebow',armor:'leather',horseArmor:'none',shield:null,experience:'veteran',familiarity:'expert'},
+  red:{unitRole:'horseArcher',weapon:'shortsword',ranged:'horsebow',armor:'leather',horseArmor:'plate',shield:null,experience:'veteran',familiarity:'expert'}}
+];
 let labPreset='matchups';
 function labGearLabel(gear){
  return ((gear.unitRole|| (rangedProfiles[gear.ranged]?'Archer':'Infantry')))+' · '+
@@ -2216,25 +2238,29 @@ function updateLabTitles(){
   g.title=labGearLabel(s.green);r.title=labGearLabel(s.red);
  }
  const btn=document.getElementById('labPresetButton');
- btn.textContent=labPreset==='matchups'?'⚖ Fairness check':'⚔ Skill matchups';
+ btn.textContent=labPreset==='matchups'?'⚖ Fairness check':labPreset==='mirrors'?'🐎 Mount tests':'⚔ Skill matchups';
  btn.setAttribute('aria-pressed',labPreset==='mirrors'?'true':'false');
  document.getElementById('labPlainExplanation').textContent=labPreset==='mirrors'?
   'FAIRNESS CHECK: Both teams are identical. A result near 50/50 means the combat test is trustworthy. Large differences need investigation, allowing more variation for small samples.':
+ labPreset==='mounts'?
+  'MOUNT TESTS: Horse bow accuracy and range, horse health, barding, horse-only impact damage, lances and repeat charges are all simulated.':
   'RANGED MATCHUPS: Arrows, bolts and javelins have travel time. Shields, armor, skill, ammo and melee rushes affect who wins.';
  document.getElementById('labAnalysisHowToRead').textContent=labPreset==='mirrors'?
   'Same gear, rank, proficiency and numbers on both sides. Green and red should each win about half the fights. Minor differences are normal; large consistent differences mean the test is biased.':
-  'Green and red are the two sides. A 70% win rate means 7 wins out of 10 decisive fights. Bigger armor, weapon, number or skill advantages may legitimately cause one-sided results.';
+  labPreset==='mounts'?
+   'Mounted units can lose their horse without losing their rider. Compare armoured horses, sword-only charges, lances and short horse bows; uneven results are expected when equipment differs.':
+   'Green and red are the two sides. A 70% win rate means 7 wins out of 10 decisive fights. Bigger armor, weapon, number or skill advantages may legitimately cause one-sided results.';
 }
 function setLabPreset(mode){
  labPreset=mode;
- const options=mode==='mirrors'?labMirrorScenarios:labMatchupScenarios;
+ const options=mode==='mirrors'?labMirrorScenarios:mode==='mounts'?labMountScenarios:labMatchupScenarios;
  options.forEach((v,i)=>Object.assign(labScenarios[i],{
   name:v.name,counts:[...v.counts],green:{...v.green},red:{...v.red}
  }));
  initLab();
 }
 document.getElementById('labPresetButton').addEventListener('click',()=>{
- setLabPreset(labPreset==='matchups'?'mirrors':'matchups');
+ setLabPreset(labPreset==='matchups'?'mirrors':labPreset==='mirrors'?'mounts':'matchups');
 });
 const labSeconds=3600,labStepSeconds=.04,labWorldW=440,labWorldH=210,labMatchTimeout=75;
 let labArenas=[],labPaused=false,labTurn=0,labLastDraw=0,labAnalysisOpen=false,labAnalysisLast=0;
