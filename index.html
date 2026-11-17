@@ -259,7 +259,7 @@ body.lab-mode .lab-area{display:flex}
       <tbody><tr><td>War bow</td><td>18</td><td>1005</td><td>0.64s</td><td>Light piercing</td></tr>
       <tr><td>Crossbow</td><td>12</td><td>1125</td><td>1.90s</td><td>Heavy piercing</td></tr>
       <tr><td>Javelins</td><td>6</td><td>624</td><td>1.05s</td><td>Heavy piercing</td></tr></tbody></table>
-      <p><strong>UNIT ROLES:</strong> <strong>Infantry</strong> always prioritize melee weapons and never shoot. <strong>Archers</strong> keep their ranged weapon in hand and fire from a distance; they draw a sword only against a nearby enemy. Without ammunition, they avoid charging distant enemies. Mixed armies alternate infantry and archers. <strong>Cavalry</strong> are mounted melee troops with wide spacing, fast movement, lances and momentum-based charges; shields and armor can block them. A combined army contains 20 infantry, 20 archers, and 10 cavalry.</p>
+      <p><strong>UNIT ROLES:</strong> <strong>Infantry</strong> always prioritize melee weapons and never shoot. <strong>Archers</strong> keep their ranged weapon in hand and fire from a distance; they draw a sword only against a nearby enemy. Without ammunition, they avoid charging distant enemies. Mixed armies alternate infantry and archers. <strong>Cavalry</strong> are mounted melee troops with wide spacing, fast movement, and charges that deal horse-impact damage even without a lance; a lance adds piercing damage. <strong>Mounted archers</strong> use the lighter compact horse bow (24 arrows, 710-unit range) and circle enemies while shooting. Horse armour can be none, leather, mail or plate; barding trades speed for protection. Horses have their own stamina and health, and riders continue on foot if dismounted. Combined armies have 20 infantry, 20 archers and 10 cavalry; a Grand Army adds 5 horse archers (20/15/10/5). Click the Battle Lab's mode button twice to reach six dedicated Mount Tests.</p>
       <p><strong>RANGED COMBAT:</strong> V2.4 triples maximum and ideal shooting distances. Better experience and ranged familiarity produce tighter shot groups, and experienced archers lead moving targets. Archers can switch to a new enemy during an existing draw rather than repeatedly cancelling shots when their target disappears. Projectiles still travel physically and can miss. War bows carry 18 arrows (fast), crossbows carry 12 bolts (slow reload, strong piercing), and javelins carry 6 throws (short range, powerful impact). Shots follow lofted trajectories over friendly ranks and stop when they reach the ground instead of sliding along it. Lofted attacks fly over allied soldiers throughout their flight; enemy soldiers, shields and armor can still intercept them. Projectiles have travel time, can miss, and interact with directional shields and armor. Experience and independent ranged-weapon familiarity improve accuracy and timing; set Ranged skill separately from melee Mastery in Test gear. Archers draw their melee sidearm only when enemies enter close-combat range; running out of ammunition does not make them charge with swords. A shield is lowered when aiming a two-handed bow or crossbow.</p>
       <p><strong>IMPACT REACTIONS:</strong> Heavy hits cause knockback and stagger. A successful active block can create a counterattack opening; a weak shield can suffer a <strong>GUARD BREAK</strong>. Plate and solid shields can stop a swing and recoil the attacker.</p>
       <p>Green and red soldiers wear mixed armor and carry different weapons. One-handed swords can use shields; greatswords and axes occupy both hands. Swing stages: wind-up → active hitbox → recovery. Your troops are still invulnerable.</p>
@@ -551,7 +551,12 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   const actual=Math.max(.07,(base*armorBonus-barding.flat)*(1-barding.block));
   target.mountHp=Math.max(0,target.mountHp-actual);
   target.horseHits++;target.hitFlash=.32;
-  if(target.mountHp<=0)dismount(target);
+  const labStat=combatLabStats(target.team);
+  if(labStat)labStat.mountHits++;
+  if(target.mountHp<=0){
+   if(labStat)labStat.dismounts++;
+   dismount(target);
+  }
   return true;
  }
 const shieldProfiles={
@@ -1911,6 +1916,8 @@ function step(dt){
      applyWeaponImpact(s,target,lanceHit);
     }
     s.chargeHits++;s.chargeCooldown=4.1;s.gallop=0;
+    const chargesStat=combatLabStats(s.team);
+    if(chargesStat)chargesStat.horseCharges++;
     s.horseStamina=clamp(s.horseStamina-18,0,100);
     s.stamina=clamp(s.stamina-10,0,s.maxStamina);
     const back=s.team==='friend'?-1:1,side=s.id%2===0?1:-1;
@@ -2265,7 +2272,7 @@ document.getElementById('labPresetButton').addEventListener('click',()=>{
 const labSeconds=3600,labStepSeconds=.04,labWorldW=440,labWorldH=210,labMatchTimeout=75;
 let labArenas=[],labPaused=false,labTurn=0,labLastDraw=0,labAnalysisOpen=false,labAnalysisLast=0;
 const labCanvasNodes=Array.from({length:6},(_,i)=>document.getElementById('labCanvas'+i));
-function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0,parries:0,failedParries:0,counters:0,misses:0,shots:0,rangedHits:0,rangedMisses:0,friendlyStops:0};}
+function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0,parries:0,failedParries:0,counters:0,misses:0,shots:0,rangedHits:0,rangedMisses:0,friendlyStops:0,mountHits:0,dismounts:0,horseCharges:0};}
 function activateLab(ar){
  activeLab=ar;W=labWorldW;H=labWorldH;t=ar.seconds;mode='attack';
  friends=ar.friends;foes=ar.foes;slashes=ar.slashes;projectiles=ar.projectiles;groundedShots=ar.groundedShots;
@@ -2451,9 +2458,12 @@ function updateLabHUD(){
    '🟢 '+a.greenWins+' · 🔴 '+a.redWins+' · = '+a.draws;
   document.getElementById('labLeader'+a.index).textContent=labWinner(a);
   document.getElementById('labBattles'+a.index).textContent=
-   a.rounds+' fights · '+(a.stats.friend.damage+a.stats.foe.damage).toFixed(0)+' dmg';
+   a.rounds+' fights · '+(a.stats.friend.damage+a.stats.foe.damage).toFixed(0)+' dmg'+
+    (labPreset==='mounts'?' · '+(a.stats.friend.horseCharges+a.stats.foe.horseCharges)+' charges':'');
   document.getElementById('labBlocks'+a.index).textContent=
-   (a.stats.friend.blocks+a.stats.foe.blocks)+' blocks · '+(a.stats.friend.parries+a.stats.foe.parries)+' parries';
+   (a.stats.friend.blocks+a.stats.foe.blocks)+' blocks · '+
+    (labPreset==='mounts'?((a.stats.friend.dismounts+a.stats.foe.dismounts)+' dismounts'):
+     ((a.stats.friend.parries+a.stats.foe.parries)+' parries'));
  }
  document.getElementById('labSummary').textContent=
   aggregate.fights+' fights · '+aggregate.kills+' kills · '+aggregate.blocks+
