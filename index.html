@@ -513,7 +513,9 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   };
  }
  function tallyLabel(t){return t.standing+' standing · '+t.killed+' killed · '+
-  t.wounded+' incapacitated · '+t.escaped+' escaped · '+t.surrendered+' surrendered';}
+  t.wounded+' incapacitated · '+t.escaped+' escaped · '+
+  t.surrendered+' surrendered · '+t.shaken+' still routing · '+
+  t.woundedStanding+' injured survivors';}
  // Two attack styles share the same three-cell range. Heavy hits cost more
  // stamina, deal two damage, and have longer recovery than quick light hits.
  const attackStyles={
