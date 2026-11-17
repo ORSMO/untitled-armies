@@ -969,7 +969,9 @@ function squadMovement(s,command,target,dist,x,y,pace){
  // screen exists. They still shoot from their normal tactical range.
  if(s.unitRole==='archer'&&group.count>=2&&ownInfantry.count>=3&&dist>115){
   const protectedX=ownInfantry.center.x-forward*Math.min(95,W*.19);
-  if((s.x-protectedX)*forward>18){
+  // Clamp the intended waypoint, not merely the archer's current position.
+  // This prevents the next attack step from crossing the shield screen.
+  if((x-protectedX)*forward>18){
    x=clamp(protectedX,22,W-22);
    y=clamp(group.center.y+s.squadOffsetY,22,H-22);
    pace=Math.max(pace,1.08);
