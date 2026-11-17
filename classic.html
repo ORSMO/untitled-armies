@@ -232,7 +232,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
    <button type="button" data-general-group="all">All soldiers</button>
    <button type="button" data-general-group="infantry">⚔ Infantry</button>
    <button type="button" data-general-group="archer">🏹 Archers</button>
-   <button type="button" data-general-group="cavalry">🐎 Cavalry</button>
+   <button type="button" data-general-group="cavalry">🐎 Cavalry</button><button type="button" data-general-group="horseArcher">🏇 Horse Archers</button>
   </div>
   <p id="generalOverrideStatus">All groups currently follow Commander AI.</p>
   <div class="enemy-command-foot">
@@ -298,8 +298,8 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
       <tbody><tr><td>War bow</td><td>18</td><td>1005</td><td>0.64s</td><td>Light piercing</td></tr>
       <tr><td>Crossbow</td><td>12</td><td>1125</td><td>1.90s</td><td>Heavy piercing</td></tr>
       <tr><td>Javelins</td><td>6</td><td>624</td><td>1.05s</td><td>Heavy piercing</td></tr></tbody></table>
-      <p><strong>UNIT ROLES:</strong> <strong>Infantry</strong> fight with swords, axes or other melee weapons and never switch to ranged attacks. <strong>Archers</strong> always carry their selected bow, crossbow or javelins, prefer firing from a distance, and use their melee sidearm only when an enemy enters close-combat range. If out of ammunition, they keep their ranged weapon ready instead of charging with swords. Choose the mixed unit type for infantry and archers. <strong>Cavalry</strong> ride faster than infantry, hold wider spacing, charge with momentum, and become less effective in sustained close combat. Choose a pure Cavalry or a combined army of 20 infantry, 20 archers and 10 cavalry.</p>
-      <p><strong>COMMANDERS:</strong> Each side has a separate, mortal commander with a battlefield banner. Tactical, Aggressive and Defensive personalities read the battle, issue orders to Infantry, Archers and Cavalry, and protect threatened units. Distant units receive the command later; Leadership reduces communication delay. Use <strong>👑 Commanders</strong> to override a class or your whole army. Your General orders apply immediately and persist until you press Return to AI. The enemy army can also be manually controlled.</p>
+      <p><strong>UNIT ROLES:</strong> <strong>Infantry</strong> fight with swords, axes or other melee weapons and never switch to ranged attacks. <strong>Archers</strong> always carry their selected bow, crossbow or javelins, prefer firing from a distance, and use their melee sidearm only when an enemy enters close-combat range. If out of ammunition, they keep their ranged weapon ready instead of charging with swords. Choose the mixed unit type for infantry and archers. <strong>Cavalry</strong> ride faster than infantry, hold wider spacing, charge with momentum, and become less effective in sustained close combat. Choose pure Cavalry, 20 infantry / 20 archers / 10 cavalry, or a grand army with all four classes. <strong>Mounted archers</strong> ride with a lighter compact horse bow (24 arrows, 710-unit range), shoot while circling, and retreat from close threats. <strong>Horse armour</strong> is separate from rider armour: leather, mail and plate barding reduce damage but slow the mount. Horses have their own health and stamina; losing a horse dismounts its rider, who continues fighting on foot. Any charging horse deals blunt impact damage even without a lance; lances add a piercing hit. Riders disengage to regroup before charging again.</p>
+      <p><strong>COMMANDERS:</strong> Each side has a separate, mortal commander with a battlefield banner. Tactical, Aggressive and Defensive personalities read the battle, issue orders to Infantry, Archers, Cavalry and Mounted Archers, and protect threatened units. Distant units receive the command later; Leadership reduces communication delay. Use <strong>👑 Commanders</strong> to override a class or your whole army. Your General orders apply immediately and persist until you press Return to AI. The enemy army can also be manually controlled.</p>
       <p><strong>RANGED COMBAT:</strong> V2.4 triples maximum and ideal shooting distances. Better experience and ranged familiarity produce tighter shot groups, and experienced archers lead moving targets. Archers can switch to a new enemy during an existing draw rather than repeatedly cancelling shots when their target disappears. Projectiles still travel physically and can miss. War bows carry 18 arrows (fast), crossbows carry 12 bolts (slow reload, strong piercing), and javelins carry 6 throws (short range, powerful impact). Shots follow lofted trajectories over friendly ranks and stop when they reach the ground instead of sliding along it. Lofted attacks fly over allied soldiers throughout their flight; enemy soldiers, shields and armor can still intercept them. Projectiles have travel time, can miss, and interact with directional shields and armor. Experience and independent ranged-weapon familiarity improve accuracy and timing; set Ranged skill separately from melee Mastery in Test gear. Archers draw their melee sidearm only when enemies enter close-combat range; running out of ammunition does not make them charge with swords. A shield is lowered when aiming a two-handed bow or crossbow.</p>
       <p><strong>IMPACT REACTIONS:</strong> Heavy hits cause knockback and stagger. A successful active block can create a counterattack opening; a weak shield can suffer a <strong>GUARD BREAK</strong>. Plate and solid shields can stop a swing and recoil the attacker.</p>
       <p>Green and red soldiers wear mixed armor and carry different weapons. One-handed swords can use shields; greatswords and axes occupy both hands. Swing stages: wind-up → active hitbox → recovery. Your troops are still invulnerable.</p>
@@ -438,12 +438,12 @@ let W=0,H=0,VW=0,VH=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],s
  // Two physical commanders are separate from the 50 soldiers on each team.
  let commanders={friend:null,foe:null};
  function newBrain(personality='tactical'){
-  return {personality,phase:'advance',orders:{infantry:'attack',archer:'attack',cavalry:'attack'},
+  return {personality,phase:'advance',orders:{infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'},
     elapsed:0,next:0,lastChange:-20,decisions:0,news:'Reading battlefield'};
  }
  let commanderBrains={friend:newBrain('tactical'),foe:newBrain('aggressive')};
  // As General you override a role indefinitely, until explicitly released.
- let generalOrders={all:null,infantry:null,archer:null,cavalry:null};
+ let generalOrders={all:null,infantry:null,archer:null,cavalry:null,horseArcher:null};
  let selectedGroup='all';
 const rnd=i=>{const x=Math.sin(i*127.1+91.7)*43758.5453;return x-Math.floor(x)};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -812,7 +812,7 @@ function focusArmy(){
   commanders.friend=createCommander('friend');commanders.foe=createCommander('foe');
   commanderBrains.friend=newBrain(commanderBrains.friend.personality);
   commanderBrains.foe=newBrain(commanderBrains.foe.personality);
-  generalOrders={all:null,infantry:null,archer:null,cavalry:null};selectedGroup='all';
+  generalOrders={all:null,infantry:null,archer:null,cavalry:null,horseArcher:null};selectedGroup='all';
   slashes=[];projectiles=[];groundedShots=[];selected=false;mode='idle';marker=null;focusArmy();updateUI();updateEnemyUI();updateCommanderUI();
  }
 // Enemy reinforcements enter at the right edge in the least crowded lane.
@@ -875,7 +875,7 @@ function decideCommander(team,dt){
  brain.decisions++;
  if(!leader||leader.dead||leader.routed||leader.broken){
   brain.phase='leaderless';brain.news='Commander lost — soldiers act independently';
-  brain.orders={infantry:'attack',archer:'attack',cavalry:'attack'};
+  brain.orders={infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'};
   updateCommanderUI();return;
  }
  const troops=living(team==='friend'?friends:foes);
@@ -907,12 +907,12 @@ function decideCommander(team,dt){
  if(phase!==brain.phase){
   brain.phase=phase;brain.lastChange=brain.elapsed;
   const plans={
-   advance:{infantry:'attack',archer:'attack',cavalry:'attack'},
-   press:{infantry:'attack',archer:'attack',cavalry:'attack'},
-   hold:{infantry:'defend',archer:'attack',cavalry:'defend'},
-   protect:{infantry:'defend',archer:'retreat',cavalry:'attack'},
-   flank:{infantry:'defend',archer:'attack',cavalry:'attack'},
-   withdraw:{infantry:'retreat',archer:'retreat',cavalry:'retreat'}
+   advance:{infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'},
+   press:{infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'},
+   hold:{infantry:'defend',archer:'attack',cavalry:'defend',horseArcher:'attack'},
+   protect:{infantry:'defend',archer:'retreat',cavalry:'attack',horseArcher:'retreat'},
+   flank:{infantry:'defend',archer:'attack',cavalry:'attack',horseArcher:'attack'},
+   withdraw:{infantry:'retreat',archer:'retreat',cavalry:'retreat',horseArcher:'retreat'}
   };
   brain.orders=plans[phase]||plans.advance;
   setCommanderAnchors(team,brain.orders);
@@ -957,7 +957,7 @@ function selectedTroops(){
  return friends.filter(s=>selectedGroup==='all'||s.unitRole===selectedGroup);
 }
 function returnToCommander(group){
- if(group==='all')generalOrders={all:null,infantry:null,archer:null,cavalry:null};
+ if(group==='all')generalOrders={all:null,infantry:null,archer:null,cavalry:null,horseArcher:null};
  else generalOrders[group]=null;
  mode='idle';selected=false;updateUI();updateCommanderUI();
 }
