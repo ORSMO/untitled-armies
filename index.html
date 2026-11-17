@@ -908,6 +908,10 @@ function updateSquadState(team){
  const release=!!previous?.reserveReleased||
   (frontline.length>=6&&(pressure>.32||pressed>=Math.max(2,archers.length*.23)))||
   (initialInfantry>0&&frontline.length<initialInfantry*.72);
+ const reserveCount=frontline.filter(s=>s.squadReserve).length;
+ if(release&&reserveCount&&!previous?.reserveReleased){
+  const stat=combatLabStats(team);if(stat)stat.reserveDeployments++;
+ }
  const fewerTop=enemy.filter(s=>s.y<enemyCenter.y).length;
  const fewerBottom=enemy.length-fewerTop;
  const flankSide=fewerBottom<fewerTop?1:fewerTop<fewerBottom?-1:team==='friend'?1:-1;
@@ -966,9 +970,11 @@ function squadMovement(s,command,target,dist,x,y,pace){
   const flankY=clamp(state.enemyCenter.y+side*Math.min(175,H*.34),26,H-26);
   const flankX=clamp(state.enemyCenter.x-forward*Math.min(155,W*.19),26,W-26);
   if(!s.squadFlankDone){
-   if(Math.hypot(s.x-flankX,s.y-flankY)<Math.min(58,H*.20))
+   if(Math.hypot(s.x-flankX,s.y-flankY)<Math.min(58,H*.20)){
     s.squadFlankDone=true;
-   else return {x:flankX,y:flankY,pace:1.17};
+    s.squadFlankArrivals=(s.squadFlankArrivals||0)+1;
+    const stat=combatLabStats(s.team);if(stat)stat.flankArrivals++;
+   }else return {x:flankX,y:flankY,pace:1.17};
   }
  }else if(!tacticalFlank)s.squadFlankDone=false;
  return {x,y,pace};
@@ -2762,7 +2768,7 @@ document.getElementById('labPresetButton').addEventListener('click',()=>{
 const labSeconds=3600,labStepSeconds=.04,labWorldW=440,labWorldH=210,labMatchTimeout=75;
 let labArenas=[],labPaused=false,labTurn=0,labLastDraw=0,labAnalysisOpen=false,labAnalysisLast=0;
 const labCanvasNodes=Array.from({length:6},(_,i)=>document.getElementById('labCanvas'+i));
-function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0,parries:0,failedParries:0,counters:0,misses:0,shots:0,rangedHits:0,rangedMisses:0,friendlyStops:0,mountHits:0,dismounts:0,horseCharges:0,braces:0,chargeStops:0};}
+function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0,parries:0,failedParries:0,counters:0,misses:0,shots:0,rangedHits:0,rangedMisses:0,friendlyStops:0,mountHits:0,dismounts:0,horseCharges:0,braces:0,chargeStops:0,flankArrivals:0,reserveDeployments:0};}
 function activateLab(ar){
  activeLab=ar;W=labWorldW;H=labWorldH;t=ar.seconds;mode='attack';
  friends=ar.friends;foes=ar.foes;slashes=ar.slashes;projectiles=ar.projectiles;groundedShots=ar.groundedShots;
@@ -2965,11 +2971,13 @@ function updateLabHUD(){
   document.getElementById('labBattles'+a.index).textContent=
    a.rounds+' fights · '+(a.stats.friend.damage+a.stats.foe.damage).toFixed(0)+' dmg'+
     (labPreset==='mounts'?' · '+(a.stats.friend.horseCharges+a.stats.foe.horseCharges)+' charges':
-     labPreset==='polearms'?' · '+(a.stats.friend.braces+a.stats.foe.braces)+' braces':'');
+     labPreset==='polearms'?' · '+(a.stats.friend.braces+a.stats.foe.braces)+' braces':
+     labPreset==='squads'?' · '+(a.stats.friend.flankArrivals+a.stats.foe.flankArrivals)+' flank arrivals':'');
   document.getElementById('labBlocks'+a.index).textContent=
    (a.stats.friend.blocks+a.stats.foe.blocks)+' blocks · '+
     (labPreset==='mounts'?((a.stats.friend.dismounts+a.stats.foe.dismounts)+' dismounts'):
      labPreset==='polearms'?((a.stats.friend.chargeStops+a.stats.foe.chargeStops)+' horse stops'):
+     labPreset==='squads'?((a.stats.friend.reserveDeployments+a.stats.foe.reserveDeployments)+' reserve deployments'):
      ((a.stats.friend.parries+a.stats.foe.parries)+' parries'));
  }
  document.getElementById('labSummary').textContent=
