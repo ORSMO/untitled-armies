@@ -1876,7 +1876,9 @@ function canBraceCharge(rider,defender){
     defender.stamina<8)return false;
  const dx=rider.x-defender.x,dy=rider.y-defender.y;
  const distance=Math.hypot(dx,dy);
- if(distance>76||distance<7)return false;
+ // Contact must occur at the pointed weapon's reach, not at the horse's
+ // old trampling distance. The pike has a longer interception window.
+ if(distance>(defender.weapon==='pike'?97:76)||distance<7)return false;
  const bearing=Math.atan2(dy,dx);
  const facing=Math.abs(Math.atan2(
   Math.sin(bearing-defender.faceAngle),Math.cos(bearing-defender.faceAngle)));
@@ -2007,6 +2009,24 @@ function step(dt){
     dt*(speed>52?-7.4:speed<18?13:2.5),0,100);
    s.gallop=clamp(s.gallop+(speed>53&&s.horseStamina>13?dt*.68:-dt*1.35),0,1);
    s.chargeCooldown=Math.max(0,(s.chargeCooldown||0)-dt);
+   // A horse collides with a prepared spear point before it gets inside
+   // its normal 66-unit trampling radius. A moving flank bypasses this.
+   if(command==='attack'&&s.gallop>.27&&s.chargeCooldown<=0&&s.stamina>=8){
+    let point=null,closest=Infinity;
+    for(const defender of opponents(s)){
+     const d=Math.hypot(defender.x-s.x,defender.y-s.y);
+     if(d<closest&&canBraceCharge(s,defender)){point=defender;closest=d;}
+    }
+    if(point&&stopChargeWithPolearm(s,point)){
+     s.chargeStops=(s.chargeStops||0)+1;
+     s.chargeCooldown=4.1;s.gallop=0;
+     s.horseStamina=clamp(s.horseStamina-14,0,100);
+     const back=s.team==='friend'?-1:1,side=s.id%2===0?1:-1;
+     s.regroupUntil=t+2.15;
+     s.regroupX=clamp(s.x+back*150,28,W-28);
+     s.regroupY=clamp(s.y+side*90,28,H-28);
+    }
+   }
    if(command==='attack'&&target&&!target.dead&&!target.routed&&
       dist<66&&dist>13&&s.gallop>.38&&s.chargeCooldown<=0&&
       s.stamina>=12&&s.horseStamina>=12){
