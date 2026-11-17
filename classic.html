@@ -380,6 +380,16 @@ let W=0,H=0,VW=0,VH=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],s
  const camera={x:0,y:0},cameraKeys=new Set();let fieldPointer=null;
  let enemyCommand='auto',enemyFormationType='block',enemyMovePending=false;
  let infiniteAmmo=false;
+ // Two physical commanders are separate from the 50 soldiers on each team.
+ let commanders={friend:null,foe:null};
+ function newBrain(personality='tactical'){
+  return {personality,phase:'advance',orders:{infantry:'attack',archer:'attack',cavalry:'attack'},
+    elapsed:0,next:0,lastChange:-20,decisions:0,news:'Reading battlefield'};
+ }
+ let commanderBrains={friend:newBrain('tactical'),foe:newBrain('aggressive')};
+ // As General you override a role indefinitely, until explicitly released.
+ let generalOrders={all:null,infantry:null,archer:null,cavalry:null};
+ let selectedGroup='all';
 const rnd=i=>{const x=Math.sin(i*127.1+91.7)*43758.5453;return x-Math.floor(x)};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) from center to center.
@@ -669,6 +679,18 @@ function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74
   return positions.map(p=>({x:clamp(p.x,18,W-18),y:clamp(p.y,21,H-21)}));
  }
 function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);const soldier={id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,...equipmentFor(team,i),attack:null,gallop:0,chargeCooldown:0,chargeHits:0,guardActive:false,guardHold:0,guardBreak:0,stagger:0,knockVX:0,knockVY:0,shieldRecoil:0,impactLean:0,guardBreakFlash:0,stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,stamina:100,maxStamina:100,recoveryDelay:0,attackCount:0,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:1.5+rnd(i+16)*1.3,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,engageSlot:0,escapeAngle:0,hitFlash:0};setFighterTraining(soldier,team,i);initializeRangedEquipment(soldier);return soldier;}
+function createCommander(team){
+  const h=home(team),rear=team==='friend'?-1:1;
+  const c=create(team,50,{x:clamp(h.x+rear*125,30,W-30),y:clamp(h.y-40,30,H-30)});
+  Object.assign(c,{isCommander:true,unitRole:'infantry',weapon:'sword',
+   shield:'round',armor:'mail',ranged:null,leadership:team==='friend'?84:76,
+   experience:'veteran',skill:76,disc:92,stamina:100,maxStamina:100,
+   hp:5,maxHp:5,speed:49,targetId:null,chargeHits:0});
+  setFighterTraining(c,team,50,'veteran','expert');
+  initializeRangedEquipment(c);
+  c.anchorX=c.tx=c.x;c.anchorY=c.ty=c.y;
+  return c;
+}
 function focusArmy(){
   const h=home('friend');
   camera.x=clamp(h.x-VW*.37,0,Math.max(0,W-VW));
@@ -679,7 +701,12 @@ function focusArmy(){
   const a=home('friend'),b=home('foe');
   friends=formation('friend',a.x,a.y).map((p,i)=>create('friend',i,p));
   foes=formation('foe',b.x,b.y).map((p,i)=>create('foe',i,p));
-  slashes=[];projectiles=[];groundedShots=[];selected=false;mode='idle';marker=null;focusArmy();updateUI();updateEnemyUI();
+   // Preserve configured personalities across battles; clear stale orders.
+  commanders.friend=createCommander('friend');commanders.foe=createCommander('foe');
+  commanderBrains.friend=newBrain(commanderBrains.friend.personality);
+  commanderBrains.foe=newBrain(commanderBrains.foe.personality);
+  generalOrders={all:null,infantry:null,archer:null,cavalry:null};selectedGroup='all';
+  slashes=[];projectiles=[];groundedShots=[];selected=false;mode='idle';marker=null;focusArmy();updateUI();updateEnemyUI();updateCommanderUI();
  }
 // Enemy reinforcements enter at the right edge in the least crowded lane.
 function respawnEnemy(s){
@@ -701,8 +728,9 @@ function respawnEnemy(s){
  Object.assign(s,fresh,{anchorX:slot.x,anchorY:slot.y,tx:slot.x,ty:slot.y,hitFlash:.22});
  nextEngagementPlan=0;
 }
-function members(team){return team==='friend'?friends:foes;}
-function opponents(s){return s.team==='friend'?foes:friends;}
+function members(team){return [...(team==='friend'?friends:foes),...(
+  commanders[team]?[commanders[team]]:[])];}
+function opponents(s){return members(s.team==='friend'?'foe':'friend');}
 function living(list){return list.filter(s=>!s.dead&&!s.broken&&!s.routed);}
 // Shared awareness: choose opponents across the entire enemy front.
 // This runs a few times a second, so soldiers do not jitter between targets.
@@ -1306,7 +1334,7 @@ function applyWeaponImpact(attacker,target,a){
  const actual=mitigatedDamage(afterShield,target.armor,damageType);
  const weapon=a.projectile?rangedProfiles[a.projectile]:weaponProfiles[attacker.weapon],heavy=a.move.style==='heavy';
  // Physical hits and blocks happen regardless of friendly health immunity.
- if(target.team==='foe'){
+ if(target.team==='foe'||target.isCommander){
   target.hp=Math.max(0,target.hp-actual);
   const style=attackStyles[a.move.style];
   target.stress=clamp(target.stress+style.stress*(.15+.85*actual/Math.max(.01,a.baseDamage)),0,100);
@@ -1355,14 +1383,15 @@ function applyWeaponImpact(attacker,target,a){
   x:target.x,y:target.y,a:Math.atan2(target.y-attacker.y,target.x-attacker.x),
   life:shield.guardBroken?.48:.26,duration:shield.guardBroken?.48:.26,
   type:a.move.style,team:attacker.team});
- if(target.team==='foe'&&target.hp<=0){
+ if((target.team==='foe'||target.isCommander)&&target.hp<=0){
   target.dead=true;target.stress=100;
   for(const n of foes){
    if(n===target||n.dead||n.broken||n.routed)continue;
    const d=Math.hypot(n.x-target.x,n.y-target.y);
    if(d<88)n.stress=clamp(n.stress+stressBalance.allyKilled*(1-d/100),0,100);
   }
-  respawnEnemy(target);
+  if(!target.isCommander)respawnEnemy(target);
+  else if(target.team==='friend')updateCommanderUI();
  }
  return true;
 }
@@ -1488,7 +1517,7 @@ function approach(s,x,y,dt,mult=1){const dx=x-s.x,dy=y-s.y,dist=Math.hypot(dx,dy
 // Giving panicking and undisciplined soldiers more yield keeps disciplined
 // formations a little steadier without allowing any bodies to overlap.
 function separateSoldiers(){
- const all=[...friends,...foes].filter(s=>!s.dead&&!s.routed);
+ const all=[...members('friend'),...members('foe')].filter(s=>!s.dead&&!s.routed);
  const minDistance=20.7;
  for(let pass=0;pass<4;pass++){
   for(let i=0;i<all.length;i++){
@@ -1658,7 +1687,7 @@ function updateProjectiles(dt){
   const seg={ax:x1,ay:y1,bx:x2,by:y2};
   const dx=x2-x1,dy=y2-y1,dsq=dx*dx+dy*dy;
   let closest=null,at=Infinity;
-  for(const other of [...friends,...foes]){
+  for(const other of [...members('friend'),...members('foe')]){
    if(other.dead||other.routed||other.broken||
       (other.team===p.team&&other.id===p.shooterId))continue;
    // Lofted arrows, bolts and javelins are fired OVER friendly ranks,
@@ -1743,7 +1772,7 @@ function step(dt){
   planEngagements('foe');
   nextEngagementPlan=t+.65;
  }
- for(const s of [...friends,...foes]){
+ for(const s of [...members('friend'),...members('foe')]){
   if(s.dead||s.routed)continue;s.cooldown-=dt;s.decision-=dt;s.hitFlash=Math.max(0,s.hitFlash-dt);
   // Parry counters last only 0.72s; a waiting fighter cannot bank the bonus.
   s.counterWindow=Math.max(0,(s.counterWindow||0)-dt);
@@ -1753,7 +1782,7 @@ function step(dt){
   // Stamina restores while not recovering from a swing; movement uses some.
   s.recoveryDelay=Math.max(0,s.recoveryDelay-dt);
   if(s.recoveryDelay===0)s.stamina=clamp(s.stamina+dt*(6.7+(s.skill||45)*.012),0,s.maxStamina);
-  if(s.broken){s.attack=null;s.guardActive=false;s.guardHold=0;s.stress=100;fleeFromEnemies(s,dt);if(s.routed&&s.team==='foe')respawnEnemy(s);continue;}
+  if(s.broken){s.attack=null;s.guardActive=false;s.guardHold=0;s.stress=100;fleeFromEnemies(s,dt);if(s.routed&&s.team==='foe'&&!s.isCommander)respawnEnemy(s);continue;}
   const {target,dist}=chooseTarget(s);
   // Ranged units keep their bow in hand until a genuine melee threat.
   s.meleeReady=!!(isArcher(s)&&target&&dist<=meleeThreatRange(s));
@@ -1887,6 +1916,15 @@ function drawUnit(s){if(s.routed)return;
  // moves their actual battlefield position smoothly over multiple frames.
  const lean=s.impactLean*2.7;
  const x=s.x-Math.cos(s.faceAngle)*lean,y=s.y+bob-Math.sin(s.faceAngle)*lean;
+ if(s.isCommander){
+  // Distinct gold command ring and battlefield banner, even on foot.
+  ctx.strokeStyle=s.team==='friend'?'#ffe69b':'#ffb4a6';
+  ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,15,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x+9,y-2);ctx.lineTo(x+9,y-30);ctx.stroke();
+  ctx.fillStyle=s.team==='friend'?'#e2bd64':'#d66d63';
+  ctx.beginPath();ctx.moveTo(x+9,y-30);ctx.lineTo(x+26,y-26);ctx.lineTo(x+9,y-20);ctx.closePath();ctx.fill();
+ }
+
  if(isCavalry(s)&&!s.dead){
   // Horse body, head, and legs, visually distinct from a foot soldier.
   ctx.save();ctx.translate(x,y+5);ctx.rotate(s.faceAngle);
@@ -2023,6 +2061,7 @@ function draw(){
  background();if(marker){const age=t-marker.when;if(age<1.3){ctx.beginPath();ctx.arc(marker.x,marker.y,14+age*11,0,2*Math.PI);ctx.strokeStyle='rgba(211,255,218,'+(1-age/1.3)*.6+')';ctx.lineWidth=2;ctx.stroke();}else marker=null;}
  // Selection means selected soldiers are highlighted, but never hides their stats or swords.
  for(const s of foes)drawUnit(s);for(const s of friends)drawUnit(s);
+ for(const team of ['foe','friend'])if(commanders[team])drawUnit(commanders[team]);
  drawRangedProjectiles(ctx,projectiles);
  for(const sl of slashes){
   ctx.save();ctx.translate(sl.x,sl.y);ctx.rotate(sl.a);
@@ -2055,6 +2094,8 @@ function drawMinimap(){
   mctx.strokeStyle='#6e957d';mctx.lineWidth=2;mctx.strokeRect(1,1,mw-2,mh-2);
   for(const s of foes){if(s.routed||s.dead)continue;mctx.fillStyle='#e47b74';mctx.fillRect(s.x/W*mw-2,s.y/H*mh-2,4,4);}
   for(const s of friends){if(s.routed||s.dead)continue;mctx.fillStyle='#65e4a5';mctx.fillRect(s.x/W*mw-2,s.y/H*mh-2,4,4);}
+  for(const team of ['friend','foe']){const c=commanders[team];if(!c||c.dead)continue;
+   mctx.fillStyle='#ffe497';mctx.fillRect(c.x/W*mw-4,c.y/H*mh-4,8,8);}
   mctx.strokeStyle='#f5ebbd';mctx.lineWidth=1.8;
   mctx.strokeRect(camera.x/W*mw,camera.y/H*mh,Math.min(mw,VW/W*mw),Math.min(mh,VH/H*mh));
  }
