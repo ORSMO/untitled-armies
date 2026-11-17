@@ -299,6 +299,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
       <tr><td>Crossbow</td><td>12</td><td>1125</td><td>1.90s</td><td>Heavy piercing</td></tr>
       <tr><td>Javelins</td><td>6</td><td>624</td><td>1.05s</td><td>Heavy piercing</td></tr>
        <tr><td>Compact horse bow</td><td>24</td><td>710</td><td>0.52s</td><td>Light piercing</td></tr></tbody></table>
+      <p><strong>POLEARMS & BRACING:</strong> <strong>Infantry spears</strong> have 65 reach and can pair with shields. <strong>Long pikes</strong> have 89 reach and occupy both hands. Polearm tips cannot hit reliably inside their minimum range, so crowded soldiers use weaker blunt butt strikes. A spearman or pikeman facing a fast-approaching horse automatically plants his feet and raises the weapon over time. A ready frontal brace can halt a charge and wound or dismount the horse, while flanking, attacking before the spear is ready, or exhausting the soldier can break through. The <strong>🛡 Spear Wall</strong> formation is available in Classic. Try the new Spears vs Swords and Pikes vs Cavalry presets.</p>
       <p><strong>UNIT ROLES:</strong> <strong>Infantry</strong> fight with swords, axes or other melee weapons and never switch to ranged attacks. <strong>Archers</strong> always carry their selected bow, crossbow or javelins, prefer firing from a distance, and use their melee sidearm only when an enemy enters close-combat range. If out of ammunition, they keep their ranged weapon ready instead of charging with swords. Choose the mixed unit type for infantry and archers. <strong>Cavalry</strong> ride faster than infantry, hold wider spacing, charge with momentum, and become less effective in sustained close combat. Choose pure Cavalry, 20 infantry / 20 archers / 10 cavalry, or a grand army with all four classes. <strong>Mounted archers</strong> ride with a lighter compact horse bow (24 arrows, 710-unit range), shoot while circling, and retreat from close threats. <strong>Horse armour</strong> is separate from rider armour: leather, mail and plate barding reduce damage but slow the mount. Horses have their own health and stamina; losing a horse dismounts its rider, who continues fighting on foot. Any charging horse deals blunt impact damage even without a lance; lances add a piercing hit. Riders disengage to regroup before charging again.</p>
       <p><strong>COMMANDERS:</strong> Each side has a separate, mortal commander with a battlefield banner. Tactical, Aggressive and Defensive personalities read the battle, issue orders to Infantry, Archers, Cavalry and Mounted Archers, and protect threatened units. Distant units receive the command later; Leadership reduces communication delay. Use <strong>👑 Commanders</strong> to override a class or your whole army. Your General orders apply immediately and persist until you press Return to AI. The enemy army can also be manually controlled.</p>
       <p><strong>RANGED COMBAT:</strong> V2.4 triples maximum and ideal shooting distances. Better experience and ranged familiarity produce tighter shot groups, and experienced archers lead moving targets. Archers can switch to a new enemy during an existing draw rather than repeatedly cancelling shots when their target disappears. Projectiles still travel physically and can miss. War bows carry 18 arrows (fast), crossbows carry 12 bolts (slow reload, strong piercing), and javelins carry 6 throws (short range, powerful impact). Shots follow lofted trajectories over friendly ranks and stop when they reach the ground instead of sliding along it. Lofted attacks fly over allied soldiers throughout their flight; enemy soldiers, shields and armor can still intercept them. Projectiles have travel time, can miss, and interact with directional shields and armor. Experience and independent ranged-weapon familiarity improve accuracy and timing; set Ranged skill separately from melee Mastery in Test gear. Archers draw their melee sidearm only when enemies enter close-combat range; running out of ammunition does not make them charge with swords. A shield is lowered when aiming a two-handed bow or crossbow.</p>
@@ -324,6 +325,9 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
    <button type="button" data-matchup="armoredCavalry">Armored cavalry</button>
    <button type="button" data-matchup="swordCharge">Horse charges · swords</button>
    <button type="button" data-matchup="grandArmy">Grand army · all four</button>
+   <button type="button" data-matchup="spears">Spears vs sword infantry</button>
+   <button type="button" data-matchup="pikes">Braced pikes vs cavalry</button>
+   <button type="button" data-matchup="pikeDuel">Pikes vs swords</button>
   </div>
   <div class="equipment-grid"><div class="equipment-side">
    <h3>🟢 YOUR ARMY · 50 SOLDIERS</h3>
@@ -332,7 +336,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 <option value="archer">🏹 Archer — ranged first</option>
 <option value="mixed">Infantry + Archers (half each)</option>
 <option value="cavalry">🐎 Cavalry — mounted charges</option><option value="combined">Combined army (20/20/10)</option><option value="horseArcher">🏇 Mounted archer — compact bow</option><option value="grandArmy">Grand army (20/15/10/5)</option></select></div>
-<div class="equipment-field"><label for="friendWeapon">Weapon</label><select id="friendWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option><option value="lance">Cavalry lance</option></select></div>
+<div class="equipment-field"><label for="friendWeapon">Weapon</label><select id="friendWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option><option value="spear">Infantry spear</option><option value="pike">Long pike (two hands)</option><option value="lance">Cavalry lance</option></select></div>
 <div class="equipment-field"><label for="friendRanged">Ranged</label><select id="friendRanged">
 <option value="none">No ranged weapon</option><option value="bow">War bow · 18 arrows</option><option value="crossbow">Crossbow · 12 bolts</option><option value="javelin">Javelins · 6 throws</option><option value="horsebow">Compact horse bow · 24 arrows</option><option value="mixed">Mixed ranged weapons</option>
 </select></div>
@@ -359,7 +363,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 <option value="archer">🏹 Archer — ranged first</option>
 <option value="mixed">Infantry + Archers (half each)</option>
 <option value="cavalry">🐎 Cavalry — mounted charges</option><option value="combined">Combined army (20/20/10)</option><option value="horseArcher">🏇 Mounted archer — compact bow</option><option value="grandArmy">Grand army (20/15/10/5)</option></select></div>
-<div class="equipment-field"><label for="foeWeapon">Weapon</label><select id="foeWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option><option value="lance">Cavalry lance</option></select></div>
+<div class="equipment-field"><label for="foeWeapon">Weapon</label><select id="foeWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option><option value="spear">Infantry spear</option><option value="pike">Long pike (two hands)</option><option value="lance">Cavalry lance</option></select></div>
 <div class="equipment-field"><label for="foeRanged">Ranged</label><select id="foeRanged">
 <option value="none">No ranged weapon</option><option value="bow">War bow · 18 arrows</option><option value="crossbow">Crossbow · 12 bolts</option><option value="javelin">Javelins · 6 throws</option><option value="horsebow">Compact horse bow · 24 arrows</option><option value="mixed">Mixed ranged weapons</option>
 </select></div>
@@ -741,7 +745,17 @@ function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74
 // All formation styles provide fifty unique slots; enemy formations stay as Block.
  function formation(team,cx,cy){
   const d=gap(),type=team==='friend'?formationType:enemyFormationType,positions=[];
-  if(type==='wedge'){
+  if(type==='spearwall'){
+   // A shallow two-rank line across the direction of the enemy advance.
+   // Twenty-five side-by-side lanes give pikes open forward thrust lines.
+   const stride=Math.min(Math.max(22,d*.94),Math.max(8,(H-54)/24));
+   const front=team==='friend'?1:-1;
+   for(let i=0;i<50;i++){
+    const rank=Math.floor(i/25),lane=i%25;
+    positions.push({x:cx+front*(rank===0?d*.50:-d*.72),
+      y:cy+(lane-12)*stride});
+   }
+  }else if(type==='wedge'){
    const rows=[2,4,6,8,10,10,10];
    for(let depth=0;depth<rows.length;depth++){
     const n=rows[depth];
@@ -1409,7 +1423,10 @@ document.querySelector('#reset').addEventListener('click',populate);
   horseArchers:{friend:{unitRole:'horseArcher',weapon:'shortsword',ranged:'horsebow',horseArmor:'leather',shield:'none',armor:'leather',experience:'veteran',familiarity:'expert'},foe:{unitRole:'archer',weapon:'shortsword',ranged:'bow',horseArmor:'none',shield:'none',armor:'leather',experience:'veteran',familiarity:'expert'}},
   armoredCavalry:{friend:{unitRole:'cavalry',weapon:'lance',ranged:'none',horseArmor:'plate',shield:'round',armor:'mail',experience:'veteran',familiarity:'expert'},foe:{unitRole:'cavalry',weapon:'lance',ranged:'none',horseArmor:'none',shield:'round',armor:'mail',experience:'veteran',familiarity:'expert'}},
   swordCharge:{friend:{unitRole:'cavalry',weapon:'sword',ranged:'none',horseArmor:'leather',shield:'round',armor:'mail',experience:'veteran',familiarity:'expert'},foe:{unitRole:'infantry',weapon:'sword',ranged:'none',horseArmor:'none',shield:'kite',armor:'mail',experience:'trained',familiarity:'practiced'}},
-  grandArmy:{friend:{unitRole:'grandArmy',weapon:'mixed',ranged:'bow',horseArmor:'leather',shield:'mixed',armor:'mixed',experience:'trained',familiarity:'practiced'},foe:{unitRole:'grandArmy',weapon:'mixed',ranged:'bow',horseArmor:'mail',shield:'mixed',armor:'mixed',experience:'trained',familiarity:'practiced'}}
+  grandArmy:{friend:{unitRole:'grandArmy',weapon:'mixed',ranged:'bow',horseArmor:'leather',shield:'mixed',armor:'mixed',experience:'trained',familiarity:'practiced'},foe:{unitRole:'grandArmy',weapon:'mixed',ranged:'bow',horseArmor:'mail',shield:'mixed',armor:'mixed',experience:'trained',familiarity:'practiced'}},
+  spears:{friend:{unitRole:'infantry',weapon:'spear',shield:'round',armor:'mail',experience:'veteran',familiarity:'expert'},foe:{unitRole:'infantry',weapon:'sword',shield:'round',armor:'mail',experience:'trained',familiarity:'practiced'}},
+  pikes:{friend:{unitRole:'infantry',weapon:'pike',shield:'none',armor:'mail',experience:'veteran',familiarity:'expert'},foe:{unitRole:'cavalry',weapon:'lance',shield:'round',armor:'mail',horseArmor:'leather',experience:'trained',familiarity:'practiced'}},
+  pikeDuel:{friend:{unitRole:'infantry',weapon:'pike',shield:'none',armor:'leather',experience:'trained',familiarity:'practiced'},foe:{unitRole:'infantry',weapon:'sword',shield:'round',armor:'leather',experience:'trained',familiarity:'practiced'}}
  };
  let equipmentOpen=false;
  function syncEquipmentShield(team){
