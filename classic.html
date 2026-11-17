@@ -297,7 +297,8 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
       <table><thead><tr><th>Ranged</th><th>Ammo</th><th>Range</th><th>Reload</th><th>Impact</th></tr></thead>
       <tbody><tr><td>War bow</td><td>18</td><td>1005</td><td>0.64s</td><td>Light piercing</td></tr>
       <tr><td>Crossbow</td><td>12</td><td>1125</td><td>1.90s</td><td>Heavy piercing</td></tr>
-      <tr><td>Javelins</td><td>6</td><td>624</td><td>1.05s</td><td>Heavy piercing</td></tr></tbody></table>
+      <tr><td>Javelins</td><td>6</td><td>624</td><td>1.05s</td><td>Heavy piercing</td></tr>
+       <tr><td>Compact horse bow</td><td>24</td><td>710</td><td>0.52s</td><td>Light piercing</td></tr></tbody></table>
       <p><strong>UNIT ROLES:</strong> <strong>Infantry</strong> fight with swords, axes or other melee weapons and never switch to ranged attacks. <strong>Archers</strong> always carry their selected bow, crossbow or javelins, prefer firing from a distance, and use their melee sidearm only when an enemy enters close-combat range. If out of ammunition, they keep their ranged weapon ready instead of charging with swords. Choose the mixed unit type for infantry and archers. <strong>Cavalry</strong> ride faster than infantry, hold wider spacing, charge with momentum, and become less effective in sustained close combat. Choose pure Cavalry, 20 infantry / 20 archers / 10 cavalry, or a grand army with all four classes. <strong>Mounted archers</strong> ride with a lighter compact horse bow (24 arrows, 710-unit range), shoot while circling, and retreat from close threats. <strong>Horse armour</strong> is separate from rider armour: leather, mail and plate barding reduce damage but slow the mount. Horses have their own health and stamina; losing a horse dismounts its rider, who continues fighting on foot. Any charging horse deals blunt impact damage even without a lance; lances add a piercing hit. Riders disengage to regroup before charging again.</p>
       <p><strong>COMMANDERS:</strong> Each side has a separate, mortal commander with a battlefield banner. Tactical, Aggressive and Defensive personalities read the battle, issue orders to Infantry, Archers, Cavalry and Mounted Archers, and protect threatened units. Distant units receive the command later; Leadership reduces communication delay. Use <strong>👑 Commanders</strong> to override a class or your whole army. Your General orders apply immediately and persist until you press Return to AI. The enemy army can also be manually controlled.</p>
       <p><strong>RANGED COMBAT:</strong> V2.4 triples maximum and ideal shooting distances. Better experience and ranged familiarity produce tighter shot groups, and experienced archers lead moving targets. Archers can switch to a new enemy during an existing draw rather than repeatedly cancelling shots when their target disappears. Projectiles still travel physically and can miss. War bows carry 18 arrows (fast), crossbows carry 12 bolts (slow reload, strong piercing), and javelins carry 6 throws (short range, powerful impact). Shots follow lofted trajectories over friendly ranks and stop when they reach the ground instead of sliding along it. Lofted attacks fly over allied soldiers throughout their flight; enemy soldiers, shields and armor can still intercept them. Projectiles have travel time, can miss, and interact with directional shields and armor. Experience and independent ranged-weapon familiarity improve accuracy and timing; set Ranged skill separately from melee Mastery in Test gear. Archers draw their melee sidearm only when enemies enter close-combat range; running out of ammunition does not make them charge with swords. A shield is lowered when aiming a two-handed bow or crossbow.</p>
@@ -2381,10 +2382,11 @@ function drawUnit(s){if(s.routed)return;
   ctx.save();ctx.translate(x,y);ctx.rotate(s.faceAngle);
   ctx.strokeStyle=rp.color;ctx.lineWidth=2.5;ctx.beginPath();
   if(s.ranged==='bow'||s.ranged==='horsebow'){
-   ctx.arc(11,0,14,-1.1,1.1);ctx.stroke();
+   const bowRadius=s.ranged==='horsebow'?10:14;
+   ctx.arc(11,0,bowRadius,-1.1,1.1);ctx.stroke();
    ctx.strokeStyle='#f6e9c7';ctx.lineWidth=1;
-   ctx.beginPath();ctx.moveTo(11+14*Math.cos(-1.1),14*Math.sin(-1.1));
-   ctx.lineTo(s.rangedAim>0?4:11,0);ctx.lineTo(11+14*Math.cos(1.1),14*Math.sin(1.1));ctx.stroke();
+   ctx.beginPath();ctx.moveTo(11+bowRadius*Math.cos(-1.1),bowRadius*Math.sin(-1.1));
+   ctx.lineTo(s.rangedAim>0?4:11,0);ctx.lineTo(11+bowRadius*Math.cos(1.1),bowRadius*Math.sin(1.1));ctx.stroke();
   }else if(s.ranged==='crossbow'){
    ctx.moveTo(5,0);ctx.lineTo(24,0);ctx.moveTo(17,-11);ctx.lineTo(17,11);ctx.stroke();
    ctx.strokeStyle='#f9eac7';ctx.lineWidth=1;
