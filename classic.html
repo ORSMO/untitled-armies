@@ -923,6 +923,10 @@ function updateSquadState(team){
  const release=!!previous?.reserveReleased||
   (frontline.length>=6&&(pressure>.32||pressed>=Math.max(2,archers.length*.23)))||
   (initialInfantry>0&&frontline.length<initialInfantry*.72);
+ const reserveCount=frontline.filter(s=>s.squadReserve).length;
+ if(release&&reserveCount&&!previous?.reserveReleased){
+  const stat=combatLabStats(team);if(stat)stat.reserveDeployments++;
+ }
  const fewerTop=enemy.filter(s=>s.y<enemyCenter.y).length;
  const fewerBottom=enemy.length-fewerTop;
  const flankSide=fewerBottom<fewerTop?1:fewerTop<fewerBottom?-1:team==='friend'?1:-1;
@@ -981,9 +985,11 @@ function squadMovement(s,command,target,dist,x,y,pace){
   const flankY=clamp(state.enemyCenter.y+side*Math.min(175,H*.34),26,H-26);
   const flankX=clamp(state.enemyCenter.x-forward*Math.min(155,W*.19),26,W-26);
   if(!s.squadFlankDone){
-   if(Math.hypot(s.x-flankX,s.y-flankY)<Math.min(58,H*.20))
+   if(Math.hypot(s.x-flankX,s.y-flankY)<Math.min(58,H*.20)){
     s.squadFlankDone=true;
-   else return {x:flankX,y:flankY,pace:1.17};
+    s.squadFlankArrivals=(s.squadFlankArrivals||0)+1;
+    const stat=combatLabStats(s.team);if(stat)stat.flankArrivals++;
+   }else return {x:flankX,y:flankY,pace:1.17};
   }
  }else if(!tacticalFlank)s.squadFlankDone=false;
  return {x,y,pace};
