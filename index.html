@@ -2232,15 +2232,31 @@ function drawUnit(s){if(s.routed)return;
    ctx.beginPath();ctx.ellipse(-4,0,13,7,0,0,Math.PI*2);ctx.fill();
    ctx.strokeStyle='#3d3a36';ctx.lineWidth=1;ctx.stroke();
   }
+  // Each traveled stride advances a four-leg gait; slower horses walk
+  // and a full gallop has a longer, faster visible extension.
+  const gait=clamp((s.mountSpeed||0)/95,0,1);
+  const stride=Math.sin((s.mountDistance||0)*.21)*6*gait;
   ctx.strokeStyle='#534437';ctx.lineWidth=3;
-  ctx.beginPath();ctx.moveTo(-13,5);ctx.lineTo(-18,17);
-  ctx.moveTo(7,5);ctx.lineTo(12,17);
+  ctx.beginPath();
+  ctx.moveTo(-13,5);ctx.lineTo(-18+stride,17);
+  ctx.moveTo(-7,5);ctx.lineTo(-9-stride*.72,17);
+  ctx.moveTo(7,5);ctx.lineTo(12-stride,17);
+  ctx.moveTo(11,4);ctx.lineTo(15+stride*.72,17);
   ctx.moveTo(-18,-1);ctx.lineTo(-25,-5);ctx.stroke();
+  if((s.mountSpeed||0)>55){
+   ctx.fillStyle='rgba(211,193,155,.23)';
+   ctx.beginPath();ctx.ellipse(-25,9+stride*.25,5,2.5,0,0,Math.PI*2);
+   ctx.ellipse(-31,7-stride*.20,3,1.8,0,0,Math.PI*2);ctx.fill();
+  }
   ctx.restore();
   // The mount's amber health bar is separate from the rider's health bar.
   ctx.fillStyle='#2b2115';ctx.fillRect(x-17,y+25,34,3.5);
   ctx.fillStyle=s.mountHp<s.mountMaxHp*.33?'#f09a73':'#e8c779';
   ctx.fillRect(x-17,y+25,34*clamp(s.mountHp/s.mountMaxHp,0,1),3.5);
+  // A second thin bar displays the horse's actual remaining stamina.
+  ctx.fillStyle='#14302e';ctx.fillRect(x-17,y+30,34,2);
+  ctx.fillStyle=s.horseStamina<25?'#eda66c':'#91d6d1';
+  ctx.fillRect(x-17,y+30,34*clamp(s.horseStamina/100,0,1),2);
  }
  if(s.dead){ctx.fillStyle='#101f1ac0';ctx.beginPath();ctx.ellipse(x,y+3,8,4,.4,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ba9d92a6';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-4,y-4);ctx.lineTo(x+4,y+4);ctx.moveTo(x+4,y-4);ctx.lineTo(x-4,y+4);ctx.stroke();return;}
  if(selected&&s.team==='friend'){ctx.beginPath();ctx.arc(x,y,13,0,2*Math.PI);ctx.lineWidth=1.4;ctx.strokeStyle=s.broken?'#ffb28b':'#d2ffe0c2';ctx.stroke();}
@@ -2802,7 +2818,7 @@ function drawLabArena(ar){
   ctx.fillStyle='#0b1f18aa';ctx.beginPath();ctx.ellipse(s.x,s.y+5,10,4,0,0,Math.PI*2);ctx.fill();
   if(isCavalry(s)){
    const horseBarding=horseArmorProfiles[s.horseArmor]||horseArmorProfiles.none;
-   ctx.save();ctx.translate(s.x,s.y+4);ctx.rotate(s.faceAngle);
+   ctx.save();ctx.translate(s.x,s.y+4);ctx.rotate(s.mountHeading??s.faceAngle);
    ctx.fillStyle=s.team==='friend'?'#967551':'#846048';
    ctx.beginPath();ctx.ellipse(-3,1,18,8,0,0,Math.PI*2);ctx.fill();
    ctx.beginPath();ctx.ellipse(14,0,7,5,0,0,Math.PI*2);ctx.fill();
@@ -2812,6 +2828,7 @@ function drawLabArena(ar){
    ctx.restore();
    ctx.fillStyle='#271d13';ctx.fillRect(s.x-14,s.y+27,28,3);
    ctx.fillStyle='#e4c27a';ctx.fillRect(s.x-14,s.y+27,28*clamp(s.mountHp/s.mountMaxHp,0,1),3);
+   ctx.fillStyle='#215047';ctx.fillRect(s.x-14,s.y+31,28*clamp(s.horseStamina/100,0,1),2);
   }
   ctx.fillStyle=s.hitFlash>0?'#fff3aa':bodyColor;
   ctx.strokeStyle=armor?.color||'#fff';ctx.lineWidth=2.2;
