@@ -166,6 +166,16 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 #infiniteAmmoButton[aria-pressed=true]{border-color:#ddc66c;background:#594820;color:#fff5c0}
 @media(max-height:600px){.enemy-command-panel{padding:7px 9px}.enemy-command-grid button{min-height:25px;padding:4px}.enemy-command-panel p{margin:3px 0}}
 @media(max-width:570px){.enemy-command-panel{width:calc(100% - 128px)}.enemy-command-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.enemy-command-grid button{font-size:10px}}
+
+.commander-panel{border-color:#baad78;width:min(570px,calc(100% - 125px))}
+.commander-status{display:flex;justify-content:space-between;align-items:center;gap:7px;margin:10px 0 4px;
+ padding:7px 9px;background:#3c3830;border-radius:7px;font-size:11px}
+.commander-status span{color:#eddfbc;font-size:10px;text-align:right}
+.commander-panel .enemy-command-foot{flex-wrap:wrap}
+.commander-panel .enemy-command-foot button{flex:1;min-width:112px}
+.commander-panel .enemy-command-grid button[aria-pressed=true]{background:#806c39;border-color:#f1d595}
+#commanderButton[aria-expanded=true]{background:#51482c;border-color:#e2c475}
+@media(max-width:580px){.commander-panel{width:calc(100% - 105px)}}
 </style>
 </head>
 <body>
@@ -181,7 +191,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
     <canvas id="field"></canvas>
     <canvas id="minimap" width="180" height="102" aria-label="Battlefield minimap: touch or click to pan"></canvas>
     <div class="map-guide">3× LARGER WORLD · DRAG TO PAN · MINIMAP TO TRAVEL</div>
-    <div class="overlay-top" aria-live="polite"><span class="pill"><span class="light"></span><span id="count">50 SOLDIERS</span></span><span class="pill dim" id="status">IDLE</span><span class="pill dim" id="rangeBadge">⚔ WEAPON REACH</span></div>
+    <div class="overlay-top" aria-live="polite"><span class="pill"><span class="light"></span><span id="count">50 SOLDIERS</span></span><span class="pill dim" id="status">IDLE</span><span class="pill dim" id="rangeBadge">⚔ WEAPON REACH</span><span class="pill dim" id="commandHeadline">👑 Commander AI</span></div>
     <aside class="rail left">
   <button class="control" type="button" id="select" aria-pressed="false" aria-label="Select all soldiers"><span class="dot" aria-hidden="true">◎</span><span id="select-label">Select</span></button>
   <div class="formation-anchor is-hidden" id="formationAnchor">
@@ -201,6 +211,36 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
       <button class="control retreat" id="retreat" type="button" aria-label="Retreat to left side"><span class="dot" aria-hidden="true">↶</span><span>Retreat</span></button>
     </div></aside>
     <div class="bottom-note" id="hint" aria-live="polite">Select your army · swipe to explore the battlefield</div>
+ <section class="enemy-command-panel commander-panel is-hidden" id="commanderPanel" aria-label="Commander and general controls">
+  <div class="enemy-command-header"><strong>👑 COMMANDERS & THE GENERAL</strong>
+   <button id="commanderClose" type="button" aria-label="Close commander panel">✕</button></div>
+  <p>Your commander runs the battle automatically. Choose a group and issue a manual order to override him. Your order remains until you return that group to AI.</p>
+  <div class="commander-status"><strong>🟢 Your commander</strong><span id="friendCommanderStatus">Tactical · Assessing</span></div>
+  <div class="enemy-command-grid" aria-label="Your commander style">
+   <button type="button" data-commander-team="friend" data-style="aggressive">Aggressive</button>
+   <button type="button" data-commander-team="friend" data-style="defensive">Defensive</button>
+   <button type="button" data-commander-team="friend" data-style="tactical">Tactical</button>
+  </div>
+  <div class="commander-status"><strong>🔴 Enemy commander</strong><span id="foeCommanderStatus">Aggressive · Assessing</span></div>
+  <div class="enemy-command-grid" aria-label="Enemy commander style">
+   <button type="button" data-commander-team="foe" data-style="aggressive">Aggressive</button>
+   <button type="button" data-commander-team="foe" data-style="defensive">Defensive</button>
+   <button type="button" data-commander-team="foe" data-style="tactical">Tactical</button>
+  </div>
+  <div class="enemy-command-label">YOUR GENERAL ORDERS APPLY TO</div>
+  <div class="enemy-command-grid" role="group" aria-label="Manual command group">
+   <button type="button" data-general-group="all">All soldiers</button>
+   <button type="button" data-general-group="infantry">⚔ Infantry</button>
+   <button type="button" data-general-group="archer">🏹 Archers</button>
+   <button type="button" data-general-group="cavalry">🐎 Cavalry</button>
+  </div>
+  <p id="generalOverrideStatus">All groups currently follow Commander AI.</p>
+  <div class="enemy-command-foot">
+   <button type="button" id="takeGeneral">Take command of group</button>
+   <button type="button" id="releaseGeneral">Return group to AI</button>
+   <button type="button" id="releaseAll">Return all to AI</button>
+  </div>
+ </section>
  <section class="enemy-command-panel is-hidden" id="enemyPanel" aria-label="Enemy army control panel">
   <div class="enemy-command-header">
    <strong>🔴 ENEMY ARMY COMMANDS</strong>
@@ -276,6 +316,8 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
    <button type="button" data-matchup="archers">Archers vs infantry</button>
    <button type="button" data-matchup="crossbows">Crossbows vs plate</button>
    <button type="button" data-matchup="skirmish">Javelins vs bows</button>
+   <button type="button" data-matchup="cavalry">Cavalry vs infantry</button>
+   <button type="button" data-matchup="combined">Combined armies</button>
   </div>
   <div class="equipment-grid"><div class="equipment-side">
    <h3>🟢 YOUR ARMY · 50 SOLDIERS</h3>
@@ -332,7 +374,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
  </section>
 </div>
   </main>
-  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="enemyButton" class="small-btn" aria-expanded="false" aria-controls="enemyPanel">🔴 Enemy orders</button>
+  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="commanderButton" class="small-btn" aria-expanded="false" aria-controls="commanderPanel">👑 Commanders</button> <button type="button" id="enemyButton" class="small-btn" aria-expanded="false" aria-controls="enemyPanel">🔴 Enemy orders</button>
     <button type="button" id="infiniteAmmoButton" class="small-btn" aria-pressed="false" title="Unlimited arrows, bolts and javelins for both armies">∞ Ammo: OFF</button>
     <button type="button" id="equipmentButton" class="small-btn" aria-expanded="false" aria-controls="equipmentPanel">⚙ Test gear</button> <button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
 </div>
@@ -1012,6 +1054,56 @@ function setMode(m){
  }
  updateUI();updateCommanderUI();
 }
+const commanderButton=document.querySelector('#commanderButton'),
+ commanderPanel=document.querySelector('#commanderPanel');
+const commanderStyleButtons=[...commanderPanel.querySelectorAll('[data-commander-team]')];
+const generalGroupButtons=[...commanderPanel.querySelectorAll('[data-general-group]')];
+function updateCommanderUI(){
+ const describe=team=>{
+  const leader=commanders[team],brain=commanderBrains[team];
+  if(!leader||leader.dead||leader.broken||leader.routed)
+   return 'FALLEN · troops acting independently';
+  return brain.personality.toUpperCase()+' · '+brain.news+
+   ' · HP '+Math.ceil(Math.max(0,leader.hp))+'/'+leader.maxHp;
+ };
+ document.querySelector('#friendCommanderStatus').textContent=describe('friend');
+ document.querySelector('#foeCommanderStatus').textContent=describe('foe');
+ commanderStyleButtons.forEach(b=>b.setAttribute('aria-pressed',
+  commanderBrains[b.dataset.commanderTeam].personality===b.dataset.style?'true':'false'));
+ generalGroupButtons.forEach(b=>b.setAttribute('aria-pressed',
+  selectedGroup===b.dataset.generalGroup?'true':'false'));
+ const locked=Object.entries(generalOrders).filter(([,v])=>!!v);
+ document.querySelector('#generalOverrideStatus').textContent=locked.length?
+  'Your standing orders: '+locked.map(([k,v])=>k+' '+v.toUpperCase()).join(' · '):
+  'All groups currently follow Commander AI.';
+ document.querySelector('#commandHeadline').textContent=
+  '👑 '+(locked.length?'GENERAL OVERRIDE':commanderBrains.friend.phase.toUpperCase());
+}
+function setCommanderPanel(open){
+ commanderPanel.classList.toggle('is-hidden',!open);
+ commanderButton.setAttribute('aria-expanded',open?'true':'false');
+ if(open){setEnemyPanel(false);setArmorPanel(false);setEquipmentMenu(false);setFormationMenu(false);}
+}
+commanderButton.addEventListener('click',()=>setCommanderPanel(commanderPanel.classList.contains('is-hidden')));
+document.querySelector('#commanderClose').addEventListener('click',()=>setCommanderPanel(false));
+commanderStyleButtons.forEach(b=>b.addEventListener('click',()=>{
+ const brain=commanderBrains[b.dataset.commanderTeam];
+ brain.personality=b.dataset.style;brain.lastChange=-20;brain.next=0;
+ updateCommanderUI();
+}));
+generalGroupButtons.forEach(b=>b.addEventListener('click',()=>{
+ selectedGroup=b.dataset.generalGroup;updateCommanderUI();
+}));
+document.querySelector('#takeGeneral').addEventListener('click',()=>{
+ selected=true;mode='idle';setCommanderPanel(false);updateUI();updateCommanderUI();
+ ui.hint.textContent='GENERAL: select Attack, Defend, Stop, Retreat or tap the map for '+selectedGroup;
+});
+document.querySelector('#releaseGeneral').addEventListener('click',()=>returnToCommander(selectedGroup));
+document.querySelector('#releaseAll').addEventListener('click',()=>returnToCommander('all'));
+window.addEventListener('keydown',e=>{
+ if(e.key==='Escape')setCommanderPanel(false);
+});
+
 // Enemy-only tactical orders; the user's army remains separately controlled.
 const enemyButton=document.querySelector('#enemyButton');
 const enemyPanel=document.querySelector('#enemyPanel');
@@ -1100,11 +1192,13 @@ window.addEventListener('keydown',e=>{
 });
 function avgStress(){const live=foes.filter(s=>!s.dead&&!s.routed);return live.length?Math.round(live.reduce((a,s)=>a+s.stress,0)/live.length):0;}
  function avgStamina(){const active=friends.filter(s=>!s.dead&&!s.routed);return active.length?Math.round(active.reduce((a,s)=>a+s.stamina,0)/active.length):0;}
-function updateUI(){ui.select.setAttribute('aria-pressed',selected?'true':'false');ui.label.textContent=selected?'Deselect':'Select';ui.orders.classList.toggle('is-hidden',!selected);ui.status.textContent=mode.toUpperCase();orderButtons.forEach(b=>b.classList.toggle('active',selected&&b.id===mode));const alive=friends.filter(s=>!s.dead&&!s.routed).length,broken=friends.filter(s=>s.broken&&!s.routed).length;
+function updateUI(){ui.select.setAttribute('aria-pressed',selected?'true':'false');ui.label.textContent=selected?'Deselect':'Select';ui.orders.classList.toggle('is-hidden',!selected);ui.status.textContent=Object.values(generalOrders).some(Boolean)?'GENERAL':('AI '+commanderBrains.friend.phase.toUpperCase());orderButtons.forEach(b=>b.classList.toggle('active',selected&&b.id===mode));const alive=friends.filter(s=>!s.dead&&!s.routed).length,broken=friends.filter(s=>s.broken&&!s.routed).length;
  ui.count.textContent=alive+' SOLDIERS';ui.remaining.textContent=alive+' / 50';ui.enemyCount.textContent=foes.filter(s=>!s.dead&&!s.routed).length+' / 50';ui.stress.textContent=avgStress()+'%';ui.stamina.textContent=avgStamina()+'%';
  let status=({idle:'Drag to explore · select troops to give orders',attack:'Attacking with varied weapon reach and timed strikes',defend:'Holding formation and fighting nearby enemies',stop:'Standing still (your troops cannot panic)',retreat:'Ordered retreat toward your side',move:'Marching to your chosen position',form:'Reforming into '+formationType+' formation'}[mode]||'');
  if(broken)status=broken+' soldier'+(broken>1?'s are':' is')+' panicking and fleeing!';
- ui.hint.textContent=enemyMovePending?'🔴 TAP BATTLEFIELD TO MOVE ENEMY ARMY':status;ui.mode.textContent=({idle:'Idle',attack:'Attack',defend:'Defend',stop:'Stop',retreat:'Retreat',move:'Move',form:'Formation'}[mode]||'Idle');
+ ui.hint.textContent=enemyMovePending?'🔴 TAP BATTLEFIELD TO MOVE ENEMY ARMY':
+   Object.values(generalOrders).some(Boolean)?'General overriding '+selectedGroup+' · '+status:
+   'Commander: '+commanderBrains.friend.news;ui.mode.textContent=({idle:'Idle',attack:'Attack',defend:'Defend',stop:'Stop',retreat:'Retreat',move:'Move',form:'Formation'}[mode]||'Idle');
   ui.formationAnchor.classList.toggle('is-hidden',!selected);
   if(!selected)setFormationMenu(false);
   formOptions.forEach(b=>b.classList.toggle('chosen',b.dataset.form===formationType));
@@ -1216,7 +1310,9 @@ document.querySelector('#reset').addEventListener('click',populate);
   skill:{friend:{weapon:'sword',shield:'round',armor:'leather',experience:'elite',familiarity:'master',ranged:'none'},foe:{weapon:'sword',shield:'round',armor:'leather',experience:'recruit',familiarity:'novice',ranged:'none'}},
   archers:{friend:{unitRole:'archer',weapon:'shortsword',ranged:'bow',shield:'none',armor:'leather',experience:'veteran',familiarity:'expert'},foe:{weapon:'sword',ranged:'none',shield:'round',armor:'mail',experience:'trained',familiarity:'practiced',unitRole:'infantry'}},
   crossbows:{friend:{unitRole:'archer',weapon:'sword',ranged:'crossbow',shield:'none',armor:'padded',experience:'trained',familiarity:'practiced'},foe:{weapon:'sword',ranged:'none',shield:'kite',armor:'plate',experience:'trained',familiarity:'practiced',unitRole:'infantry'}},
-  skirmish:{friend:{unitRole:'archer',weapon:'shortsword',ranged:'javelin',shield:'round',armor:'leather',experience:'veteran',familiarity:'expert'},foe:{unitRole:'archer',weapon:'shortsword',ranged:'bow',shield:'none',armor:'leather',experience:'veteran',familiarity:'expert'}}
+  skirmish:{friend:{unitRole:'archer',weapon:'shortsword',ranged:'javelin',shield:'round',armor:'leather',experience:'veteran',familiarity:'expert'},foe:{unitRole:'archer',weapon:'shortsword',ranged:'bow',shield:'none',armor:'leather',experience:'veteran',familiarity:'expert'}},
+  cavalry:{friend:{unitRole:'cavalry',weapon:'lance',ranged:'none',shield:'round',armor:'mail',experience:'veteran',familiarity:'expert'},foe:{unitRole:'infantry',weapon:'sword',ranged:'none',shield:'kite',armor:'mail',experience:'trained',familiarity:'practiced'}},
+  combined:{friend:{unitRole:'combined',weapon:'mixed',ranged:'bow',shield:'mixed',armor:'mixed',experience:'trained',familiarity:'practiced'},foe:{unitRole:'combined',weapon:'mixed',ranged:'bow',shield:'mixed',armor:'mixed',experience:'trained',familiarity:'practiced'}}
  };
  let equipmentOpen=false;
  function syncEquipmentShield(team){
