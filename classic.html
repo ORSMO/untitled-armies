@@ -1965,6 +1965,21 @@ function separateSoldiers(){
       friendly&&(isPolearm(a)||isPolearm(b))?
       (isPolearm(a)&&isPolearm(b)?29:25):minDistance;
     if(sq>=clearance*clearance)continue;
+    // A mounted unit keeps inertia while approaching, but a body-to-body
+    // collision absorbs speed. Horses can't shove through tightly packed
+    // friendly ranks or stop-and-pivot instantaneously inside a scrum.
+    if(pass===0&&sq>1){
+     const collisionDistance=Math.sqrt(sq);
+     for(const [rider,other] of [[a,b],[b,a]]){
+      if(!isCavalry(rider)||(rider.mountSpeed||0)<20)continue;
+      const toward=((other.x-rider.x)*Math.cos(rider.mountHeading)+
+       (other.y-rider.y)*Math.sin(rider.mountHeading))/collisionDistance;
+      if(toward>.30){
+       const impactLimit=friendly?24:isCavalry(other)?36:46;
+       rider.mountSpeed=Math.min(rider.mountSpeed,impactLimit);
+      }
+     }
+    }
     if(sq<.000001){const angle=(a.id*73+b.id*151)*.33;dx=Math.cos(angle);dy=Math.sin(angle);sq=1;}
     const dist=Math.sqrt(sq),push=(clearance-dist+.005);
     const ya=(a.broken?2:1.05-a.disc*.003);
