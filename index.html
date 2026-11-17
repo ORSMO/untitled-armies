@@ -2382,6 +2382,26 @@ const labMountScenarios=[
   green:{unitRole:'horseArcher',weapon:'shortsword',ranged:'horsebow',armor:'leather',horseArmor:'none',shield:null,experience:'veteran',familiarity:'expert'},
   red:{unitRole:'horseArcher',weapon:'shortsword',ranged:'horsebow',armor:'leather',horseArmor:'plate',shield:null,experience:'veteran',familiarity:'expert'}}
 ];
+const labPolearmScenarios=[
+ {name:'Spears vs swords',counts:[3,3],
+  green:{unitRole:'infantry',weapon:'spear',armor:'mail',shield:'round',experience:'trained',familiarity:'practiced'},
+  red:{unitRole:'infantry',weapon:'sword',armor:'mail',shield:'round',experience:'trained',familiarity:'practiced'}},
+ {name:'Braced pikes vs cavalry',counts:[4,4],
+  green:{unitRole:'infantry',weapon:'pike',armor:'mail',shield:null,experience:'veteran',familiarity:'expert'},
+  red:{unitRole:'cavalry',weapon:'lance',armor:'mail',horseArmor:'leather',shield:'round',experience:'trained',familiarity:'practiced'}},
+ {name:'Spears vs cavalry',counts:[4,4],
+  green:{unitRole:'infantry',weapon:'spear',armor:'mail',shield:'round',experience:'veteran',familiarity:'expert'},
+  red:{unitRole:'cavalry',weapon:'lance',armor:'mail',horseArmor:'leather',shield:'round',experience:'trained',familiarity:'practiced'}},
+ {name:'Pikes vs swords up close',counts:[3,4],
+  green:{unitRole:'infantry',weapon:'pike',armor:'leather',shield:null,experience:'trained',familiarity:'practiced'},
+  red:{unitRole:'infantry',weapon:'shortsword',armor:'leather',shield:'round',experience:'trained',familiarity:'practiced'}},
+ {name:'Armored cavalry vs pikes',counts:[4,4],
+  green:{unitRole:'cavalry',weapon:'lance',armor:'mail',horseArmor:'plate',shield:'round',experience:'veteran',familiarity:'expert'},
+  red:{unitRole:'infantry',weapon:'pike',armor:'mail',shield:null,experience:'veteran',familiarity:'expert'}},
+ {name:'Pikes vs mounted archers',counts:[3,3],
+  green:{unitRole:'infantry',weapon:'pike',armor:'mail',shield:null,experience:'trained',familiarity:'practiced'},
+  red:{unitRole:'horseArcher',weapon:'shortsword',ranged:'horsebow',armor:'leather',horseArmor:'leather',shield:null,experience:'veteran',familiarity:'expert'}}
+];
 let labPreset='matchups';
 function labGearLabel(gear){
  return ((gear.unitRole|| (rangedProfiles[gear.ranged]?'Archer':'Infantry')))+' · '+
@@ -2399,29 +2419,35 @@ function updateLabTitles(){
   g.title=labGearLabel(s.green);r.title=labGearLabel(s.red);
  }
  const btn=document.getElementById('labPresetButton');
- btn.textContent=labPreset==='matchups'?'⚖ Fairness check':labPreset==='mirrors'?'🐎 Mount tests':'⚔ Skill matchups';
+ btn.textContent=labPreset==='matchups'?'⚖ Fairness check':
+  labPreset==='mirrors'?'🐎 Mount tests':
+  labPreset==='mounts'?'⚔ Polearm tests':'⚔ Skill matchups';
  btn.setAttribute('aria-pressed',labPreset==='mirrors'?'true':'false');
  document.getElementById('labPlainExplanation').textContent=labPreset==='mirrors'?
   'FAIRNESS CHECK: Both teams are identical. A result near 50/50 means the combat test is trustworthy. Large differences need investigation, allowing more variation for small samples.':
  labPreset==='mounts'?
   'MOUNT TESTS: Horse bow accuracy and range, horse health, barding, horse-only impact damage, lances and repeat charges are all simulated.':
+ labPreset==='polearms'?
+  'POLEARM TESTS: Spears, pikes, shielded infantry, mounted charges, bracing and minimum-reach weaknesses are tested together.':
   'RANGED MATCHUPS: Arrows, bolts and javelins have travel time. Shields, armor, skill, ammo and melee rushes affect who wins.';
  document.getElementById('labAnalysisHowToRead').textContent=labPreset==='mirrors'?
   'Same gear, rank, proficiency and numbers on both sides. Green and red should each win about half the fights. Minor differences are normal; large consistent differences mean the test is biased.':
   labPreset==='mounts'?
    'Mounted units can lose their horse without losing their rider. Compare armoured horses, sword-only charges, lances and short horse bows; uneven results are expected when equipment differs.':
+  labPreset==='polearms'?
+   'A ready pike can wound a horse and stop its hooves before impact. A close swordsman can exploit the long weapon minimum reach. Use braces and stopped charges to judge this match-up.':
    'Green and red are the two sides. A 70% win rate means 7 wins out of 10 decisive fights. Bigger armor, weapon, number or skill advantages may legitimately cause one-sided results.';
 }
 function setLabPreset(mode){
  labPreset=mode;
- const options=mode==='mirrors'?labMirrorScenarios:mode==='mounts'?labMountScenarios:labMatchupScenarios;
+ const options=mode==='mirrors'?labMirrorScenarios:mode==='mounts'?labMountScenarios:mode==='polearms'?labPolearmScenarios:labMatchupScenarios;
  options.forEach((v,i)=>Object.assign(labScenarios[i],{
   name:v.name,counts:[...v.counts],green:{...v.green},red:{...v.red}
  }));
  initLab();
 }
 document.getElementById('labPresetButton').addEventListener('click',()=>{
- setLabPreset(labPreset==='matchups'?'mirrors':labPreset==='mirrors'?'mounts':'matchups');
+ setLabPreset(labPreset==='matchups'?'mirrors':labPreset==='mirrors'?'mounts':labPreset==='mounts'?'polearms':'matchups');
 });
 const labSeconds=3600,labStepSeconds=.04,labWorldW=440,labWorldH=210,labMatchTimeout=75;
 let labArenas=[],labPaused=false,labTurn=0,labLastDraw=0,labAnalysisOpen=false,labAnalysisLast=0;
@@ -2613,10 +2639,12 @@ function updateLabHUD(){
   document.getElementById('labLeader'+a.index).textContent=labWinner(a);
   document.getElementById('labBattles'+a.index).textContent=
    a.rounds+' fights · '+(a.stats.friend.damage+a.stats.foe.damage).toFixed(0)+' dmg'+
-    (labPreset==='mounts'?' · '+(a.stats.friend.horseCharges+a.stats.foe.horseCharges)+' charges':'');
+    (labPreset==='mounts'?' · '+(a.stats.friend.horseCharges+a.stats.foe.horseCharges)+' charges':
+     labPreset==='polearms'?' · '+(a.stats.friend.braces+a.stats.foe.braces)+' braces':'');
   document.getElementById('labBlocks'+a.index).textContent=
    (a.stats.friend.blocks+a.stats.foe.blocks)+' blocks · '+
     (labPreset==='mounts'?((a.stats.friend.dismounts+a.stats.foe.dismounts)+' dismounts'):
+     labPreset==='polearms'?((a.stats.friend.chargeStops+a.stats.foe.chargeStops)+' horse stops'):
      ((a.stats.friend.parries+a.stats.foe.parries)+' parries'));
  }
  document.getElementById('labSummary').textContent=
@@ -2722,6 +2750,16 @@ function drawLabArena(ar){
    ctx.strokeStyle=s.weapon==='axe'?'#f3bb87':'#f0f1eb';ctx.lineWidth=s.weapon==='greatsword'||s.weapon==='axe'?3:2;
    ctx.beginPath();ctx.moveTo(s.x+Math.cos(w.angle)*8,s.y+Math.sin(w.angle)*8);
    ctx.lineTo(s.x+Math.cos(w.angle)*w.length,s.y+Math.sin(w.angle)*w.length);ctx.stroke();
+   if(isPolearm(s)){
+    const px=s.x+Math.cos(w.angle)*w.length,py=s.y+Math.sin(w.angle)*w.length;
+    ctx.fillStyle='#d5e5ea';ctx.beginPath();ctx.arc(px,py,3,0,Math.PI*2);ctx.fill();
+   }
+  }
+  if(isPolearm(s)&&(s.braceReady||0)>.05){
+   ctx.strokeStyle=s.braceReady>=.65?'#f7db91':'#ad9c72';
+   ctx.lineWidth=2.1;ctx.beginPath();
+   ctx.arc(s.x,s.y,15,s.faceAngle-.7,
+    s.faceAngle-.7+1.4*clamp(s.braceReady,0,1));ctx.stroke();
   }
   if(s.hp<s.maxHp){
    ctx.fillStyle='#15221c';ctx.fillRect(s.x-9,s.y-16,18,3);
