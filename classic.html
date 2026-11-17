@@ -1630,7 +1630,23 @@ function shieldImpact(attacker,defender,a){
 function applyWeaponImpact(attacker,target,a){
  if(target.dead||target.routed||target.broken||target.team===attacker.team||a.hitIds.has(target.id))return false;
  a.hitIds.add(target.id);
- const parry=a.projectile?null:attemptWeaponParry(attacker,target,a);
+ // A real horse presents a separate target. Projectiles and melee sweeps
+ // sometimes strike its body rather than the rider (regardless of team).
+ if(isCavalry(target)&&!a.horseImpact){
+  const hitHorse=rnd(Math.abs(a.id)*79+target.id*31+19)<
+   (a.projectile?.49:a.charge?.36:.32);
+  if(hitHorse){
+   const struck=applyHorseDamage(target,a.baseDamage,a.move.damageType);
+   if(struck){
+    a.hits++;a.momentum=0;a.stopped=true;
+    slashes.push({kind:'impact',block:null,damageType:a.move.damageType,
+     x:target.x,y:target.y+7,a:0,life:.30,duration:.30,
+     type:a.move.style,team:attacker.team});
+    return true;
+   }
+  }
+ }
+ const parry=a.projectile||a.horseImpact?null:attemptWeaponParry(attacker,target,a);
  if(parry?.parried)return true;
  const incomingMomentum=a.momentum;
  const shield=shieldImpact(attacker,target,a),damageType=a.move.damageType;
@@ -1893,9 +1909,10 @@ function launchProjectile(s,target){
  // a tiny angular error used to turn into a huge miss at long range.
  // Experience and familiarity both tighten the grouping; the projectile
  // still flies straight after release, and moving targets remain harder.
- const scatter=5+targetDistance*.0045+
+ const scatter=(5+targetDistance*.0045+
   (100-skill)*(.115+targetDistance*.00012)+
-  (100-familiarity)*(.10+targetDistance*.00010);
+  (100-familiarity)*(.10+targetDistance*.00010))*
+  (s.ranged==='horsebow'?(1.10+s.gallop*.48):1);
  const lateralError=(rnd(s.id*197+s.shotCount*139+41)-.5)*2*scatter;
  const angle=Math.atan2(predictedY-s.y,predictedX-s.x)+
   Math.atan2(lateralError,targetDistance);
@@ -2000,7 +2017,7 @@ function updateProjectiles(dt){
    // on a teammate whose 2D ground position overlaps the flight path.
    // Deliberately flat shots (loft=0) still use physical ally collisions.
    if(other.team===p.team&&p.loft>0)continue;
-   const radius=(p.kind==='javelin'?10:9.3)+(isCavalry(other)?4:0);
+   const radius=(p.kind==='javelin'?10:9.3)+(isCavalry(other)?5:0);
    if(pointSegmentDistance(other.x,other.y,seg)>radius)continue;
    const u=dsq>0?clamp(((other.x-x1)*dx+(other.y-y1)*dy)/dsq,0,1):0;
    // Check height at the instant the projectile crosses this soldier.
@@ -2014,7 +2031,7 @@ function updateProjectiles(dt){
    if(closest.team===p.team){
     const stat=combatLabStats(p.team);if(stat)stat.friendlyStops++;
    }else{
-    const a={id:p.id,move:{style:p.kind==='bow'?'light':'heavy',damageType:'piercing'},
+    const a={id:p.id,move:{style:['bow','horsebow'].includes(p.kind)?'light':'heavy',damageType:'piercing'},
       baseDamage:p.damage,momentum:p.momentum,hits:0,hitIds:new Set(),
       projectile:p.kind,counter:false,stopped:false};
     const hit=applyWeaponImpact(p.shooter,closest,a);
@@ -2114,7 +2131,9 @@ function step(dt){
   else if(command==='attack'){
     if(target){
       const ranged=activeRangedProfile(s);
-      if(ranged&&dist>meleeThreatRange(s)){
+      if(isCavalry(s)&&s.regroupUntil>t){
+       moveX=s.regroupX;moveY=s.regroupY;pace=1.36;
+      }else if(ranged&&dist>meleeThreatRange(s)){
        // Keep the intended long standoff in Classic, but scale it down
        // in tiny 440×210 test arenas so archers do not flee to the edges.
        const gap=Math.min(ranged.ideal,Math.max(90,Math.min(W,H)*.65));
@@ -2126,7 +2145,13 @@ function step(dt){
         moveX=clamp(s.x-ndx*(gap-dist+16),14,W-14);
         moveY=clamp(s.y-ndy*(gap-dist+16),14,H-14);
         pace=.86;
-       }else{moveX=s.x;moveY=s.y;}
+        }else if(s.unitRole==='horseArcher'&&isCavalry(s)){
+         // Ride sideways and loose arrows, rather than stopping in one place.
+         const side=s.id%2===0?1:-1;
+         moveX=clamp(s.x-ndy*110*side,24,W-24);
+         moveY=clamp(s.y+ndx*110*side,24,H-24);
+         pace=.96;
+        }else{moveX=s.x;moveY=s.y;}
       }else{
        const slot=engagementPoint(s,target);
        const distanceToSlot=Math.hypot(slot.x-s.x,slot.y-s.y);
@@ -2144,26 +2169,48 @@ function step(dt){
   const equipment=weaponProfiles[s.weapon].weight+(shieldProfiles[s.shield]?.weight||0)+(activeRangedProfile(s)?rangedProfiles[s.ranged].weight:0);
   const loadPace=clamp(1-equipment*.038,.70,1);
   const fightingPace=s.stagger>0?0:s.attack?.72:s.guardActive?.73:1;
-  const mountPace=isCavalry(s)?(dist<100?1.20:2.00):1;
+  const barding=horseArmorProfiles[s.horseArmor]||horseArmorProfiles.none;
+  const staminaFactor=isCavalry(s)?clamp(.55+(s.horseStamina||0)/220,.55,1):1;
+  const woundFactor=isCavalry(s)&&s.mountHp<s.mountMaxHp*.40?.83:1;
+  const mountPace=isCavalry(s)?(dist<100?1.18:2.04)*
+   barding.speed*staminaFactor*woundFactor:1;
   const oldX=s.x,oldY=s.y;
   if(command!=='stop')approach(s,moveX,moveY,dt,pace*disciplineControl*fatiguePace*loadPace*fightingPace*mountPace);
   s.stamina=clamp(s.stamina-Math.hypot(s.x-oldX,s.y-oldY)*(.042+equipment*.004),0,s.maxStamina);
    s.vx=(s.x-oldX)/Math.max(.001,dt);s.vy=(s.y-oldY)/Math.max(.001,dt);
+  // Mounted soldiers conserve horse stamina at a walk, and tire at a gallop.
+  // Stopped or dismounted riders cannot perform horse-impact charges.
   if(isCavalry(s)){
-   const velocity=Math.hypot(s.vx,s.vy);
-   s.gallop=clamp(s.gallop+(velocity>45?dt*.63:-dt*1.4),0,1);
+   const speed=Math.hypot(s.vx,s.vy);
+   s.horseStamina=clamp(s.horseStamina+
+    dt*(speed>52?-7.4:speed<18?13:2.5),0,100);
+   s.gallop=clamp(s.gallop+(speed>53&&s.horseStamina>13?dt*.68:-dt*1.35),0,1);
    s.chargeCooldown=Math.max(0,(s.chargeCooldown||0)-dt);
    if(command==='attack'&&target&&!target.dead&&!target.routed&&
-      dist<62&&dist>13&&s.gallop>.36&&s.chargeCooldown<=0&&s.stamina>=12){
-    // One physical charge impact after building movement momentum. Shields
-    // and armor mitigate it normally; a stopped rider cannot spam charges.
-    const impact={id:nextSwingId++,move:{style:'heavy',damageType:'piercing'},
-     baseDamage:1.45+s.gallop*.65,momentum:140+s.gallop*100,hits:0,
-     hitIds:new Set(),counter:false,stopped:false,charge:true};
-    applyWeaponImpact(s,target,impact);
-    s.chargeHits++;s.chargeCooldown=3.7;s.gallop=0;
-    s.stamina=clamp(s.stamina-12,0,s.maxStamina);
-    s.recoveryDelay=Math.max(s.recoveryDelay,.45);
+      dist<66&&dist>13&&s.gallop>.38&&s.chargeCooldown<=0&&
+      s.stamina>=12&&s.horseStamina>=12){
+    const horseImpact={id:nextSwingId++,move:{style:'heavy',damageType:'blunt'},
+     baseDamage:.66+s.gallop*.67,momentum:118+s.gallop*87,hits:0,
+     hitIds:new Set(),counter:false,stopped:false,charge:true,horseImpact:true};
+    applyWeaponImpact(s,target,horseImpact);
+    // The horse always strikes, whether the rider carries a sword,
+    // a lance or a bow. A ready lance can add a separate piercing blow.
+    if(s.weapon==='lance'&&!target.dead&&!target.routed){
+     const lanceHit={id:nextSwingId++,move:{style:'heavy',damageType:'piercing'},
+      baseDamage:.72+s.gallop*.66,momentum:125+s.gallop*105,hits:0,
+      hitIds:new Set(),counter:false,stopped:false,charge:true};
+     applyWeaponImpact(s,target,lanceHit);
+    }
+    s.chargeHits++;s.chargeCooldown=4.1;s.gallop=0;
+    s.horseStamina=clamp(s.horseStamina-18,0,100);
+    s.stamina=clamp(s.stamina-10,0,s.maxStamina);
+    // Disengage sideways and back, then rebuild speed for another pass.
+    // This keeps cavalry from spending the whole battle tangled in melee.
+    const back=s.team==='friend'?-1:1,side=s.id%2===0?1:-1;
+    s.regroupUntil=t+2.15;
+    s.regroupX=clamp(s.x+back*165,28,W-28);
+    s.regroupY=clamp(s.y+side*94,28,H-28);
+    s.recoveryDelay=Math.max(s.recoveryDelay,.32);
    }
   }
   updateFacing(s,target,target?Math.hypot(target.x-s.x,target.y-s.y):Infinity,dt*(s.stagger>0?.38:1));
@@ -2292,7 +2339,7 @@ function drawUnit(s){if(s.routed)return;
   const rp=rangedProfiles[s.ranged];
   ctx.save();ctx.translate(x,y);ctx.rotate(s.faceAngle);
   ctx.strokeStyle=rp.color;ctx.lineWidth=2.5;ctx.beginPath();
-  if(s.ranged==='bow'){
+  if(s.ranged==='bow'||s.ranged==='horsebow'){
    ctx.arc(11,0,14,-1.1,1.1);ctx.stroke();
    ctx.strokeStyle='#f6e9c7';ctx.lineWidth=1;
    ctx.beginPath();ctx.moveTo(11+14*Math.cos(-1.1),14*Math.sin(-1.1));
