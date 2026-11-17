@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V2.6</title>
+<title>Untitled Armies — V2.7</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -201,7 +201,7 @@ body.lab-mode .lab-area{display:flex}
     <div class="top-actions">
       <a class="lab-classic-link" href="classic.html" title="Open original 50v50 battlefield">Classic battlefield</a>
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 2.6">V2.6</div>
+      <div class="build" aria-label="Version 2.7">V2.7</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
@@ -260,14 +260,14 @@ body.lab-mode .lab-area{display:flex}
       <tr><td>Crossbow</td><td>12</td><td>1125</td><td>1.90s</td><td>Heavy piercing</td></tr>
       <tr><td>Javelins</td><td>6</td><td>624</td><td>1.05s</td><td>Heavy piercing</td></tr></tbody></table>
       <p><strong>UNIT ROLES:</strong> <strong>Infantry</strong> always prioritize melee weapons and never shoot. <strong>Archers</strong> keep their ranged weapon in hand and fire from a distance; they draw a sword only against a nearby enemy. Without ammunition, they avoid charging distant enemies. Mixed armies alternate infantry and archers. <strong>Cavalry</strong> is reserved for later.</p>
-      <p><strong>RANGED COMBAT:</strong> V2.4 triples maximum and ideal shooting distances. Better experience and ranged familiarity produce tighter shot groups, and experienced archers lead moving targets. Archers can switch to a new enemy during an existing draw rather than repeatedly cancelling shots when their target disappears. Projectiles still travel physically and can miss. War bows carry 18 arrows (fast), crossbows carry 12 bolts (slow reload, strong piercing), and javelins carry 6 throws (short range, powerful impact). Shots follow lofted trajectories over friendly ranks and stop when they reach the ground instead of sliding along it. Low shots near the shooter or impact point can still strike soldiers. Projectiles have travel time, can miss, and interact with directional shields and armor. Experience and independent ranged-weapon familiarity improve accuracy and timing; set Ranged skill separately from melee Mastery in Test gear. Soldiers automatically switch to melee when closely threatened or out of ammunition. A shield is lowered when aiming a two-handed bow or crossbow.</p>
+      <p><strong>RANGED COMBAT:</strong> V2.4 triples maximum and ideal shooting distances. Better experience and ranged familiarity produce tighter shot groups, and experienced archers lead moving targets. Archers can switch to a new enemy during an existing draw rather than repeatedly cancelling shots when their target disappears. Projectiles still travel physically and can miss. War bows carry 18 arrows (fast), crossbows carry 12 bolts (slow reload, strong piercing), and javelins carry 6 throws (short range, powerful impact). Shots follow lofted trajectories over friendly ranks and stop when they reach the ground instead of sliding along it. Lofted attacks fly over allied soldiers throughout their flight; enemy soldiers, shields and armor can still intercept them. Projectiles have travel time, can miss, and interact with directional shields and armor. Experience and independent ranged-weapon familiarity improve accuracy and timing; set Ranged skill separately from melee Mastery in Test gear. Archers draw their melee sidearm only when enemies enter close-combat range; running out of ammunition does not make them charge with swords. A shield is lowered when aiming a two-handed bow or crossbow.</p>
       <p><strong>IMPACT REACTIONS:</strong> Heavy hits cause knockback and stagger. A successful active block can create a counterattack opening; a weak shield can suffer a <strong>GUARD BREAK</strong>. Plate and solid shields can stop a swing and recoil the attacker.</p>
       <p>Green and red soldiers wear mixed armor and carry different weapons. One-handed swords can use shields; greatswords and axes occupy both hands. Swing stages: wind-up → active hitbox → recovery. Your troops are still invulnerable.</p>
      </section>
   <div class="equipment-backdrop is-hidden" id="equipmentBackdrop">
  <section class="equipment-panel" id="equipmentPanel" role="dialog" aria-modal="true" aria-labelledby="equipmentTitle">
   <div class="equipment-header"><strong id="equipmentTitle">⚙ EQUIPMENT TESTING · 50 VS 50</strong><button type="button" id="closeEquipment" class="armor-close" aria-label="Close equipment testing">✕</button></div>
-  <p>Customize both armies or choose a quick matchup. The battle pauses while this menu is open. Set melee and ranged weapons separately; ranged ammo is limited, and archers can shoot over allied infantry before drawing melee weapons when threatened or out of shots. Two-handed melee weapons cannot use shields. Two-handed ranged weapons put shields away while firing.</p>
+  <p>Customize both armies or choose a quick matchup. The battle pauses while this menu is open. Set melee and ranged weapons separately; ranged ammo is limited, and archers shoot over allied infantry and draw melee weapons only when closely threatened, not merely because they run out of ammunition. Two-handed melee weapons cannot use shields. Two-handed ranged weapons put shields away while firing.</p>
   <div class="equipment-presets" role="group" aria-label="Quick equipment matchups">
    <button type="button" data-matchup="mixed">Mixed armies</button>
    <button type="button" data-matchup="plate">Plate wall</button>
@@ -600,6 +600,18 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
    soldier.guardBreak=0;soldier.shieldRecoil=0;soldier.guardBreakFlash=0;
    soldier.cooldown=Math.min(Math.max(soldier.cooldown,0),.26);
   });
+  // Re-equipping classes also updates formation anchors. Archers in a
+  // newly mixed army can take the rear ranks without teleporting soldiers.
+  if(soldiers.length===50){
+   const cx=soldiers.reduce((v,u)=>v+(u.anchorX??u.x),0)/50;
+   const cy=soldiers.reduce((v,u)=>v+(u.anchorY??u.y),0)/50;
+   const slots=formation(team,cx,cy);
+   soldiers.forEach((u,i)=>{
+    if(u.dead||u.broken||u.routed)return;
+    u.anchorX=slots[i].x;u.anchorY=slots[i].y;
+    u.tx=slots[i].x;u.ty=slots[i].y;
+   });
+  }
   nextEngagementPlan=0;
  }
  // Attack timing is split into wind-up, physical active frames and recovery.
@@ -668,9 +680,34 @@ function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74
   }else{
    const cols=type==='line'?25:type==='column'?5:10;
    const rows=50/cols;
-   for(let i=0;i<50;i++){
+   for(let i=0;i<50;i++)
     positions.push({x:cx+(i%cols-(cols-1)/2)*d,y:cy+(Math.floor(i/cols)-(rows-1)/2)*d});
+  }
+  // Infantry-only armies keep their original formation. For archers,
+  // reserve wider firing lanes; in mixed armies infantry take the front
+  // and archers deploy in separate rear ranks instead of interleaving.
+  const roles=Array.from({length:50},(_,i)=>assignedRole(equipmentConfig[team],i));
+  if(roles.includes('archer')){
+   const infantry=roles.map((role,i)=>role==='infantry'?i:-1).filter(i=>i>=0);
+   const archers=roles.map((role,i)=>role==='archer'?i:-1).filter(i=>i>=0);
+   const forward=team==='friend'?1:-1;
+   function place(indices,isBow){
+    const count=indices.length;if(!count)return;
+    const stride=isBow?Math.max(36,d*1.40):d;
+    const lanes=type==='line'?Math.min(count,25):
+      type==='column'?Math.min(count,5):Math.min(count,10);
+    indices.forEach((index,j)=>{
+     const column=j%lanes,row=Math.floor(j/lanes);
+     const rowCenter=(lanes-1)*.5;
+     const y=cy+(column-rowCenter)*stride;
+     // Rearward bow ranks sit behind the last infantry row with room
+     // for a shot. Pure archer armies use the same spread-out pattern.
+     const front=isBow?(infantry.length?-d*3:-d*.2)-row*stride:
+       d*2-row*d;
+     positions[index]={x:cx+forward*front,y};
+    });
    }
+   place(infantry,false);place(archers,true);
   }
   return positions.map(p=>({x:clamp(p.x,18,W-18),y:clamp(p.y,21,H-21)}));
  }
@@ -1408,16 +1445,21 @@ function approach(s,x,y,dt,mult=1){const dx=x-s.x,dy=y-s.y,dist=Math.hypot(dx,dy
 // formations a little steadier without allowing any bodies to overlap.
 function separateSoldiers(){
  const all=[...friends,...foes].filter(s=>!s.dead&&!s.routed);
- const minDistance=20.7, minSq=minDistance*minDistance;
+ const minDistance=20.7;
  for(let pass=0;pass<4;pass++){
   for(let i=0;i<all.length;i++){
    const a=all[i];
    for(let j=i+1;j<all.length;j++){
     const b=all[j];let dx=b.x-a.x,dy=b.y-a.y;
     let sq=dx*dx+dy*dy;
-    if(sq>=minSq)continue;
+    // Archers need wider firing stances, both beside other archers and
+    // beside friendly infantry. Keep old collision for melee opponents.
+    const friendly=a.team===b.team;
+    const clearance=friendly&&(isArcher(a)||isArcher(b))?
+      (isArcher(a)&&isArcher(b)?33:26):minDistance;
+    if(sq>=clearance*clearance)continue;
     if(sq<.000001){const angle=(a.id*73+b.id*151)*.33;dx=Math.cos(angle);dy=Math.sin(angle);sq=1;}
-    const dist=Math.sqrt(sq),push=(minDistance-dist+.005);
+    const dist=Math.sqrt(sq),push=(clearance-dist+.005);
     const ya=(a.broken?2:1.05-a.disc*.003);
     const yb=(b.broken?2:1.05-b.disc*.003);
     const wa=ya/(ya+yb),wb=yb/(ya+yb);
@@ -1431,8 +1473,8 @@ function separateSoldiers(){
  }
 }
 // Bow/crossbow/javelin combat. Projectiles are physical entities: they travel,
-// can miss, and are caught by the first soldier along their path. Allied bodies
-// block shots harmlessly rather than allowing arrows to pass through teammates.
+// can miss, and strike enemy soldiers along their path. Normal lofted shots
+// clear friendly ranks, even near the landing point; flat shots can be obstructed.
 function hasRangedAmmo(s){return !!activeRangedProfile(s)&&s.ammo>0;}
 function meleeThreatRange(s){return Math.max(57,weaponProfiles[s.weapon].reach+13);}
 function rangedTimeFactor(s){
@@ -1443,13 +1485,14 @@ function rangedTimeFactor(s){
 // friendly lines then descend near the intended target; only low flights can
 // collide with soldiers. World-space body height is shared by both teams.
 const missileBodyHeight=15;
-const missileMuzzleHeight=8;
+const missileMuzzleHeight=22;
 function projectileHeightAt(p,traveled){
  const u=clamp(traveled/Math.max(1,p.arcDistance||p.range),0,1);
  return missileMuzzleHeight*(1-u)+4*(p.loft??0)*u*(1-u);
 }
-// A low shot may still strike a nearby friendly; otherwise infantry can
-// stand in front of archers while arrows and javelins pass above them.
+// Archers release above allied head height, so tightly packed friendly
+// ranks cannot swallow every shot during the first few steps of flight.
+// The arc still descends through enemy-height hitboxes near its landing point.
 function launchProjectile(s,target){
  const profile=activeRangedProfile(s);
  if(!profile||!hasRangedAmmo(s)||s.dead||s.broken||!target||target.dead)return false;
@@ -1571,6 +1614,12 @@ function updateProjectiles(dt){
   for(const other of [...friends,...foes]){
    if(other.dead||other.routed||other.broken||
       (other.team===p.team&&other.id===p.shooterId))continue;
+   // Lofted arrows, bolts and javelins are fired OVER friendly ranks,
+   // including infantry fighting at the landing point. In this top-down
+   // model there is no friendly-fire damage, so don't waste ammunition
+   // on a teammate whose 2D ground position overlaps the flight path.
+   // Deliberately flat shots (loft=0) still use physical ally collisions.
+   if(other.team===p.team&&p.loft>0)continue;
    const radius=p.kind==='javelin'?10:9.3;
    if(pointSegmentDistance(other.x,other.y,seg)>radius)continue;
    const u=dsq>0?clamp(((other.x-x1)*dx+(other.y-y1)*dy)/dsq,0,1):0;
