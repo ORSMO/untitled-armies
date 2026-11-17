@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V2.9</title>
+<title>Untitled Armies — V3.0</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -184,7 +184,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
     <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Armor · Shields · Physical combat</p></div></div>
     <div class="top-actions">
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 2.9">V2.9</div>
+      <div class="build" aria-label="Version 3.0">V3.0</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
@@ -482,9 +482,13 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   sword:{label:'Arming sword',weight:1.55,reach:36,power:1,momentum:68,speed:1,twoHand:false,moves:['slashRight','slashLeft','overhead','thrust','pommel'],cleave:1},
   greatsword:{label:'Greatsword',weight:3.35,reach:47,power:1.25,momentum:115,speed:1.24,twoHand:true,moves:['slashRight','slashLeft','overhead','thrust','cleave','pommel'],cleave:5},
   axe:{label:'Battle axe',weight:3.8,reach:43,power:1.38,momentum:143,speed:1.38,twoHand:true,moves:['slashRight','slashLeft','overhead','cleave','pommel'],cleave:6},
+  spear:{label:'Infantry spear',weight:2.0,reach:65,power:1.02,momentum:82,speed:1.04,twoHand:false,moves:['thrust','butt'],cleave:1},
+  pike:{label:'Long pike',weight:3.7,reach:89,power:1.13,momentum:112,speed:1.28,twoHand:true,moves:['thrust','butt'],cleave:1},
   lance:{label:'Cavalry lance',weight:2.5,reach:56,power:1.23,momentum:142,speed:1.24,twoHand:false,moves:['thrust','slashRight'],cleave:1}
  };
- const weaponOrder=['shortsword','sword','greatsword','axe','lance'];
+ const weaponOrder=['shortsword','sword','greatsword','axe','spear','pike','lance'];
+ function isPolearm(s){return !isCavalry(s)&&(s.weapon==='spear'||s.weapon==='pike');}
+ function polearmMinRange(s){return s.weapon==='pike'?40:25;}
  // Secondary weapons have limited shots, physical flight and melee fallback.
  const rangedProfiles={
   bow:{label:'War bow',speed:520,range:1005,ideal:645,ammo:18,draw:.62,reload:.64,loft:46,
@@ -569,7 +573,7 @@ const shieldProfiles={
  };
  const experienceOrder=['recruit','trained','veteran','elite'];
  const familiarityLevels={novice:18,practiced:56,expert:85,master:97};
- const weaponSkillKey={shortsword:11,sword:23,greatsword:37,axe:53,lance:61};
+ const weaponSkillKey={shortsword:11,sword:23,greatsword:37,axe:53,spear:57,pike:59,lance:61};
  const rangedSkillKey={bow:67,crossbow:79,javelin:89,horsebow:101};
  function rangedFamiliarity(s){return clamp(s.rangedSkills?.[s.ranged]??35,0,100);}
  function initializeRangedEquipment(s){
@@ -639,8 +643,8 @@ const shieldProfiles={
   // A shield cannot coexist with a two-handed weapon, including in mixed armies.
   if(weaponProfiles[weapon].twoHand)shield=null;
   const unitRole=assignedRole(settings,index);
-  if(unitRole==='horseArcher'&&(settings.weapon==='mixed'||weapon==='lance'))weapon='shortsword';
-  if(unitRole==='cavalry'&&(settings.weapon==='mixed'||!weaponProfiles[weapon]))weapon='lance';
+  if(unitRole==='horseArcher'&&(settings.weapon==='mixed'||weapon==='lance'||weapon==='pike'))weapon='shortsword';
+  if(unitRole==='cavalry'&&(settings.weapon==='mixed'||weapon==='pike'||!weaponProfiles[weapon]))weapon='lance';
   // Infantry never carry/use a ranged weapon. The Archer role can select
   // bow, crossbow or javelins; a bow is the default if nothing was selected.
   const chosenRanged=settings.ranged==='mixed'?rangedOrder[index%rangedOrder.length]:settings.ranged;
@@ -660,6 +664,7 @@ const shieldProfiles={
    initializeRangedEquipment(soldier);initMount(soldier);
    // Switching equipment safely ends any attack/guard using the old item.
    soldier.attack=null;soldier.guardActive=false;soldier.guardHold=0;
+   soldier.braceReady=0;soldier.braceThreatId=null;soldier.braceStops=0;soldier.braceCount=0;
    soldier.lastCommanderOrder=null;soldier.currentCommanderOrder='attack';soldier.pendingCommanderOrder=null;
    soldier.guardBreak=0;soldier.shieldRecoil=0;soldier.guardBreakFlash=0;
    soldier.cooldown=Math.min(Math.max(soldier.cooldown,0),.26);
@@ -686,6 +691,7 @@ const shieldProfiles={
   overhead:{label:'Overhead slash',damageType:'slash',style:'heavy',from:-1.48,to:.55,wind:.29,active:.28,recover:.43,mult:1.26,momentum:1.2,stamina:1.2},
   thrust:{label:'Stab',damageType:'piercing',style:'light',from:0,to:0,wind:.23,active:.22,recover:.31,mult:1.13,momentum:.9,stamina:1.05,thrust:true},
   pommel:{label:'Pommel strike',damageType:'blunt',style:'heavy',from:-.45,to:.35,wind:.24,active:.19,recover:.34,mult:1.1,momentum:1.06,stamina:1.05,short:true},
+  butt:{label:'Polearm butt strike',damageType:'blunt',style:'light',from:-.42,to:.30,wind:.18,active:.19,recover:.25,mult:.60,momentum:.68,stamina:.8,short:true},
   cleave:{label:'Wide cleave',damageType:'slash',style:'heavy',from:-1.55,to:1.57,wind:.38,active:.38,recover:.59,mult:1.22,momentum:1.38,stamina:1.48}
  };
 
@@ -791,7 +797,7 @@ function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74
   }
   return positions.map(p=>({x:clamp(p.x,18,W-18),y:clamp(p.y,21,H-21)}));
  }
-function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);const soldier={id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,...equipmentFor(team,i),attack:null,lastCommanderOrder:null,currentCommanderOrder:'attack',pendingCommanderOrder:null,gallop:0,chargeCooldown:0,chargeHits:0,guardActive:false,guardHold:0,guardBreak:0,stagger:0,knockVX:0,knockVY:0,shieldRecoil:0,impactLean:0,guardBreakFlash:0,stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,stamina:100,maxStamina:100,recoveryDelay:0,attackCount:0,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:1.5+rnd(i+16)*1.3,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,engageSlot:0,escapeAngle:0,hitFlash:0};setFighterTraining(soldier,team,i);initializeRangedEquipment(soldier);initMount(soldier);return soldier;}
+function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);const soldier={id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,...equipmentFor(team,i),attack:null,braceReady:0,braceThreatId:null,braceStops:0,braceCount:0,lastCommanderOrder:null,currentCommanderOrder:'attack',pendingCommanderOrder:null,gallop:0,chargeCooldown:0,chargeHits:0,guardActive:false,guardHold:0,guardBreak:0,stagger:0,knockVX:0,knockVY:0,shieldRecoil:0,impactLean:0,guardBreakFlash:0,stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,stamina:100,maxStamina:100,recoveryDelay:0,attackCount:0,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:1.5+rnd(i+16)*1.3,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,engageSlot:0,escapeAngle:0,hitFlash:0};setFighterTraining(soldier,team,i);initializeRangedEquipment(soldier);initMount(soldier);return soldier;}
 function createCommander(team){
   const h=home(team),rear=team==='friend'?-1:1;
   const c=create(team,50,{x:clamp(h.x+rear*125,30,W-30),y:clamp(h.y-40,30,H-30)});
@@ -1525,6 +1531,8 @@ function chooseCombatMove(s,target){
   // high-skill fighters preferred its damage but repeatedly struck empty air.
   const distance=target?Math.hypot(target.x-s.x,target.y-s.y):0;
   if(m.short&&distance>weapon.reach*.62+8)continue;
+  // A long point cannot stab a soldier inside the shaft's minimum reach.
+  if(m.thrust&&isPolearm(s)&&distance<polearmMinRange(s))continue;
   const cost=style.cost*m.stamina*(.60+weapon.weight*.30)*trainingEfficiency(s);
   if(s.stamina<cost)continue;
   const raw=style.damage*weapon.power*m.mult;
@@ -1544,7 +1552,8 @@ function chooseCombatMove(s,target){
  return best;
 }
 function beginAttack(s,target){
- if(s.attack||s.cooldown>0||s.guardActive||s.stagger>0||s.guardBreak>0)return false;
+ if(s.attack||s.cooldown>0||s.guardActive||s.stagger>0||s.guardBreak>0||
+    (isPolearm(s)&&s.braceReady>=.55&&s.braceThreatId!=null))return false;
  const weapon=weaponProfiles[s.weapon];
  if(!target||Math.hypot(target.x-s.x,target.y-s.y)>weapon.reach+9)return false;
  const name=chooseCombatMove(s,target);
@@ -1881,7 +1890,9 @@ function separateSoldiers(){
     const clearance=(isCavalry(a)||isCavalry(b))?
       (isCavalry(a)&&isCavalry(b)?43:36):
       friendly&&(isArcher(a)||isArcher(b))?
-      (isArcher(a)&&isArcher(b)?33:26):minDistance;
+      (isArcher(a)&&isArcher(b)?33:26):
+      friendly&&(isPolearm(a)||isPolearm(b))?
+      (isPolearm(a)&&isPolearm(b)?29:25):minDistance;
     if(sq>=clearance*clearance)continue;
     if(sq<.000001){const angle=(a.id*73+b.id*151)*.33;dx=Math.cos(angle);dy=Math.sin(angle);sq=1;}
     const dist=Math.sqrt(sq),push=(clearance-dist+.005);
@@ -2282,7 +2293,7 @@ function background(){ctx.fillStyle='#203b30';ctx.fillRect(0,0,W,H);const grad=c
 }
 function weaponPose(s){
  const w=weaponProfiles[s.weapon],a=s.attack;
- if(!a)return {angle:s.faceAngle,length:w.reach*.62};
+ if(!a)return {angle:s.faceAngle,length:w.reach*(isPolearm(s)?.83:.62)};
  const m=a.move,p=clamp(a.elapsed/(a.phase==='windup'?a.wind:a.phase==='active'?a.active:a.recover),0,1);
  let offset=0,length=a.reach;
  if(a.phase==='windup'){
