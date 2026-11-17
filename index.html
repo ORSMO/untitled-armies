@@ -1144,7 +1144,11 @@ function avoidCombatCrowd(s,goal,target){
   const dx=side*Math.cos(best),dy=Math.sin(best);
   approach(s,s.x+dx*100,s.y+dy*100,dt,1.95);
   turnToward(s,Math.atan2(dy,dx),dt);
-  if(s.x< -12||s.x>W+12)s.routed=true;
+  if(realismActive()){
+   // approach() clamps inside the map; resolve routing when reaching the
+   // retreat-side exit rather than waiting for impossible out-of-bounds x.
+   if(s.team==='friend'?s.x<=14:s.x>=W-14)s.routed=true;
+  }else if(s.x< -12||s.x>W+12)s.routed=true;
  }
 function setFormation(cx,cy){
   const p=formation('friend',cx,cy);
@@ -1407,7 +1411,49 @@ document.querySelector('#reset').addEventListener('click',populate);
  window.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&equipmentOpen)setEquipmentMenu(false);
  });
-function panic(s){if((!labMode&&s.team==='friend')||s.broken||s.dead)return;s.broken=true;s.targetId=null;s.escapeAngle=0;s.decision=0;for(const n of members(s.team)){if(n===s||n.dead||n.broken)continue;const d=Math.hypot(n.x-s.x,n.y-s.y);if(d<80)n.stress=clamp(n.stress+stressBalance.panicSpread*(1-n.disc/160)*(1-d/100),0,100);} }
+function panic(s){
+ if((!realismActive()&&s.team==='friend')||s.broken||s.dead||s.routed||s.surrendered)return;
+ s.broken=true;s.brokenAt=t;s.targetId=null;s.escapeAngle=0;s.decision=0;
+ const stats=combatLabStats(s.team);if(stats)stats.panics++;
+ for(const n of members(s.team)){
+  if(n===s||n.dead||n.broken||n.routed)continue;
+  const d=Math.hypot(n.x-s.x,n.y-s.y);
+  if(d<90)n.stress=clamp(n.stress+
+   stressBalance.panicSpread*(1-n.disc/160)*(1-d/100),0,100);
+ }
+}
+function handleBrokenSoldier(s,dt){
+ s.attack=null;s.guardActive=false;s.guardHold=0;
+ if(!realismActive()){
+  s.stress=100;fleeFromEnemies(s,dt);
+  if(s.routed&&s.team==='foe'&&!labMode&&!s.isCommander)respawnEnemy(s);
+  return;
+ }
+ const enemies=nearbyFighting(s,85,false),allies=nearbyFighting(s,85,true);
+ const commander=null;
+ // A trapped, exhausted fleeing fighter may throw down his weapon.
+ if(enemies>=2&&enemies>allies+1&&
+    (s.stress>=87||s.stamina<22)&&!s.isCommander){
+  s.surrendered=true;s.routed=true;s.broken=false;
+  const stat=combatLabStats(s.team);if(stat)stat.surrenders++;
+  return;
+ }
+ // A broken soldier may rally, but only with space and meaningful support.
+ const commanderCanRally=commander&&!commander.dead&&!commander.routed&&
+  Math.hypot(commander.x-s.x,commander.y-s.y)<230;
+ const nearbySupport=!commander&&allies>=2&&s.disc>=55;
+ if(t-s.brokenAt>2.2&&enemies===0&&(commanderCanRally||nearbySupport)){
+  s.stress=Math.max(0,s.stress-dt*(13+s.disc*.11));
+  if(s.stress<52){
+   s.broken=false;s.brokenAt=-1;s.rallies++;s.decision=.2;
+   s.cooldown=Math.max(s.cooldown,.45);
+   const stat=combatLabStats(s.team);if(stat)stat.rallies++;
+   return;
+  }
+ }
+ fleeFromEnemies(s,dt);
+ if(s.routed){const stat=combatLabStats(s.team);if(stat)stat.routes++;}
+}
 // Move selection balances armor vulnerability, stamina, variety and groups.
 function chooseCombatMove(s,target){
  const weapon=weaponProfiles[s.weapon],available=weapon.moves;
@@ -1588,7 +1634,7 @@ function applyWeaponImpact(attacker,target,a){
  }
  const weapon=a.projectile?rangedProfiles[a.projectile]:weaponProfiles[attacker.weapon],heavy=a.move.style==='heavy';
  // Physical hits and blocks happen regardless of friendly health immunity.
- if(target.team==='foe'||labMode){
+ if(target.team==='foe'||labMode||realismActive()){
   target.hp=Math.max(0,target.hp-actual);
   const style=attackStyles[a.move.style];
   target.stress=clamp(target.stress+style.stress*(.15+.85*actual/Math.max(.01,a.baseDamage)),0,100);
@@ -1637,15 +1683,23 @@ function applyWeaponImpact(attacker,target,a){
   x:target.x,y:target.y,a:Math.atan2(target.y-attacker.y,target.x-attacker.x),
   life:shield.guardBroken?.48:.26,duration:shield.guardBroken?.48:.26,
   type:a.move.style,team:attacker.team});
- if((target.team==='foe'||labMode)&&target.hp<=0){
+ if((target.team==='foe'||labMode||realismActive())&&target.hp<=0&&!target.dead){
   target.dead=true;target.stress=100;
-  for(const n of members(target.team)){
+  // Some casualties survive their wounds but are unable to keep fighting.
+  // They are removed from combat exactly like fatalities, never respawned.
+  target.woundedOut=realismActive()&&rnd(target.id*37+a.id*17+9)<.28;
+  target.fatal=!target.woundedOut;
+  for(const n of (realismActive()?members(target.team):members(target.team))){
    if(n===target||n.dead||n.broken||n.routed)continue;
    const d=Math.hypot(n.x-target.x,n.y-target.y);
-   if(d<88)n.stress=clamp(n.stress+stressBalance.allyKilled*(1-d/100),0,100);
+   if(d<110)n.stress=clamp(n.stress+
+     stressBalance.allyKilled*(target.isCommander?2.3:1)*(1-d/130),0,100);
   }
-  if(labMode&&activeLab)activeLab.stats[attacker.team].kills++;
-  if(!labMode)respawnEnemy(target);
+  if(labMode&&activeLab){
+   if(target.woundedOut)activeLab.stats[target.team].incapacitated++;
+   else activeLab.stats[attacker.team].kills++;
+  }
+  if(!labMode&&!realismActive())respawnEnemy(target);
  }
  return true;
 }
@@ -2175,11 +2229,16 @@ function step(dt){
   // Stamina restores while not recovering from a swing; movement uses some.
   s.recoveryDelay=Math.max(0,s.recoveryDelay-dt);
   if(s.recoveryDelay===0)s.stamina=clamp(s.stamina+dt*(6.7+(s.skill||45)*.012),0,s.maxStamina);
-  if(s.broken){s.attack=null;s.guardActive=false;s.guardHold=0;s.stress=100;fleeFromEnemies(s,dt);if(!labMode&&s.routed&&s.team==='foe')respawnEnemy(s);continue;}
+  if(s.broken){handleBrokenSoldier(s,dt);continue;}
   const {target,dist}=chooseTarget(s);
   // Ranged units keep their bow in hand until a genuine melee threat.
   s.meleeReady=!!(isArcher(s)&&target&&dist<=meleeThreatRange(s));
-  if(s.team==='foe'&&!labMode){
+  if(realismActive()){
+   combatMoraleTick(s,dt,dist);
+   const breakingPoint=stressBalance.breakingBase+s.disc*stressBalance.disciplineResistance+
+    rnd(s.id+23)*5;
+   if(s.stress>breakingPoint){panic(s);continue;}
+  }else if(s.team==='foe'&&!labMode){
    if(dist<reach*1.5)s.stress=clamp(s.stress+dt*stressBalance.closeThreat,0,100);
    else if(dist<72)s.stress=clamp(s.stress+dt*stressBalance.nearThreat,0,100);
    else s.stress=clamp(s.stress-dt*(stressBalance.recovery+s.disc/100),0,100);
@@ -2816,7 +2875,7 @@ document.getElementById('labPresetButton').addEventListener('click',()=>{
 const labSeconds=3600,labStepSeconds=.04,labWorldW=440,labWorldH=210,labMatchTimeout=75;
 let labArenas=[],labPaused=false,labTurn=0,labLastDraw=0,labAnalysisOpen=false,labAnalysisLast=0;
 const labCanvasNodes=Array.from({length:6},(_,i)=>document.getElementById('labCanvas'+i));
-function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0,parries:0,failedParries:0,counters:0,misses:0,shots:0,rangedHits:0,rangedMisses:0,friendlyStops:0,mountHits:0,dismounts:0,horseCharges:0,braces:0,chargeStops:0,flankArrivals:0,reserveDeployments:0};}
+function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0,parries:0,failedParries:0,counters:0,misses:0,shots:0,rangedHits:0,rangedMisses:0,friendlyStops:0,mountHits:0,dismounts:0,horseCharges:0,braces:0,chargeStops:0,flankArrivals:0,reserveDeployments:0,panics:0,surrenders:0,routes:0,rallies:0,incapacitated:0};}
 function activateLab(ar){
  activeLab=ar;W=labWorldW;H=labWorldH;t=ar.seconds;mode='attack';
  friends=ar.friends;foes=ar.foes;slashes=ar.slashes;projectiles=ar.projectiles;groundedShots=ar.groundedShots;
