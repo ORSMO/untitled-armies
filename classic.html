@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V2.8</title>
+<title>Untitled Armies — V2.9</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -184,7 +184,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
     <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Armor · Shields · Physical combat</p></div></div>
     <div class="top-actions">
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 2.8">V2.8</div>
+      <div class="build" aria-label="Version 2.9">V2.9</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
@@ -232,7 +232,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
    <button type="button" data-general-group="all">All soldiers</button>
    <button type="button" data-general-group="infantry">⚔ Infantry</button>
    <button type="button" data-general-group="archer">🏹 Archers</button>
-   <button type="button" data-general-group="cavalry">🐎 Cavalry</button>
+   <button type="button" data-general-group="cavalry">🐎 Cavalry</button><button type="button" data-general-group="horseArcher">🏇 Horse Archers</button>
   </div>
   <p id="generalOverrideStatus">All groups currently follow Commander AI.</p>
   <div class="enemy-command-foot">
@@ -297,9 +297,10 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
       <table><thead><tr><th>Ranged</th><th>Ammo</th><th>Range</th><th>Reload</th><th>Impact</th></tr></thead>
       <tbody><tr><td>War bow</td><td>18</td><td>1005</td><td>0.64s</td><td>Light piercing</td></tr>
       <tr><td>Crossbow</td><td>12</td><td>1125</td><td>1.90s</td><td>Heavy piercing</td></tr>
-      <tr><td>Javelins</td><td>6</td><td>624</td><td>1.05s</td><td>Heavy piercing</td></tr></tbody></table>
-      <p><strong>UNIT ROLES:</strong> <strong>Infantry</strong> fight with swords, axes or other melee weapons and never switch to ranged attacks. <strong>Archers</strong> always carry their selected bow, crossbow or javelins, prefer firing from a distance, and use their melee sidearm only when an enemy enters close-combat range. If out of ammunition, they keep their ranged weapon ready instead of charging with swords. Choose the mixed unit type for infantry and archers. <strong>Cavalry</strong> ride faster than infantry, hold wider spacing, charge with momentum, and become less effective in sustained close combat. Choose a pure Cavalry or a combined army of 20 infantry, 20 archers and 10 cavalry.</p>
-      <p><strong>COMMANDERS:</strong> Each side has a separate, mortal commander with a battlefield banner. Tactical, Aggressive and Defensive personalities read the battle, issue orders to Infantry, Archers and Cavalry, and protect threatened units. Distant units receive the command later; Leadership reduces communication delay. Use <strong>👑 Commanders</strong> to override a class or your whole army. Your General orders apply immediately and persist until you press Return to AI. The enemy army can also be manually controlled.</p>
+      <tr><td>Javelins</td><td>6</td><td>624</td><td>1.05s</td><td>Heavy piercing</td></tr>
+       <tr><td>Compact horse bow</td><td>24</td><td>710</td><td>0.52s</td><td>Light piercing</td></tr></tbody></table>
+      <p><strong>UNIT ROLES:</strong> <strong>Infantry</strong> fight with swords, axes or other melee weapons and never switch to ranged attacks. <strong>Archers</strong> always carry their selected bow, crossbow or javelins, prefer firing from a distance, and use their melee sidearm only when an enemy enters close-combat range. If out of ammunition, they keep their ranged weapon ready instead of charging with swords. Choose the mixed unit type for infantry and archers. <strong>Cavalry</strong> ride faster than infantry, hold wider spacing, charge with momentum, and become less effective in sustained close combat. Choose pure Cavalry, 20 infantry / 20 archers / 10 cavalry, or a grand army with all four classes. <strong>Mounted archers</strong> ride with a lighter compact horse bow (24 arrows, 710-unit range), shoot while circling, and retreat from close threats. <strong>Horse armour</strong> is separate from rider armour: leather, mail and plate barding reduce damage but slow the mount. Horses have their own health and stamina; losing a horse dismounts its rider, who continues fighting on foot. Any charging horse deals blunt impact damage even without a lance; lances add a piercing hit. Riders disengage to regroup before charging again.</p>
+      <p><strong>COMMANDERS:</strong> Each side has a separate, mortal commander with a battlefield banner. Tactical, Aggressive and Defensive personalities read the battle, issue orders to Infantry, Archers, Cavalry and Mounted Archers, and protect threatened units. Distant units receive the command later; Leadership reduces communication delay. Use <strong>👑 Commanders</strong> to override a class or your whole army. Your General orders apply immediately and persist until you press Return to AI. The enemy army can also be manually controlled.</p>
       <p><strong>RANGED COMBAT:</strong> V2.4 triples maximum and ideal shooting distances. Better experience and ranged familiarity produce tighter shot groups, and experienced archers lead moving targets. Archers can switch to a new enemy during an existing draw rather than repeatedly cancelling shots when their target disappears. Projectiles still travel physically and can miss. War bows carry 18 arrows (fast), crossbows carry 12 bolts (slow reload, strong piercing), and javelins carry 6 throws (short range, powerful impact). Shots follow lofted trajectories over friendly ranks and stop when they reach the ground instead of sliding along it. Lofted attacks fly over allied soldiers throughout their flight; enemy soldiers, shields and armor can still intercept them. Projectiles have travel time, can miss, and interact with directional shields and armor. Experience and independent ranged-weapon familiarity improve accuracy and timing; set Ranged skill separately from melee Mastery in Test gear. Archers draw their melee sidearm only when enemies enter close-combat range; running out of ammunition does not make them charge with swords. A shield is lowered when aiming a two-handed bow or crossbow.</p>
       <p><strong>IMPACT REACTIONS:</strong> Heavy hits cause knockback and stagger. A successful active block can create a counterattack opening; a weak shield can suffer a <strong>GUARD BREAK</strong>. Plate and solid shields can stop a swing and recoil the attacker.</p>
       <p>Green and red soldiers wear mixed armor and carry different weapons. One-handed swords can use shields; greatswords and axes occupy both hands. Swing stages: wind-up → active hitbox → recovery. Your troops are still invulnerable.</p>
@@ -319,6 +320,10 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
    <button type="button" data-matchup="skirmish">Javelins vs bows</button>
    <button type="button" data-matchup="cavalry">Cavalry vs infantry</button>
    <button type="button" data-matchup="combined">Combined armies</button>
+   <button type="button" data-matchup="horseArchers">Horse archers</button>
+   <button type="button" data-matchup="armoredCavalry">Armored cavalry</button>
+   <button type="button" data-matchup="swordCharge">Horse charges · swords</button>
+   <button type="button" data-matchup="grandArmy">Grand army · all four</button>
   </div>
   <div class="equipment-grid"><div class="equipment-side">
    <h3>🟢 YOUR ARMY · 50 SOLDIERS</h3>
@@ -326,15 +331,19 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 <select id="friendUnitRole"><option value="infantry">⚔ Infantry — melee first</option>
 <option value="archer">🏹 Archer — ranged first</option>
 <option value="mixed">Infantry + Archers (half each)</option>
-<option value="cavalry">🐎 Cavalry — mounted charges</option><option value="combined">Combined army (20/20/10)</option></select></div>
+<option value="cavalry">🐎 Cavalry — mounted charges</option><option value="combined">Combined army (20/20/10)</option><option value="horseArcher">🏇 Mounted archer — compact bow</option><option value="grandArmy">Grand army (20/15/10/5)</option></select></div>
 <div class="equipment-field"><label for="friendWeapon">Weapon</label><select id="friendWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option><option value="lance">Cavalry lance</option></select></div>
 <div class="equipment-field"><label for="friendRanged">Ranged</label><select id="friendRanged">
-<option value="none">No ranged weapon</option><option value="bow">War bow · 18 arrows</option><option value="crossbow">Crossbow · 12 bolts</option><option value="javelin">Javelins · 6 throws</option><option value="mixed">Mixed ranged weapons</option>
+<option value="none">No ranged weapon</option><option value="bow">War bow · 18 arrows</option><option value="crossbow">Crossbow · 12 bolts</option><option value="javelin">Javelins · 6 throws</option><option value="horsebow">Compact horse bow · 24 arrows</option><option value="mixed">Mixed ranged weapons</option>
 </select></div>
 <div class="equipment-field"><label for="friendRangedMastery">Ranged skill</label><select id="friendRangedMastery">
 <option value="same">Same as melee skill</option>
 <option value="novice">Novice · 18</option><option value="practiced">Practiced · 56</option>
 <option value="expert">Expert · 85</option><option value="master">Master · 97</option>
+</select></div>
+<div class="equipment-field"><label for="friendHorseArmor">Horse armour</label><select id="friendHorseArmor">
+<option value="none">No barding · fastest</option><option value="leather">Leather barding · light</option>
+<option value="mail">Mail barding · medium</option><option value="plate">Plate barding · armored, slow</option>
 </select></div>
 <div class="equipment-field"><label for="friendShield">Shield</label><select id="friendShield"><option value="mixed">Mixed shields</option><option value="none">No shield</option><option value="buckler">Buckler</option><option value="round">Round shield</option><option value="kite">Kite shield</option><option value="tower">Tower shield</option></select></div>
 <div class="equipment-field"><label for="friendArmor">Armor</label><select id="friendArmor"><option value="mixed">Mixed armor</option><option value="naked">Unarmored</option><option value="padded">Padded</option><option value="leather">Leather</option><option value="mail">Mail</option><option value="plate">Plate</option></select></div>
@@ -349,15 +358,19 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 <select id="foeUnitRole"><option value="infantry">⚔ Infantry — melee first</option>
 <option value="archer">🏹 Archer — ranged first</option>
 <option value="mixed">Infantry + Archers (half each)</option>
-<option value="cavalry">🐎 Cavalry — mounted charges</option><option value="combined">Combined army (20/20/10)</option></select></div>
+<option value="cavalry">🐎 Cavalry — mounted charges</option><option value="combined">Combined army (20/20/10)</option><option value="horseArcher">🏇 Mounted archer — compact bow</option><option value="grandArmy">Grand army (20/15/10/5)</option></select></div>
 <div class="equipment-field"><label for="foeWeapon">Weapon</label><select id="foeWeapon"><option value="mixed">Mixed weapons</option><option value="shortsword">Short sword</option><option value="sword">Arming sword</option><option value="greatsword">Greatsword</option><option value="axe">Battle axe</option><option value="lance">Cavalry lance</option></select></div>
 <div class="equipment-field"><label for="foeRanged">Ranged</label><select id="foeRanged">
-<option value="none">No ranged weapon</option><option value="bow">War bow · 18 arrows</option><option value="crossbow">Crossbow · 12 bolts</option><option value="javelin">Javelins · 6 throws</option><option value="mixed">Mixed ranged weapons</option>
+<option value="none">No ranged weapon</option><option value="bow">War bow · 18 arrows</option><option value="crossbow">Crossbow · 12 bolts</option><option value="javelin">Javelins · 6 throws</option><option value="horsebow">Compact horse bow · 24 arrows</option><option value="mixed">Mixed ranged weapons</option>
 </select></div>
 <div class="equipment-field"><label for="foeRangedMastery">Ranged skill</label><select id="foeRangedMastery">
 <option value="same">Same as melee skill</option>
 <option value="novice">Novice · 18</option><option value="practiced">Practiced · 56</option>
 <option value="expert">Expert · 85</option><option value="master">Master · 97</option>
+</select></div>
+<div class="equipment-field"><label for="foeHorseArmor">Horse armour</label><select id="foeHorseArmor">
+<option value="none">No barding · fastest</option><option value="leather">Leather barding · light</option>
+<option value="mail">Mail barding · medium</option><option value="plate">Plate barding · armored, slow</option>
 </select></div>
 <div class="equipment-field"><label for="foeShield">Shield</label><select id="foeShield"><option value="mixed">Mixed shields</option><option value="none">No shield</option><option value="buckler">Buckler</option><option value="round">Round shield</option><option value="kite">Kite shield</option><option value="tower">Tower shield</option></select></div>
 <div class="equipment-field"><label for="foeArmor">Armor</label><select id="foeArmor"><option value="mixed">Mixed armor</option><option value="naked">Unarmored</option><option value="padded">Padded</option><option value="leather">Leather</option><option value="mail">Mail</option><option value="plate">Plate</option></select></div>
@@ -426,12 +439,12 @@ let W=0,H=0,VW=0,VH=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],s
  // Two physical commanders are separate from the 50 soldiers on each team.
  let commanders={friend:null,foe:null};
  function newBrain(personality='tactical'){
-  return {personality,phase:'advance',orders:{infantry:'attack',archer:'attack',cavalry:'attack'},
+  return {personality,phase:'advance',orders:{infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'},
     elapsed:0,next:0,lastChange:-20,decisions:0,news:'Reading battlefield'};
  }
  let commanderBrains={friend:newBrain('tactical'),foe:newBrain('aggressive')};
  // As General you override a role indefinitely, until explicitly released.
- let generalOrders={all:null,infantry:null,archer:null,cavalry:null};
+ let generalOrders={all:null,infantry:null,archer:null,cavalry:null,horseArcher:null};
  let selectedGroup='all';
 const rnd=i=>{const x=Math.sin(i*127.1+91.7)*43758.5453;return x-Math.floor(x)};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -479,23 +492,67 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   crossbow:{label:'Crossbow',speed:730,range:1125,ideal:795,ammo:12,draw:.43,reload:1.90,loft:31,
    damage:2.25,momentum:108,stamina:7,weight:2.7,color:'#e3ebf2',twoHand:true},
   javelin:{label:'Javelins',speed:380,range:624,ideal:414,ammo:6,draw:.45,reload:1.05,loft:47,
-   damage:1.72,momentum:94,stamina:10,weight:1.9,color:'#f6ac70',twoHand:false}
+   damage:1.72,momentum:94,stamina:10,weight:1.9,color:'#f6ac70',twoHand:false},
+  horsebow:{label:'Compact horse bow',speed:475,range:710,ideal:420,ammo:24,draw:.43,reload:.52,loft:53,
+   damage:1.02,momentum:39,stamina:3.6,weight:.65,color:'#f1cb86',twoHand:true}
  };
- const rangedOrder=['bow','crossbow','javelin'];
+ const rangedOrder=['bow','crossbow','javelin','horsebow'];
  // Unit classes determine combat priorities independently of equipment.
  // Cavalry is a reserved class for the future mounted-combat update.
- const unitRoles=['infantry','archer','cavalry'];
- function soldierRole(s){return ['archer','cavalry'].includes(s.unitRole)?s.unitRole:'infantry';}
- function isCavalry(s){return soldierRole(s)==='cavalry';}
- function isArcher(s){return soldierRole(s)==='archer';}
+ const unitRoles=['infantry','archer','cavalry','horseArcher'];
+ function soldierRole(s){return ['archer','cavalry','horseArcher'].includes(s.unitRole)?s.unitRole:'infantry';}
+ function isCavalry(s){return ['cavalry','horseArcher'].includes(s.unitRole)&&s.mounted!==false;}
+ function isArcher(s){return ['archer','horseArcher'].includes(s.unitRole);}
  function activeRangedProfile(s){return isArcher(s)?rangedProfiles[s.ranged]||null:null;}
  function assignedRole(config,index){
-  if(config.unitRole==='archer'||config.unitRole==='cavalry')return config.unitRole;
+  if(['archer','cavalry','horseArcher'].includes(config.unitRole))return config.unitRole;
+  if(config.unitRole==='grandArmy')return index<20?'infantry':index<35?'archer':index<45?'cavalry':'horseArcher';
   if(config.unitRole==='combined')return index<20?'infantry':index<40?'archer':'cavalry';
   if(config.unitRole==='mixed')return index%2===0?'infantry':'archer';
   return 'infantry';
  }
- const shieldProfiles={
+ // Mounts are separately wounded by physical arrows, blades and charges.
+// Rider armor and horse barding are distinct equipment.
+ const horseArmorProfiles={
+  none:{label:'Unarmored horse',flat:0,block:0,speed:1,color:'#997551',weight:0},
+  leather:{label:'Leather barding',flat:.12,block:.16,speed:.95,color:'#ae8355',weight:1},
+  mail:{label:'Mail barding',flat:.24,block:.26,speed:.89,color:'#9baab0',weight:2},
+  plate:{label:'Plate barding',flat:.39,block:.38,speed:.80,color:'#d0d9dd',weight:3}
+ };
+ function initMount(s){
+  s.mounted=['cavalry','horseArcher'].includes(s.unitRole);
+  s.mountHp=s.mounted?3.6:0;s.mountMaxHp=s.mounted?3.6:0;
+  s.horseStamina=s.mounted?100:0;
+  s.gallop=0;s.chargeCooldown=0;s.regroupUntil=0;
+  s.chargeHits=0;s.horseHits=0;s.dismounts=0;
+ }
+ function dismount(s){
+  if(!isCavalry(s))return;
+  s.mounted=false;s.mountHp=0;s.horseStamina=0;s.gallop=0;
+  s.regroupUntil=0;s.chargeCooldown=0;s.dismounts++;
+  s.unitRole=s.unitRole==='horseArcher'?'archer':'infantry';
+  if(s.weapon==='lance')s.weapon='sword';
+  s.attack=null;s.rangedAim=0;s.guardActive=false;
+  s.stagger=Math.max(s.stagger,.8);
+  s.speed=Math.min(s.speed,55);
+  s.hitFlash=.8;
+ }
+ function applyHorseDamage(target,base,kind){
+  if(!isCavalry(target))return false;
+  const barding=horseArmorProfiles[target.horseArmor]||horseArmorProfiles.none;
+  const armorBonus=kind==='blunt'?.75:1;
+  const actual=Math.max(.07,(base*armorBonus-barding.flat)*(1-barding.block));
+  target.mountHp=Math.max(0,target.mountHp-actual);
+  target.horseHits++;target.hitFlash=.32;
+  const labStat=combatLabStats(target.team);
+  if(labStat)labStat.mountHits++;
+  if(target.mountHp<=0){
+   if(labStat)labStat.dismounts++;
+   dismount(target);
+  }
+  return true;
+ }
+const shieldProfiles={
   buckler:{label:'Buckler',size:8,weight:.85,passiveArc:.40,activeArc:.83,passiveBlock:.20,passiveStop:16,activeStop:68,cost:5,color:'#cda779'},
   round:{label:'Round shield',size:11,weight:1.8,passiveArc:.66,activeArc:1.20,passiveBlock:.35,passiveStop:31,activeStop:115,cost:8,color:'#b1b9a6'},
   kite:{label:'Kite shield',size:13,weight:2.7,passiveArc:.83,activeArc:1.42,passiveBlock:.48,passiveStop:50,activeStop:155,cost:11,color:'#d5ad81'},
@@ -513,7 +570,7 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  const experienceOrder=['recruit','trained','veteran','elite'];
  const familiarityLevels={novice:18,practiced:56,expert:85,master:97};
  const weaponSkillKey={shortsword:11,sword:23,greatsword:37,axe:53,lance:61};
- const rangedSkillKey={bow:67,crossbow:79,javelin:89};
+ const rangedSkillKey={bow:67,crossbow:79,javelin:89,horsebow:101};
  function rangedFamiliarity(s){return clamp(s.rangedSkills?.[s.ranged]??35,0,100);}
  function initializeRangedEquipment(s){
   s.ranged=rangedProfiles[s.ranged]?s.ranged:null;
@@ -566,8 +623,8 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  // Applied matchup settings persist through Reset and enemy reinforcements.
  // "mixed" uses the original 50-soldier distribution for each category.
  const equipmentConfig={
-  friend:{weapon:'mixed',shield:'mixed',armor:'mixed',ranged:'none',unitRole:'infantry',rangedMastery:'same',experience:'mixed',familiarity:'mixed'},
-  foe:{weapon:'mixed',shield:'mixed',armor:'mixed',ranged:'none',unitRole:'infantry',rangedMastery:'same',experience:'mixed',familiarity:'mixed'}
+  friend:{weapon:'mixed',shield:'mixed',armor:'mixed',ranged:'none',unitRole:'infantry',horseArmor:'none',rangedMastery:'same',experience:'mixed',familiarity:'mixed'},
+  foe:{weapon:'mixed',shield:'mixed',armor:'mixed',ranged:'none',unitRole:'infantry',horseArmor:'none',rangedMastery:'same',experience:'mixed',familiarity:'mixed'}
  };
  function equipmentFor(team,index){
   const settings=equipmentConfig[team],offset=team==='friend'?0:1;
@@ -582,20 +639,25 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   // A shield cannot coexist with a two-handed weapon, including in mixed armies.
   if(weaponProfiles[weapon].twoHand)shield=null;
   const unitRole=assignedRole(settings,index);
+  if(unitRole==='horseArcher'&&(settings.weapon==='mixed'||weapon==='lance'))weapon='shortsword';
   if(unitRole==='cavalry'&&(settings.weapon==='mixed'||!weaponProfiles[weapon]))weapon='lance';
   // Infantry never carry/use a ranged weapon. The Archer role can select
   // bow, crossbow or javelins; a bow is the default if nothing was selected.
   const chosenRanged=settings.ranged==='mixed'?rangedOrder[index%rangedOrder.length]:settings.ranged;
-  const ranged=unitRole==='archer'?
-   (rangedProfiles[chosenRanged]?chosenRanged:'bow'):null;
-  return {weapon,shield,armor,ranged,unitRole};
+  const ranged=unitRole==='horseArcher'?'horsebow':
+   unitRole==='archer'?(chosenRanged==='horsebow'?'bow':
+    rangedProfiles[chosenRanged]?chosenRanged:'bow'):null;
+  if(rangedProfiles[ranged]?.twoHand)shield=null;
+  const horseArmor=['none','leather','mail','plate'].includes(settings.horseArmor)?
+   settings.horseArmor:'none';
+  return {weapon,shield,armor,ranged,unitRole,horseArmor};
  }
  function equipCurrentArmy(team){
   const soldiers=team==='friend'?friends:foes;
   soldiers.forEach((soldier,index)=>{
    Object.assign(soldier,equipmentFor(team,index));
    setFighterTraining(soldier,team,index);
-   initializeRangedEquipment(soldier);
+   initializeRangedEquipment(soldier);initMount(soldier);
    // Switching equipment safely ends any attack/guard using the old item.
    soldier.attack=null;soldier.guardActive=false;soldier.guardHold=0;
    soldier.lastCommanderOrder=null;soldier.currentCommanderOrder='attack';soldier.pendingCommanderOrder=null;
@@ -689,10 +751,11 @@ function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74
   // reserve wider firing lanes; in mixed armies infantry take the front
   // and archers deploy in separate rear ranks instead of interleaving.
   const roles=Array.from({length:50},(_,i)=>assignedRole(equipmentConfig[team],i));
-  if(roles.includes('archer')||roles.includes('cavalry')){
+  if(roles.includes('archer')||roles.includes('cavalry')||roles.includes('horseArcher')){
    const infantry=roles.map((role,i)=>role==='infantry'?i:-1).filter(i=>i>=0);
    const archers=roles.map((role,i)=>role==='archer'?i:-1).filter(i=>i>=0);
    const cavalry=roles.map((role,i)=>role==='cavalry'?i:-1).filter(i=>i>=0);
+   const horseArchers=roles.map((role,i)=>role==='horseArcher'?i:-1).filter(i=>i>=0);
    const forward=team==='friend'?1:-1;
    function place(indices,isBow){
     const count=indices.length;if(!count)return;
@@ -719,10 +782,16 @@ function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74
     const y=cy+side*(Math.max(120,(roles.includes('archer')?235:160))+(Math.floor(j/2)%4)*horseStride);
     positions[index]={x:cx-forward*(d*3+row*horseStride),y};
    });
+   // Mounted archers deploy on the opposite wing, with room to circle.
+   horseArchers.forEach((index,j)=>{
+    const row=Math.floor(j/8),side=j%2===0?1:-1;
+    const y=cy+side*(Math.max(175,roles.includes('cavalry')?365:240)+(Math.floor(j/2)%4)*52);
+    positions[index]={x:cx-forward*(d*4+row*52),y};
+   });
   }
   return positions.map(p=>({x:clamp(p.x,18,W-18),y:clamp(p.y,21,H-21)}));
  }
-function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);const soldier={id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,...equipmentFor(team,i),attack:null,lastCommanderOrder:null,currentCommanderOrder:'attack',pendingCommanderOrder:null,gallop:0,chargeCooldown:0,chargeHits:0,guardActive:false,guardHold:0,guardBreak:0,stagger:0,knockVX:0,knockVY:0,shieldRecoil:0,impactLean:0,guardBreakFlash:0,stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,stamina:100,maxStamina:100,recoveryDelay:0,attackCount:0,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:1.5+rnd(i+16)*1.3,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,engageSlot:0,escapeAngle:0,hitFlash:0};setFighterTraining(soldier,team,i);initializeRangedEquipment(soldier);return soldier;}
+function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);const soldier={id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,...equipmentFor(team,i),attack:null,lastCommanderOrder:null,currentCommanderOrder:'attack',pendingCommanderOrder:null,gallop:0,chargeCooldown:0,chargeHits:0,guardActive:false,guardHold:0,guardBreak:0,stagger:0,knockVX:0,knockVY:0,shieldRecoil:0,impactLean:0,guardBreakFlash:0,stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,stamina:100,maxStamina:100,recoveryDelay:0,attackCount:0,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:1.5+rnd(i+16)*1.3,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,engageSlot:0,escapeAngle:0,hitFlash:0};setFighterTraining(soldier,team,i);initializeRangedEquipment(soldier);initMount(soldier);return soldier;}
 function createCommander(team){
   const h=home(team),rear=team==='friend'?-1:1;
   const c=create(team,50,{x:clamp(h.x+rear*125,30,W-30),y:clamp(h.y-40,30,H-30)});
@@ -749,7 +818,7 @@ function focusArmy(){
   commanders.friend=createCommander('friend');commanders.foe=createCommander('foe');
   commanderBrains.friend=newBrain(commanderBrains.friend.personality);
   commanderBrains.foe=newBrain(commanderBrains.foe.personality);
-  generalOrders={all:null,infantry:null,archer:null,cavalry:null};selectedGroup='all';
+  generalOrders={all:null,infantry:null,archer:null,cavalry:null,horseArcher:null};selectedGroup='all';
   slashes=[];projectiles=[];groundedShots=[];selected=false;mode='idle';marker=null;focusArmy();updateUI();updateEnemyUI();updateCommanderUI();
  }
 // Enemy reinforcements enter at the right edge in the least crowded lane.
@@ -812,7 +881,7 @@ function decideCommander(team,dt){
  brain.decisions++;
  if(!leader||leader.dead||leader.routed||leader.broken){
   brain.phase='leaderless';brain.news='Commander lost — soldiers act independently';
-  brain.orders={infantry:'attack',archer:'attack',cavalry:'attack'};
+  brain.orders={infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'};
   updateCommanderUI();return;
  }
  const troops=living(team==='friend'?friends:foes);
@@ -844,12 +913,12 @@ function decideCommander(team,dt){
  if(phase!==brain.phase){
   brain.phase=phase;brain.lastChange=brain.elapsed;
   const plans={
-   advance:{infantry:'attack',archer:'attack',cavalry:'attack'},
-   press:{infantry:'attack',archer:'attack',cavalry:'attack'},
-   hold:{infantry:'defend',archer:'attack',cavalry:'defend'},
-   protect:{infantry:'defend',archer:'retreat',cavalry:'attack'},
-   flank:{infantry:'defend',archer:'attack',cavalry:'attack'},
-   withdraw:{infantry:'retreat',archer:'retreat',cavalry:'retreat'}
+   advance:{infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'},
+   press:{infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'},
+   hold:{infantry:'defend',archer:'attack',cavalry:'defend',horseArcher:'attack'},
+   protect:{infantry:'defend',archer:'retreat',cavalry:'attack',horseArcher:'retreat'},
+   flank:{infantry:'defend',archer:'attack',cavalry:'attack',horseArcher:'attack'},
+   withdraw:{infantry:'retreat',archer:'retreat',cavalry:'retreat',horseArcher:'retreat'}
   };
   brain.orders=plans[phase]||plans.advance;
   setCommanderAnchors(team,brain.orders);
@@ -894,7 +963,7 @@ function selectedTroops(){
  return friends.filter(s=>selectedGroup==='all'||s.unitRole===selectedGroup);
 }
 function returnToCommander(group){
- if(group==='all')generalOrders={all:null,infantry:null,archer:null,cavalry:null};
+ if(group==='all')generalOrders={all:null,infantry:null,archer:null,cavalry:null,horseArcher:null};
  else generalOrders[group]=null;
  mode='idle';selected=false;updateUI();updateCommanderUI();
 }
@@ -1317,8 +1386,8 @@ document.querySelector('#reset').addEventListener('click',populate);
        equipPanel=document.querySelector('#equipmentPanel'),
        equipFeedback=document.querySelector('#equipmentFeedback');
  const equipControls={
-  friend:{weapon:document.querySelector('#friendWeapon'),shield:document.querySelector('#friendShield'),armor:document.querySelector('#friendArmor'),ranged:document.querySelector('#friendRanged'),unitRole:document.querySelector('#friendUnitRole'),rangedMastery:document.querySelector('#friendRangedMastery'),experience:document.querySelector('#friendExperience'),familiarity:document.querySelector('#friendFamiliarity'),note:document.querySelector('#friendGearNote')},
-  foe:{weapon:document.querySelector('#foeWeapon'),shield:document.querySelector('#foeShield'),armor:document.querySelector('#foeArmor'),ranged:document.querySelector('#foeRanged'),unitRole:document.querySelector('#foeUnitRole'),rangedMastery:document.querySelector('#foeRangedMastery'),experience:document.querySelector('#foeExperience'),familiarity:document.querySelector('#foeFamiliarity'),note:document.querySelector('#foeGearNote')}
+  friend:{weapon:document.querySelector('#friendWeapon'),shield:document.querySelector('#friendShield'),armor:document.querySelector('#friendArmor'),ranged:document.querySelector('#friendRanged'),unitRole:document.querySelector('#friendUnitRole'),horseArmor:document.querySelector('#friendHorseArmor'),rangedMastery:document.querySelector('#friendRangedMastery'),experience:document.querySelector('#friendExperience'),familiarity:document.querySelector('#friendFamiliarity'),note:document.querySelector('#friendGearNote')},
+  foe:{weapon:document.querySelector('#foeWeapon'),shield:document.querySelector('#foeShield'),armor:document.querySelector('#foeArmor'),ranged:document.querySelector('#foeRanged'),unitRole:document.querySelector('#foeUnitRole'),horseArmor:document.querySelector('#foeHorseArmor'),rangedMastery:document.querySelector('#foeRangedMastery'),experience:document.querySelector('#foeExperience'),familiarity:document.querySelector('#foeFamiliarity'),note:document.querySelector('#foeGearNote')}
  };
  const equipPresets={
   mixed:{friend:{weapon:'mixed',shield:'mixed',armor:'mixed'},foe:{weapon:'mixed',shield:'mixed',armor:'mixed'}},
@@ -1330,7 +1399,11 @@ document.querySelector('#reset').addEventListener('click',populate);
   crossbows:{friend:{unitRole:'archer',weapon:'sword',ranged:'crossbow',shield:'none',armor:'padded',experience:'trained',familiarity:'practiced'},foe:{weapon:'sword',ranged:'none',shield:'kite',armor:'plate',experience:'trained',familiarity:'practiced',unitRole:'infantry'}},
   skirmish:{friend:{unitRole:'archer',weapon:'shortsword',ranged:'javelin',shield:'round',armor:'leather',experience:'veteran',familiarity:'expert'},foe:{unitRole:'archer',weapon:'shortsword',ranged:'bow',shield:'none',armor:'leather',experience:'veteran',familiarity:'expert'}},
   cavalry:{friend:{unitRole:'cavalry',weapon:'lance',ranged:'none',shield:'round',armor:'mail',experience:'veteran',familiarity:'expert'},foe:{unitRole:'infantry',weapon:'sword',ranged:'none',shield:'kite',armor:'mail',experience:'trained',familiarity:'practiced'}},
-  combined:{friend:{unitRole:'combined',weapon:'mixed',ranged:'bow',shield:'mixed',armor:'mixed',experience:'trained',familiarity:'practiced'},foe:{unitRole:'combined',weapon:'mixed',ranged:'bow',shield:'mixed',armor:'mixed',experience:'trained',familiarity:'practiced'}}
+  combined:{friend:{unitRole:'combined',weapon:'mixed',ranged:'bow',shield:'mixed',armor:'mixed',experience:'trained',familiarity:'practiced'},foe:{unitRole:'combined',weapon:'mixed',ranged:'bow',shield:'mixed',armor:'mixed',experience:'trained',familiarity:'practiced'}},
+  horseArchers:{friend:{unitRole:'horseArcher',weapon:'shortsword',ranged:'horsebow',horseArmor:'leather',shield:'none',armor:'leather',experience:'veteran',familiarity:'expert'},foe:{unitRole:'archer',weapon:'shortsword',ranged:'bow',horseArmor:'none',shield:'none',armor:'leather',experience:'veteran',familiarity:'expert'}},
+  armoredCavalry:{friend:{unitRole:'cavalry',weapon:'lance',ranged:'none',horseArmor:'plate',shield:'round',armor:'mail',experience:'veteran',familiarity:'expert'},foe:{unitRole:'cavalry',weapon:'lance',ranged:'none',horseArmor:'none',shield:'round',armor:'mail',experience:'veteran',familiarity:'expert'}},
+  swordCharge:{friend:{unitRole:'cavalry',weapon:'sword',ranged:'none',horseArmor:'leather',shield:'round',armor:'mail',experience:'veteran',familiarity:'expert'},foe:{unitRole:'infantry',weapon:'sword',ranged:'none',horseArmor:'none',shield:'kite',armor:'mail',experience:'trained',familiarity:'practiced'}},
+  grandArmy:{friend:{unitRole:'grandArmy',weapon:'mixed',ranged:'bow',horseArmor:'leather',shield:'mixed',armor:'mixed',experience:'trained',familiarity:'practiced'},foe:{unitRole:'grandArmy',weapon:'mixed',ranged:'bow',horseArmor:'mail',shield:'mixed',armor:'mixed',experience:'trained',familiarity:'practiced'}}
  };
  let equipmentOpen=false;
  function syncEquipmentShield(team){
@@ -1344,18 +1417,25 @@ document.querySelector('#reset').addEventListener('click',populate);
  }
  function syncEquipmentUnitRole(team){
   const c=equipControls[team],role=c.unitRole.value;
-  if(role==='infantry'||role==='cavalry'){
+  if(role==='horseArcher'){
+   c.ranged.value='horsebow';c.ranged.disabled=true;
+   c.note.textContent='Horse archers use the compact bow and carry a short sword.';
+  }else if(role==='infantry'||role==='cavalry'){
    c.ranged.value='none';c.ranged.disabled=true;
-   c.note.textContent=role==='cavalry'?'Cavalry: mounted charges and melee. Set Cavalry lance for the best charge.':'Infantry: melee only. Choose Archer to enable ranged weapons.';
+   c.note.textContent=role==='cavalry'?
+    'Cavalry charges with horse impact even when carrying a sword.':
+    'Infantry use close combat weapons only.';
   }else{
    c.ranged.disabled=false;
-   if(c.ranged.value==='none')c.ranged.value=['mixed','combined'].includes(role)?'mixed':'bow';
+   if(c.ranged.value==='none'||c.ranged.value==='horsebow')
+    c.ranged.value=['mixed','combined','grandArmy'].includes(role)?'mixed':'bow';
   }
+  c.horseArmor.disabled=!['cavalry','horseArcher','combined','grandArmy'].includes(role);
  }
  function showEquipmentValues(values){
   for(const team of ['friend','foe']){
    const controls=equipControls[team],settings=values[team];
-   for(const field of ['weapon','shield','armor','experience','familiarity','ranged','rangedMastery','unitRole'])controls[field].value=settings[field]||(field==='ranged'?'none':field==='rangedMastery'?'same':field==='unitRole'?'infantry':'mixed');
+   for(const field of ['weapon','shield','armor','horseArmor','experience','familiarity','ranged','rangedMastery','unitRole'])controls[field].value=settings[field]||(field==='ranged'||field==='horseArmor'?'none':field==='rangedMastery'?'same':field==='unitRole'?'infantry':'mixed');
    syncEquipmentShield(team);syncEquipmentUnitRole(team);
   }
  }
@@ -1384,7 +1464,7 @@ document.querySelector('#reset').addEventListener('click',populate);
    syncEquipmentUnitRole(team);
    equipFeedback.textContent='Unit role changed. Apply to update the battle.';
   });
-  for(const field of ['shield','armor','experience','familiarity','ranged','rangedMastery','unitRole']){
+  for(const field of ['shield','armor','horseArmor','experience','familiarity','ranged','rangedMastery','unitRole']){
    equipControls[team][field].addEventListener('change',()=>{
     equipFeedback.textContent='Equipment changed. Apply to update the battle.';
    });
@@ -1409,7 +1489,8 @@ document.querySelector('#reset').addEventListener('click',populate);
     familiarity:familiarityLevels[c.familiarity.value]!=null?c.familiarity.value:'mixed',
     ranged:rangedProfiles[c.ranged.value]?c.ranged.value:(c.ranged.value==='mixed'?'mixed':'none'),
     rangedMastery:familiarityLevels[c.rangedMastery.value]!=null?c.rangedMastery.value:'same',
-    unitRole:['infantry','archer','mixed','cavalry','combined'].includes(c.unitRole.value)?c.unitRole.value:'infantry'
+    unitRole:['infantry','archer','mixed','cavalry','combined','horseArcher','grandArmy'].includes(c.unitRole.value)?c.unitRole.value:'infantry',
+    horseArmor:horseArmorProfiles[c.horseArmor.value]?c.horseArmor.value:'none'
    };
   }
   return draft;
@@ -1579,7 +1660,23 @@ function shieldImpact(attacker,defender,a){
 function applyWeaponImpact(attacker,target,a){
  if(target.dead||target.routed||target.broken||target.team===attacker.team||a.hitIds.has(target.id))return false;
  a.hitIds.add(target.id);
- const parry=a.projectile?null:attemptWeaponParry(attacker,target,a);
+ // A real horse presents a separate target. Projectiles and melee sweeps
+ // sometimes strike its body rather than the rider (regardless of team).
+ if(isCavalry(target)&&!a.horseImpact){
+  const hitHorse=rnd(Math.abs(a.id)*79+target.id*31+19)<
+   (a.projectile?.49:a.charge?.36:.32);
+  if(hitHorse){
+   const struck=applyHorseDamage(target,a.baseDamage,a.move.damageType);
+   if(struck){
+    a.hits++;a.momentum=0;a.stopped=true;
+    slashes.push({kind:'impact',block:null,damageType:a.move.damageType,
+     x:target.x,y:target.y+7,a:0,life:.30,duration:.30,
+     type:a.move.style,team:attacker.team});
+    return true;
+   }
+  }
+ }
+ const parry=a.projectile||a.horseImpact?null:attemptWeaponParry(attacker,target,a);
  if(parry?.parried)return true;
  const incomingMomentum=a.momentum;
  const shield=shieldImpact(attacker,target,a),damageType=a.move.damageType;
@@ -1842,9 +1939,10 @@ function launchProjectile(s,target){
  // a tiny angular error used to turn into a huge miss at long range.
  // Experience and familiarity both tighten the grouping; the projectile
  // still flies straight after release, and moving targets remain harder.
- const scatter=5+targetDistance*.0045+
+ const scatter=(5+targetDistance*.0045+
   (100-skill)*(.115+targetDistance*.00012)+
-  (100-familiarity)*(.10+targetDistance*.00010);
+  (100-familiarity)*(.10+targetDistance*.00010))*
+  (s.ranged==='horsebow'?(1.10+s.gallop*.48):1);
  const lateralError=(rnd(s.id*197+s.shotCount*139+41)-.5)*2*scatter;
  const angle=Math.atan2(predictedY-s.y,predictedX-s.x)+
   Math.atan2(lateralError,targetDistance);
@@ -1928,6 +2026,9 @@ function advanceRangedAim(s,target,dt){
 
 function updateProjectiles(dt){
  if(!projectiles.length)return;
+ // Reuse one collision roster per timestep; big mounted-archer volleys
+ // otherwise allocate a new hundred-soldier array for each flying arrow.
+ const targets=[...members('friend'),...members('foe')];
  const active=[];
  for(const p of projectiles){
   // The previous version kept moving until max weapon range, even after
@@ -1940,7 +2041,7 @@ function updateProjectiles(dt){
   const seg={ax:x1,ay:y1,bx:x2,by:y2};
   const dx=x2-x1,dy=y2-y1,dsq=dx*dx+dy*dy;
   let closest=null,at=Infinity;
-  for(const other of [...members('friend'),...members('foe')]){
+  for(const other of targets){
    if(other.dead||other.routed||other.broken||
       (other.team===p.team&&other.id===p.shooterId))continue;
    // Lofted arrows, bolts and javelins are fired OVER friendly ranks,
@@ -1949,7 +2050,7 @@ function updateProjectiles(dt){
    // on a teammate whose 2D ground position overlaps the flight path.
    // Deliberately flat shots (loft=0) still use physical ally collisions.
    if(other.team===p.team&&p.loft>0)continue;
-   const radius=(p.kind==='javelin'?10:9.3)+(isCavalry(other)?4:0);
+   const radius=(p.kind==='javelin'?10:9.3)+(isCavalry(other)?5:0);
    if(pointSegmentDistance(other.x,other.y,seg)>radius)continue;
    const u=dsq>0?clamp(((other.x-x1)*dx+(other.y-y1)*dy)/dsq,0,1):0;
    // Check height at the instant the projectile crosses this soldier.
@@ -1963,7 +2064,7 @@ function updateProjectiles(dt){
    if(closest.team===p.team){
     const stat=combatLabStats(p.team);if(stat)stat.friendlyStops++;
    }else{
-    const a={id:p.id,move:{style:p.kind==='bow'?'light':'heavy',damageType:'piercing'},
+    const a={id:p.id,move:{style:['bow','horsebow'].includes(p.kind)?'light':'heavy',damageType:'piercing'},
       baseDamage:p.damage,momentum:p.momentum,hits:0,hitIds:new Set(),
       projectile:p.kind,counter:false,stopped:false};
     const hit=applyWeaponImpact(p.shooter,closest,a);
@@ -2063,7 +2164,9 @@ function step(dt){
   else if(command==='attack'){
     if(target){
       const ranged=activeRangedProfile(s);
-      if(ranged&&dist>meleeThreatRange(s)){
+      if(isCavalry(s)&&s.regroupUntil>t){
+       moveX=s.regroupX;moveY=s.regroupY;pace=1.36;
+      }else if(ranged&&dist>meleeThreatRange(s)){
        // Keep the intended long standoff in Classic, but scale it down
        // in tiny 440×210 test arenas so archers do not flee to the edges.
        const gap=Math.min(ranged.ideal,Math.max(90,Math.min(W,H)*.65));
@@ -2075,7 +2178,13 @@ function step(dt){
         moveX=clamp(s.x-ndx*(gap-dist+16),14,W-14);
         moveY=clamp(s.y-ndy*(gap-dist+16),14,H-14);
         pace=.86;
-       }else{moveX=s.x;moveY=s.y;}
+        }else if(s.unitRole==='horseArcher'&&isCavalry(s)){
+         // Ride sideways and loose arrows, rather than stopping in one place.
+         const side=s.id%2===0?1:-1;
+         moveX=clamp(s.x-ndy*110*side,24,W-24);
+         moveY=clamp(s.y+ndx*110*side,24,H-24);
+         pace=.96;
+        }else{moveX=s.x;moveY=s.y;}
       }else{
        const slot=engagementPoint(s,target);
        const distanceToSlot=Math.hypot(slot.x-s.x,slot.y-s.y);
@@ -2093,26 +2202,50 @@ function step(dt){
   const equipment=weaponProfiles[s.weapon].weight+(shieldProfiles[s.shield]?.weight||0)+(activeRangedProfile(s)?rangedProfiles[s.ranged].weight:0);
   const loadPace=clamp(1-equipment*.038,.70,1);
   const fightingPace=s.stagger>0?0:s.attack?.72:s.guardActive?.73:1;
-  const mountPace=isCavalry(s)?(dist<100?1.20:2.00):1;
+  const barding=horseArmorProfiles[s.horseArmor]||horseArmorProfiles.none;
+  const staminaFactor=isCavalry(s)?clamp(.55+(s.horseStamina||0)/220,.55,1):1;
+  const woundFactor=isCavalry(s)&&s.mountHp<s.mountMaxHp*.40?.83:1;
+  const mountPace=isCavalry(s)?(dist<100?1.18:2.04)*
+   barding.speed*staminaFactor*woundFactor:1;
   const oldX=s.x,oldY=s.y;
   if(command!=='stop')approach(s,moveX,moveY,dt,pace*disciplineControl*fatiguePace*loadPace*fightingPace*mountPace);
   s.stamina=clamp(s.stamina-Math.hypot(s.x-oldX,s.y-oldY)*(.042+equipment*.004),0,s.maxStamina);
    s.vx=(s.x-oldX)/Math.max(.001,dt);s.vy=(s.y-oldY)/Math.max(.001,dt);
+  // Mounted soldiers conserve horse stamina at a walk, and tire at a gallop.
+  // Stopped or dismounted riders cannot perform horse-impact charges.
   if(isCavalry(s)){
-   const velocity=Math.hypot(s.vx,s.vy);
-   s.gallop=clamp(s.gallop+(velocity>45?dt*.63:-dt*1.4),0,1);
+   const speed=Math.hypot(s.vx,s.vy);
+   s.horseStamina=clamp(s.horseStamina+
+    dt*(speed>52?-7.4:speed<18?13:2.5),0,100);
+   s.gallop=clamp(s.gallop+(speed>53&&s.horseStamina>13?dt*.68:-dt*1.35),0,1);
    s.chargeCooldown=Math.max(0,(s.chargeCooldown||0)-dt);
    if(command==='attack'&&target&&!target.dead&&!target.routed&&
-      dist<62&&dist>13&&s.gallop>.36&&s.chargeCooldown<=0&&s.stamina>=12){
-    // One physical charge impact after building movement momentum. Shields
-    // and armor mitigate it normally; a stopped rider cannot spam charges.
-    const impact={id:nextSwingId++,move:{style:'heavy',damageType:'piercing'},
-     baseDamage:1.45+s.gallop*.65,momentum:140+s.gallop*100,hits:0,
-     hitIds:new Set(),counter:false,stopped:false,charge:true};
-    applyWeaponImpact(s,target,impact);
-    s.chargeHits++;s.chargeCooldown=3.7;s.gallop=0;
-    s.stamina=clamp(s.stamina-12,0,s.maxStamina);
-    s.recoveryDelay=Math.max(s.recoveryDelay,.45);
+      dist<66&&dist>13&&s.gallop>.38&&s.chargeCooldown<=0&&
+      s.stamina>=12&&s.horseStamina>=12){
+    const horseImpact={id:nextSwingId++,move:{style:'heavy',damageType:'blunt'},
+     baseDamage:.66+s.gallop*.67,momentum:118+s.gallop*87,hits:0,
+     hitIds:new Set(),counter:false,stopped:false,charge:true,horseImpact:true};
+    applyWeaponImpact(s,target,horseImpact);
+    // The horse always strikes, whether the rider carries a sword,
+    // a lance or a bow. A ready lance can add a separate piercing blow.
+    if(s.weapon==='lance'&&!target.dead&&!target.routed){
+     const lanceHit={id:nextSwingId++,move:{style:'heavy',damageType:'piercing'},
+      baseDamage:.72+s.gallop*.66,momentum:125+s.gallop*105,hits:0,
+      hitIds:new Set(),counter:false,stopped:false,charge:true};
+     applyWeaponImpact(s,target,lanceHit);
+    }
+    s.chargeHits++;s.chargeCooldown=4.1;s.gallop=0;
+    const chargesStat=combatLabStats(s.team);
+    if(chargesStat)chargesStat.horseCharges++;
+    s.horseStamina=clamp(s.horseStamina-18,0,100);
+    s.stamina=clamp(s.stamina-10,0,s.maxStamina);
+    // Disengage sideways and back, then rebuild speed for another pass.
+    // This keeps cavalry from spending the whole battle tangled in melee.
+    const back=s.team==='friend'?-1:1,side=s.id%2===0?1:-1;
+    s.regroupUntil=t+2.15;
+    s.regroupX=clamp(s.x+back*165,28,W-28);
+    s.regroupY=clamp(s.y+side*94,28,H-28);
+    s.recoveryDelay=Math.max(s.recoveryDelay,.32);
    }
   }
   updateFacing(s,target,target?Math.hypot(target.x-s.x,target.y-s.y):Infinity,dt*(s.stagger>0?.38:1));
@@ -2185,11 +2318,21 @@ function drawUnit(s){if(s.routed)return;
   ctx.fillStyle=s.team==='friend'?'#947654':'#84634d';
   ctx.beginPath();ctx.ellipse(-3,2,19,9,0,0,Math.PI*2);ctx.fill();
   ctx.beginPath();ctx.ellipse(16,-1,8,5,-.2,0,Math.PI*2);ctx.fill();
+  const barding=horseArmorProfiles[s.horseArmor]||horseArmorProfiles.none;
+  if(s.horseArmor&&s.horseArmor!=='none'){
+   ctx.fillStyle=barding.color;
+   ctx.beginPath();ctx.ellipse(-4,0,13,7,0,0,Math.PI*2);ctx.fill();
+   ctx.strokeStyle='#3d3a36';ctx.lineWidth=1;ctx.stroke();
+  }
   ctx.strokeStyle='#534437';ctx.lineWidth=3;
   ctx.beginPath();ctx.moveTo(-13,5);ctx.lineTo(-18,17);
   ctx.moveTo(7,5);ctx.lineTo(12,17);
   ctx.moveTo(-18,-1);ctx.lineTo(-25,-5);ctx.stroke();
   ctx.restore();
+  // The mount's amber health bar is separate from the rider's health bar.
+  ctx.fillStyle='#2b2115';ctx.fillRect(x-17,y+25,34,3.5);
+  ctx.fillStyle=s.mountHp<s.mountMaxHp*.33?'#f09a73':'#e8c779';
+  ctx.fillRect(x-17,y+25,34*clamp(s.mountHp/s.mountMaxHp,0,1),3.5);
  }
  if(s.dead){ctx.fillStyle='#101f1ac0';ctx.beginPath();ctx.ellipse(x,y+3,8,4,.4,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ba9d92a6';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-4,y-4);ctx.lineTo(x+4,y+4);ctx.moveTo(x+4,y-4);ctx.lineTo(x-4,y+4);ctx.stroke();return;}
  if(selected&&s.team==='friend'){ctx.beginPath();ctx.arc(x,y,13,0,2*Math.PI);ctx.lineWidth=1.4;ctx.strokeStyle=s.broken?'#ffb28b':'#d2ffe0c2';ctx.stroke();}
@@ -2241,11 +2384,12 @@ function drawUnit(s){if(s.routed)return;
   const rp=rangedProfiles[s.ranged];
   ctx.save();ctx.translate(x,y);ctx.rotate(s.faceAngle);
   ctx.strokeStyle=rp.color;ctx.lineWidth=2.5;ctx.beginPath();
-  if(s.ranged==='bow'){
-   ctx.arc(11,0,14,-1.1,1.1);ctx.stroke();
+  if(s.ranged==='bow'||s.ranged==='horsebow'){
+   const bowRadius=s.ranged==='horsebow'?10:14;
+   ctx.arc(11,0,bowRadius,-1.1,1.1);ctx.stroke();
    ctx.strokeStyle='#f6e9c7';ctx.lineWidth=1;
-   ctx.beginPath();ctx.moveTo(11+14*Math.cos(-1.1),14*Math.sin(-1.1));
-   ctx.lineTo(s.rangedAim>0?4:11,0);ctx.lineTo(11+14*Math.cos(1.1),14*Math.sin(1.1));ctx.stroke();
+   ctx.beginPath();ctx.moveTo(11+bowRadius*Math.cos(-1.1),bowRadius*Math.sin(-1.1));
+   ctx.lineTo(s.rangedAim>0?4:11,0);ctx.lineTo(11+bowRadius*Math.cos(1.1),bowRadius*Math.sin(1.1));ctx.stroke();
   }else if(s.ranged==='crossbow'){
    ctx.moveTo(5,0);ctx.lineTo(24,0);ctx.moveTo(17,-11);ctx.lineTo(17,11);ctx.stroke();
    ctx.strokeStyle='#f9eac7';ctx.lineWidth=1;
