@@ -2307,11 +2307,21 @@ function drawUnit(s){if(s.routed)return;
   ctx.fillStyle=s.team==='friend'?'#947654':'#84634d';
   ctx.beginPath();ctx.ellipse(-3,2,19,9,0,0,Math.PI*2);ctx.fill();
   ctx.beginPath();ctx.ellipse(16,-1,8,5,-.2,0,Math.PI*2);ctx.fill();
+  const barding=horseArmorProfiles[s.horseArmor]||horseArmorProfiles.none;
+  if(s.horseArmor&&s.horseArmor!=='none'){
+   ctx.fillStyle=barding.color;
+   ctx.beginPath();ctx.ellipse(-4,0,13,7,0,0,Math.PI*2);ctx.fill();
+   ctx.strokeStyle='#3d3a36';ctx.lineWidth=1;ctx.stroke();
+  }
   ctx.strokeStyle='#534437';ctx.lineWidth=3;
   ctx.beginPath();ctx.moveTo(-13,5);ctx.lineTo(-18,17);
   ctx.moveTo(7,5);ctx.lineTo(12,17);
   ctx.moveTo(-18,-1);ctx.lineTo(-25,-5);ctx.stroke();
   ctx.restore();
+  // The mount's amber health bar is separate from the rider's health bar.
+  ctx.fillStyle='#2b2115';ctx.fillRect(x-17,y+25,34,3.5);
+  ctx.fillStyle=s.mountHp<s.mountMaxHp*.33?'#f09a73':'#e8c779';
+  ctx.fillRect(x-17,y+25,34*clamp(s.mountHp/s.mountMaxHp,0,1),3.5);
  }
  if(s.dead){ctx.fillStyle='#101f1ac0';ctx.beginPath();ctx.ellipse(x,y+3,8,4,.4,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ba9d92a6';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-4,y-4);ctx.lineTo(x+4,y+4);ctx.moveTo(x+4,y-4);ctx.lineTo(x-4,y+4);ctx.stroke();return;}
  if(selected&&s.team==='friend'){ctx.beginPath();ctx.arc(x,y,13,0,2*Math.PI);ctx.lineWidth=1.4;ctx.strokeStyle=s.broken?'#ffb28b':'#d2ffe0c2';ctx.stroke();}
