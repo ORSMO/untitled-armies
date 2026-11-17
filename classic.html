@@ -519,7 +519,9 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   };
  }
  function tallyLabel(t){return t.standing+' standing · '+t.killed+' killed · '+
-  t.wounded+' incapacitated · '+t.escaped+' escaped · '+t.surrendered+' surrendered';}
+  t.wounded+' incapacitated · '+t.escaped+' escaped · '+
+  t.surrendered+' surrendered · '+t.shaken+' still routing · '+
+  t.woundedStanding+' injured survivors';}
  // Two attack styles share the same three-cell range. Heavy hits cost more
  // stamina, deal two damage, and have longer recovery than quick light hits.
  const attackStyles={
@@ -908,8 +910,10 @@ function focusArmy(){
    '🟢 Victory':battleOutcome.winner==='foe'?'🔴 Defeat':'⚖ Draw';
   document.querySelector('#battleOutcomeReason').textContent=battleOutcome.reason+
    ' · '+battleOutcome.seconds.toFixed(1)+' seconds';
-  document.querySelector('#battleOutcomeFriend').textContent=tallyLabel(battleOutcome.friend);
-  document.querySelector('#battleOutcomeFoe').textContent=tallyLabel(battleOutcome.foe);
+  document.querySelector('#battleOutcomeFriend').textContent=tallyLabel(battleOutcome.friend)+
+   ' · Commander '+(commanders.friend?.dead?'fallen':'alive');
+  document.querySelector('#battleOutcomeFoe').textContent=tallyLabel(battleOutcome.foe)+
+   ' · Commander '+(commanders.foe?.dead?'fallen':'alive');
  }
 }
 function determineBattleOutcome(){
@@ -928,7 +932,7 @@ function determineBattleOutcome(){
  return battleOutcome;
 }
 function populate(){
-  battleOutcome=null;refreshBattleRulesUI();
+  t=0;battleOutcome=null;refreshBattleRulesUI();
   nextId=0;nextSwingId=1;nextEngagementPlan=0;formationType='block';enemyFormationType='block';enemyCommand='auto';enemyMovePending=false;setFormationMenu(false);
   const a=home('friend'),b=home('foe');
   friends=formation('friend',a.x,a.y).map((p,i)=>create('friend',i,p));
