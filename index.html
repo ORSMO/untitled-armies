@@ -932,7 +932,7 @@ function squadMovement(s,command,target,dist,x,y,pace){
  const forward=s.team==='friend'?1:-1;
  // An infantry reserve is a real subgroup, not a magic damage bonus. It
  // waits behind the first line until losses or ranged threats demand help.
- if(s.squadReserve&&!state.reserveReleased){
+ if(s.unitRole==='infantry'&&s.squadReserve&&!state.reserveReleased){
   return {x:clamp(ownInfantry.center.x-forward*Math.min(95,W*.17),22,W-22),
    y:clamp(ownInfantry.center.y+s.squadOffsetY*.70,22,H-22),pace:.91};
  }
@@ -971,7 +971,12 @@ function squadMovement(s,command,target,dist,x,y,pace){
  return {x,y,pace};
 }
 function allocateSquadReserves(team){
- const infantry=(team==='friend'?friends:foes).filter(s=>s.unitRole==='infantry');
+ const teamUnits=team==='friend'?friends:foes;
+ teamUnits.forEach(s=>{
+  s.squadReserve=false;s.squadSlotRole=null;
+  s.squadInitialInfantry=false;s.squadFlankDone=false;
+ });
+ const infantry=teamUnits.filter(s=>s.unitRole==='infantry');
  // Keep the last fifth in reserve, but don't split tiny test formations.
  const n=infantry.length>=12?Math.min(10,Math.floor(infantry.length*.20)):0;
  infantry.forEach((s,i)=>{s.squadReserve=i>=infantry.length-n;s.squadInitialInfantry=true;});
