@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V2.8</title>
+<title>Untitled Armies — V2.9</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -201,7 +201,7 @@ body.lab-mode .lab-area{display:flex}
     <div class="top-actions">
       <a class="lab-classic-link" href="classic.html" title="Open original 50v50 battlefield">Classic battlefield</a>
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 2.8">V2.8</div>
+      <div class="build" aria-label="Version 2.9">V2.9</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
@@ -487,23 +487,62 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   crossbow:{label:'Crossbow',speed:730,range:1125,ideal:795,ammo:12,draw:.43,reload:1.90,loft:31,
    damage:2.25,momentum:108,stamina:7,weight:2.7,color:'#e3ebf2',twoHand:true},
   javelin:{label:'Javelins',speed:380,range:624,ideal:414,ammo:6,draw:.45,reload:1.05,loft:47,
-   damage:1.72,momentum:94,stamina:10,weight:1.9,color:'#f6ac70',twoHand:false}
+   damage:1.72,momentum:94,stamina:10,weight:1.9,color:'#f6ac70',twoHand:false},
+  horsebow:{label:'Compact horse bow',speed:475,range:710,ideal:420,ammo:24,draw:.43,reload:.52,loft:53,
+   damage:1.02,momentum:39,stamina:3.6,weight:.65,color:'#f1cb86',twoHand:true}
  };
- const rangedOrder=['bow','crossbow','javelin'];
+ const rangedOrder=['bow','crossbow','javelin','horsebow'];
  // Unit classes determine combat priorities independently of equipment.
  // Cavalry is a reserved class for the future mounted-combat update.
- const unitRoles=['infantry','archer','cavalry'];
- function soldierRole(s){return ['archer','cavalry'].includes(s.unitRole)?s.unitRole:'infantry';}
- function isCavalry(s){return soldierRole(s)==='cavalry';}
- function isArcher(s){return soldierRole(s)==='archer';}
+ const unitRoles=['infantry','archer','cavalry','horseArcher'];
+ function soldierRole(s){return ['archer','cavalry','horseArcher'].includes(s.unitRole)?s.unitRole:'infantry';}
+ function isCavalry(s){return ['cavalry','horseArcher'].includes(s.unitRole)&&s.mounted!==false;}
+ function isArcher(s){return ['archer','horseArcher'].includes(s.unitRole);}
  function activeRangedProfile(s){return isArcher(s)?rangedProfiles[s.ranged]||null:null;}
  function assignedRole(config,index){
-  if(config.unitRole==='archer'||config.unitRole==='cavalry')return config.unitRole;
+  if(['archer','cavalry','horseArcher'].includes(config.unitRole))return config.unitRole;
+  if(config.unitRole==='grandArmy')return index<20?'infantry':index<35?'archer':index<45?'cavalry':'horseArcher';
   if(config.unitRole==='combined')return index<20?'infantry':index<40?'archer':'cavalry';
   if(config.unitRole==='mixed')return index%2===0?'infantry':'archer';
   return 'infantry';
  }
- const shieldProfiles={
+ // Mounts are separately wounded by physical arrows, blades and charges.
+// Rider armor and horse barding are distinct equipment.
+ const horseArmorProfiles={
+  none:{label:'Unarmored horse',flat:0,block:0,speed:1,color:'#997551',weight:0},
+  leather:{label:'Leather barding',flat:.12,block:.16,speed:.95,color:'#ae8355',weight:1},
+  mail:{label:'Mail barding',flat:.24,block:.26,speed:.89,color:'#9baab0',weight:2},
+  plate:{label:'Plate barding',flat:.39,block:.38,speed:.80,color:'#d0d9dd',weight:3}
+ };
+ function initMount(s){
+  s.mounted=['cavalry','horseArcher'].includes(s.unitRole);
+  s.mountHp=s.mounted?3.6:0;s.mountMaxHp=s.mounted?3.6:0;
+  s.horseStamina=s.mounted?100:0;
+  s.gallop=0;s.chargeCooldown=0;s.regroupUntil=0;
+  s.chargeHits=0;s.horseHits=0;s.dismounts=0;
+ }
+ function dismount(s){
+  if(!isCavalry(s))return;
+  s.mounted=false;s.mountHp=0;s.horseStamina=0;s.gallop=0;
+  s.regroupUntil=0;s.chargeCooldown=0;s.dismounts++;
+  s.unitRole=s.unitRole==='horseArcher'?'archer':'infantry';
+  if(s.weapon==='lance')s.weapon='sword';
+  s.attack=null;s.rangedAim=0;s.guardActive=false;
+  s.stagger=Math.max(s.stagger,.8);
+  s.speed=Math.min(s.speed,55);
+  s.hitFlash=.8;
+ }
+ function applyHorseDamage(target,base,kind){
+  if(!isCavalry(target))return false;
+  const barding=horseArmorProfiles[target.horseArmor]||horseArmorProfiles.none;
+  const armorBonus=kind==='blunt'?.75:1;
+  const actual=Math.max(.07,(base*armorBonus-barding.flat)*(1-barding.block));
+  target.mountHp=Math.max(0,target.mountHp-actual);
+  target.horseHits++;target.hitFlash=.32;
+  if(target.mountHp<=0)dismount(target);
+  return true;
+ }
+const shieldProfiles={
   buckler:{label:'Buckler',size:8,weight:.85,passiveArc:.40,activeArc:.83,passiveBlock:.20,passiveStop:16,activeStop:68,cost:5,color:'#cda779'},
   round:{label:'Round shield',size:11,weight:1.8,passiveArc:.66,activeArc:1.20,passiveBlock:.35,passiveStop:31,activeStop:115,cost:8,color:'#b1b9a6'},
   kite:{label:'Kite shield',size:13,weight:2.7,passiveArc:.83,activeArc:1.42,passiveBlock:.48,passiveStop:50,activeStop:155,cost:11,color:'#d5ad81'},
@@ -521,7 +560,7 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  const experienceOrder=['recruit','trained','veteran','elite'];
  const familiarityLevels={novice:18,practiced:56,expert:85,master:97};
  const weaponSkillKey={shortsword:11,sword:23,greatsword:37,axe:53,lance:61};
- const rangedSkillKey={bow:67,crossbow:79,javelin:89};
+ const rangedSkillKey={bow:67,crossbow:79,javelin:89,horsebow:101};
  function rangedFamiliarity(s){return clamp(s.rangedSkills?.[s.ranged]??35,0,100);}
  function initializeRangedEquipment(s){
   s.ranged=rangedProfiles[s.ranged]?s.ranged:null;
@@ -574,8 +613,8 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  // Applied matchup settings persist through Reset and enemy reinforcements.
  // "mixed" uses the original 50-soldier distribution for each category.
  const equipmentConfig={
-  friend:{weapon:'mixed',shield:'mixed',armor:'mixed',ranged:'none',unitRole:'infantry',rangedMastery:'same',experience:'mixed',familiarity:'mixed'},
-  foe:{weapon:'mixed',shield:'mixed',armor:'mixed',ranged:'none',unitRole:'infantry',rangedMastery:'same',experience:'mixed',familiarity:'mixed'}
+  friend:{weapon:'mixed',shield:'mixed',armor:'mixed',ranged:'none',unitRole:'infantry',horseArmor:'none',rangedMastery:'same',experience:'mixed',familiarity:'mixed'},
+  foe:{weapon:'mixed',shield:'mixed',armor:'mixed',ranged:'none',unitRole:'infantry',horseArmor:'none',rangedMastery:'same',experience:'mixed',familiarity:'mixed'}
  };
  function equipmentFor(team,index){
   const settings=equipmentConfig[team],offset=team==='friend'?0:1;
@@ -590,18 +629,23 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   // A shield cannot coexist with a two-handed weapon, including in mixed armies.
   if(weaponProfiles[weapon].twoHand)shield=null;
   const unitRole=assignedRole(settings,index);
+  if(unitRole==='horseArcher'&&(settings.weapon==='mixed'||weapon==='lance'))weapon='shortsword';
   if(unitRole==='cavalry'&&(settings.weapon==='mixed'||!weaponProfiles[weapon]))weapon='lance';
   const chosenRanged=settings.ranged==='mixed'?rangedOrder[index%rangedOrder.length]:settings.ranged;
-  const ranged=unitRole==='archer'?
-   (rangedProfiles[chosenRanged]?chosenRanged:'bow'):null;
-  return {weapon,shield,armor,ranged,unitRole};
+  const ranged=unitRole==='horseArcher'?'horsebow':
+   unitRole==='archer'?(chosenRanged==='horsebow'?'bow':
+    rangedProfiles[chosenRanged]?chosenRanged:'bow'):null;
+  if(rangedProfiles[ranged]?.twoHand)shield=null;
+  const horseArmor=['none','leather','mail','plate'].includes(settings.horseArmor)?
+   settings.horseArmor:'none';
+  return {weapon,shield,armor,ranged,unitRole,horseArmor};
  }
  function equipCurrentArmy(team){
   const soldiers=team==='friend'?friends:foes;
   soldiers.forEach((soldier,index)=>{
    Object.assign(soldier,equipmentFor(team,index));
    setFighterTraining(soldier,team,index);
-   initializeRangedEquipment(soldier);
+   initializeRangedEquipment(soldier);initMount(soldier);
    // Switching equipment safely ends any attack/guard using the old item.
    soldier.attack=null;soldier.guardActive=false;soldier.guardHold=0;
    soldier.guardBreak=0;soldier.shieldRecoil=0;soldier.guardBreakFlash=0;
@@ -694,10 +738,11 @@ function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74
   // reserve wider firing lanes; in mixed armies infantry take the front
   // and archers deploy in separate rear ranks instead of interleaving.
   const roles=Array.from({length:50},(_,i)=>assignedRole(equipmentConfig[team],i));
-  if(roles.includes('archer')||roles.includes('cavalry')){
+  if(roles.includes('archer')||roles.includes('cavalry')||roles.includes('horseArcher')){
    const infantry=roles.map((role,i)=>role==='infantry'?i:-1).filter(i=>i>=0);
    const archers=roles.map((role,i)=>role==='archer'?i:-1).filter(i=>i>=0);
    const cavalry=roles.map((role,i)=>role==='cavalry'?i:-1).filter(i=>i>=0);
+   const horseArchers=roles.map((role,i)=>role==='horseArcher'?i:-1).filter(i=>i>=0);
    const forward=team==='friend'?1:-1;
    function place(indices,isBow){
     const count=indices.length;if(!count)return;
@@ -724,10 +769,16 @@ function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74
     const y=cy+side*(Math.max(120,(roles.includes('archer')?235:160))+(Math.floor(j/2)%4)*horseStride);
     positions[index]={x:cx-forward*(d*3+row*horseStride),y};
    });
+   // Mounted archers deploy on the opposite wing, with room to circle.
+   horseArchers.forEach((index,j)=>{
+    const row=Math.floor(j/8),side=j%2===0?1:-1;
+    const y=cy+side*(Math.max(175,roles.includes('cavalry')?365:240)+(Math.floor(j/2)%4)*52);
+    positions[index]={x:cx-forward*(d*4+row*52),y};
+   });
   }
   return positions.map(p=>({x:clamp(p.x,18,W-18),y:clamp(p.y,21,H-21)}));
  }
-function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);const soldier={id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,...equipmentFor(team,i),attack:null,gallop:0,chargeCooldown:0,chargeHits:0,guardActive:false,guardHold:0,guardBreak:0,stagger:0,knockVX:0,knockVY:0,shieldRecoil:0,impactLean:0,guardBreakFlash:0,stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,stamina:100,maxStamina:100,recoveryDelay:0,attackCount:0,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:1.5+rnd(i+16)*1.3,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,engageSlot:0,escapeAngle:0,hitFlash:0};setFighterTraining(soldier,team,i);initializeRangedEquipment(soldier);return soldier;}
+function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);const soldier={id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,...equipmentFor(team,i),attack:null,gallop:0,chargeCooldown:0,chargeHits:0,guardActive:false,guardHold:0,guardBreak:0,stagger:0,knockVX:0,knockVY:0,shieldRecoil:0,impactLean:0,guardBreakFlash:0,stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),hp:3,maxHp:3,stamina:100,maxStamina:100,recoveryDelay:0,attackCount:0,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:1.5+rnd(i+16)*1.3,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,engageSlot:0,escapeAngle:0,hitFlash:0};setFighterTraining(soldier,team,i);initializeRangedEquipment(soldier);initMount(soldier);return soldier;}
 function focusArmy(){
   const h=home('friend');
   camera.x=clamp(h.x-VW*.37,0,Math.max(0,W-VW));
