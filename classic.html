@@ -1922,7 +1922,8 @@ function moveMount(s,x,y,dt,mult=1){
   Math.min(maxSpeed*turningFactor,stoppingSpeed);
  const acceleration=horseMotion.accel*(.85+.15*agility)*(.78+.22*health);
  const change=wantedSpeed>speed?acceleration:braking;
- s.mountSpeed=clamp(speed+clamp(wantedSpeed-speed,-change*dt,change*dt),0,Math.max(0,maxSpeed+5));
+ // Changing orders or desired speed cannot instantly erase inertia.
+ s.mountSpeed=Math.max(0,speed+clamp(wantedSpeed-speed,-change*dt,change*dt));
  const step=s.mountSpeed*dt;
  const nx=clamp(s.x+Math.cos(s.mountHeading)*step,11,W-11);
  const ny=clamp(s.y+Math.sin(s.mountHeading)*step,11,H-11);
