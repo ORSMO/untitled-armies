@@ -1000,7 +1000,9 @@ function updateSquadState(team){
  const fewerTop=enemy.filter(s=>s.y<enemyCenter.y).length;
  const fewerBottom=enemy.length-fewerTop;
  const flankSide=fewerBottom<fewerTop?1:fewerTop<fewerBottom?-1:team==='friend'?1:-1;
- squadStates[team]={groups,enemyCenter,pressure,initialInfantryCount:initialInfantry,
+ const terrainObjective=terrainStrategicPlan(team,
+  troopCenter(own,fallback),enemyCenter,own);
+ squadStates[team]={groups,enemyCenter,terrainObjective,pressure,initialInfantryCount:initialInfantry,
   archerPressure:archers.length?pressed/archers.length:0,
   reserveReleased:release,flankSide,enemyArchers:enemy.filter(e=>isArcher(e)).length,
   cohesion:own.length?squadRoles.reduce((n,r)=>n+groups[r].cohesion*groups[r].count,0)/own.length:1};
@@ -1025,6 +1027,19 @@ function squadMovement(s,command,target,dist,x,y,pace){
  if(s.unitRole==='infantry'&&s.squadReserve&&!state.reserveReleased){
   return {x:clamp(ownInfantry.center.x-forward*Math.min(95,W*.17),22,W-22),
    y:clamp(ownInfantry.center.y+s.squadOffsetY*.70,22,H-22),pace:.91};
+ }
+ // Seize useful terrain before engaging: the squad marches to a hilltop,
+ // sheltered woodland or the friendly bank of a crossing. Once enemies are
+ // close, individual combat and the existing physical formation take over.
+ const strategic=(typeof commanderBrains!=='undefined'?
+  commanderBrains[s.team]?.terrainPlan:state.terrainObjective);
+ if(strategic&&dist>Math.max(115,Math.min(180,W*.20))&&
+   (s.unitRole==='infantry'||s.unitRole==='archer')){
+  const behind=s.unitRole==='archer'?forward*Math.min(54,W*.105):0;
+  const goalX=clamp(strategic.x-behind+(s.squadOffsetX||0)*.30,20,W-20);
+  const goalY=clamp(strategic.y+(s.squadOffsetY||0)*.55,20,H-20);
+  if(Math.hypot(s.x-goalX,s.y-goalY)>Math.min(40,H*.14))
+   return {x:goalX,y:goalY,pace:1.08};
  }
  // Infantry correct lateral drift while marching, but close-range combat,
  // shield/parry reactions and routing always take precedence.
@@ -1064,6 +1079,14 @@ function squadMovement(s,command,target,dist,x,y,pace){
    }else return {x:flankX,y:flankY,pace:1.17};
   }
  }else if(!tacticalFlank)s.squadFlankDone=false;
+ // Cavalry avoid taking a full-speed charge across a bog or forest. Their
+ // route uses actual turn radius and speed, and a detour is rejected when
+ // the geography makes going around more expensive than a cautious ford.
+ if(isCavalry(s)&&dist>110&&s.regroupUntil<=t){
+  const route=terrainRouteWaypoint(s,x,y);
+  if(route&&Math.hypot(route.x-s.x,route.y-s.y)>34)
+   return {x:route.x,y:route.y,pace:1.21};
+ }
  return {x,y,pace};
 }
 function allocateSquadReserves(team){
@@ -2034,7 +2057,7 @@ function terrainStrategicPlan(team,ownCenter,enemyCenter,roster){
    (a.mud+a.water)*(cavalry>0?5:2.4)-
    dist/Math.max(110,W*.14)-
    (beyondEnemy?9:0)-(enemyDist<70?1.5:0);
-  if(score>1.8&&dist<Math.max(130,W*.44))
+  if(score>1.8&&dist<Math.max(130,W*.36))
    candidates.push({x,y,type,score,enemyDist});
  }
  candidates.sort((a,b)=>b.score-a.score);
