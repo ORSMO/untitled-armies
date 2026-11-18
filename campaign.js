@@ -18,6 +18,7 @@ function showScreen(id){
 }
 function openModal(id){
  const active=screens.find(s=>!$(s).classList.contains('hidden'))||null;
+ if(active===id)return;
  modalStack.push(active);
  showScreen(id);
 }
