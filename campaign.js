@@ -7,7 +7,7 @@ const KEY='ua-campaign-v1',VERSION=1,MAXPARTY=75;
 const clamp=W.clamp,dist=(a,b,x,y)=>Math.hypot(a-x,b-y),esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const canvas=$('worldCanvas'),ctx=canvas.getContext('2d'),mini=$('minimap'),mctx=mini.getContext('2d');
 let state=null,selected=null,selectedFaction=6,modalStack=[],focus=true,camera={x:3870,y:5320,zoom:.47},keys=new Set(),drag=null,last=0,lastHud=0,lastMini=0,lastSave=0,toastUntil=0,menuOpen=true,miniBase=null,view={w:900,h:600},inspectorDirty=true;
-const screens=['screenMenu','screenCreate','screenFactions','screenAtlas','screenOptions','screenPause','screenParty','screenCharacter'];
+const screens=['screenMenu','screenCreate','screenFactions','screenAtlas','screenOptions','screenPause','screenParty','screenCharacter','screenEncounter','screenAftermath'];
 const settingsDefault={borders:true,labels:true,roads:true,minimap:true,follow:true};
 function notify(msg){const t=$('toast');t.textContent=msg;t.classList.remove('hidden');toastUntil=performance.now()+4200}
 function log(message){if(!state)return;state.messages.unshift({day:state.day,text:message});state.messages.length=Math.min(12,state.messages.length)}
@@ -36,7 +36,7 @@ function saveGame(silent){
  try{
   const data={version:VERSION,player:state.player,day:state.day,hour:state.hour,
    parties:state.parties.map(p=>({id:p.id,x:p.x,y:p.y,tx:p.tx,ty:p.ty,strength:p.strength,active:p.active,kind:p.kind,faction:p.faction})),
-   options:state.options,speed:state.speed,zoom:camera.zoom};
+   options:state.options,speed:state.speed,zoom:camera.zoom,visitedLandmarks:state.visitedLandmarks||[]};
   localStorage.setItem(KEY,JSON.stringify(data));
   if(!silent)notify('Campaign saved on this device.');
   return true;
@@ -73,6 +73,7 @@ function startCampaign(){
  state={version:VERSION,player:{name,origin,background,x,y,gold:money,food:background==='merchant'?28:22,hp:100,
    level:1,xp:0,renown:0,roster:firstTroops,quest:{id:0,progress:0,goal:3,done:false}},
    day:1,hour:8,speed:1,paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,
+   followPartyId:null,followRepath:0,visitedLandmarks:[],
    parties:[],options:{...settingsDefault},messages:[],unseen:[],lastEncounter:-100};
  state.parties=generateParties();selected={type:'settlement',id:origin*8};
  camera.zoom=.47;resetView();$('game').classList.remove('hidden');showScreen(null);resize();
@@ -93,7 +94,9 @@ function loadGame(){
    if(land){p.x=(land.x+.5)*W.TILE;p.y=(land.y+.5)*W.TILE}
   }
   state={version:VERSION,player:p,day:raw.day||1,hour:raw.hour||8,speed:[1,2,4].includes(raw.speed)?raw.speed:1,
-   paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,parties:[],options:{...settingsDefault,...raw.options},
+   paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,
+   followPartyId:null,followRepath:0,visitedLandmarks:Array.isArray(raw.visitedLandmarks)?raw.visitedLandmarks:[],
+   parties:[],options:{...settingsDefault,...raw.options},
    messages:[],lastEncounter:-100};
   state.parties=generateParties();
   if(Array.isArray(raw.parties))for(const saved of raw.parties){const a=state.parties.find(v=>v.id===saved.id);
@@ -138,10 +141,43 @@ function travelTo(x,y,targetId){
  const route=W.findPath(state.player.x,state.player.y,x,y);
  if(!route.length){notify('No traversable route found.');return}
  state.path=route;state.pathIndex=0;state.targetSettlement=targetId==null?null:targetId;
+ state.followPartyId=null;
  state.pausedManual=false;state.paused=false;focus=state.options.follow;
  if(targetId!=null)notify('Traveling to '+S[targetId].name+'.');
  else notify('Travel route set · '+Math.round(route.length*W.TILE/100)/10+' leagues approximately.');
  refreshUI();
+}
+function partyName(p){
+ if(!p)return'Unknown travelers';
+ return p.kind==='bandit'?'Outlaw Bandits':
+  (F[p.faction]?.name||'Wandering')+' '+(p.kind==='patrol'?'Patrol':'Caravan');
+}
+function followParty(id){
+ if(!state||state.paused)return;
+ const party=state.parties.find(p=>p.id===id&&p.active);
+ if(!party){notify('That party is no longer on the roads.');return}
+ state.followPartyId=id;
+ state.followRepath=0;state.targetSettlement=null;
+ selected={type:'party',id};focus=true;inspectorDirty=true;
+ updateFollow(0);
+ if(!state.paused)notify('Following '+partyName(party)+'. Your route adjusts as they move.');
+ refreshUI();
+}
+function updateFollow(dt){
+ if(!state||state.followPartyId==null)return;
+ const party=state.parties.find(p=>p.id===state.followPartyId&&p.active);
+ if(!party){state.followPartyId=null;state.path=[];state.pathIndex=0;notify('You lost the party you were following.');return}
+ const distance=dist(state.player.x,state.player.y,party.x,party.y);
+ if(distance<=143){state.path=[];state.pathIndex=0;openEncounter(party);return}
+ state.followRepath-=dt*state.speed;
+ if(state.followRepath>0&&state.pathIndex<state.path.length)return;
+ // Aim a few route segments ahead: the target continues moving while
+ // the player travels. Reroute periodically instead of only once.
+ const lead=party.path.length?
+  party.path[Math.min(party.path.length-1,party.pathIndex+3)]:party;
+ const route=W.findPath(state.player.x,state.player.y,lead.x,lead.y);
+ if(route.length){state.path=route;state.pathIndex=0}
+ state.followRepath=1.25;
 }
 function walkPlayer(dx,dy,dt){
  const p=state.player,mag=Math.hypot(dx,dy);if(mag<.0001)return false;
@@ -167,7 +203,9 @@ function stepTravel(dt){
  const p=state.player;
  const dx=(keys.has('d')||keys.has('ArrowRight')?1:0)-(keys.has('a')||keys.has('ArrowLeft')?1:0);
  const dy=(keys.has('s')||keys.has('ArrowDown')?1:0)-(keys.has('w')||keys.has('ArrowUp')?1:0);
- if(dx||dy){state.path=[];state.pathIndex=0;state.targetSettlement=null;walkPlayer(dx,dy,dt);focus=state.options.follow;return}
+ if(dx||dy){state.path=[];state.pathIndex=0;state.targetSettlement=null;state.followPartyId=null;walkPlayer(dx,dy,dt);focus=state.options.follow;return}
+ updateFollow(dt);
+ if(state.paused)return;
  if(state.pathIndex>=state.path.length)return;
  let budget=148*W.walkingSpeed(p.x,p.y)*dt*state.speed;
  let traversed=0;
@@ -221,9 +259,8 @@ function stepParties(dt){
  }
  const close=state.parties.find(p=>p.active&&p.kind==='bandit'&&
   dist(state.player.x,state.player.y,p.x,p.y)<92);
- if(close&&(state.day+state.hour/24)-state.lastEncounter>.08&&selected?.id!==close.id){
-  state.path=[];state.pathIndex=0;selected={type:'party',id:close.id};state.lastEncounter=state.day+state.hour/24;
-  inspectorDirty=true;notify('Bandits ahead! Choose to fight or retreat.');
+ if(close&&(state.day+state.hour/24)-state.lastEncounter>.08&&!menuOpen){
+  state.path=[];state.pathIndex=0;openEncounter(close);
  }
 }
 function questText(){
@@ -315,7 +352,13 @@ function chooseSelection(x,y){
   const m=toScreen(p.x,p.y),d=dist(m.x,m.y,local.x,local.y);
   if(d<pd){pd=d;party=p}
  }
- if(party){selected={type:'party',id:party.id};inspectorDirty=true;return}
+ if(party){selected={type:'party',id:party.id};inspectorDirty=true;followParty(party.id);return}
+  let landmark=null,ld=22;
+ for(const place of W.landmarks||[]){
+  const v=toScreen(place.x,place.y),d=dist(local.x,local.y,v.x,v.y);
+  if(d<ld){ld=d;landmark=place}
+ }
+ if(landmark){selected={type:'landmark',id:landmark.id};inspectorDirty=true;refreshInspector();return}
  selected={type:'land',x,y};inspectorDirty=true;travelTo(x,y,null);
 }
 function colorAlpha(hex,alpha){
@@ -435,7 +478,9 @@ function refreshUI(){
  $('logList').innerHTML=state.messages.slice(0,6).map(m=>'<li><b>Day '+m.day+':</b> '+esc(m.text)+'</li>').join('');
  $('mapCoordinates').textContent=near&&dist(p.x,p.y,near.x,near.y)<300?
   'Near '+near.name+' · '+region.name:region.name+' · '+Math.floor(p.x)+', '+Math.floor(p.y);
- $('travelText').textContent=state.path.length?'Traveling · '+Math.max(0,state.path.length-state.pathIndex)+' route steps remaining':
+ $('travelText').textContent=state.followPartyId!=null?
+  'Following '+partyName(state.parties.find(p=>p.id===state.followPartyId))+' · updating route':
+  state.path.length?'Traveling · '+Math.max(0,state.path.length-state.pathIndex)+' route steps remaining':
   'Click to travel · WASD to walk · Drag to pan · Scroll to zoom';
  $('minimapHolder').classList.toggle('hidden',!state.options.minimap);
  if(inspectorDirty)refreshInspector();
@@ -669,7 +714,7 @@ function frame(now){
  const dt=Math.min(.075,Math.max(0,(now-last)/1000||.016));last=now;
  if(state&&!menuOpen){
   if(!state.paused){
-   stepTravel(dt);stepParties(dt);
+   stepTravel(dt);if(!state.paused)stepParties(dt);
    if(focus&&state.options.follow){const t=Math.min(1,dt*5);camera.x+=(state.player.x-camera.x)*t;camera.y+=(state.player.y-camera.y)*t}
   }
   drawWorld(now);
