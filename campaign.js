@@ -138,7 +138,7 @@ function zoomAt(mult,sx=view.w/2,sy=view.h/2){
 }
 function travelTo(x,y,targetId){
  if(!state||state.paused)return;
- clearPursuit(true);
+ clearPursuit(true);state.targetLandmark=null;
  const route=W.findPath(state.player.x,state.player.y,x,y);
  if(!route.length){notify('No traversable route found.');return}
  state.path=route;state.pathIndex=0;state.targetSettlement=targetId==null?null:targetId;
@@ -193,7 +193,7 @@ function stepTravel(dt){
  }
  const dx=(keys.has('d')||keys.has('ArrowRight')?1:0)-(keys.has('a')||keys.has('ArrowLeft')?1:0);
  const dy=(keys.has('s')||keys.has('ArrowDown')?1:0)-(keys.has('w')||keys.has('ArrowUp')?1:0);
- if(dx||dy){clearPursuit(true);state.path=[];state.pathIndex=0;state.targetSettlement=null;walkPlayer(dx,dy,dt);focus=state.options.follow;return}
+ if(dx||dy){clearPursuit(true);state.targetLandmark=null;state.path=[];state.pathIndex=0;state.targetSettlement=null;walkPlayer(dx,dy,dt);focus=state.options.follow;return}
  if(state.pathIndex>=state.path.length)return;
  let budget=148*W.walkingSpeed(p.x,p.y)*dt*state.speed;
  let traversed=0;
@@ -206,6 +206,13 @@ function stepTravel(dt){
   if(delta>=d-1)state.pathIndex++;else break;
  }
  if(traversed)advanceTime(traversed);
+ if(state.targetLandmark!=null){
+  const site=landmarks.find(l=>l.id===state.targetLandmark);
+  if(site&&dist(p.x,p.y,site.x,site.y)<140){
+   state.path=[];state.pathIndex=0;state.targetLandmark=null;
+   selected={type:'poi',id:site.id};inspectorDirty=true;notify('Arrived at '+site.name+'.');
+  }
+ }
  if(state.targetSettlement!=null){
   const site=S[state.targetSettlement];
   if(dist(p.x,p.y,site.x,site.y)<135)arriveSettlement(site.id);
@@ -215,7 +222,7 @@ function stepTravel(dt){
  }
 }
 function arriveSettlement(id){
- clearPursuit(true);state.path=[];state.pathIndex=0;state.targetSettlement=null;selected={type:'settlement',id};
+ clearPursuit(true);state.targetLandmark=null;state.path=[];state.pathIndex=0;state.targetSettlement=null;selected={type:'settlement',id};
  const site=S[id];log('Arrived at '+site.name+', '+F[site.faction].name+'.');
  if(state.player.quest?.id===1&&site.type==='capital'&&site.faction!==state.player.origin)completeQuest(1);
  focus=true;inspectorDirty=true;notify('Arrived at '+site.name+'. Visit, recruit or resupply.');
@@ -535,6 +542,12 @@ function chooseSelection(x,y){
   if(d<pd){pd=d;party=p}
  }
  if(party){selected={type:'party',id:party.id};trackParty(party.id);inspectorDirty=true;return}
+ let landmark=null,nearest=25;
+ for(const site of landmarks){
+  const m=toScreen(site.x,site.y),d=dist(m.x,m.y,local.x,local.y);
+  if(d<nearest){nearest=d;landmark=site}
+ }
+ if(landmark){selected={type:'poi',id:landmark.id};inspectorDirty=true;return}
  selected={type:'land',x,y};inspectorDirty=true;travelTo(x,y,null);
 }
 function colorAlpha(hex,alpha){
@@ -580,9 +593,70 @@ function drawLocations(){
   }
  }
 }
+function drawLandmarks(){
+ if(camera.zoom<.19)return;
+ for(const site of landmarks){
+  if(!inView(site.x,site.y,100))continue;
+  const selectedLand=selected?.type==='poi'&&selected.id===site.id;
+  const visited=(state.player.landmarks||[]).includes(site.id);
+  const radius=site.kind==='ruins'?14:site.kind==='watchtower'?12:11;
+  ctx.beginPath();ctx.arc(site.x,site.y,radius+6,0,Math.PI*2);
+  ctx.fillStyle='#182920de';ctx.fill();
+  ctx.strokeStyle=selectedLand?'#ffe29b':visited?'#7aa88c':'#b99b67';ctx.lineWidth=selectedLand?4:2.5;ctx.stroke();
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#eddfb9';
+  ctx.font='bold 23px Georgia,serif';ctx.fillText(site.icon,site.x,site.y-2);
+  if(camera.zoom>.39){
+   ctx.lineWidth=4;ctx.strokeStyle='#13271be8';
+   ctx.font='600 13px Georgia,serif';ctx.textBaseline='top';
+   ctx.strokeText(site.name,site.x,site.y+18);
+   ctx.fillStyle=visited?'#a8c5ad':'#eadcb8';ctx.fillText(site.name,site.x,site.y+18);
+  }
+ }
+}
+function landmarkAction(id){
+ const site=landmarks.find(l=>l.id===id);
+ if(!site)return;
+ const p=state.player;
+ if(dist(p.x,p.y,site.x,site.y)>155){notify('Reach the landmark before interacting.');return}
+ if(!Array.isArray(p.landmarks))p.landmarks=[];
+ const visited=p.landmarks.includes(id);
+ if(site.kind==='wayhouse'){
+  if(p.gold<35){notify('You need 35 denars to rest and resupply.');return}
+  p.gold-=35;p.food+=8;p.hp=Math.min(100,p.hp+12);
+  log('Rested and resupplied at '+site.name+'.');notify('Inn: +8 provisions and restored health.');
+ }else if(site.kind==='shrine'){
+  if(p.gold<25){notify('An offering requires 25 denars.');return}
+  p.gold-=25;p.hp=Math.min(100,p.hp+25);
+  log('Restored your spirits at '+site.name+'.');notify('Shrine: your wounds have been tended.');
+ }else if(visited){notify('You have already explored this site.');return}
+ else if(site.kind==='ruins'){
+  const found=75+Math.round(W.hash(id,31)*110);
+  p.gold+=found;p.xp+=50;
+  log('Explored '+site.name+' and recovered '+found+' denars from old ruins.');
+  notify('Discovered buried valuables and 50 experience!');
+ }else if(site.kind==='watchtower'){
+  p.xp+=30;p.renown++;
+  const nearby=state.parties.filter(q=>q.active&&dist(q.x,q.y,site.x,site.y)<900).length;
+  log('Scouted from '+site.name+'. '+nearby+' traveling parties spotted in the district.');
+  notify('Scouted '+nearby+' nearby parties · +30 experience.');
+ }else{
+  p.food+=10;p.xp+=22;
+  log('Traded stories with hunters at '+site.name+' and found provisions.');
+  notify('Hunters shared 10 provisions and 22 experience.');
+ }
+ if(!p.landmarks.includes(id))p.landmarks.push(id);
+ while(p.xp>=p.level*125){p.xp-=p.level*125;p.level++;p.hp=100;log('You reached level '+p.level+'.')}
+ selected={type:'poi',id};inspectorDirty=true;refreshUI();saveGame(true);
+}
 function drawParties(){
  for(const p of state.parties)if(p.active&&inView(p.x,p.y,100)){
   const f=p.faction>=0?F[p.faction]:null,c=p.kind==='bandit'?'#d47d70':f.color;
+  if(state.pursuitId===p.id){
+   ctx.beginPath();ctx.arc(p.x,p.y,35,0,Math.PI*2);
+   ctx.strokeStyle='#ffdf9c';ctx.lineWidth=3.4;ctx.setLineDash([8,6]);ctx.stroke();ctx.setLineDash([]);
+   ctx.beginPath();ctx.moveTo(p.x,p.y-43);ctx.lineTo(p.x,p.y-31);
+   ctx.strokeStyle='#f9e7c3';ctx.lineWidth=2;ctx.stroke();
+  }
   ctx.fillStyle='#0d1d18d9';ctx.beginPath();ctx.arc(p.x,p.y,15,0,6.283);ctx.fill();
   ctx.lineWidth=3;ctx.strokeStyle=c;ctx.stroke();
   ctx.fillStyle=c;
@@ -614,7 +688,7 @@ function drawWorld(time){
  ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,view.w,view.h);
  ctx.fillStyle='#182f30';ctx.fillRect(0,0,view.w,view.h);
  ctx.translate(view.w/2,view.h/2);ctx.scale(camera.zoom,camera.zoom);ctx.translate(-camera.x,-camera.y);
- drawLand();drawLocations();drawParties();drawPlayer(time);
+ drawLand();drawLocations();drawLandmarks();drawParties();drawPlayer(time);
 }
 function initMiniBase(){
  miniBase=window.UAMapPainter.mini(W);
@@ -676,6 +750,27 @@ function refreshInspector(){
   if(close)html+=renderActions([{act:'visit',id:site.id,label:'🏰 Enter settlement',primary:true},{act:'recruit',id:site.id,label:'⚔ Recruit 4 volunteers · 180 denars'},{act:'food',id:site.id,label:'🍞 Buy 12 provisions · 35 denars'},{act:'rest',id:site.id,label:'🛌 Rest at an inn · 20 denars'},{act:'rumors',id:site.id,label:'📜 Ask for local rumors'}]);
   else html+=renderActions([{act:'travelSettlement',id:site.id,label:'➤ Travel to '+site.name,primary:true}]);
   html+='<p class="subtle">Faction troop progression: '+f.troops.map(esc).join(' → ')+'.</p>';
+ }else if(selected.type==='poi'){
+  const site=landmarks.find(l=>l.id===selected.id);
+  if(!site){selected={type:'land'};return refreshInspector()}
+  const close=dist(state.player.x,state.player.y,site.x,site.y)<=155;
+  const visited=(state.player.landmarks||[]).includes(site.id);
+  const type=landmarkTypes.find(t=>t.kind===site.kind);
+  html='<div class="smallcaps poi-label">WILDERNESS SITE · '+esc(F[site.faction].name)+
+   '</div><h2>'+esc(site.icon)+' '+esc(site.name)+'</h2>'+
+   '<div class="banner-strip" style="background:#a99365"></div>'+
+   '<p>'+esc(site.description)+'</p><div class="eventbox"><b>'+
+   (visited?'✓ Previously visited':'Unexplored destination')+'</b><p>'+
+   (site.kind==='wayhouse'?'Innkeepers sell supplies and allow resting.':
+    site.kind==='shrine'?'Leave an offering to recover your health.':
+    site.kind==='watchtower'?'Scout the roads and distant travelers.':
+    site.kind==='ruins'?'Explore for valuables and lost knowledge.':
+    'Find hunters who share food and stories.')+'</p></div>';
+  html+=close?renderActions([{act:'interactPoi',id:site.id,
+    label:site.kind==='wayhouse'?'🛌 Rest and buy provisions · 35 denars':
+     site.kind==='shrine'?'✦ Make offering and heal · 25 denars':
+      '➤ Explore '+site.name,primary:true}]):
+    renderActions([{act:'travelPoi',id:site.id,label:'➤ Travel to this landmark',primary:true}]);
  }else if(selected.type==='party'){
   const enemy=state.parties.find(p=>p.id===selected.id);
   if(!enemy||!enemy.active){selected={type:'land'};return refreshInspector()}
@@ -854,6 +949,10 @@ $('inspectorContent').addEventListener('click',e=>{
  else if(act==='travelParty')trackParty(id);
  else if(act==='stopTrack')clearPursuit();
  else if(act==='meetParty'||act==='attackParty')openEncounter(id);
+ else if(act==='travelPoi'){
+  const site=landmarks.find(l=>l.id===id);
+  if(site){travelTo(site.x,site.y,null);state.targetLandmark=id}
+ }else if(act==='interactPoi')landmarkAction(id);
  else if(act==='nearest'){const site=W.closestSettlement(state.player.x,state.player.y);selected={type:'settlement',id:site.id}}
  else if(act==='partyPanel')showParty();else if(act==='factions')openFactions();
  inspectorDirty=true;refreshUI();
