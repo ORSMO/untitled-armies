@@ -27,3 +27,19 @@
 .atlas-hint{font-size:11px;color:#b7c4b1;line-height:1.5;flex:1;min-width:220px}
 .atlas-controls .btn{flex:none}
 @media(max-width:770px){.atlas-modal{padding:12px}.atlas-frame{height:48vh;min-height:250px}}
+
+/* V4.2: readable Bannerlord-style encounters and compact aftermath. */
+.encounter-modal{width:min(770px,100%);background:linear-gradient(145deg,#344333,#182820 62%,#10241e);border-color:#baaa78;box-shadow:0 16px 100px #000e}
+.encounter-modal h2{font:700 clamp(25px,4vw,37px) Georgia,serif;letter-spacing:.01em;margin:6px 0}
+.encounter-rosters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:17px 0}
+.encounter-army{border-radius:12px;background:#1a3528;border:1px solid #74866d;padding:16px;min-height:120px}
+.encounter-army.hostile{background:#3b2724;border-color:#a16d5c}
+.encounter-army strong{display:block;font:700 22px Georgia,serif;color:#ecd8a5;margin:9px 0 4px}
+.encounter-army p{font-size:12px;color:#c2cbbb;margin:0}
+.encounter-modal #encounterDialogue{min-height:90px}
+.encounter-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.encounter-actions .btn{width:100%;text-align:left;padding:13px 12px}
+.encounter-actions .btn.danger{background:#6c302a;border-color:#bc7965;color:#f9d6bd}
+.encounter-actions .btn.danger:hover{background:#8e4035}
+.world-landmark-label{color:#f7dbb3}
+@media(max-width:600px){.encounter-rosters{gap:7px}.encounter-army{min-height:110px;padding:10px}.encounter-army strong{font-size:17px}.encounter-actions{grid-template-columns:1fr}.encounter-actions .btn{padding:10px}}
