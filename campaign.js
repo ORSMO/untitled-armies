@@ -135,6 +135,7 @@ function zoomAt(mult,sx=view.w/2,sy=view.h/2){
 }
 function travelTo(x,y,targetId){
  if(!state||state.paused)return;
+ clearPursuit(true);
  const route=W.findPath(state.player.x,state.player.y,x,y);
  if(!route.length){notify('No traversable route found.');return}
  state.path=route;state.pathIndex=0;state.targetSettlement=targetId==null?null:targetId;
@@ -165,9 +166,31 @@ function consumeFood(){
 }
 function stepTravel(dt){
  const p=state.player;
+ if(state.pursuitId!=null){
+  const target=partyById(state.pursuitId);
+  if(!target){clearPursuit(true);notify('The tracked party has disappeared.')}
+  else{
+   const gap=dist(p.x,p.y,target.x,target.y);
+   if(state.pursuitMode!=='escort'&&gap<122){openEncounter(target.id);return}
+   if(state.pursuitMode==='escort'&&gap<170){
+    state.path=[];state.pathIndex=0;state.pursuitAge=1.5;
+   }else{
+    state.pursuitAge=(state.pursuitAge||0)+dt;
+    if(state.pursuitAge>1.0||!state.path.length){
+     const moved=dist(target.x,target.y,state.pursuitLastX??Infinity,state.pursuitLastY??Infinity);
+     if(moved>36||!state.path.length){
+      const route=W.findPath(p.x,p.y,target.x,target.y);
+      if(route.length){state.path=route;state.pathIndex=0}
+      state.pursuitLastX=target.x;state.pursuitLastY=target.y;
+     }
+     state.pursuitAge=0;
+    }
+   }
+  }
+ }
  const dx=(keys.has('d')||keys.has('ArrowRight')?1:0)-(keys.has('a')||keys.has('ArrowLeft')?1:0);
  const dy=(keys.has('s')||keys.has('ArrowDown')?1:0)-(keys.has('w')||keys.has('ArrowUp')?1:0);
- if(dx||dy){state.path=[];state.pathIndex=0;state.targetSettlement=null;walkPlayer(dx,dy,dt);focus=state.options.follow;return}
+ if(dx||dy){clearPursuit(true);state.path=[];state.pathIndex=0;state.targetSettlement=null;walkPlayer(dx,dy,dt);focus=state.options.follow;return}
  if(state.pathIndex>=state.path.length)return;
  let budget=148*W.walkingSpeed(p.x,p.y)*dt*state.speed;
  let traversed=0;
@@ -189,7 +212,7 @@ function stepTravel(dt){
  }
 }
 function arriveSettlement(id){
- state.path=[];state.pathIndex=0;state.targetSettlement=null;selected={type:'settlement',id};
+ clearPursuit(true);state.path=[];state.pathIndex=0;state.targetSettlement=null;selected={type:'settlement',id};
  const site=S[id];log('Arrived at '+site.name+', '+F[site.faction].name+'.');
  if(state.player.quest?.id===1&&site.type==='capital'&&site.faction!==state.player.origin)completeQuest(1);
  focus=true;inspectorDirty=true;notify('Arrived at '+site.name+'. Visit, recruit or resupply.');
@@ -220,11 +243,9 @@ function stepParties(dt){
   }
  }
  const close=state.parties.find(p=>p.active&&p.kind==='bandit'&&
-  dist(state.player.x,state.player.y,p.x,p.y)<92);
- if(close&&(state.day+state.hour/24)-state.lastEncounter>.08&&selected?.id!==close.id){
-  state.path=[];state.pathIndex=0;selected={type:'party',id:close.id};state.lastEncounter=state.day+state.hour/24;
-  inspectorDirty=true;notify('Bandits ahead! Choose to fight or retreat.');
- }
+  dist(state.player.x,state.player.y,p.x,p.y)<96);
+ if(close&&(state.day+state.hour/24)-state.lastEncounter>.07&&
+  state.pursuitMode!=='escort'&&!menuOpen)openEncounter(close.id);
 }
 function questText(){
  const q=state.player.quest||{id:3};
@@ -331,7 +352,7 @@ function trackParty(id,escort=false){
  state.path=[];state.pathIndex=0;state.targetSettlement=null;
  selected={type:'party',id};focus=state.options.follow;
  $('trackingBadge').classList.remove('hidden');
- $('trackingBadge').firstChild.textContent=(escort?'◎ Escorting ':'◎ Pursuing ')+partyTitle(p)+' ';
+ $('trackingLabel').textContent=(escort?'◎ Escorting ':'◎ Pursuing ')+partyTitle(p);
  inspectorDirty=true;
  notify((escort?'Following':'Pursuing')+' '+partyTitle(p)+'. The route follows their movement.');
  return true;
@@ -510,7 +531,7 @@ function chooseSelection(x,y){
   const m=toScreen(p.x,p.y),d=dist(m.x,m.y,local.x,local.y);
   if(d<pd){pd=d;party=p}
  }
- if(party){selected={type:'party',id:party.id};inspectorDirty=true;return}
+ if(party){selected={type:'party',id:party.id};trackParty(party.id);inspectorDirty=true;return}
  selected={type:'land',x,y};inspectorDirty=true;travelTo(x,y,null);
 }
 function colorAlpha(hex,alpha){
@@ -630,7 +651,10 @@ function refreshUI(){
  $('logList').innerHTML=state.messages.slice(0,6).map(m=>'<li><b>Day '+m.day+':</b> '+esc(m.text)+'</li>').join('');
  $('mapCoordinates').textContent=near&&dist(p.x,p.y,near.x,near.y)<300?
   'Near '+near.name+' · '+region.name:region.name+' · '+Math.floor(p.x)+', '+Math.floor(p.y);
- $('travelText').textContent=state.path.length?'Traveling · '+Math.max(0,state.path.length-state.pathIndex)+' route steps remaining':
+ $('travelText').textContent=state.pursuitId!=null?
+  ('Tracking '+partyTitle(partyById(state.pursuitId))+' · '+Math.round(dist(p.x,p.y,
+   partyById(state.pursuitId)?.x??p.x,partyById(state.pursuitId)?.y??p.y))+' units'):
+  state.path.length?'Traveling · '+Math.max(0,state.path.length-state.pathIndex)+' route steps remaining':
   'Click to travel · WASD to walk · Drag to pan · Scroll to zoom';
  $('minimapHolder').classList.toggle('hidden',!state.options.minimap);
  if(inspectorDirty)refreshInspector();
@@ -655,8 +679,13 @@ function refreshInspector(){
   const label=enemy.kind==='bandit'?'Outlaw Bandits':enemy.kind==='patrol'?F[enemy.faction].name+' Patrol':F[enemy.faction].name+' Caravan';
   html='<div class="smallcaps">ROAMING PARTY</div><h2>'+esc(label)+'</h2><div class="banner-strip" style="background:'+(enemy.kind==='bandit'?'#c57966':F[enemy.faction].color)+'"></div>';
   html+='<p>Party size: <b>'+enemy.strength+'</b>. Distance: '+Math.round(dist(state.player.x,state.player.y,enemy.x,enemy.y))+' map units.</p>';
-  html+='<div class="eventbox"><b>'+esc(enemy.kind==='bandit'?'Hostile raiders':'Traveling party')+'</b><p>'+(enemy.kind==='bandit'?'Bandits threaten villages and caravans. An automatic skirmish is available once you approach.':'These travelers currently have no hostile orders toward you.')+'</p></div>';
-  html+=renderActions([{act:'travelParty',id:enemy.id,label:'➤ Approach this party',primary:true},...(enemy.kind==='bandit'?[{act:'attackParty',id:enemy.id,label:'⚔ Resolve skirmish',disabled:dist(state.player.x,state.player.y,enemy.x,enemy.y)>155}]:[])]);
+  html+='<div class="eventbox"><b>'+esc(enemy.kind==='bandit'?'Hostile raiders':'Traveling party')+'</b><p>'+
+   (enemy.kind==='bandit'?'Intercept the outlaws to negotiate or fight personally in a full tactical battle.':
+    'Meet these travelers for conversation, trade or escort.')+'</p></div>';
+  html+=renderActions([{act:'travelParty',id:enemy.id,label:'◎ Follow moving party',primary:true},
+   {act:'stopTrack',label:'✕ Stop tracking',disabled:state.pursuitId!==enemy.id},
+   {act:'meetParty',id:enemy.id,label:'⚑ Interact with this party',
+     disabled:dist(state.player.x,state.player.y,enemy.x,enemy.y)>155}]);
  }else{
   const p=state.player,land=W.tileAt(p.x,p.y),region=currentRegion();
   html='<div class="smallcaps">EXPLORING ASTERRA</div><h2>'+esc(region.name)+'</h2><div class="banner-strip" style="background:'+region.color+'"></div>';
@@ -813,8 +842,9 @@ $('inspectorContent').addEventListener('click',e=>{
  const id=Number(b.dataset.id),act=b.dataset.act;
  if(['recruit','food','rest','rumors','visit'].includes(act))performSettlementAction(act,id);
  else if(act==='travelSettlement')travelTo(S[id].x,S[id].y,id);
- else if(act==='travelParty'){const p=state.parties.find(v=>v.id===id);if(p)travelTo(p.x,p.y,null)}
- else if(act==='attackParty')skirmish(id);
+ else if(act==='travelParty')trackParty(id);
+ else if(act==='stopTrack')clearPursuit();
+ else if(act==='meetParty'||act==='attackParty')openEncounter(id);
  else if(act==='nearest'){const site=W.closestSettlement(state.player.x,state.player.y);selected={type:'settlement',id:site.id}}
  else if(act==='partyPanel')showParty();else if(act==='factions')openFactions();
  inspectorDirty=true;refreshUI();
@@ -868,7 +898,10 @@ function frame(now){
    if(focus&&state.options.follow){const t=Math.min(1,dt*5);camera.x+=(state.player.x-camera.x)*t;camera.y+=(state.player.y-camera.y)*t}
   }
   drawWorld(now);
-  if(now-lastHud>350){refreshUI();lastHud=now}
+  if(now-lastHud>350){
+   if(selected?.type==='party'||selected?.type==='poi')inspectorDirty=true;
+   refreshUI();lastHud=now;
+  }
   if(now-lastMini>1300){drawMini();lastMini=now}
   if(now-lastSave>20000){saveGame(true);lastSave=now}
  }
