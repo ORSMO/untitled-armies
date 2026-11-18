@@ -187,9 +187,14 @@ function nextPartyDestination(p){
  p.path=W.findPath(p.x,p.y,dest.x,dest.y);p.pathIndex=0;
 }
 function stepParties(dt){
+ // Stagger pathfinding so dozens of NPC parties cannot block the first frame.
+ let routingBudget=3;
  for(const p of state.parties){
   if(!p.active)continue;
-  if(!p.path.length||p.pathIndex>=p.path.length)nextPartyDestination(p);
+  if(!p.path.length||p.pathIndex>=p.path.length){
+   if(routingBudget<=0)continue;
+   routingBudget--;nextPartyDestination(p);
+  }
   if(!p.path.length)continue;
   let budget=(p.kind==='patrol'?78:p.kind==='caravan'?61:53)*dt*state.speed;
   while(budget>0&&p.pathIndex<p.path.length){
@@ -201,7 +206,7 @@ function stepParties(dt){
  }
  const close=state.parties.find(p=>p.active&&p.kind==='bandit'&&
   dist(state.player.x,state.player.y,p.x,p.y)<92);
- if(close&&state.day-state.lastEncounter>.15&&selected?.id!==close.id){
+ if(close&&(state.day+state.hour/24)-state.lastEncounter>.08&&selected?.id!==close.id){
   state.path=[];state.pathIndex=0;selected={type:'party',id:close.id};state.lastEncounter=state.day+state.hour/24;
   inspectorDirty=true;notify('Bandits ahead! Choose to fight or retreat.');
  }
@@ -279,7 +284,7 @@ function skirmish(id){
   notify('Defeat. You escaped with the survivors.');
  }
  while(me.xp>=me.level*125){me.xp-=me.level*125;me.level++;me.hp=100;log('You reached level '+me.level+'.')}
- state.lastEncounter=state.day;state.path=[];state.pathIndex=0;selected={type:'land'};
+ state.lastEncounter=state.day+state.hour/24;state.path=[];state.pathIndex=0;selected={type:'land'};
  refreshUI();saveGame(true);
 }
 function chooseSelection(x,y){
