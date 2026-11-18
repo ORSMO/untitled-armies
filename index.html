@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V3.5</title>
+<title>Untitled Armies — V3.6</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -55,13 +55,15 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 .map-guide{position:absolute;z-index:3;bottom:101px;left:92px;font:700 9px system-ui;letter-spacing:.06em;color:#daefda;background:#15271fdc;border-radius:4px;padding:3px 6px;pointer-events:none}
 .formation-anchor{position:relative;display:grid;place-items:center}
 .formation-anchor.is-hidden{display:none}
-.formation-menu{position:absolute;left:calc(100% + 3px);top:50%;transform:translateY(-50%);width:174px;height:178px;z-index:10;pointer-events:auto;filter:drop-shadow(0 3px 9px #0009)}
+.formation-menu{position:absolute;left:calc(100% + 3px);top:50%;transform:translateY(-50%);width:174px;height:215px;z-index:10;pointer-events:auto;filter:drop-shadow(0 3px 9px #0009)}
 .formation-menu.is-hidden{display:none}
 .formation-option{position:absolute;min-width:73px;height:38px;padding:4px 7px;border:1px solid #719b7e;background:#1b3c30f0;color:#f0f8e7;border-radius:19px;font:800 11px/1 system-ui;cursor:pointer;touch-action:none;box-shadow:0 3px 10px #0007}
 .formation-option[data-form="line"]{left:3px;top:2px}
 .formation-option[data-form="wedge"]{left:90px;top:40px}
 .formation-option[data-form="block"]{left:90px;top:101px}
-.formation-option[data-form="column"]{left:3px;top:140px}
+.formation-option[data-form="spearwall"]{left:3px;top:91px}
+.formation-option[data-form="shieldwall"]{left:90px;top:160px}
+.formation-option[data-form="column"]{left:3px;top:172px}
 .formation-option.hover,.formation-option:focus-visible{background:#3d7956;border-color:#d9f5a9;outline:2px solid #b9ebad;outline-offset:1px}
 .formation-option.chosen{color:#b7f8c2;border-color:#8cd9a8}
 #formationBtn .dot{color:#b6f3ce}
@@ -201,7 +203,7 @@ body.lab-mode .lab-area{display:flex}
     <div class="top-actions">
       <a class="lab-classic-link" href="classic.html" title="Open original 50v50 battlefield">Classic battlefield</a>
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 3.5">V3.5</div>
+      <div class="build" aria-label="Version 3.6">V3.6</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
@@ -218,6 +220,8 @@ body.lab-mode .lab-area{display:flex}
     <button class="formation-option" type="button" data-form="wedge">Wedge</button>
     <button class="formation-option" type="button" data-form="block">Block</button>
     <button class="formation-option" type="button" data-form="column">Column</button>
+    <button class="formation-option" type="button" data-form="spearwall">Spear wall</button>
+    <button class="formation-option" type="button" data-form="shieldwall">Shield wall</button>
    </div>
   </div>
  </aside>
@@ -262,6 +266,7 @@ body.lab-mode .lab-area{display:flex}
        <tr><td>Compact horse bow</td><td>24</td><td>710</td><td>0.52s</td><td>Light piercing</td></tr></tbody></table>
       <p><strong>BATTLEFIELDS &amp; TERRAIN (V3.4):</strong> Use the <strong>Battlefield Terrain</strong> selector in the footer. Choose open ground, a hill, forest, mud, shallow river, rocks or mixed terrain. Terrain can decide the entire battle: elevated defenders have stronger melee and ranged advantages, wooded positions sharply reduce enemy missile effectiveness and weaken mounted shock, and deep mud or river water slows cavalry enough to ruin its charge and discipline. Poor footing weakens braced spear walls and increases exhaustion. Commanders seek ridges and forest positions, defend dry crossing approaches, and send cavalry around hazardous ground; their plans still yield to the General’s manual orders. Solid rocks block movement and low-flying arrows. Cavalry needs clear dry ground to build up a strong charge, and all terrain interacts with existing formations and morale. Switching the terrain resets the current test. The default open plain preserves earlier fairness tests.</p>
       <p><strong>HORSE MOVEMENT (V3.1):</strong> Mounted troops now accelerate and brake instead of instantly changing speed or direction. A horse turns much wider at full gallop, especially when heavily armored or wounded. A mounted charge requires real forward closing speed, and body-to-body collisions absorb momentum. Cavalry ride through an enemy on a committed attack line, break away when surrounded, and regroup for another charge. Mounted archers try to ride out of close threats to recover their shooting distance. Gait animation and hoof dust show speed; the amber bar is horse health and the smaller turquoise bar is horse stamina. Rider and horse health remain separate. A fallen horse cannot be instantly remounted.</p>
+      <p><strong>MOVING SHIELD &amp; SPEAR WALLS (V3.6):</strong> Infantry in sufficiently large squads advance in organized two-rank formations according to their real equipment, keeping a tighter line as they approach. Neighboring shields help block physical hits; supported spears and pikes plant their weapons faster against horse charges. Troops loosen their line automatically at melee distance so individuals can swing, thrust, parry and flank. Formation effects fade when ranks are disrupted. The <strong>Formation Tests</strong> category runs six different ordered and loose engagements.</p>
       <p><strong>REAL SQUADS (V3.2):</strong> Infantry now hold lateral formation lanes when advancing; archers try to stay behind a surviving infantry screen; cavalry stage flanking routes before attacking ranged units; a fifth of sufficiently large infantry groups remain behind as reserves until the frontline is pressured. Use the <strong>Squad Tests</strong> mode to observe six mixed-class battles with independently equipped sub-squads. Smaller fairness tests keep the original 1-to-5-soldier behavior. The simulation remains the foundation for the future campaign game.</p>
       <p><strong>MORALE &amp; OUTCOMES (V3.3):</strong> The sixth Battle Lab mode runs six scenarios where both sides can be killed, incapacitated, rout, surrender or rally. Discipline, nearby support and casualties affect morale. Each battle ends naturally when one army has no fighters willing to continue. Old Fairness, Mount, Polearm, Squad and Ranged tests keep their existing conditions so previous balance measurements remain comparable.</p>
       <p><strong>POLEARMS & BRACING:</strong> <strong>Infantry spears</strong> have 65 reach and can pair with shields. <strong>Long pikes</strong> have 89 reach and occupy both hands. Polearm tips cannot hit reliably inside their minimum range, so crowded soldiers use weaker blunt butt strikes. A spearman or pikeman facing a fast-approaching horse automatically plants his feet and raises the weapon over time. A ready frontal brace can halt a charge and wound or dismount the horse, while flanking, attacking before the spear is ready, or exhausting the soldier can break through. The <strong>🛡 Spear Wall</strong> formation is available in Classic. Try the new Spears vs Swords and Pikes vs Cavalry presets.</p>
@@ -836,10 +841,12 @@ function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74
 // All formation styles provide fifty unique slots; enemy formations stay as Block.
  function formation(team,cx,cy){
   const d=gap(),type=team==='friend'?formationType:'block',positions=[];
-  if(type==='spearwall'){
-   // A shallow two-rank line across the direction of the enemy advance.
+  if(type==='spearwall'||type==='shieldwall'){
+   // Two ranks physically shield the approaching front. Spearmen require
+   // room to keep their weapon points in front; shields pack tighter.
    // Twenty-five side-by-side lanes give pikes open forward thrust lines.
-   const stride=Math.min(Math.max(22,d*.94),Math.max(8,(H-54)/24));
+   const stride=Math.min(type==='shieldwall'?Math.max(20,d*.79):Math.max(22,d*.94),
+     Math.max(8,(H-54)/24));
    const front=team==='friend'?1:-1;
    for(let i=0;i<50;i++){
     const rank=Math.floor(i/25),lane=i%25;
@@ -872,6 +879,7 @@ function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74
     const count=indices.length;if(!count)return;
     const stride=isBow?Math.max(36,d*1.40):d;
     const lanes=type==='line'?Math.min(count,25):
+      type==='spearwall'||type==='shieldwall'?Math.ceil(count/2):
       type==='column'?Math.min(count,5):Math.min(count,10);
     indices.forEach((index,j)=>{
      const column=j%lanes,row=Math.floor(j/lanes);
@@ -982,6 +990,31 @@ function updateSquadState(team){
   groups[role]={troops,center,count:troops.length,
    cohesion:troops.length?1-stragglers/troops.length:1};
  }
+ // Regenerate ranks only when the tactical planner updates. Survivors
+ // close gaps naturally; withdrawn reserves do not widen the first line.
+ const infantryGroup=groups.infantry;
+ infantryGroup.lineStyle=squadLineStyle(team,infantryGroup.troops);
+ const lineTroops=infantryGroup.troops.filter(u=>!u.squadReserve||
+  squadStates[team]?.reserveReleased);
+ infantryGroup.lineFighters=lineTroops.length;
+ for(const s of infantryGroup.troops){
+  s.squadLineIndex=lineTroops.indexOf(s);
+  if(s.squadLineIndex<0)s.squadLineIndex=null;
+  const allies=infantryGroup.troops;
+  let supporting=0;
+  if(infantryGroup.lineStyle!=='loose'){
+   for(const ally of allies){
+    if(ally===s||ally.dead||ally.broken||ally.routed)continue;
+    if(Math.abs(ally.x-s.x)<43&&Math.abs(ally.y-s.y)<39)
+     supporting++;
+   }
+  }
+  s.lineKind=infantryGroup.lineStyle;
+  s.lineSupport=Math.min(1,supporting/2);
+ }
+ infantryGroup.lineCohesion=infantryGroup.troops.length?
+  infantryGroup.troops.reduce((n,u)=>n+(u.lineSupport||0),0)/
+    infantryGroup.troops.length:0;
  const archers=[...groups.archer.troops,...groups.horseArcher.troops];
  const pressed=archers.filter(a=>enemy.some(e=>Math.hypot(e.x-a.x,e.y-a.y)<110)).length;
  const frontline=groups.infantry.troops;
@@ -1011,6 +1044,75 @@ function updateSquadState(team){
   cohesion:own.length?squadRoles.reduce((n,r)=>n+groups[r].cohesion*groups[r].count,0)/own.length:1};
  return squadStates[team];
 }
+// V3.6: a formation is a moving physical structure, not a static attack
+// bonus. Troops keep ranks while closing, then make room for melee contact.
+function squadLineStyle(team,infantry){
+ if(infantry.length<6)return 'loose';
+ let asked='auto';
+ if(typeof commanderBrains!=='undefined'){
+  const brain=commanderBrains[team];
+  if(brain?.intent==='skirmish')return 'loose';
+  asked=brain?.lineStyle||'auto';
+  // A rapid unrestricted assault spreads out unless the General explicitly
+  // ordered a wall. An ordered advance is slower and more disciplined.
+  if(brain?.intent==='aggressive'&&asked==='auto')asked='line';
+ }else if(typeof labMode!=='undefined'&&labMode&&
+   typeof activeLab!=='undefined'&&activeLab){
+  asked=activeLab.spec.lineStyles?.[team]||'auto';
+ }
+ if(team==='friend'&&typeof generalOrders!=='undefined'&&
+   ['shieldwall','spearwall'].includes(formationType)&&
+   (generalOrders.all==='attack'||generalOrders.infantry==='attack'))
+  asked=formationType;
+ const shields=infantry.filter(s=>shieldProfiles[s.shield]).length;
+ const poles=infantry.filter(s=>s.weapon==='spear'||s.weapon==='pike').length;
+ if(asked==='loose')return 'loose';
+ if(asked==='spearwall')return poles>=2?'spearwall':'line';
+ if(asked==='shieldwall')return shields>=2?'shieldwall':'line';
+ if(asked==='line')return 'line';
+ if(poles>=Math.max(3,Math.ceil(infantry.length*.53)))return 'spearwall';
+ if(shields>=Math.max(3,Math.ceil(infantry.length*.53)))return 'shieldwall';
+ return 'line';
+}
+function isManualLineAssault(s){
+ if(s.team!=='friend'||typeof generalOrders==='undefined')return false;
+ const manual=(s.squadReserve&&generalOrders.reserve)||
+  generalOrders[s.unitRole]||generalOrders.all;
+ return manual==='attack'&&s.unitRole==='infantry'&&
+  ['shieldwall','spearwall'].includes(formationType);
+}
+function lineMarch(s,state,group,dist,x,y,pace){
+ const style=group.lineStyle;
+ if(style==='loose'||group.count<6||s.squadLineIndex==null)return null;
+ // The line's center advances across the field as troops move; no unit
+ // ever teleports to a new slot, and large rank corrections happen gradually.
+ const forward=s.team==='friend'?1:-1;
+ const lanes=Math.max(1,Math.ceil(group.lineFighters/2));
+ const spacing=Math.min(style==='shieldwall'?27:style==='spearwall'?31:34,
+  Math.max(16,(H-48)/Math.max(1,lanes-1)));
+ const rank=Math.floor(s.squadLineIndex/lanes);
+ const lane=s.squadLineIndex%lanes;
+ const toEnemy=Math.max(0,(state.enemyCenter.x-group.center.x)*forward);
+ const push=Math.min(54,Math.max(0,toEnemy-(
+  style==='spearwall'?90:70))*.30);
+ const xSlot=clamp(group.center.x+forward*(push+(rank===0?16:-23)),22,W-22);
+ const ySlot=clamp(group.center.y+(lane-(lanes-1)*.5)*spacing+
+  (rank?spacing*.16:0),22,H-22);
+ const danger=clamp((dist-48)/165,0,1);
+ const cohesion=clamp(.28+.63*danger,.20,.91);
+ const intent=typeof commanderBrains!=='undefined'?
+  commanderBrains[s.team]?.intent:'adaptive';
+ const control=intent==='ordered'?1.10:intent==='aggressive'?.57:1;
+ const freeToFight=s.attack||s.stagger>0||dist<60;
+ const grip=clamp((freeToFight?cohesion*.31:cohesion)*control,0,.98);
+ const adjustedX=x*(1-grip*.63)+xSlot*(grip*.63);
+ const adjustedY=y*(1-grip)+ySlot*grip;
+ // Dense walls move at infantry pace. An enemy closing into weapon range
+ // loosens the wall instead of forcing soldiers to walk past one another.
+ return {x:adjustedX,y:adjustedY,
+  pace:dist>125?Math.min(pace,intent==='aggressive'?1.24:
+  style==='shieldwall'?.95:intent==='ordered'?.99:1.04):pace};
+}
 function isManualSquadOrder(s){
  if(s.team==='friend'&&typeof generalOrders!=='undefined')
   return !!(generalOrders.all||generalOrders[s.unitRole]);
@@ -1019,7 +1121,9 @@ function isManualSquadOrder(s){
  return false;
 }
 function squadMovement(s,command,target,dist,x,y,pace){
- if(s.isCommander||!squadStates[s.team]||isManualSquadOrder(s)||
+ const manual=isManualSquadOrder(s);
+ if(s.isCommander||!squadStates[s.team]||
+    (manual&&!isManualLineAssault(s))||
     command!=='attack'||s.broken||s.routed||s.dead)return {x,y,pace};
  const state=squadStates[s.team],group=state.groups[s.unitRole];
  if(!group)return {x,y,pace};
@@ -1027,7 +1131,7 @@ function squadMovement(s,command,target,dist,x,y,pace){
  const forward=s.team==='friend'?1:-1;
  // An infantry reserve is a real subgroup, not a magic damage bonus. It
  // waits behind the first line until losses or ranged threats demand help.
- if(s.unitRole==='infantry'&&s.squadReserve&&!state.reserveReleased){
+ if(!manual&&s.unitRole==='infantry'&&s.squadReserve&&!state.reserveReleased){
   return {x:clamp(ownInfantry.center.x-forward*Math.min(95,W*.17),22,W-22),
    y:clamp(ownInfantry.center.y+s.squadOffsetY*.70,22,H-22),pace:.91};
  }
@@ -1036,23 +1140,36 @@ function squadMovement(s,command,target,dist,x,y,pace){
  // close, individual combat and the existing physical formation take over.
  const strategic=(typeof commanderBrains!=='undefined'?
   commanderBrains[s.team]?.terrainPlan:state.terrainObjective);
- if(strategic&&!s.terrainPositionHeld&&
+ if(!manual&&strategic&&!s.terrainPositionHeld&&
    dist>Math.max(115,Math.min(180,W*.20))&&
    (s.unitRole==='infantry'||s.unitRole==='archer')){
   const behind=s.unitRole==='archer'?forward*Math.min(54,W*.105):0;
   const goalX=clamp(strategic.x-behind+(s.squadOffsetX||0)*.30,20,W-20);
   const goalY=clamp(strategic.y+(s.squadOffsetY||0)*.55,20,H-20);
-  if(Math.hypot(s.x-goalX,s.y-goalY)>Math.min(40,H*.14))
-   return {x:goalX,y:goalY,pace:1.08};
+  if(Math.hypot(s.x-goalX,s.y-goalY)>Math.min(40,H*.14)){
+   const objective={x:goalX,y:goalY,pace:1.08};
+   // Keep the infantry front connected even while seizing the hill or
+   // approaching a river, rather than racing in one soldier at a time.
+   return s.unitRole==='infantry'?
+    (lineMarch(s,state,group,dist,goalX,goalY,1.08)||objective):
+    objective;
+  }
   if(!s.terrainPositionHeld){
    s.terrainPositionHeld=true;
    const stat=combatLabStats(s.team);
    if(stat)stat.terrainPositions++;
   }
  }
- // Infantry correct lateral drift while marching, but close-range combat,
- // shield/parry reactions and routing always take precedence.
- if(s.unitRole==='infantry'&&group.count>=6&&dist>115){
+ // Carry a two-rank moving wall toward contact, then relax structure to
+ // allow thrusts, blocks, body spacing and local initiative.
+ if(s.unitRole==='infantry'){
+  const line=lineMarch(s,state,group,dist,x,y,pace);
+  if(line){x=line.x;y=line.y;pace=line.pace;}
+  if(manual)return {x,y,pace};
+ }
+ // Loose formations and tiny squads retain normal approach flexibility.
+ if(s.unitRole==='infantry'&&group.lineStyle==='loose'&&
+   group.count>=6&&dist>115){
   const lane=clamp(group.center.y+s.squadOffsetY,22,H-22);
   y=y*.54+lane*.46;
   const depth=clamp(group.center.x+s.squadOffsetX,22,W-22);
@@ -1103,6 +1220,7 @@ function allocateSquadReserves(team){
  teamUnits.forEach(s=>{
   s.squadReserve=false;s.squadSlotRole=null;
   s.squadInitialInfantry=false;s.squadFlankDone=false;s.terrainPositionHeld=false;
+  s.lineKind='loose';s.lineSupport=0;s.squadLineIndex=null;
  });
  const infantry=teamUnits.filter(s=>s.unitRole==='infantry');
  // Keep the last fifth in reserve, but don't split tiny test formations.
@@ -1234,7 +1352,7 @@ function setFormation(cx,cy){
   if(!visible)ui.formationMenu.querySelectorAll('.formation-option').forEach(b=>b.classList.remove('hover'));
  }
  function chooseFormation(type){
-  if(!selected||!['block','line','column','wedge'].includes(type))return;
+  if(!selected||!['block','line','column','wedge','spearwall','shieldwall'].includes(type))return;
   formationType=type;setFormationMenu(false);
   const cx=friends.reduce((a,s)=>a+s.anchorX,0)/friends.length;
   const cy=friends.reduce((a,s)=>a+s.anchorY,0)/friends.length;
@@ -1618,10 +1736,18 @@ function shieldImpact(attacker,defender,a){
  const active=defender.guardActive&&delta<=shield.activeArc;
  if(!active&&delta>shield.passiveArc)return {block:0,stop:0,kind:null};
  const weapon=a.projectile?rangedProfiles[a.projectile]:weaponProfiles[attacker.weapon];
- const spend=shield.cost*(active?1.15:.62)*(1+weapon.weight*.19);
+ // A neighboring shield overlaps the defender's passive shield arc, but
+ // physical spacing is required and a separated fighter loses this help.
+ const wall=(defender.lineKind==='shieldwall'?
+  defender.lineSupport||0:0);
+ const spend=shield.cost*(active?1.15:.62)*(1+weapon.weight*.19)*
+  (1-wall*.11);
  if(defender.stamina<spend)return {block:0,stop:0,kind:null};
  const stop=active?shield.activeStop:shield.passiveStop;
- const block=active?clamp(stop/Math.max(1,a.momentum),0,1):shield.passiveBlock;
+ const block=active?clamp(stop/Math.max(1,a.momentum),0,1):
+  clamp(shield.passiveBlock+wall*.15,0,.90);
+ if(wall>.20&&block>0){const stat=combatLabStats(defender.team);
+  if(stat)stat.formationBlocks++;}
  defender.stamina=clamp(defender.stamina-spend,0,defender.maxStamina);
  defender.recoveryDelay=Math.max(defender.recoveryDelay,active?.28:.12);
  let guardBroken=false;
@@ -2467,7 +2593,9 @@ function updatePolearmBrace(s,dt,command){
  const planted=Math.hypot(s.vx||0,s.vy||0)<28&&ground.water<.42&&ground.mud<.57;
  const old=s.braceReady||0;
  s.braceReady=clamp(old+dt*(planted?
-  (1.1+s.disc*.006)*(1+ground.elevation*.21):-(1.1+ground.mud+ground.water)),0,1);
+  (1.1+s.disc*.006)*(1+ground.elevation*.21)*
+   (1+(s.lineKind==='spearwall'?(s.lineSupport||0)*.35:0)):
+   -(1.1+ground.mud+ground.water)),0,1);
  if(old<.65&&s.braceReady>=.65){
   s.braceCount++;
   const stats=combatLabStats(s.team);if(stats)stats.braces++;
@@ -3185,6 +3313,34 @@ const labTerrainScenarios=[
    {count:3,unitRole:'archer',weapon:'shortsword',ranged:'crossbow',shield:null,armor:'leather'},
    {count:3,unitRole:'horseArcher',weapon:'shortsword',ranged:'horsebow',horseArmor:'none',shield:null,armor:'leather'}]}}
 ];
+const labFormationScenarios=[
+ {name:'Shield wall vs loose swords',counts:[12,12],lineStyles:{friend:'shieldwall',foe:'loose'},
+  green:{unitRole:'infantry',weapon:'sword',shield:'round',armor:'mail',experience:'trained',familiarity:'practiced'},
+  red:{unitRole:'infantry',weapon:'sword',shield:'round',armor:'mail',experience:'trained',familiarity:'practiced'}},
+ {name:'Advancing spear line vs loose spears',counts:[12,12],lineStyles:{friend:'spearwall',foe:'loose'},
+  green:{unitRole:'infantry',weapon:'spear',shield:'round',armor:'leather',experience:'trained',familiarity:'practiced'},
+  red:{unitRole:'infantry',weapon:'spear',shield:'round',armor:'leather',experience:'trained',familiarity:'practiced'}},
+ {name:'Pike formation vs charging horses',counts:[12,12],lineStyles:{friend:'spearwall',foe:'loose'},
+  green:{unitRole:'infantry',weapon:'pike',shield:null,armor:'mail',experience:'trained',familiarity:'practiced'},
+  red:{unitRole:'cavalry',weapon:'lance',horseArmor:'leather',shield:'round',armor:'mail',experience:'trained',familiarity:'practiced'}},
+ {name:'Shielded infantry protecting archers',counts:[12,12],lineStyles:{friend:'shieldwall',foe:'loose'},
+  green:{experience:'trained',familiarity:'practiced',squads:[
+   {count:8,unitRole:'infantry',weapon:'sword',shield:'round',armor:'mail'},
+   {count:4,unitRole:'archer',weapon:'shortsword',ranged:'bow',shield:null,armor:'leather'}]},
+  red:{experience:'trained',familiarity:'practiced',squads:[
+   {count:8,unitRole:'infantry',weapon:'sword',shield:'round',armor:'mail'},
+   {count:4,unitRole:'archer',weapon:'shortsword',ranged:'bow',shield:null,armor:'leather'}]}},
+ {name:'Two shield walls contest the center',counts:[14,14],lineStyles:{friend:'shieldwall',foe:'shieldwall'},
+  green:{unitRole:'infantry',weapon:'sword',shield:'kite',armor:'mail',experience:'trained',familiarity:'practiced'},
+  red:{unitRole:'infantry',weapon:'sword',shield:'kite',armor:'mail',experience:'trained',familiarity:'practiced'}},
+ {name:'Loose archery vs ordered spear screen',counts:[12,12],lineStyles:{friend:'spearwall',foe:'loose'},
+  green:{experience:'trained',familiarity:'practiced',squads:[
+   {count:8,unitRole:'infantry',weapon:'spear',shield:'round',armor:'leather'},
+   {count:4,unitRole:'archer',weapon:'shortsword',ranged:'crossbow',shield:null,armor:'leather'}]},
+  red:{experience:'trained',familiarity:'practiced',squads:[
+   {count:6,unitRole:'infantry',weapon:'sword',shield:'round',armor:'leather'},
+   {count:6,unitRole:'archer',weapon:'shortsword',ranged:'bow',shield:null,armor:'leather'}]}}
+];
 let labPreset='matchups';
 function labGearLabel(gear){
  if(gear.squads)return gear.squads.map(s=>s.count+' '+s.unitRole).join(' + ');
@@ -3208,7 +3364,8 @@ function updateLabTitles(){
   labPreset==='mounts'?'⚔ Polearm tests':
   labPreset==='polearms'?'🛡 Squad tests':
   labPreset==='squads'?'🏳 Morale & outcomes':
-  labPreset==='outcomes'?'🗺️ Terrain tests':'⚔ Skill matchups';
+  labPreset==='outcomes'?'🗺️ Terrain tests':
+  labPreset==='terrain'?'🛡 Formation tests':'⚔ Skill matchups';
  btn.setAttribute('aria-pressed',labPreset==='mirrors'?'true':'false');
  document.getElementById('labPlainExplanation').textContent=labPreset==='mirrors'?
   'FAIRNESS CHECK: Both teams are identical. A result near 50/50 means the combat test is trustworthy. Large differences need investigation, allowing more variation for small samples.':
@@ -3222,6 +3379,8 @@ function updateLabTitles(){
   'OUTCOME TESTS: Both armies can die, become incapacitated, flee, surrender or rally. Casualties cause morale pressure and complete battles have a victor.':
  labPreset==='terrain'?
   'TERRAIN TESTS: Hold defensible hills and forest, defend crossings and take cavalry around mud or water. Ridges and cover greatly influence battle results; rocks block low missiles.':
+ labPreset==='formations'?
+  'FORMATION TESTS: Moving shield walls, braced spear formations, compact marching ranks, protected archers and loose skirmishers. Real neighboring soldiers provide defensive support.':
   'RANGED MATCHUPS: Arrows, bolts and javelins have travel time. Shields, armor, skill, ammo and melee rushes affect who wins.';
  document.getElementById('labAnalysisHowToRead').textContent=labPreset==='mirrors'?
   'Same gear, rank, proficiency and numbers on both sides. Green and red should each win about half the fights. Minor differences are normal; large consistent differences mean the test is biased.':
@@ -3235,23 +3394,25 @@ function updateLabTitles(){
    'A losing army can surrender or flee instead of dying to the last soldier. Record killed, incapacitated, routes and surrenders; compare veteran discipline against recruits.':
   labPreset==='terrain'?
    'All terrain tests use the same combat engine. Compare elevated archers, forest cover, horse charges through mud and water, and rock-obstructed ranged fire.':
+  labPreset==='formations'?
+   'Both armies move and fight physically. A shield wall relies on close neighbors for blocking support; spears brace more quickly with nearby polearms. Ranks flex as enemies reach melee distance.':
    'Green and red are the two sides. A 70% win rate means 7 wins out of 10 decisive fights. Bigger armor, weapon, number or skill advantages may legitimately cause one-sided results.';
 }
 function setLabPreset(mode){
  labPreset=mode;
- const options=mode==='mirrors'?labMirrorScenarios:mode==='mounts'?labMountScenarios:mode==='polearms'?labPolearmScenarios:mode==='squads'?labSquadScenarios:mode==='outcomes'?labOutcomeScenarios:mode==='terrain'?labTerrainScenarios:labMatchupScenarios;
+ const options=mode==='mirrors'?labMirrorScenarios:mode==='mounts'?labMountScenarios:mode==='polearms'?labPolearmScenarios:mode==='squads'?labSquadScenarios:mode==='outcomes'?labOutcomeScenarios:mode==='terrain'?labTerrainScenarios:mode==='formations'?labFormationScenarios:labMatchupScenarios;
  options.forEach((v,i)=>Object.assign(labScenarios[i],{
-  name:v.name,counts:[...v.counts],green:{...v.green},red:{...v.red},terrain:v.terrain||'plain'
+  name:v.name,counts:[...v.counts],green:{...v.green},red:{...v.red},terrain:v.terrain||'plain',lineStyles:v.lineStyles||null
  }));
  initLab();
 }
 document.getElementById('labPresetButton').addEventListener('click',()=>{
- setLabPreset(labPreset==='matchups'?'mirrors':labPreset==='mirrors'?'mounts':labPreset==='mounts'?'polearms':labPreset==='polearms'?'squads':labPreset==='squads'?'outcomes':labPreset==='outcomes'?'terrain':'matchups');
+ setLabPreset(labPreset==='matchups'?'mirrors':labPreset==='mirrors'?'mounts':labPreset==='mounts'?'polearms':labPreset==='polearms'?'squads':labPreset==='squads'?'outcomes':labPreset==='outcomes'?'terrain':labPreset==='terrain'?'formations':'matchups');
 });
 const labSeconds=3600,labStepSeconds=.04,labWorldW=440,labWorldH=210,labMatchTimeout=75;
 let labArenas=[],labPaused=false,labTurn=0,labLastDraw=0,labAnalysisOpen=false,labAnalysisLast=0;
 const labCanvasNodes=Array.from({length:6},(_,i)=>document.getElementById('labCanvas'+i));
-function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0,parries:0,failedParries:0,counters:0,misses:0,shots:0,rangedHits:0,rangedMisses:0,friendlyStops:0,mountHits:0,dismounts:0,horseCharges:0,braces:0,chargeStops:0,flankArrivals:0,reserveDeployments:0,panics:0,surrenders:0,routes:0,rallies:0,incapacitated:0,terrainBlocks:0,terrainPositions:0};}
+function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0,parries:0,failedParries:0,counters:0,misses:0,shots:0,rangedHits:0,rangedMisses:0,friendlyStops:0,mountHits:0,dismounts:0,horseCharges:0,braces:0,chargeStops:0,flankArrivals:0,reserveDeployments:0,panics:0,surrenders:0,routes:0,rallies:0,incapacitated:0,terrainBlocks:0,terrainPositions:0,formationBlocks:0};}
 function activateLab(ar){
  activeLab=ar;W=labWorldW;H=labWorldH;t=ar.seconds;mode='attack';
  friends=ar.friends;foes=ar.foes;slashes=ar.slashes;projectiles=ar.projectiles;groundedShots=ar.groundedShots;
@@ -3459,13 +3620,15 @@ function updateLabHUD(){
      labPreset==='polearms'?' · '+(a.stats.friend.braces+a.stats.foe.braces)+' braces':
      labPreset==='squads'?' · '+(a.stats.friend.flankArrivals+a.stats.foe.flankArrivals)+' flank arrivals':
      labPreset==='outcomes'?' · '+(a.stats.friend.panics+a.stats.foe.panics)+' morale breaks':
-     labPreset==='terrain'?' · '+(a.stats.friend.terrainPositions+a.stats.foe.terrainPositions)+' positions secured':'');
+     labPreset==='terrain'?' · '+(a.stats.friend.terrainPositions+a.stats.foe.terrainPositions)+' positions secured':
+     labPreset==='formations'?' · '+(a.stats.friend.formationBlocks+a.stats.foe.formationBlocks)+' supported blocks':'');
   document.getElementById('labBlocks'+a.index).textContent=
    (a.stats.friend.blocks+a.stats.foe.blocks)+' blocks · '+
     (labPreset==='mounts'?((a.stats.friend.dismounts+a.stats.foe.dismounts)+' dismounts'):
      labPreset==='polearms'?((a.stats.friend.chargeStops+a.stats.foe.chargeStops)+' horse stops'):
      labPreset==='squads'?((a.stats.friend.reserveDeployments+a.stats.foe.reserveDeployments)+' reserve deployments'):
      labPreset==='terrain'?((a.stats.friend.terrainBlocks+a.stats.foe.terrainBlocks)+' shots blocked · '+(a.stats.friend.horseCharges+a.stats.foe.horseCharges)+' horse charges'):
+     labPreset==='formations'?((a.stats.friend.braces+a.stats.foe.braces)+' braces · '+(a.stats.friend.chargeStops+a.stats.foe.chargeStops)+' charges stopped'):
      labPreset==='outcomes'?((a.stats.friend.surrenders+a.stats.foe.surrenders)+' surrendered · '+
        (a.stats.friend.routes+a.stats.foe.routes)+' fled · '+
        (a.stats.friend.incapacitated+a.stats.foe.incapacitated)+' incapacitated'):
