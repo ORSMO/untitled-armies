@@ -557,6 +557,44 @@ for(let i=0;i<coastSegments.length;i++){
   minY:Math.min(...pts.map(p=>p.y)),maxY:Math.max(...pts.map(p=>p.y))
  }});
 }
+// Scattered world encounters: ruins, woodland clearings, old forts,
+// river fords and caravansaries. These are exploration destinations,
+// not new kingdoms or capital-centered rings.
+const landmarkKinds=[
+ {kind:'ruins',label:'Forgotten Ruins',icon:'⌂'},
+ {kind:'watchtower',label:'Old Watchtower',icon:'♜'},
+ {kind:'camp',label:'Traveler Camp',icon:'♧'},
+ {kind:'shrine',label:'Wayside Shrine',icon:'✥'},
+ {kind:'ford',label:'River Ford',icon:'≈'},
+ {kind:'grove',label:'Hidden Grove',icon:'♣'}
+];
+const landmarks=[];
+for(let i=0;i<55;i++){
+ const type=landmarkKinds[i%landmarkKinds.length];
+ let chosen=null,best=-Infinity;
+ for(let k=0;k<135;k++){
+  const x=410+hash(i*31+k*4,93)* (WIDTH-820);
+  const y=450+hash(i*17+k*9,71)* (HEIGHT-900);
+  const tile=tileAt(x,y);
+  if(!tile.walk||['sea','river','mountain','snow'].includes(tile.kind))continue;
+  const farSettlements=settlements.reduce((d,v)=>Math.min(d,Math.hypot(v.x-x,v.y-y)),Infinity);
+  const farLandmarks=landmarks.reduce((d,v)=>Math.min(d,Math.hypot(v.x-x,v.y-y)),Infinity);
+  if(farSettlements<190||farLandmarks<395)continue;
+  const tileId=tileIndex(Math.floor(x/TILE),Math.floor(y/TILE));
+  const suitable=type.kind==='ford'?tiles[tileId].m>.43:
+   type.kind==='grove'?['forest','taiga','rainforest'].includes(tile.kind):
+   type.kind==='watchtower'?['hills','grass','steppe','scrub'].includes(tile.kind):
+   type.kind==='camp'?roads[tileId]>0:
+   type.kind==='shrine'?tile.e<.68:true;
+  if(!suitable)continue;
+  const score=Math.min(farLandmarks,1000)/450+hash(i+k,331)*.22;
+  if(score>best){best=score;chosen={x,y}}
+ }
+ if(!chosen)continue;
+ landmarks.push({id:landmarks.length,kind:type.kind,icon:type.icon,
+  name:type.label,x:chosen.x,y:chosen.y,
+  faction:tileAt(chosen.x,chosen.y).owner});
+}
 function walkingSpeed(x,y){
  const i=tileIndex(clamp(Math.floor(x/TILE),0,COLS-1),clamp(Math.floor(y/TILE),0,ROWS-1)),t=tiles[i];
  if(!t.walk)return 0;
@@ -572,7 +610,7 @@ function closestSettlement(x,y,factionId){
  return best;
 }
 window.UAWorld={WIDTH,HEIGHT,TILE,COLS,ROWS,factions,wars,settlements,
- roadSegments,roadLinks,roadTier,roads,bridgePoints,riverPaths,borderPaths,coastPaths,flow,downhill,
+ roadSegments,roadLinks,roadTier,roads,bridgePoints,riverPaths,borderPaths,coastPaths,landmarks,flow,downhill,
  tiles,palette,biomeCost,tileAt,tileIndex,factionAt,findPath,walkingSpeed,
  closestSettlement,getSettlement,nearestWalk,clamp,hash,noise,fractal};
 })();
