@@ -64,11 +64,14 @@ function startCampaign(){
  const origin=clamp(Number($('originSelect').value)||0,0,9);
  const background=$('backgroundSelect').value;
  const cap=F[origin].capital;
- const walk=W.nearestWalk(Math.floor((cap[0]+112)/W.TILE),Math.floor((cap[1]+112)/W.TILE));
- const x=walk?walk.x*W.TILE+28:cap[0],y=walk?walk.y*W.TILE+28:cap[1];
+ // Spawn near each faction's gates and within immediate recruiting range.
+ const x=cap[0]+45,y=cap[1]+45;
  const money=background==='merchant'?1250:background==='soldier'?650:900;
- state={version:VERSION,player:{name,origin,background,x,y,gold:money,food:22,hp:100,
-   level:1,xp:0,renown:0,roster:[{faction:origin,tier:0,count:8}],quest:{id:0,progress:0,goal:3,done:false}},
+ const firstTroops=background==='soldier'?
+  [{faction:origin,tier:0,count:5},{faction:origin,tier:1,count:3}]:
+  [{faction:origin,tier:0,count:8}];
+ state={version:VERSION,player:{name,origin,background,x,y,gold:money,food:background==='merchant'?28:22,hp:100,
+   level:1,xp:0,renown:0,roster:firstTroops,quest:{id:0,progress:0,goal:3,done:false}},
    day:1,hour:8,speed:1,paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,
    parties:[],options:{...settingsDefault},messages:[],unseen:[],lastEncounter:-100};
  state.parties=generateParties();selected={type:'settlement',id:origin*8};
@@ -501,8 +504,10 @@ function refreshInspector(){
 }
 function showFactionDetails(id){
  selectedFaction=id;const f=F[id];
+ const enemies=W.wars.filter(pair=>pair.includes(id)).map(pair=>F[pair[0]===id?pair[1]:pair[0]].name);
  document.querySelectorAll('[data-faction]').forEach(b=>b.classList.toggle('selected',Number(b.dataset.faction)===id));
- $('factionDetail').innerHTML='<h3><span style="color:'+f.color+'">'+esc(f.symbol)+'</span> '+esc(f.name)+'</h3><p>'+esc(f.culture)+'. '+esc(f.trait)+'.</p><p><em>'+esc(f.motto)+'</em></p><div class="smallcaps">FACTION TROOP TREE · PRESET UPGRADES</div><div class="trooptree">'+f.troops.map((n,i)=>'<div><small>Tier '+(i+1)+'</small>'+esc(n)+'</div>').join('')+'</div><p class="subtle">Capital: '+esc(f.cities[0])+' · 8 settlements. Faction troops use these upgrades unless you eventually found your own faction.</p>';
+ $('factionDetail').innerHTML='<h3><span style="color:'+f.color+'">'+esc(f.symbol)+'</span> '+esc(f.name)+'</h3><p>'+esc(f.culture)+'. '+esc(f.trait)+'.</p><p><em>'+esc(f.motto)+'</em></p><div class="smallcaps">FACTION TROOP TREE · PRESET UPGRADES</div><div class="trooptree">'+f.troops.map((n,i)=>'<div><small>Tier '+(i+1)+'</small>'+esc(n)+'</div>').join('')+'</div><p class="subtle">Capital: '+esc(f.cities[0])+' · 8 settlements. Faction troops use these upgrades unless you eventually found your own faction.</p>'+
+ '<p><b>Current wars:</b> '+(enemies.length?enemies.map(esc).join(', '):'No declared wars')+'.</p>';
 }
 function openFactions(){
  $('factionGrid').innerHTML=F.map(f=>'<button class="faction-card" data-faction="'+f.id+'"><span class="faction-flag" style="background:'+f.color+'">'+esc(f.symbol)+'</span><span><strong>'+esc(f.name)+'</strong><small>'+esc(f.culture)+'</small><small>'+esc(f.trait)+'</small></span></button>').join('');
