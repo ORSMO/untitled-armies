@@ -808,6 +808,14 @@ button('btnOverview',()=>{focus=false;camera.x=W.WIDTH/2;camera.y=W.HEIGHT/2;cam
 button('btnSpeed',()=>{state.speed=state.speed===1?2:state.speed===2?4:1;refreshUI()});
 button('hudPause',()=>{state.pausedManual=!state.pausedManual;state.paused=state.pausedManual;refreshUI()});
 button('mapNearest',()=>{const s=W.closestSettlement(state.player.x,state.player.y);selected={type:'settlement',id:s.id};inspectorDirty=true;refreshInspector()});
+button('mapDiscover',()=>{
+ if(!state)return;
+ const unseen=W.landmarks.filter(v=>!state.visitedLandmarks.includes(v.id));
+ const pool=unseen.length?unseen:W.landmarks;
+ const nearest=pool.reduce((a,b)=>dist(state.player.x,state.player.y,a.x,a.y)<dist(state.player.x,state.player.y,b.x,b.y)?a:b);
+ selected={type:'landmark',id:nearest.id};inspectorDirty=true;refreshInspector();
+ notify('Discovered on the map: '+nearest.name+'. Inspect the location to travel.');
+});
 button('mapFaction',openFactions);
 button('modalParty',showParty);
 button('modalCharacter',showCharacter);
