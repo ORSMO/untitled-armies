@@ -14,3 +14,16 @@
 @media(max-width:1060px){.layout{grid-template-columns:196px minmax(0,1fr) 246px}.top-center{justify-content:flex-start}.brand{min-width:190px}.sidebar,.inspector{padding:10px 8px}.menu-screen{gap:20px;padding:15px}}
 @media(max-width:770px){.layout{grid-template-columns:minmax(0,1fr)}.sidebar,.inspector{position:absolute;z-index:35;top:67px;bottom:36px;width:min(280px,82vw);box-shadow:0 12px 30px #000a}.sidebar{left:0}.inspector{right:0}.sidebar.mobile-hide,.inspector.mobile-hide{display:none}.topbar{min-height:60px;padding:6px 10px;gap:5px}.brand{min-width:0;flex:1}.brand strong{font-size:13px}.brand small{font-size:9px}.crest{font-size:24px}.top-center{display:none}.topbar .btn{padding:8px}.map-help{display:none}.map-top{top:5px;left:5px}.map-bottom{left:7px;bottom:8px;max-width:65%;font-size:10px}.map-controls{right:6px;bottom:8px}.menu-screen{grid-template-columns:1fr;gap:14px;max-width:540px}.menu-screen h1{font-size:56px}.menu-screen{padding:12px}.menu-box{padding:16px}.factions-grid{grid-template-columns:1fr}.footer-hint{font-size:9px}}
 @media(max-height:660px){.menu-screen h1{font-size:49px}.menu-screen{gap:9px}.menu-intro{font-size:13px}.menu-box .btn{padding:10px;margin:5px 0}.menu-summary{margin-top:13px}.modal{padding:15px}}
+
+/* Geographic overview is the same canvas renderer as the campaign itself. */
+.atlas-modal{width:min(1100px,100%);padding:22px}
+.atlas-modal h2{margin:4px 0 7px}
+.atlas-modal>p{margin:0 0 13px}
+.atlas-frame{height:min(60vh,610px);min-height:260px;border:1px solid #9a936c;
+ background:#244b55;border-radius:11px;overflow:hidden;position:relative;box-shadow:inset 0 0 40px #030e1066}
+#atlasCanvas{display:block;width:100%;height:100%;cursor:grab;touch-action:none}
+#atlasCanvas:active{cursor:grabbing}
+.atlas-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+.atlas-hint{font-size:11px;color:#b7c4b1;line-height:1.5;flex:1;min-width:220px}
+.atlas-controls .btn{flex:none}
+@media(max-width:770px){.atlas-modal{padding:12px}.atlas-frame{height:48vh;min-height:250px}}
