@@ -1036,7 +1036,8 @@ function squadMovement(s,command,target,dist,x,y,pace){
  // close, individual combat and the existing physical formation take over.
  const strategic=(typeof commanderBrains!=='undefined'?
   commanderBrains[s.team]?.terrainPlan:state.terrainObjective);
- if(strategic&&dist>Math.max(115,Math.min(180,W*.20))&&
+ if(strategic&&!s.terrainPositionHeld&&
+   dist>Math.max(115,Math.min(180,W*.20))&&
    (s.unitRole==='infantry'||s.unitRole==='archer')){
   const behind=s.unitRole==='archer'?forward*Math.min(54,W*.105):0;
   const goalX=clamp(strategic.x-behind+(s.squadOffsetX||0)*.30,20,W-20);
