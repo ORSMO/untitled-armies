@@ -496,6 +496,52 @@ for(const [pair,segments] of borderEdges){
   }});
  }
 }
+// Coastline contours share the same smoothing method as the national
+// borders. Beaches therefore follow rounded inlets instead of tile edges.
+const coastSegments=[];
+for(let ty=0;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){
+ const id=tileIndex(tx,ty),land=tiles[id].walk;
+ if(tx+1<COLS&&land!==tiles[id+1].walk)
+  coastSegments.push([{x:(tx+1)*TILE,y:ty*TILE},{x:(tx+1)*TILE,y:(ty+1)*TILE}]);
+ if(ty+1<ROWS&&land!==tiles[id+COLS].walk)
+  coastSegments.push([{x:tx*TILE,y:(ty+1)*TILE},{x:(tx+1)*TILE,y:(ty+1)*TILE}]);
+}
+const coastConnections=new Map();
+const coastKey=p=>Math.round(p.x/TILE)+':'+Math.round(p.y/TILE);
+for(let i=0;i<coastSegments.length;i++)for(const p of coastSegments[i]){
+ const k=coastKey(p);
+ if(!coastConnections.has(k))coastConnections.set(k,[]);
+ coastConnections.get(k).push(i);
+}
+const coastUsed=new Uint8Array(coastSegments.length),coastPaths=[];
+for(let i=0;i<coastSegments.length;i++){
+ if(coastUsed[i])continue;
+ const ends=coastSegments[i],start=ends.find(p=>coastConnections.get(coastKey(p)).length===1)||ends[0];
+ let cursor=start,pts=[cursor];
+ while(pts.length<coastSegments.length+2){
+  const available=(coastConnections.get(coastKey(cursor))||[]).find(j=>!coastUsed[j]);
+  if(available===undefined)break;
+  coastUsed[available]=1;
+  const edge=coastSegments[available],next=coastKey(edge[0])===coastKey(cursor)?edge[1]:edge[0];
+  cursor=next;pts.push(cursor);
+  if(coastKey(cursor)===coastKey(start))break;
+ }
+ if(pts.length<3)continue;
+ for(let k=0;k<2;k++){
+  const smooth=[pts[0]];
+  for(let j=0;j<pts.length-1;j++){
+   const a=pts[j],b=pts[j+1];
+   smooth.push({x:.75*a.x+.25*b.x,y:.75*a.y+.25*b.y},
+    {x:.25*a.x+.75*b.x,y:.25*a.y+.75*b.y});
+  }
+  smooth.push(pts[pts.length-1]);pts=smooth;
+ }
+ pts=simplify(pts,9);
+ coastPaths.push({points:pts,bounds:{
+  minX:Math.min(...pts.map(p=>p.x)),maxX:Math.max(...pts.map(p=>p.x)),
+  minY:Math.min(...pts.map(p=>p.y)),maxY:Math.max(...pts.map(p=>p.y))
+ }});
+}
 function walkingSpeed(x,y){
  const i=tileIndex(clamp(Math.floor(x/TILE),0,COLS-1),clamp(Math.floor(y/TILE),0,ROWS-1)),t=tiles[i];
  if(!t.walk)return 0;
@@ -511,7 +557,7 @@ function closestSettlement(x,y,factionId){
  return best;
 }
 window.UAWorld={WIDTH,HEIGHT,TILE,COLS,ROWS,factions,wars,settlements,
- roadSegments,roadLinks,roadTier,roads,riverPaths,borderPaths,flow,downhill,
+ roadSegments,roadLinks,roadTier,roads,riverPaths,borderPaths,coastPaths,flow,downhill,
  tiles,palette,biomeCost,tileAt,tileIndex,factionAt,findPath,walkingSpeed,
  closestSettlement,getSettlement,nearestWalk,clamp,hash,noise,fractal};
 })();
