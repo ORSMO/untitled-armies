@@ -153,7 +153,8 @@ for(let ty=0;ty<ROWS;ty++){
   const uplift=clamp(t.e-upwindPeak+.06,0,.4);
   windMoisture=clamp(windMoisture*.992+uplift*.12-t.e*.009,.09,.98);
   const humidity=clamp(.09+.41*wetNoise+.24*coastline+
-    windMoisture*.23-lee*.75-Math.max(0,t.temp-.53)*.34+
+    windMoisture*.23-lee*.75-Math.max(0,t.temp-.53)*.34-
+    Math.max(0,t.temp-.56)*clamp((wetSea[id]-12)/35,0,1)*.44+
     (fractal((tx+.5)*TILE,(ty+.5)*TILE+300,720)-.5)*.21,0,1);
   t.m=humidity;
   upwindPeak=Math.max(t.e,upwindPeak*.983);
@@ -275,8 +276,12 @@ function townScore(tx,ty,fac,type,placed){
   const d=Math.hypot(x-s.x,y-s.y);nearest=Math.min(nearest,d);
   if(d<340)return -Infinity;
  }
- const riverNearby=tiles.slice(Math.max(0,id-COLS*3),Math.min(tiles.length,id+COLS*3))
-  .some(v=>v&&v.kind==='river')?1:0;
+ let riverNearby=0;
+ for(let ry=Math.max(0,ty-3);ry<=Math.min(ROWS-1,ty+3)&&!riverNearby;ry++){
+  for(let rx=Math.max(0,tx-3);rx<=Math.min(COLS-1,tx+3);rx++){
+   if(tiles[tileIndex(rx,ry)].kind==='river'){riverNearby=1;break}
+  }
+ }
  const neighboring= [[1,0],[-1,0],[0,1],[0,-1]]
   .reduce((n,[dx,dy])=>{const z=atGrid(tx+dx,ty+dy);return n+(z>=0&&tiles[z].owner!==fac?1:0)},0);
  const fertile=(t.kind==='grass'?2:t.kind==='forest'?1.1:t.kind==='steppe'?1.0:t.kind==='scrub'?.7:0);
@@ -394,7 +399,7 @@ function makeRoad(a,b,kind){
  roadLinks.push([a.id,b.id]);
  return true;
 }
-function spanningEdges(nodes,used){
+function spanningEdges(nodes){
  const selected=[nodes[0]],remaining=nodes.slice(1),links=[];
  while(remaining.length){
   let best=Infinity,at=-1,source=null;
