@@ -506,16 +506,32 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
    original:units.length,standing:units.filter(u=>!u.dead&&!u.routed&&!u.broken&&!u.surrendered).length,
    killed:units.filter(u=>u.dead&&!u.woundedOut).length,
    wounded:units.filter(u=>u.woundedOut).length,
-   woundedStanding:units.filter(u=>!u.dead&&!u.routed&&!u.surrendered&&u.hp<u.maxHp).length,
+   woundedStanding:units.filter(u=>!u.dead&&!u.routed&&!u.broken&&!u.surrendered&&u.hp<u.maxHp).length,
    escaped:units.filter(u=>u.routed&&!u.surrendered).length,
    surrendered:units.filter(u=>u.surrendered).length,
+   horsesLost:units.filter(u=>u.mountMaxHp>0&&!u.mounted&&u.mountHp<=0).length,
    shaken:units.filter(u=>u.broken&&!u.dead&&!u.routed&&!u.surrendered).length
   };
+ }
+ // Preserve the individual aftermath without introducing faction ownership
+ // yet. The future campaign can consume this instead of rerolling survivors.
+ function battleRoster(team){
+  return combatants(team).map(s=>({
+   id:s.id,startingRole:s.battleStartingRole||s.unitRole,role:s.unitRole,
+   weapon:s.weapon,ranged:s.ranged||null,armor:s.armor,
+   shield:s.shield||null,horseArmor:s.horseArmor||'none',
+   experience:s.experience,skill:s.skill,discipline:s.disc,
+   hp:+Math.max(0,s.hp).toFixed(3),maxHp:s.maxHp,
+   mounted:!!s.mounted,horseHp:s.mountHp||0,
+   result:s.surrendered?'surrendered':s.routed?'escaped':
+    s.dead?(s.woundedOut?'incapacitated':'killed'):
+    s.broken?'shaken':'standing'
+  }));
  }
  function tallyLabel(t){return t.standing+' standing · '+t.killed+' killed · '+
   t.wounded+' incapacitated · '+t.escaped+' escaped · '+
   t.surrendered+' surrendered · '+t.shaken+' still routing · '+
-  t.woundedStanding+' injured survivors';}
+  t.woundedStanding+' injured survivors · '+t.horsesLost+' horses lost';}
  // Two attack styles share the same three-cell range. Heavy hits cost more
  // stamina, deal two damage, and have longer recovery than quick light hits.
  const attackStyles={
@@ -587,6 +603,7 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   plate:{label:'Plate barding',flat:.39,block:.38,speed:.80,color:'#d0d9dd',weight:3}
  };
  function initMount(s){
+  s.battleStartingRole=s.unitRole;
   s.mounted=['cavalry','horseArcher'].includes(s.unitRole);
   s.mountHp=s.mounted?3.6:0;s.mountMaxHp=s.mounted?3.6:0;
   s.horseStamina=s.mounted?100:0;
