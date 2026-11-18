@@ -457,9 +457,10 @@ function beginTacticalBattle(id){
   playerName:state.player.name,playerHp:state.player.hp,
   terrain,roster:state.player.roster.map(g=>({faction:g.faction,tier:g.tier,
    count:g.count,wounded:Math.min(g.count,g.wounded||0)}))};
- if(!payload.roster.some(g=>g.count>g.wounded)){
-  notify('No healthy soldiers are ready. Rest at a settlement to recover troops.');return
- }
+ // A lone hero is allowed to ride into battle without healthy soldiers.
+ // That is dangerous, but player choice should matter more than a gate.
+ if(!payload.roster.some(g=>g.count>g.wounded))
+  notify('You are entering battle alone. Your injured soldiers will remain in camp.');
  try{
   if(!saveGame(true))throw Error('Save failed');
   localStorage.setItem('ua-battle-pending-v1',JSON.stringify(payload));
