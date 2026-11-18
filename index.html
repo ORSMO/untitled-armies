@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#091512">
 <meta name="description" content="Untitled Armies: a medieval campaign sandbox. Explore the vast continent of Asterra, meet ten factions, recruit and upgrade faction troops, and build your legend.">
-<title>Untitled Armies — Asterra Campaign · V4.1</title>
+<title>Untitled Armies — Asterra Campaign · V4.2</title>
 <link rel="stylesheet" href="campaign.css">
 </head>
 <body>
 <div id="game" class="hidden">
  <header class="topbar">
-  <div class="brand"><span class="crest">⚔</span><div><strong>UNTITLED ARMIES</strong><small>ASTERRA CAMPAIGN · V4.1 ALPHA</small></div></div>
+  <div class="brand"><span class="crest">⚔</span><div><strong>UNTITLED ARMIES</strong><small>ASTERRA CAMPAIGN · V4.2 ALPHA</small></div></div>
   <div class="top-center">
    <div class="chip">📜 <b id="hudDay">Day 1 · 08:00</b></div>
    <div class="chip">⚑ <b id="hudRegion">Valdorian Kingdom</b></div>
@@ -80,7 +80,7 @@
    <p class="subtle">Roaming bandits, patrols and caravans travel through this world. Set a destination and follow the roads.</p>
   </aside>
  </div>
- <div class="footer-hint">ASTERRA CAMPAIGN ALPHA · 10 factions · 80 settlements · real travel & faction troops · <a href="classic.html">Classic Combat</a> · <a href="lab.html">Battle Lab</a></div>
+ <div class="footer-hint">FOLLOW MOVING PARTIES · SPEAK BEFORE BATTLE · DIRECTLY CONTROL YOUR HERO · ASTERRA CAMPAIGN ALPHA · 10 factions · 80 settlements · real travel & faction troops · <a href="classic.html">Classic Combat</a> · <a href="lab.html">Battle Lab</a></div>
 </div>
 <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 <section id="screenMenu" class="overlay" aria-label="Main menu">
@@ -129,6 +129,33 @@
   </select>
   <div class="eventbox"><b>Starting equipment & party</b><p>8 recruits of your homeland, provisions, denars, and a world to explore. Equipment customization belongs to your future player-founded faction, not to independent wanderers.</p></div>
   <div class="modal-actions"><button class="btn primary" id="createStart">Enter the World ⚔</button></div>
+ </div>
+</section>
+<section id="screenEncounter" class="overlay hidden" aria-label="Party encounter">
+ <div class="modal encounter-modal">
+  <div class="smallcaps">THE ROADS OF ASTERRA · ENCOUNTER</div>
+  <h2 id="encounterName">Travelers ahead</h2>
+  <p id="encounterIntro">You have met another party on the road.</p>
+  <div class="encounter-rosters">
+   <div class="encounter-army"><span class="smallcaps">YOUR COMPANY</span><strong id="encounterOwnCount">8 soldiers</strong><p id="encounterOwnDetail"></p></div>
+   <div class="encounter-army hostile"><span class="smallcaps">THE OTHER PARTY</span><strong id="encounterEnemyCount">Bandits</strong><p id="encounterEnemyDetail"></p></div>
+  </div>
+  <div id="encounterDialogue" class="eventbox"><b>They await your decision.</b><p>Speak with them, fight, or leave.</p></div>
+  <div class="encounter-actions">
+   <button class="btn primary" id="encounterTalk">💬 Speak to their leader</button>
+   <button class="btn" id="encounterTrade">🪙 Offer to trade</button>
+   <button class="btn danger" id="encounterFight">⚔ Lead your troops into battle</button>
+   <button class="btn" id="encounterLeave">↩ Leave peacefully</button>
+  </div>
+  <p class="subtle">Fighting launches a playable battlefield. Move your character with WASD, attack with click/Space, guard with Shift, and lead your army with the Commander panel.</p>
+ </div>
+</section>
+<section id="screenAftermath" class="overlay hidden" aria-label="Battle aftermath">
+ <div class="modal">
+  <div class="smallcaps">THE AFTERMATH · ASTERRA CAMPAIGN</div>
+  <h2 id="aftermathTitle">The battle has ended</h2>
+  <div id="aftermathDetails" class="eventbox"></div>
+  <button class="btn primary" id="aftermathContinue">↩ Return to the Campaign Map</button>
  </div>
 </section>
 <section id="screenAtlas" class="overlay hidden" aria-label="World Atlas">
