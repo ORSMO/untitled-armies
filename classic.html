@@ -230,6 +230,24 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
    <button type="button" data-commander-team="friend" data-style="defensive">Defensive</button>
    <button type="button" data-commander-team="friend" data-style="tactical">Tactical</button>
   </div>
+  <div class="enemy-command-label">COMMANDER'S BATTLE DIRECTIVE · YOUR INFLUENCE</div>
+  <p>Choose the goal and let your commander manage the troops. Unlike manual General orders, these directives keep his tactical AI in charge.</p>
+  <div class="enemy-command-grid commander-directive" role="group" aria-label="Commander's battle directive">
+   <button type="button" data-commander-intent="adaptive">🧠 Adaptive</button>
+   <button type="button" data-commander-intent="hold">🛡 Hold defensively</button>
+   <button type="button" data-commander-intent="ordered">⚔ Ordered advance</button>
+   <button type="button" data-commander-intent="aggressive">🔥 Aggressive assault</button>
+   <button type="button" data-commander-intent="skirmish">🏹 Skirmish & screen</button>
+  </div>
+  <div class="enemy-command-label">INFANTRY FORMATION DOCTRINE</div>
+  <div class="enemy-command-grid commander-lines" role="group" aria-label="Infantry marching formation">
+   <button type="button" data-commander-line="auto">Auto by equipment</button>
+   <button type="button" data-commander-line="shieldwall">🛡 Shield wall</button>
+   <button type="button" data-commander-line="spearwall">⚔ Spear wall</button>
+   <button type="button" data-commander-line="line">⚑ Open line</button>
+   <button type="button" data-commander-line="loose">⋯ Loose formation</button>
+  </div>
+  <p>Walls advance in two flexible ranks, tighten when supported by neighbors, and loosen as soldiers enter melee. Spear walls require actual spear or pike equipment; shield walls require real shields. The General's direct orders still override your commander.</p>
   <div class="commander-status"><strong>🔴 Enemy commander</strong><span id="foeCommanderStatus">Aggressive · Assessing</span></div>
   <div class="enemy-command-grid" aria-label="Enemy commander style">
    <button type="button" data-commander-team="foe" data-style="aggressive">Aggressive</button>
@@ -310,6 +328,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
        <tr><td>Compact horse bow</td><td>24</td><td>710</td><td>0.52s</td><td>Light piercing</td></tr></tbody></table>
       <p><strong>BATTLEFIELDS &amp; TERRAIN (V3.4):</strong> Use the <strong>Battlefield Terrain</strong> selector in the footer. Choose open ground, a hill, forest, mud, shallow river, rocks or mixed terrain. Terrain can decide the entire battle: elevated defenders have stronger melee and ranged advantages, wooded positions sharply reduce enemy missile effectiveness and weaken mounted shock, and deep mud or river water slows cavalry enough to ruin its charge and discipline. Poor footing weakens braced spear walls and increases exhaustion. Commanders seek ridges and forest positions, defend dry crossing approaches, and send cavalry around hazardous ground; their plans still yield to the General’s manual orders. Solid rocks block movement and low-flying arrows. Cavalry needs clear dry ground to build up a strong charge, and all terrain interacts with existing formations and morale. Switching the terrain resets the current test. The default open plain preserves earlier fairness tests.</p>
       <p><strong>HORSE MOVEMENT (V3.1):</strong> Mounted troops now accelerate and brake instead of instantly changing speed or direction. A horse turns much wider at full gallop, especially when heavily armored or wounded. A mounted charge requires real forward closing speed, and body-to-body collisions absorb momentum. Cavalry ride through an enemy on a committed attack line, break away when surrounded, and regroup for another charge. Mounted archers try to ride out of close threats to recover their shooting distance. Gait animation and hoof dust show speed; the amber bar is horse health and the smaller turquoise bar is horse stamina. Rider and horse health remain separate. A fallen horse cannot be instantly remounted.</p>
+      <p><strong>COMMANDER INFLUENCE &amp; MOVING FORMATIONS (V3.6):</strong> Open <strong>👑 Commanders</strong> to set the battle directive: Adaptive, Hold Defensively, Ordered Advance, Aggressive Assault, or Skirmish &amp; Screen. The commander's own personality still affects decisions, but your goal takes priority until the army is in serious danger. Choose Infantry Formation Doctrine: automatic by equipment, Shield Wall, Spear Wall, Open Line, or Loose. A supported shield wall reduces incoming hits and conserves shield stamina; a planted, supported spear wall prepares its anti-cavalry points faster. Walls advance as two ranks but flex into melee so they can still fight. Every advantage depends on real nearby soldiers and appropriate weapons. The General's manual Attack with a selected Shield Wall or Spear Wall can also move as a line.</p>
       <p><strong>SQUADS & COMMANDERS (V3.2):</strong> Infantry now maintain lanes while advancing and correct drifting ranks. Foot archers stay behind a friendly infantry screen when one exists. Commanders keep a small infantry reserve behind the line, then commit it when troops are under pressure. When enemy archers expose a wing, cavalry first ride around the flank before attacking; mounted movement still uses real acceleration and turning. Commanders display cohesion and reserve status. <strong>Manual General orders always win:</strong> a selected Infantry, Archer, Cavalry or Horse Archer group follows your standing orders until you Return to AI. These are battlefield test mechanics, not a campaign system.</p>
       <p><strong>MORALE &amp; BATTLE OUTCOMES (V3.3):</strong> Use the <strong>🛡 Training mode / ⚔ Real battle</strong> switch in the footer. Switching restarts the current test. Training keeps invulnerable friendly troops and recurring enemies; Real Battle allows both armies to die or be incapacitated, prevents reinforcements, and enables casualty morale, fleeing, surrender and commander-led rallies. A battle ends when one army can no longer fight; an automatic report shows fatalities, incapacitated, routed, surrendering and still-broken soldiers, plus each commander's fate. Press <strong>Fight another battle</strong> to retry with the same rules.</p>
       <p><strong>POLEARMS & BRACING:</strong> <strong>Infantry spears</strong> have 65 reach and can pair with shields. <strong>Long pikes</strong> have 89 reach and occupy both hands. Polearm tips cannot hit reliably inside their minimum range, so crowded soldiers use weaker blunt butt strikes. A spearman or pikeman facing a fast-approaching horse automatically plants his feet and raises the weapon over time. A ready frontal brace can halt a charge and wound or dismount the horse, while flanking, attacking before the spear is ready, or exhausting the soldier can break through. The <strong>🛡 Spear Wall</strong> formation is available in Classic. Try the new Spears vs Swords and Pikes vs Cavalry presets.</p>
@@ -470,8 +489,8 @@ let W=0,H=0,VW=0,VH=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],s
  let infiniteAmmo=false;
  // Two physical commanders are separate from the 50 soldiers on each team.
  let commanders={friend:null,foe:null};
- function newBrain(personality='tactical'){
-  return {personality,phase:'advance',orders:{infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'},
+ function newBrain(personality='tactical',intent='adaptive',lineStyle='auto'){
+  return {personality,intent,lineStyle,phase:'advance',orders:{infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'},
     elapsed:0,next:0,lastChange:-20,decisions:0,news:'Reading battlefield',reserveCalls:0,flankCalls:0};
  }
  let commanderBrains={friend:newBrain('tactical'),foe:newBrain('aggressive')};
@@ -993,8 +1012,8 @@ function populate(){
   squadStates={friend:null,foe:null};
   allocateSquadReserves('friend');allocateSquadReserves('foe');
   commanders.friend=createCommander('friend');commanders.foe=createCommander('foe');
-  commanderBrains.friend=newBrain(commanderBrains.friend.personality);
-  commanderBrains.foe=newBrain(commanderBrains.foe.personality);
+  commanderBrains.friend=newBrain(commanderBrains.friend.personality,commanderBrains.friend.intent,commanderBrains.friend.lineStyle);
+  commanderBrains.foe=newBrain(commanderBrains.foe.personality,commanderBrains.foe.intent,commanderBrains.foe.lineStyle);
   generalOrders={all:null,infantry:null,archer:null,cavalry:null,horseArcher:null,reserve:null};selectedGroup='all';
   slashes=[];projectiles=[];groundedShots=[];selected=false;mode='idle';marker=null;focusArmy();updateUI();updateEnemyUI();updateCommanderUI();
  }
@@ -1363,6 +1382,16 @@ function decideCommander(team,dt){
  if(ratio<.58||panicRate>.43)phase='withdraw';
  else if(endangeredFront>.38&&troops.some(u=>u.squadReserve))phase='reinforce';
  else if(threatened)phase='protect';
+ // The General's strategic directive sets the commander's goal, while
+ // leadership, pressure, terrain and casualties still influence tactics.
+ else if(brain.intent==='hold'){
+  phase=chosenGround&&chosenGround.score>2.5?
+   (chosenGround.type==='water'||chosenGround.type==='mud'?
+    'guardCrossing':'holdGround'):'hold';
+ }
+ else if(brain.intent==='ordered')phase='orderedAdvance';
+ else if(brain.intent==='aggressive')phase='press';
+ else if(brain.intent==='skirmish')phase='skirmish';
  else if(chosenGround&&chosenGround.score>2.5&&distance>175){
   const ford=chosenGround.type==='water'||chosenGround.type==='mud';
   phase=ford&&brain.elapsed>18?'forceCrossing':
@@ -1384,6 +1413,8 @@ function decideCommander(team,dt){
   brain.phase=phase;brain.lastChange=brain.elapsed;
   const plans={
    advance:{infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'},
+   orderedAdvance:{infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'},
+   skirmish:{infantry:'defend',archer:'attack',cavalry:'attack',horseArcher:'attack'},
    press:{infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'},
    hold:{infantry:'defend',archer:'attack',cavalry:'defend',horseArcher:'attack'},
    seizeGround:{infantry:'defend',archer:'defend',cavalry:'attack',horseArcher:'attack'},
@@ -1404,7 +1435,9 @@ function decideCommander(team,dt){
   // position requires refreshed anchors, never sudden teleportation.
   setCommanderAnchors(team,brain.orders);
  }
- brain.news=phase==='advance'?'Approaching the enemy':
+ brain.news=phase==='orderedAdvance'?'Advancing as a protected, ordered front':
+  phase==='skirmish'?'Infantry screen holding while mobile troops skirmish':
+  phase==='advance'?'Approaching the enemy':
   phase==='press'?'Pressing the attack':
   phase==='hold'?'Holding a disciplined line':
   phase==='seizeGround'?'Marching to '+chosenGround?.type+' strongpoint':
@@ -1636,6 +1669,8 @@ const commanderButton=document.querySelector('#commanderButton'),
  commanderPanel=document.querySelector('#commanderPanel');
 const commanderStyleButtons=[...commanderPanel.querySelectorAll('[data-commander-team]')];
 const generalGroupButtons=[...commanderPanel.querySelectorAll('[data-general-group]')];
+const commanderIntentButtons=[...commanderPanel.querySelectorAll('[data-commander-intent]')];
+const commanderLineButtons=[...commanderPanel.querySelectorAll('[data-commander-line]')];
 function updateCommanderUI(){
  const describe=team=>{
   const leader=commanders[team],brain=commanderBrains[team],
@@ -1644,7 +1679,11 @@ function updateCommanderUI(){
    return 'FALLEN · troops acting independently';
   const reserves=squads?.groups?.infantry?.troops.filter(u=>u.squadReserve).length||0;
   const cohesion=squads?Math.round(squads.cohesion*100):100;
-  return brain.personality.toUpperCase()+' · '+brain.news+
+  const line=squads?.groups?.infantry;
+  return brain.personality.toUpperCase()+' · '+brain.intent.toUpperCase()+
+   ' · '+brain.news+
+   ' · '+(line?.lineStyle||'loose')+' front '+
+   Math.round((line?.lineCohesion||0)*100)+'%'+
    ' · cohesion '+cohesion+'%'+
    (reserves?' · reserve '+(squads.reserveReleased?'DEPLOYED':'READY')+' ('+reserves+')':'')+
    ' · HP '+Math.ceil(Math.max(0,leader.hp))+'/'+leader.maxHp;
@@ -1653,6 +1692,10 @@ function updateCommanderUI(){
  document.querySelector('#foeCommanderStatus').textContent=describe('foe');
  commanderStyleButtons.forEach(b=>b.setAttribute('aria-pressed',
   commanderBrains[b.dataset.commanderTeam].personality===b.dataset.style?'true':'false'));
+ commanderIntentButtons.forEach(b=>b.setAttribute('aria-pressed',
+  commanderBrains.friend.intent===b.dataset.commanderIntent?'true':'false'));
+ commanderLineButtons.forEach(b=>b.setAttribute('aria-pressed',
+  commanderBrains.friend.lineStyle===b.dataset.commanderLine?'true':'false'));
  generalGroupButtons.forEach(b=>b.setAttribute('aria-pressed',
   selectedGroup===b.dataset.generalGroup?'true':'false'));
  const locked=Object.entries(generalOrders).filter(([,v])=>!!v);
@@ -1673,6 +1716,21 @@ commanderStyleButtons.forEach(b=>b.addEventListener('click',()=>{
  const brain=commanderBrains[b.dataset.commanderTeam];
  brain.personality=b.dataset.style;brain.lastChange=-20;brain.next=0;
  updateCommanderUI();
+}));
+commanderIntentButtons.forEach(b=>b.addEventListener('click',()=>{
+ const brain=commanderBrains.friend;
+ brain.intent=b.dataset.commanderIntent;
+ brain.lastChange=-20;brain.next=0;nextEngagementPlan=0;
+ updateCommanderUI();
+ ui.hint.textContent='COMMANDER: '+b.textContent.trim()+
+  ' · Your manual General orders remain in force.';
+}));
+commanderLineButtons.forEach(b=>b.addEventListener('click',()=>{
+ const brain=commanderBrains.friend;
+ brain.lineStyle=b.dataset.commanderLine;brain.next=0;nextEngagementPlan=0;
+ updateSquadState('friend');updateCommanderUI();
+ ui.hint.textContent='INFANTRY: '+b.textContent.trim()+
+  ' · Formation requires the appropriate equipped troops.';
 }));
 generalGroupButtons.forEach(b=>b.addEventListener('click',()=>{
  selectedGroup=b.dataset.generalGroup;updateCommanderUI();
