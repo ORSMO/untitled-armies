@@ -1643,7 +1643,10 @@ function applyWeaponImpact(attacker,target,a){
  if(parry?.parried)return true;
  const incomingMomentum=a.momentum;
  const shield=shieldImpact(attacker,target,a),damageType=a.move.damageType;
- const afterShield=a.baseDamage*(1-shield.block);
+ const elevationAdvantage=a.projectile?0:clamp(
+  (terrainAt(attacker.x,attacker.y).elevation-
+   terrainAt(target.x,target.y).elevation)*.09,-.15,.15);
+ const afterShield=a.baseDamage*(1+elevationAdvantage)*(1-shield.block);
  const actual=mitigatedDamage(afterShield,target.armor,damageType);
  if(labMode&&activeLab){
   const offense=activeLab.stats[attacker.team],defense=activeLab.stats[target.team];
@@ -2065,7 +2068,10 @@ function separateSoldiers(){
    }
   }
   // Keep normal soldiers inside the battlefield; fleeing troops can leave it.
-  for(const s of all){if(!s.broken){s.x=clamp(s.x,11,W-11);s.y=clamp(s.y,11,H-11);}}
+  for(const s of all){if(!s.broken){s.x=clamp(s.x,11,W-11);s.y=clamp(s.y,11,H-11);}
+   // Separation of overlapping formations must not push anyone through rock.
+   terrainResolve(s,s.x,s.y);
+  }
  }
 }
 // Bow/crossbow/javelin combat. Projectiles are physical entities: they travel,
@@ -2228,6 +2234,24 @@ function updateProjectiles(dt){
    const height=projectileHeightAt(p,p.traveled+travel*u);
    if(height>missileBodyHeight)continue;
    if(u<at){at=u;closest=other;}
+  }
+  // Rock formations intercept low missiles. High-arcing shots may clear
+  // the outcrop, unlike flat javelins or descending bolts.
+  let stoneAt=Infinity;
+  for(const z of terrainZones){
+   if(z.kind!=='rock')continue;
+   const intercept=ellipseHit(x1,y1,x2,y2,z,1.5);
+   if(intercept!==null&&intercept<stoneAt&&
+      projectileHeightAt(p,p.traveled+travel*intercept)<42)
+    stoneAt=intercept;
+  }
+  if(stoneAt<at){
+   p.x=x1+dx*stoneAt;p.y=y1+dy*stoneAt;
+   groundedShots.push({x:p.x,y:p.y,angle:Math.atan2(p.vy,p.vx),
+    kind:p.kind,life:1.7});
+   if(groundedShots.length>125)groundedShots.splice(0,groundedShots.length-125);
+   const stat=combatLabStats(p.team);if(stat){stat.rangedMisses++;stat.terrainBlocks++;}
+   continue;
   }
   if(closest){
    p.x=x1+dx*at;p.y=y1+dy*at;
@@ -3062,7 +3086,7 @@ document.getElementById('labPresetButton').addEventListener('click',()=>{
 const labSeconds=3600,labStepSeconds=.04,labWorldW=440,labWorldH=210,labMatchTimeout=75;
 let labArenas=[],labPaused=false,labTurn=0,labLastDraw=0,labAnalysisOpen=false,labAnalysisLast=0;
 const labCanvasNodes=Array.from({length:6},(_,i)=>document.getElementById('labCanvas'+i));
-function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0,parries:0,failedParries:0,counters:0,misses:0,shots:0,rangedHits:0,rangedMisses:0,friendlyStops:0,mountHits:0,dismounts:0,horseCharges:0,braces:0,chargeStops:0,flankArrivals:0,reserveDeployments:0,panics:0,surrenders:0,routes:0,rallies:0,incapacitated:0};}
+function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0,parries:0,failedParries:0,counters:0,misses:0,shots:0,rangedHits:0,rangedMisses:0,friendlyStops:0,mountHits:0,dismounts:0,horseCharges:0,braces:0,chargeStops:0,flankArrivals:0,reserveDeployments:0,panics:0,surrenders:0,routes:0,rallies:0,incapacitated:0,terrainBlocks:0};}
 function activateLab(ar){
  activeLab=ar;W=labWorldW;H=labWorldH;t=ar.seconds;mode='attack';
  friends=ar.friends;foes=ar.foes;slashes=ar.slashes;projectiles=ar.projectiles;groundedShots=ar.groundedShots;
