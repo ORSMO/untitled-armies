@@ -523,20 +523,22 @@ function showCharacter(){
  openModal('screenCharacter');
 }
 function showOptions(){
- if(state){$('optBorders').checked=state.options.borders;$('optLabels').checked=state.options.labels;
- $('optRoads').checked=state.options.roads;$('optMinimap').checked=state.options.minimap;$('optFollow').checked=state.options.follow}
+ const o=state?state.options:settingsDefault;
+ $('optBorders').checked=o.borders;$('optLabels').checked=o.labels;
+ $('optRoads').checked=o.roads;$('optMinimap').checked=o.minimap;$('optFollow').checked=o.follow;
  openModal('screenOptions');
 }
 function saveOptions(){
- if(state){
-  state.options={borders:$('optBorders').checked,labels:$('optLabels').checked,roads:$('optRoads').checked,minimap:$('optMinimap').checked,follow:$('optFollow').checked};
-  saveGame(true);inspectorDirty=true;
- }
+ const changed={borders:$('optBorders').checked,labels:$('optLabels').checked,
+  roads:$('optRoads').checked,minimap:$('optMinimap').checked,follow:$('optFollow').checked};
+ Object.assign(settingsDefault,changed);
+ try{localStorage.setItem('ua-settings-v1',JSON.stringify(settingsDefault))}catch(e){}
+ if(state){state.options={...changed};saveGame(true);inspectorDirty=true}
  closeModal();refreshUI();
 }
 function button(id,action){$(id).addEventListener('click',action)}
 button('menuNew',selectNew);button('menuContinue',loadGame);
-button('menuFactions',openFactions);
+button('menuFactions',openFactions);button('menuOptions',showOptions);
 button('createStart',startCampaign);button('createCancel',()=>showScreen('screenMenu'));
 button('factionsClose',closeModal);
 button('optionsClose',closeModal);
@@ -629,6 +631,11 @@ function frame(now){
  requestAnimationFrame(frame);
 }
 function init(){
+ try{
+  const raw=JSON.parse(localStorage.getItem('ua-settings-v1')||'null');
+  if(raw)for(const key of Object.keys(settingsDefault))
+   if(typeof raw[key]==='boolean')settingsDefault[key]=raw[key];
+ }catch(e){}
  const options=$('originSelect');options.innerHTML=F.map(f=>'<option value="'+f.id+'">'+esc(f.name)+'</option>').join('');
  options.value='6';
  $('game').classList.add('hidden');showScreen('screenMenu');refreshContinue();
