@@ -203,6 +203,18 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 .campaign-battle .map-guide{display:none}
 .campaign-battle .campaign-battle-hud{position:relative;z-index:8}
 @media(max-width:720px){.campaign-battle-hud{font-size:11px;padding:6px}.campaign-hero-help{font-size:10px}}
+.campaign-touch-controls{display:none}
+@media(pointer:coarse), (max-width:850px){
+ .campaign-battle .campaign-touch-controls{display:flex;position:fixed;bottom:54px;left:14px;right:14px;z-index:25;justify-content:space-between;align-items:end;pointer-events:none}
+ .campaign-touch-controls button{pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;background:#173729d9;border:2px solid #d2ba83aa;border-radius:12px;color:#ffe9bc;box-shadow:0 5px 16px #0009;font:bold 15px system-ui}
+ .campaign-dpad{display:grid;grid-template-columns:repeat(3,49px);grid-template-rows:repeat(2,49px);gap:5px}
+ .campaign-dpad .up{grid-column:2;grid-row:1}.campaign-dpad .left{grid-column:1;grid-row:2}
+ .campaign-dpad .down{grid-column:2;grid-row:2}.campaign-dpad .right{grid-column:3;grid-row:2}
+ .campaign-combat-pad{display:flex;gap:12px}
+ .campaign-combat-pad button{width:70px;height:70px;border-radius:50%}
+ .campaign-combat-pad .attack{background:#77492fd9}
+}
+@media(max-width:440px){.campaign-dpad{grid-template-columns:repeat(3,40px);grid-template-rows:repeat(2,40px);gap:4px}.campaign-combat-pad{gap:7px}.campaign-combat-pad button{width:58px;height:58px;font-size:11px}}
 </style>
 </head>
 <body>
@@ -218,7 +230,19 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
   <div><strong id="campaignBattleName">⚔ Campaign battle</strong><span id="campaignBattleNumbers">Preparing your soldiers</span></div>
   <div class="campaign-hero-help"><b>YOU FIGHT:</b> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move hero · <kbd>SPACE</kbd> strike · <kbd>SHIFT</kbd> guard · <kbd>ARROWS</kbd> pan · 👑 Commanders controls your army</div>
   <button id="campaignBattleRetreat" type="button">↩ Retreat with survivors</button>
-</div> <main class="board" id="board" aria-label="Tactical campaign battlefield with player hero and persistent roster">
+</div> <div class="campaign-touch-controls" id="campaignTouchControls" aria-label="Touch controls for your character">
+  <div class="campaign-dpad">
+   <button type="button" data-hero-key="w" class="up" aria-label="Move forward">▲</button>
+   <button type="button" data-hero-key="a" class="left" aria-label="Move left">◀</button>
+   <button type="button" data-hero-key="s" class="down" aria-label="Move backward">▼</button>
+   <button type="button" data-hero-key="d" class="right" aria-label="Move right">▶</button>
+  </div>
+  <div class="campaign-combat-pad">
+   <button type="button" data-hero-key="shift" class="guard" aria-label="Hold shield guard">🛡 GUARD</button>
+   <button type="button" data-hero-key=" " class="attack" aria-label="Attack with weapon">⚔ STRIKE</button>
+  </div>
+ </div>
+ <main class="board" id="board" aria-label="Tactical campaign battlefield with player hero and persistent roster">
     <canvas id="field"></canvas>
     <canvas id="minimap" width="180" height="102" aria-label="Battlefield minimap: touch or click to pan"></canvas>
     <div class="map-guide">3× LARGER WORLD · DRAG TO PAN · MINIMAP TO TRAVEL</div>
@@ -2089,6 +2113,25 @@ document.querySelector('#reset').addEventListener('click',populate);
  });
  document.querySelector('#battleOutcomeRestart').addEventListener('click',()=>
   campaignMode?returnCampaign(battleOutcome?.winner||'retreat'):populate());
+ document.querySelectorAll('[data-hero-key]').forEach(button=>{
+  const key=button.dataset.heroKey;
+  const press=e=>{
+   if(!campaignMode)return;
+   e.preventDefault();
+   campaignHeroKeys.add(key);
+   if(key===' '&&commanders.friend&&!commanders.friend.dead){
+    const h=commanders.friend;
+    const target=chooseTarget(h).target;
+    if(target)beginAttack(h,target);
+   }
+   if(button.setPointerCapture&&e.pointerId!=null)button.setPointerCapture(e.pointerId);
+  };
+  const release=e=>{if(e?.preventDefault)e.preventDefault();campaignHeroKeys.delete(key)};
+  button.addEventListener('pointerdown',press);
+  button.addEventListener('pointerup',release);
+  button.addEventListener('pointercancel',release);
+  button.addEventListener('lostpointercapture',release);
+ });
  document.querySelector('#campaignBattleRetreat').addEventListener('click',()=>{
   if(!campaignMode)return;
   if(!battleOutcome){
