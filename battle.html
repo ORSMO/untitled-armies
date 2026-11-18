@@ -2012,7 +2012,9 @@ window.addEventListener('keydown',e=>{
 function avgStress(){const live=foes.filter(s=>!s.dead&&!s.routed);return live.length?Math.round(live.reduce((a,s)=>a+s.stress,0)/live.length):0;}
  function avgStamina(){const active=friends.filter(s=>!s.dead&&!s.routed);return active.length?Math.round(active.reduce((a,s)=>a+s.stamina,0)/active.length):0;}
 function updateUI(){ui.select.setAttribute('aria-pressed',selected?'true':'false');ui.label.textContent=selected?'Deselect':'Select';ui.orders.classList.toggle('is-hidden',!selected);ui.status.textContent=battleOutcome?(battleOutcome.winner==='friend'?'VICTORY':battleOutcome.winner==='foe'?'DEFEAT':'DRAW'):(Object.values(generalOrders).some(Boolean)?'GENERAL':('AI '+commanderBrains.friend.phase.toUpperCase()));orderButtons.forEach(b=>b.classList.toggle('active',selected&&b.id===mode));const alive=friends.filter(s=>!s.dead&&!s.routed).length,broken=friends.filter(s=>s.broken&&!s.routed).length;
- ui.count.textContent=alive+' SOLDIERS';ui.remaining.textContent=alive+' / 50';ui.enemyCount.textContent=foes.filter(s=>!s.dead&&!s.routed).length+' / 50';ui.stress.textContent=realisticBattle?Math.round(friends.reduce((n,u)=>n+u.stress,0)/Math.max(1,friends.length))+'%':avgStress()+'%';ui.stamina.textContent=avgStamina()+'%';
+ ui.count.textContent=alive+' SOLDIERS';ui.remaining.textContent=alive+' / '+(campaignMode?friends.length:50);
+ ui.enemyCount.textContent=foes.filter(s=>!s.dead&&!s.routed).length+
+  ' / '+(campaignMode?foes.length:50);ui.stress.textContent=realisticBattle?Math.round(friends.reduce((n,u)=>n+u.stress,0)/Math.max(1,friends.length))+'%':avgStress()+'%';ui.stamina.textContent=avgStamina()+'%';
  let status=({idle:'Drag to explore · select troops to give orders',attack:'Attacking with varied weapon reach and timed strikes',defend:'Holding formation and fighting nearby enemies',stop:'Standing still (your troops cannot panic)',retreat:'Ordered retreat toward your side',move:'Marching to your chosen position',form:'Reforming into '+formationType+' formation'}[mode]||'');
  if(broken)status=broken+' soldier'+(broken>1?'s are':' is')+' panicking and fleeing!';
  ui.hint.textContent=enemyMovePending?'🔴 TAP BATTLEFIELD TO MOVE ENEMY ARMY':
@@ -3641,6 +3643,14 @@ function drawUnit(s){if(s.routed)return;
  // moves their actual battlefield position smoothly over multiple frames.
  const lean=s.impactLean*2.7;
  const x=s.x-Math.cos(s.faceAngle)*lean,y=s.y+bob-Math.sin(s.faceAngle)*lean;
+ if(s.isPlayerHero){
+  ctx.strokeStyle=s.dead?'#a6756b':'#ffda84';
+  ctx.lineWidth=3.6;ctx.beginPath();ctx.arc(x,y,24,0,Math.PI*2);ctx.stroke();
+  ctx.textAlign='center';ctx.textBaseline='bottom';
+  ctx.font='bold 16px system-ui';ctx.lineWidth=3;ctx.strokeStyle='#07140f';
+  ctx.strokeText(s.dead?'FALLEN':'YOU',x,y-43);
+  ctx.fillStyle='#ffe3a3';ctx.fillText(s.dead?'FALLEN':'YOU',x,y-43);
+ }
  if(s.isCommander){
   // Distinct gold command ring and battlefield banner, even on foot.
   ctx.strokeStyle=s.team==='friend'?'#ffe69b':'#ffb4a6';
@@ -3935,7 +3945,10 @@ if(campaignMode){
  document.querySelector('#battleOutcomeRestart').textContent='↩ Return to Campaign';
  document.querySelector('#terrainPreset').value=campaignPending.terrain||'plain';
  terrainPreset=campaignPending.terrain||'plain';
-}else document.querySelector('#campaignBattleHUD').style.display='none';
+}else{
+ document.querySelector('#campaignBattleHUD').style.display='none';
+ document.querySelector('#battleOutcomeRestart').textContent='↻ Fight another battle';
+}
 window.addEventListener('resize',resize,{passive:true});if('ResizeObserver' in window)new ResizeObserver(resize).observe(board);resize();requestAnimationFrame(frame);
 })();
 </script>
