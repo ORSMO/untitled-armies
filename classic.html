@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V3.3</title>
+<title>Untitled Armies — V3.4</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -192,7 +192,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
     <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Armor · Shields · Physical combat</p></div></div>
     <div class="top-actions">
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 3.3">V3.3</div>
+      <div class="build" aria-label="Version 3.4">V3.4</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
@@ -308,6 +308,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
       <tr><td>Crossbow</td><td>12</td><td>1125</td><td>1.90s</td><td>Heavy piercing</td></tr>
       <tr><td>Javelins</td><td>6</td><td>624</td><td>1.05s</td><td>Heavy piercing</td></tr>
        <tr><td>Compact horse bow</td><td>24</td><td>710</td><td>0.52s</td><td>Light piercing</td></tr></tbody></table>
+      <p><strong>BATTLEFIELDS &amp; TERRAIN (V3.4):</strong> Use the <strong>Battlefield Terrain</strong> selector in the footer. Choose open ground, a hill, forest, mud, shallow river, rocks or mixed terrain. Hills give higher-ground melee and ranged advantages; forest conceals troops against missile fire; mud and rivers slow movement and tire soldiers and horses; solid rocks block physical movement and low-flying arrows. Cavalry needs clear dry ground to build up a strong charge, and all terrain interacts with existing formations and morale. Switching the terrain resets the current test. The default open plain preserves earlier fairness tests.</p>
       <p><strong>HORSE MOVEMENT (V3.1):</strong> Mounted troops now accelerate and brake instead of instantly changing speed or direction. A horse turns much wider at full gallop, especially when heavily armored or wounded. A mounted charge requires real forward closing speed, and body-to-body collisions absorb momentum. Cavalry ride through an enemy on a committed attack line, break away when surrounded, and regroup for another charge. Mounted archers try to ride out of close threats to recover their shooting distance. Gait animation and hoof dust show speed; the amber bar is horse health and the smaller turquoise bar is horse stamina. Rider and horse health remain separate. A fallen horse cannot be instantly remounted.</p>
       <p><strong>SQUADS & COMMANDERS (V3.2):</strong> Infantry now maintain lanes while advancing and correct drifting ranks. Foot archers stay behind a friendly infantry screen when one exists. Commanders keep a small infantry reserve behind the line, then commit it when troops are under pressure. When enemy archers expose a wing, cavalry first ride around the flank before attacking; mounted movement still uses real acceleration and turning. Commanders display cohesion and reserve status. <strong>Manual General orders always win:</strong> a selected Infantry, Archer, Cavalry or Horse Archer group follows your standing orders until you Return to AI. These are battlefield test mechanics, not a campaign system.</p>
       <p><strong>MORALE &amp; BATTLE OUTCOMES (V3.3):</strong> Use the <strong>🛡 Training mode / ⚔ Real battle</strong> switch in the footer. Switching restarts the current test. Training keeps invulnerable friendly troops and recurring enemies; Real Battle allows both armies to die or be incapacitated, prevents reinforcements, and enables casualty morale, fleeing, surrender and commander-led rallies. A battle ends when one army can no longer fight; an automatic report shows fatalities, incapacitated, routed, surrendering and still-broken soldiers, plus each commander's fate. Press <strong>Fight another battle</strong> to retry with the same rules.</p>
@@ -412,7 +413,16 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
  </section>
   <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> <span id="stressCaption">Enemy stress</span> <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="commanderButton" class="small-btn" aria-expanded="false" aria-controls="commanderPanel">👑 Commanders</button> <button type="button" id="enemyButton" class="small-btn" aria-expanded="false" aria-controls="enemyPanel">🔴 Enemy orders</button>
     <button type="button" id="infiniteAmmoButton" class="small-btn" aria-pressed="false" title="Unlimited arrows, bolts and javelins for both armies">∞ Ammo: OFF</button>
-    <button type="button" id="equipmentButton" class="small-btn" aria-expanded="false" aria-controls="equipmentPanel">⚙ Test gear</button> <button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="battleRules" class="small-btn" aria-pressed="false" title="Training: immortal friendlies and enemy reinforcements. Real battle: vulnerable troops, no respawns, morale, surrender and victory. Switching resets the test.">🛡 Training mode</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
+    <button type="button" id="equipmentButton" class="small-btn" aria-expanded="false" aria-controls="equipmentPanel">⚙ Test gear</button> <button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button>
+ <select id="terrainPreset" class="small-btn" aria-label="Battlefield terrain" title="Choose the battlefield terrain; changing terrain restarts this combat test">
+ <option value="plain">🌾 Open plain</option>
+ <option value="ridge">⛰️ Hill and ridge</option>
+ <option value="forest">🌲 Forest</option>
+ <option value="mud">🟤 Mud</option>
+ <option value="river">🌊 Shallow river</option>
+ <option value="rocks">🪨 Rock outcrop</option>
+ <option value="mixed">🗺️ Mixed terrain</option>
+ </select> <button type="button" id="battleRules" class="small-btn" aria-pressed="false" title="Training: immortal friendlies and enemy reinforcements. Real battle: vulnerable troops, no respawns, morale, surrender and victory. Switching resets the test.">🛡 Training mode</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
 </div>
 <div id="rotateNotice" role="status" aria-live="polite">
  <div class="rotate-icon" aria-hidden="true">↻</div>
@@ -964,7 +974,14 @@ function determineBattleOutcome(){
  refreshBattleRulesUI();updateUI();
  return battleOutcome;
 }
+document.querySelector('#terrainPreset').addEventListener('change',e=>{
+ terrainPreset=terrainModes.includes(e.target.value)?e.target.value:'plain';
+ populate();
+ ui.hint.textContent='Battlefield: '+terrainLabels[terrainPreset]+
+  ' · Terrain affects movement, cover and combat.';
+});
 function populate(){
+ setTerrain(terrainPreset);
   t=0;battleOutcome=null;battleCollapseSince={friend:null,foe:null};refreshBattleRulesUI();
   nextId=0;nextSwingId=1;nextEngagementPlan=0;formationType='block';enemyFormationType='block';enemyCommand='auto';enemyMovePending=false;setFormationMenu(false);
   const a=home('friend'),b=home('foe');
@@ -2049,7 +2066,10 @@ function applyWeaponImpact(attacker,target,a){
  if(parry?.parried)return true;
  const incomingMomentum=a.momentum;
  const shield=shieldImpact(attacker,target,a),damageType=a.move.damageType;
- const afterShield=a.baseDamage*(1-shield.block);
+ const elevationAdvantage=a.projectile?0:clamp(
+  (terrainAt(attacker.x,attacker.y).elevation-
+   terrainAt(target.x,target.y).elevation)*.09,-.15,.15);
+ const afterShield=a.baseDamage*(1+elevationAdvantage)*(1-shield.block);
  const actual=mitigatedDamage(afterShield,target.armor,damageType);
  const weapon=a.projectile?rangedProfiles[a.projectile]:weaponProfiles[attacker.weapon],heavy=a.move.style==='heavy';
  // Physical hits and blocks happen regardless of friendly health immunity.
@@ -2239,6 +2259,9 @@ function updateShieldGuard(s,dt){
 // over time, unlike foot soldiers who can change direction immediately.
 const horseMotion={accel:127,brake:173,coast:133,turnLow:3.15,turnFast:1.00};
 function moveMount(s,x,y,dt,mult=1){
+ const goal=terrainSteer(s,x,y);x=goal.x;y=goal.y;
+ const ground=terrainSpeed(s);
+ mult*=ground;
  const dx=x-s.x,dy=y-s.y,distance=Math.hypot(dx,dy);
  const barding=horseArmorProfiles[s.horseArmor]||horseArmorProfiles.none;
  const agility=clamp(1-barding.weight*.083, .69,1);
@@ -2266,6 +2289,8 @@ function moveMount(s,x,y,dt,mult=1){
  const change=wantedSpeed>speed?acceleration:braking;
  // Changing orders or desired speed cannot instantly erase inertia.
  s.mountSpeed=Math.max(0,speed+clamp(wantedSpeed-speed,-change*dt,change*dt));
+ // Deep mud and shallow rivers bleed gallop momentum even after entry.
+ if(ground<.95)s.mountSpeed=Math.min(s.mountSpeed,Math.max(11,maxSpeed));
  const step=s.mountSpeed*dt;
  const nx=clamp(s.x+Math.cos(s.mountHeading)*step,11,W-11);
  const ny=clamp(s.y+Math.sin(s.mountHeading)*step,11,H-11);
@@ -2276,8 +2301,131 @@ function moveMount(s,x,y,dt,mult=1){
  if(step>2&&traveled<step*.45)s.mountSpeed=Math.min(s.mountSpeed,12);
  s.facing=Math.cos(s.mountHeading)>=0?1:-1;
 }
+// V3.4 deterministic terrain is data shared by Classic and Battle Lab.
+// The eventual campaign can generate these same battlefield records.
+let terrainPreset='plain',terrainZones=[];
+const terrainModes=['plain','ridge','forest','mud','river','rocks','mixed'];
+const terrainLabels={plain:'Open plain',ridge:'Hill and ridge',forest:'Forest',mud:'Muddy ground',river:'Shallow river',rocks:'Rocky outcrop',mixed:'Mixed terrain'};
+function setTerrain(preset){
+ terrainPreset=terrainModes.includes(preset)?preset:'plain';
+ const z=(kind,cx,cy,rx,ry)=>({kind,x:W*cx,y:H*cy,rx:Math.max(12,W*rx),ry:Math.max(12,H*ry)});
+ const river=z('water',.51,.51,.080,.73);
+ terrainZones=terrainPreset==='ridge'?[z('hill',.31,.52,.25,.46)]:
+ terrainPreset==='forest'?[z('forest',.52,.49,.21,.47)]:
+ terrainPreset==='mud'?[z('mud',.49,.49,.23,.46)]:
+ terrainPreset==='river'?[river]:
+ terrainPreset==='rocks'?[z('rock',.50,.51,.075,.22)]:
+ terrainPreset==='mixed'?[
+  z('hill',.30,.48,.21,.41),z('forest',.64,.32,.15,.26),
+  z('mud',.52,.73,.18,.18),z('rock',.50,.39,.045,.13)
+ ]:[];
+}
+function ellipseStrength(x,y,z){
+ const a=(x-z.x)/z.rx,b=(y-z.y)/z.ry,d=a*a+b*b;
+ return d<1?1-d:0;
+}
+function terrainAt(x,y){
+ let elevation=0,forest=0,mud=0,water=0;
+ for(const z of terrainZones){
+  if(z.kind==='rock')continue;
+  const influence=ellipseStrength(x,y,z);
+  if(z.kind==='hill')elevation=Math.max(elevation,2*influence);
+  else if(z.kind==='forest')forest=Math.max(forest,influence);
+  else if(z.kind==='mud')mud=Math.max(mud,influence);
+  else if(z.kind==='water')water=Math.max(water,influence);
+ }
+ return {elevation,forest,mud,water};
+}
+function terrainSpeed(s,x=s.x,y=s.y){
+ const a=terrainAt(x,y),horse=isCavalry(s);
+ return clamp(1-a.forest*(horse?.34:.15)-a.mud*(horse?.57:.34)-
+  a.water*(horse?.65:.43),.27,1);
+}
+function terrainFatigue(s,x=s.x,y=s.y){
+ const a=terrainAt(x,y);
+ return 1+a.mud*(isCavalry(s)?1.8:1.05)+a.water*(isCavalry(s)?2.1:1.25);
+}
+// Return parametric first contact with an ellipse on a path (0..1).
+function ellipseHit(ax,ay,bx,by,z,extra=0){
+ const rx=z.rx+extra,ry=z.ry+extra;
+ const x=(ax-z.x)/rx,y=(ay-z.y)/ry;
+ const dx=(bx-ax)/rx,dy=(by-ay)/ry;
+ const A=dx*dx+dy*dy,B=2*(x*dx+y*dy),C=x*x+y*y-1;
+ if(C<=0)return 0;
+ if(A<1e-9)return null;
+ const disc=B*B-4*A*C;
+ if(disc<0)return null;
+ const t=(-B-Math.sqrt(disc))/(2*A);
+ return t>=0&&t<=1?t:null;
+}
+function terrainSteer(s,x,y){
+ for(const z of terrainZones){
+  if(z.kind!=='rock')continue;
+  const clearance=isCavalry(s)?13:9;
+  const hit=ellipseHit(s.x,s.y,x,y,z,clearance);
+  if(hit===null)continue;
+  // Choose a side deterministically and continue beyond the outcrop.
+  const side=s.y<z.y? -1:s.y>z.y?1:(s.id%2===0?-1:1);
+  const nearX=z.x+(s.x<z.x?-.30: .30)*(z.rx+clearance);
+  const nearY=z.y+side*(z.ry+clearance+16);
+  return {x:clamp(nearX,15,W-15),y:clamp(nearY,15,H-15)};
+ }
+ return {x,y};
+}
+function terrainResolve(s,oldX,oldY){
+ for(const z of terrainZones){
+  if(z.kind!=='rock')continue;
+  const rx=z.rx+(isCavalry(s)?12:8),ry=z.ry+(isCavalry(s)?12:8);
+  const dx=(s.x-z.x)/rx,dy=(s.y-z.y)/ry;
+  const d=Math.hypot(dx,dy);
+  if(d<1){
+   // A solid outcrop cannot be crossed by a soldier or a horse.
+   const ox=(oldX-z.x)/rx,oy=(oldY-z.y)/ry,od=Math.hypot(ox,oy);
+   const nx=od>.001?ox/od:d>.001?dx/d:s.team==='friend'?-1:1;
+   const ny=od>.001?oy/od:d>.001?dy/d:0;
+   s.x=clamp(z.x+nx*rx*1.012,11,W-11);
+   s.y=clamp(z.y+ny*ry*1.012,11,H-11);
+   if(isCavalry(s))s.mountSpeed=Math.min(s.mountSpeed||0,18);
+  }
+ }
+}
+function terrainRangedFactor(attacker,target){
+ const a=terrainAt(attacker.x,attacker.y),d=terrainAt(target.x,target.y);
+ // Height helps aim and piercing power; forest gives concealment.
+ return {scatter:clamp(1+(d.elevation-a.elevation)*.25+
+   d.forest*.72-a.elevation*.10,.65,1.9),
+   damage:clamp(1+(a.elevation-d.elevation)*.10-d.forest*.22,.64,1.22)};
+}
+function drawTerrain(g){
+ for(const z of terrainZones){
+  g.save();g.translate(z.x,z.y);g.scale(z.rx,z.ry);
+  const fill={hill:'#90a87f5b',forest:'#142f2399',mud:'#6654439e',water:'#598ba9a6',rock:'#697776ed'}[z.kind];
+  g.fillStyle=fill;g.strokeStyle=z.kind==='water'?'#a1cde8b6':'#d0debf42';
+  g.lineWidth=1.5/Math.max(10,z.rx);g.beginPath();g.ellipse(0,0,1,1,0,0,Math.PI*2);g.fill();g.stroke();g.restore();
+  if(z.kind==='hill'){
+   for(let k=1;k<=3;k++){
+    g.beginPath();g.ellipse(z.x,z.y,z.rx*(1-k*.22),z.ry*(1-k*.22),0,0,Math.PI*2);
+    g.strokeStyle='#e5f0c44d';g.lineWidth=1.3;g.stroke();
+   }
+  }else if(z.kind==='forest'){
+   for(let k=0;k<22;k++){
+    const a=k*2.39996,r=Math.sqrt((k+.5)/23);
+    const x=z.x+Math.cos(a)*z.rx*r*.91,y=z.y+Math.sin(a)*z.ry*r*.91;
+    g.fillStyle='#316044c2';g.beginPath();g.arc(x,y,Math.min(10,z.rx*.10),0,Math.PI*2);g.fill();
+   }
+  }else if(z.kind==='rock'){
+   g.fillStyle='#a4b0a8c7';g.beginPath();g.ellipse(z.x-z.rx*.13,z.y-z.ry*.10,z.rx*.66,z.ry*.70,-.23,0,Math.PI*2);g.fill();
+  }else if(z.kind==='water'){
+   g.strokeStyle='#cce8ed55';g.lineWidth=2;
+   for(let k=-2;k<=2;k++){g.beginPath();g.moveTo(z.x-z.rx*.70,z.y+k*z.ry*.27);
+    g.lineTo(z.x+z.rx*.64,z.y+k*z.ry*.27+4);g.stroke();}
+  }
+ }
+}
 function approach(s,x,y,dt,mult=1){
  if(isCavalry(s))return moveMount(s,x,y,dt,mult);
+ const goal=terrainSteer(s,x,y);x=goal.x;y=goal.y;
+ mult*=terrainSpeed(s);
  const dx=x-s.x,dy=y-s.y,dist=Math.hypot(dx,dy);
  if(dist<.45)return;
  const n=Math.min(dist,s.speed*mult*dt);
@@ -2332,7 +2480,10 @@ function separateSoldiers(){
    }
   }
   // Keep normal soldiers inside the battlefield; fleeing troops can leave it.
-  for(const s of all){if(!s.broken){s.x=clamp(s.x,11,W-11);s.y=clamp(s.y,11,H-11);}}
+  for(const s of all){if(!s.broken){s.x=clamp(s.x,11,W-11);s.y=clamp(s.y,11,H-11);}
+   // Separation of overlapping formations must not push anyone through rock.
+   terrainResolve(s,s.x,s.y);
+  }
  }
 }
 // Bow/crossbow/javelin combat. Projectiles are physical entities: they travel,
@@ -2377,17 +2528,18 @@ function launchProjectile(s,target){
  // a tiny angular error used to turn into a huge miss at long range.
  // Experience and familiarity both tighten the grouping; the projectile
  // still flies straight after release, and moving targets remain harder.
+ const groundAim=terrainRangedFactor(s,target);
  const scatter=(5+targetDistance*.0045+
   (100-skill)*(.115+targetDistance*.00012)+
   (100-familiarity)*(.10+targetDistance*.00010))*
-  (s.ranged==='horsebow'?(1.10+s.gallop*.48):1);
+  (s.ranged==='horsebow'?(1.10+s.gallop*.48):1)*groundAim.scatter;
  const lateralError=(rnd(s.id*197+s.shotCount*139+41)-.5)*2*scatter;
  const angle=Math.atan2(predictedY-s.y,predictedX-s.x)+
   Math.atan2(lateralError,targetDistance);
  const ox=s.x+Math.cos(angle)*12,oy=s.y+Math.sin(angle)*12;
  const projectile={
   id:-(s.id*64+s.shotCount+1),shooter:s,shooterId:s.id,team:s.team,
-  kind:s.ranged,damage:profile.damage,momentum:profile.momentum,
+  kind:s.ranged,damage:profile.damage*groundAim.damage,momentum:profile.momentum,
   x:ox,y:oy,vx:Math.cos(angle)*profile.speed,vy:Math.sin(angle)*profile.speed,
   speed:profile.speed,range:profile.range,traveled:0,
   loft:profile.loft,arcDistance:Math.max(1,Math.hypot(predictedX-ox,predictedY-oy))
@@ -2496,6 +2648,24 @@ function updateProjectiles(dt){
    const height=projectileHeightAt(p,p.traveled+travel*u);
    if(height>missileBodyHeight)continue;
    if(u<at){at=u;closest=other;}
+  }
+  // Rock formations intercept low missiles. High-arcing shots may clear
+  // the outcrop, unlike flat javelins or descending bolts.
+  let stoneAt=Infinity;
+  for(const z of terrainZones){
+   if(z.kind!=='rock')continue;
+   const intercept=ellipseHit(x1,y1,x2,y2,z,1.5);
+   if(intercept!==null&&intercept<stoneAt&&
+      projectileHeightAt(p,p.traveled+travel*intercept)<42)
+    stoneAt=intercept;
+  }
+  if(stoneAt<at){
+   p.x=x1+dx*stoneAt;p.y=y1+dy*stoneAt;
+   groundedShots.push({x:p.x,y:p.y,angle:Math.atan2(p.vy,p.vx),
+    kind:p.kind,life:1.7});
+   if(groundedShots.length>125)groundedShots.splice(0,groundedShots.length-125);
+   const stat=combatLabStats(p.team);if(stat){stat.rangedMisses++;stat.terrainBlocks++;}
+   continue;
   }
   if(closest){
    p.x=x1+dx*at;p.y=y1+dy*at;
@@ -2776,14 +2946,17 @@ function step(dt){
   if(command!=='stop'||isCavalry(s))
    approach(s,moveX,moveY,dt,command==='stop'?0:
     pace*disciplineControl*fatiguePace*loadPace*fightingPace*mountPace);
-  s.stamina=clamp(s.stamina-Math.hypot(s.x-oldX,s.y-oldY)*(.042+equipment*.004),0,s.maxStamina);
+  terrainResolve(s,oldX,oldY);
+  s.stamina=clamp(s.stamina-Math.hypot(s.x-oldX,s.y-oldY)*
+   (.042+equipment*.004)*terrainFatigue(s),0,s.maxStamina);
    s.vx=(s.x-oldX)/Math.max(.001,dt);s.vy=(s.y-oldY)/Math.max(.001,dt);
   // Mounted soldiers conserve horse stamina at a walk, and tire at a gallop.
   // Stopped or dismounted riders cannot perform horse-impact charges.
   if(isCavalry(s)){
    const speed=Math.hypot(s.vx,s.vy);
    s.horseStamina=clamp(s.horseStamina+
-    dt*(speed>52?-7.4:speed<18?13:2.5),0,100);
+    dt*(speed>52?-7.4:speed<18?13:2.5)-
+    dt*(terrainFatigue(s)-1)*2.0,0,100);
    // Charge momentum reflects *actual forward speed* and horse fatigue.
    const strideFactor=clamp((speed-34)/68,0,1);
    s.gallop=clamp(s.gallop+clamp(
@@ -2885,6 +3058,7 @@ function background(){ctx.fillStyle='#203b30';ctx.fillRect(0,0,W,H);const grad=c
  ctx.beginPath();for(let x=.5;x<=W;x+=cell){ctx.moveTo(x,0);ctx.lineTo(x,H)}for(let y=.5;y<=H;y+=cell){ctx.moveTo(0,y);ctx.lineTo(W,y)}ctx.lineWidth=.7;ctx.strokeStyle='#c3e2b22a';ctx.stroke();
  ctx.strokeStyle='#d9f5cd24';ctx.setLineDash([3,8]);ctx.beginPath();ctx.moveTo(W*.5,0);ctx.lineTo(W*.5,H);ctx.stroke();ctx.setLineDash([]);
  ctx.fillStyle='#bdffb508';for(let i=0;i<65;i++)ctx.fillRect((i*137.3+21)%W,(i*283.7+37)%H,1.5,2);
+ drawTerrain(ctx);
 }
 function weaponPose(s){
  const w=weaponProfiles[s.weapon],a=s.attack;
@@ -3129,6 +3303,15 @@ function drawMinimap(){
   mctx.clearRect(0,0,mw,mh);
   mctx.fillStyle='#152b24';mctx.fillRect(0,0,mw,mh);
   mctx.strokeStyle='#6e957d';mctx.lineWidth=2;mctx.strokeRect(1,1,mw-2,mh-2);
+  // Terrain also appears on the strategic minimap, so the General can
+  // identify slopes, cover and obstacles before issuing a formation order.
+  for(const z of terrainZones){
+   mctx.fillStyle={hill:'#9fc38695',forest:'#28664aaa',mud:'#78644caa',
+    water:'#65a8ceae',rock:'#bdc3c0e0'}[z.kind]||'#627d65';
+   mctx.beginPath();
+   mctx.ellipse(z.x/W*mw,z.y/H*mh,Math.max(2,z.rx/W*mw),
+    Math.max(2,z.ry/H*mh),0,0,Math.PI*2);mctx.fill();
+  }
   for(const s of foes){if(s.routed||s.dead)continue;mctx.fillStyle='#e47b74';mctx.fillRect(s.x/W*mw-2,s.y/H*mh-2,4,4);}
   for(const s of friends){if(s.routed||s.dead)continue;mctx.fillStyle='#65e4a5';mctx.fillRect(s.x/W*mw-2,s.y/H*mh-2,4,4);}
   for(const team of ['friend','foe']){const c=commanders[team];if(!c||c.dead)continue;
