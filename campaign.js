@@ -291,6 +291,7 @@ function performSettlementAction(action,id){
  }else if(action==='rest'){
   if(p.gold<20){notify('An inn costs 20 denars.');return}
   p.gold-=20;p.hp=Math.min(100,p.hp+32);state.hour=8;state.day++;consumeFood();
+  for(const g of p.roster)g.wounded=Math.max(0,(g.wounded||0)-Math.max(2,Math.ceil(g.count*.17)));
   log('Rested at '+site.name+'.');notify('Rested, healed and started a new day.');
  }else if(action==='rumors'){
   log('Rumor: scouts report bandits on roads near '+site.name+'.');
@@ -454,8 +455,11 @@ function beginTacticalBattle(id){
  const payload={version:1,id:idToken,partyId:id,
   enemyName:partyTitle(p),strength:p.strength,
   playerName:state.player.name,playerHp:state.player.hp,
-  terrain,roster:state.player.roster.map(g=>({faction:g.faction,tier:g.tier,count:g.count}))};
- if(!payload.roster.some(g=>g.count>0)){notify('Recruit soldiers before entering a battle.');return}
+  terrain,roster:state.player.roster.map(g=>({faction:g.faction,tier:g.tier,
+   count:g.count,wounded:Math.min(g.count,g.wounded||0)}))};
+ if(!payload.roster.some(g=>g.count>g.wounded)){
+  notify('No healthy soldiers are ready. Rest at a settlement to recover troops.');return
+ }
  try{
   if(!saveGame(true))throw Error('Save failed');
   localStorage.setItem('ua-battle-pending-v1',JSON.stringify(payload));
@@ -481,8 +485,12 @@ function settleCampaignBattle(){
   else{t.count++;if(r.result==='incapacitated'||r.hp<r.maxHp*.5)t.wounded++}
   tally.set(r.group,t);
  }
- me.roster=me.roster.map((g,i)=>({...g,count:Math.min(g.count,tally.get(i)?.count||0),
-   wounded:Math.min(tally.get(i)?.wounded||0,tally.get(i)?.count||0)})).filter(g=>g.count>0);
+ me.roster=me.roster.map((g,i)=>{
+   const recovering=Math.min(g.count,g.wounded||0),active=tally.get(i)?.count||0,
+    injured=tally.get(i)?.wounded||0;
+   return {...g,count:Math.min(g.count,recovering+active),
+    wounded:Math.min(g.count,recovering+injured)};
+  }).filter(g=>g.count>0);
  const lost=Math.max(0,originalCount-rosterCount()),wounded=me.roster.reduce((n,g)=>n+(g.wounded||0),0);
  const party=partyById(result.partyId),won=result.winner==='friend';
  let reward=0,exp=0;
@@ -623,10 +631,12 @@ function landmarkAction(id){
  if(site.kind==='wayhouse'){
   if(p.gold<35){notify('You need 35 denars to rest and resupply.');return}
   p.gold-=35;p.food+=8;p.hp=Math.min(100,p.hp+12);
+  for(const g of p.roster)g.wounded=Math.max(0,(g.wounded||0)-2);
   log('Rested and resupplied at '+site.name+'.');notify('Inn: +8 provisions and restored health.');
  }else if(site.kind==='shrine'){
   if(p.gold<25){notify('An offering requires 25 denars.');return}
   p.gold-=25;p.hp=Math.min(100,p.hp+25);
+  for(const g of p.roster)g.wounded=Math.max(0,(g.wounded||0)-1);
   log('Restored your spirits at '+site.name+'.');notify('Shrine: your wounds have been tended.');
  }else if(visited){notify('You have already explored this site.');return}
  else if(site.kind==='ruins'){
@@ -723,7 +733,9 @@ function refreshUI(){
  $('statGold').textContent=p.gold.toLocaleString();$('statFood').textContent=p.food;
  $('statRenown').textContent=p.renown;$('statParty').textContent=rosterCount();
  $('healthBar').style.width=p.hp+'%';$('healthLabel').textContent=p.hp+'/100';
- $('partyRoster').innerHTML=p.roster.map(g=>'<li><span>'+esc(troopName(g))+'<small> · '+F[g.faction].name+'</small></span><b>'+g.count+'</b></li>').join('')||'<li>No soldiers</li>';
+ $('partyRoster').innerHTML=p.roster.map(g=>'<li><span>'+esc(troopName(g))+
+  '<small> · '+F[g.faction].name+
+  (g.wounded?' · '+g.wounded+' recovering':'')+'</small></span><b>'+g.count+'</b></li>').join('')||'<li>No soldiers</li>';
  $('questText').textContent=questText();
  $('logList').innerHTML=state.messages.slice(0,6).map(m=>'<li><b>Day '+m.day+':</b> '+esc(m.text)+'</li>').join('');
  $('mapCoordinates').textContent=near&&dist(p.x,p.y,near.x,near.y)<300?
@@ -879,7 +891,8 @@ function showParty(){
  const p=state.player;
  $('partyModalContent').innerHTML='<p>Your party has '+rosterCount()+' of '+MAXPARTY+' available spaces. Soldiers follow their original faction troop upgrade tree.</p>'+p.roster.map((g,i)=>{
   const upgrade=g.tier<2?' · Upgrade cost '+(g.count*(g.tier===0?75:135))+' denars':' · Elite tier';
-  return '<div class="eventbox"><b>'+g.count+' × '+esc(troopName(g))+'</b><p>'+esc(F[g.faction].name)+upgrade+'</p>'+(g.tier<2?'<button class="btn" data-upgrade="'+i+'">⬆ Promote to '+esc(F[g.faction].troops[g.tier+1])+'</button>':'')+'</div>';
+  return '<div class="eventbox"><b>'+g.count+' × '+esc(troopName(g))+'</b><p>'+esc(F[g.faction].name)+
+   (g.wounded?' · '+g.wounded+' wounded and unavailable until rested':'')+upgrade+'</p>'+(g.tier<2?'<button class="btn" data-upgrade="'+i+'">⬆ Promote to '+esc(F[g.faction].troops[g.tier+1])+'</button>':'')+'</div>';
  }).join('')+'<p class="subtle">Custom equipment and creating new troop trees unlock when founding your own faction. That campaign feature is planned, not available yet.</p>';
  openModal('screenParty');
 }
