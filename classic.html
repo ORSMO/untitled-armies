@@ -55,14 +55,15 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 .map-guide{position:absolute;z-index:3;bottom:101px;left:92px;font:700 9px system-ui;letter-spacing:.06em;color:#daefda;background:#15271fdc;border-radius:4px;padding:3px 6px;pointer-events:none}
 .formation-anchor{position:relative;display:grid;place-items:center}
 .formation-anchor.is-hidden{display:none}
-.formation-menu{position:absolute;left:calc(100% + 3px);top:50%;transform:translateY(-50%);width:174px;height:178px;z-index:10;pointer-events:auto;filter:drop-shadow(0 3px 9px #0009)}
+.formation-menu{position:absolute;left:calc(100% + 3px);top:50%;transform:translateY(-50%);width:174px;height:215px;z-index:10;pointer-events:auto;filter:drop-shadow(0 3px 9px #0009)}
 .formation-menu.is-hidden{display:none}
 .formation-option{position:absolute;min-width:73px;height:38px;padding:4px 7px;border:1px solid #719b7e;background:#1b3c30f0;color:#f0f8e7;border-radius:19px;font:800 11px/1 system-ui;cursor:pointer;touch-action:none;box-shadow:0 3px 10px #0007}
 .formation-option[data-form="line"]{left:3px;top:2px}
 .formation-option[data-form="wedge"]{left:90px;top:40px}
 .formation-option[data-form="block"]{left:90px;top:101px}
-.formation-option[data-form="column"]{left:3px;top:140px}
+.formation-option[data-form="column"]{left:3px;top:172px}
 .formation-option[data-form="spearwall"]{left:3px;top:91px}
+.formation-option[data-form="shieldwall"]{left:90px;top:160px}
 .formation-option.hover,.formation-option:focus-visible{background:#3d7956;border-color:#d9f5a9;outline:2px solid #b9ebad;outline-offset:1px}
 .formation-option.chosen{color:#b7f8c2;border-color:#8cd9a8}
 #formationBtn .dot{color:#b6f3ce}
@@ -172,6 +173,9 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 .commander-status{display:flex;justify-content:space-between;align-items:center;gap:7px;margin:10px 0 4px;
  padding:7px 9px;background:#3c3830;border-radius:7px;font-size:11px}
 .commander-status span{color:#eddfbc;font-size:10px;text-align:right}
+.commander-panel{max-height:min(82vh,740px);overflow-y:auto}
+.commander-panel .enemy-command-grid.commander-directive{grid-template-columns:repeat(2,minmax(0,1fr))}
+.commander-panel .enemy-command-grid.commander-lines{grid-template-columns:repeat(2,minmax(0,1fr))}
 .commander-panel .enemy-command-foot{flex-wrap:wrap}
 .commander-panel .enemy-command-foot button{flex:1;min-width:112px}
 .commander-panel .enemy-command-grid button[aria-pressed=true]{background:#806c39;border-color:#f1d595}
@@ -210,6 +214,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
     <button class="formation-option" type="button" data-form="block">Block</button>
     <button class="formation-option" type="button" data-form="column">Column</button>
     <button class="formation-option" type="button" data-form="spearwall">Spear wall</button>
+    <button class="formation-option" type="button" data-form="shieldwall">Shield wall</button>
    </div>
   </div>
  </aside>
@@ -866,10 +871,12 @@ function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74
 // All formation styles provide fifty unique slots; enemy formations stay as Block.
  function formation(team,cx,cy){
   const d=gap(),type=team==='friend'?formationType:enemyFormationType,positions=[];
-  if(type==='spearwall'){
-   // A shallow two-rank line across the direction of the enemy advance.
+  if(type==='spearwall'||type==='shieldwall'){
+   // Two ranks physically shield the approaching front. Spearmen require
+   // room to keep their weapon points in front; shields pack tighter.
    // Twenty-five side-by-side lanes give pikes open forward thrust lines.
-   const stride=Math.min(Math.max(22,d*.94),Math.max(8,(H-54)/24));
+   const stride=Math.min(type==='shieldwall'?Math.max(20,d*.79):Math.max(22,d*.94),
+     Math.max(8,(H-54)/24));
    const front=team==='friend'?1:-1;
    for(let i=0;i<50;i++){
     const rank=Math.floor(i/25),lane=i%25;
@@ -902,6 +909,7 @@ function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74
     const count=indices.length;if(!count)return;
     const stride=isBow?Math.max(36,d*1.40):d;
     const lanes=type==='line'?Math.min(count,25):
+      type==='spearwall'||type==='shieldwall'?Math.ceil(count/2):
       type==='column'?Math.min(count,5):Math.min(count,10);
     indices.forEach((index,j)=>{
      const column=j%lanes,row=Math.floor(j/lanes);
@@ -1612,7 +1620,7 @@ function setFormation(cx,cy){
   if(!visible)ui.formationMenu.querySelectorAll('.formation-option').forEach(b=>b.classList.remove('hover'));
  }
  function chooseFormation(type){
-  if(!selected||!['block','line','column','wedge','spearwall'].includes(type))return;
+  if(!selected||!['block','line','column','wedge','spearwall','shieldwall'].includes(type))return;
   formationType=type;setFormationMenu(false);
   const cx=friends.reduce((a,s)=>a+s.anchorX,0)/friends.length;
   const cy=friends.reduce((a,s)=>a+s.anchorY,0)/friends.length;
