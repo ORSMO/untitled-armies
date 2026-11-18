@@ -260,6 +260,7 @@ body.lab-mode .lab-area{display:flex}
       <tr><td>Crossbow</td><td>12</td><td>1125</td><td>1.90s</td><td>Heavy piercing</td></tr>
       <tr><td>Javelins</td><td>6</td><td>624</td><td>1.05s</td><td>Heavy piercing</td></tr>
        <tr><td>Compact horse bow</td><td>24</td><td>710</td><td>0.52s</td><td>Light piercing</td></tr></tbody></table>
+      <p><strong>BATTLEFIELDS &amp; TERRAIN (V3.4):</strong> Use the <strong>Battlefield Terrain</strong> selector in the footer. Choose open ground, a hill, forest, mud, shallow river, rocks or mixed terrain. Hills give higher-ground melee and ranged advantages; forest conceals troops against missile fire; mud and rivers slow movement and tire soldiers and horses; solid rocks block physical movement and low-flying arrows. Cavalry needs clear dry ground to build up a strong charge, and all terrain interacts with existing formations and morale. Switching the terrain resets the current test. The default open plain preserves earlier fairness tests.</p>
       <p><strong>HORSE MOVEMENT (V3.1):</strong> Mounted troops now accelerate and brake instead of instantly changing speed or direction. A horse turns much wider at full gallop, especially when heavily armored or wounded. A mounted charge requires real forward closing speed, and body-to-body collisions absorb momentum. Cavalry ride through an enemy on a committed attack line, break away when surrounded, and regroup for another charge. Mounted archers try to ride out of close threats to recover their shooting distance. Gait animation and hoof dust show speed; the amber bar is horse health and the smaller turquoise bar is horse stamina. Rider and horse health remain separate. A fallen horse cannot be instantly remounted.</p>
       <p><strong>REAL SQUADS (V3.2):</strong> Infantry now hold lateral formation lanes when advancing; archers try to stay behind a surviving infantry screen; cavalry stage flanking routes before attacking ranged units; a fifth of sufficiently large infantry groups remain behind as reserves until the frontline is pressured. Use the <strong>Squad Tests</strong> mode to observe six mixed-class battles with independently equipped sub-squads. Smaller fairness tests keep the original 1-to-5-soldier behavior. The simulation remains the foundation for the future campaign game.</p>
       <p><strong>MORALE &amp; OUTCOMES (V3.3):</strong> The sixth Battle Lab mode runs six scenarios where both sides can be killed, incapacitated, rout, surrender or rally. Discipline, nearby support and casualties affect morale. Each battle ends naturally when one army has no fighters willing to continue. Old Fairness, Mount, Polearm, Squad and Ranged tests keep their existing conditions so previous balance measurements remain comparable.</p>
@@ -416,7 +417,16 @@ body.lab-mode .lab-area{display:flex}
   </div>
  </div>
 </section>
-  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="equipmentButton" class="small-btn" aria-expanded="false" aria-controls="equipmentPanel">⚙ Test gear</button> <button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
+  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> Enemy stress <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="equipmentButton" class="small-btn" aria-expanded="false" aria-controls="equipmentPanel">⚙ Test gear</button> <button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button>
+ <select id="terrainPreset" class="small-btn" aria-label="Battlefield terrain" title="Choose the battlefield terrain; changing terrain restarts this combat test">
+ <option value="plain">🌾 Open plain</option>
+ <option value="ridge">⛰️ Hill and ridge</option>
+ <option value="forest">🌲 Forest</option>
+ <option value="mud">🟤 Mud</option>
+ <option value="river">🌊 Shallow river</option>
+ <option value="rocks">🪨 Rock outcrop</option>
+ <option value="mixed">🗺️ Mixed terrain</option>
+ </select> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
 </div>
 <div id="rotateNotice" role="status" aria-live="polite">
  <div class="rotate-icon" aria-hidden="true">↻</div>
@@ -896,7 +906,13 @@ function focusArmy(){
   camera.x=clamp(h.x-VW*.37,0,Math.max(0,W-VW));
   camera.y=clamp(h.y-VH*.51,0,Math.max(0,H-VH));
  }
- function populate(){
+ document.querySelector('#terrainPreset').addEventListener('change',e=>{
+ terrainPreset=terrainModes.includes(e.target.value)?e.target.value:'plain';
+ populate();
+ ui.hint.textContent='Battlefield: '+terrainLabels[terrainPreset]+
+  ' · Terrain affects movement, cover and combat.';
+});
+function populate(){
  setTerrain(terrainPreset);
   nextId=0;nextSwingId=1;nextEngagementPlan=0;formationType='block';setFormationMenu(false);
   const a=home('friend'),b=home('foe');
