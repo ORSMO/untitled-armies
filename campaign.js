@@ -60,6 +60,7 @@ function generateParties(){
 }
 function startCampaign(){
  modalStack=[];
+ try{localStorage.removeItem('ua-battle-pending-v1');localStorage.removeItem('ua-battle-result-v1')}catch(e){}
  const name=($('newName').value||'Wanderer').trim().slice(0,28)||'Wanderer';
  const origin=clamp(Number($('originSelect').value)||0,0,9);
  const background=$('backgroundSelect').value;
@@ -105,7 +106,9 @@ function loadGame(){
      }
     }}
   camera.zoom=clamp(raw.zoom||.47,.12,1.9);resetView();$('game').classList.remove('hidden');showScreen(null);resize();
-  selected={type:'land'};log('Campaign resumed. Your journey continues.');refreshUI();notify('Campaign loaded.');return true;
+  selected={type:'land'};log('Campaign resumed. Your journey continues.');
+  const returned=settleCampaignBattle();
+  refreshUI();if(!returned)notify('Campaign loaded.');return true;
  }catch(e){notify('Could not load this campaign save.');return false}
 }
 function showMenu(){
@@ -824,6 +827,12 @@ button('btnParty',showParty);button('btnCharacter',showCharacter);button('btnFac
 button('btnSidebar',()=>$('sidebar').classList.toggle('mobile-hide'));
 button('btnInspect',()=>$('inspector').classList.toggle('mobile-hide'));
 button('partyClose',closeModal);
+button('aftermathContinue',()=>{showScreen(null);inspectorDirty=true;refreshUI()});
+button('trackingCancel',()=>clearPursuit());
+$('encounterActions').addEventListener('click',e=>{
+ const target=e.target.closest('[data-encounter-act]');
+ if(target&&!target.disabled)handleEncounterAction(target.dataset.encounterAct);
+});
 button('characterClose',closeModal);
 button('btnZoomIn',()=>zoomAt(1.32));
 button('btnZoomOut',()=>zoomAt(1/1.32));
@@ -895,7 +904,15 @@ function frame(now){
  if(state&&!menuOpen){
   if(!state.paused){
    stepTravel(dt);stepParties(dt);
-   if(focus&&state.options.follow){const t=Math.min(1,dt*5);camera.x+=(state.player.x-camera.x)*t;camera.y+=(state.player.y-camera.y)*t}
+   if(focus&&state.options.follow){
+    const moving=partyById(state.pursuitId);
+    const gap=moving?Math.hypot(state.player.x-moving.x,state.player.y-moving.y):Infinity;
+    const midpoint=moving&&gap<800?.42:0;
+    const tx=state.player.x+(moving?moving.x-state.player.x:0)*midpoint;
+    const ty=state.player.y+(moving?moving.y-state.player.y:0)*midpoint;
+    const blend=Math.min(1,dt*5);
+    camera.x+=(tx-camera.x)*blend;camera.y+=(ty-camera.y)*blend;
+   }
   }
   drawWorld(now);
   if(now-lastHud>350){
@@ -918,8 +935,11 @@ function init(){
  options.value='6';
  $('game').classList.add('hidden');showScreen('screenMenu');refreshContinue();
  resize();requestAnimationFrame(frame);
+ try{if(localStorage.getItem('ua-battle-result-v1')&&savedExists())loadGame()}catch(e){}
 }
 init();
 window.UACampaignDebug={getState:()=>state,getCamera:()=>camera,newCampaign:startCampaign,loadGame,saveGame,
- travelTo,advance:stepTravel,stepParties,world:W,showFactionDetails,refreshUI,performSettlementAction,upgradeRoster,skirmish,drawWorld,showScreen,zoomAt};
+ travelTo,advance:stepTravel,stepParties,world:W,landmarks,showFactionDetails,refreshUI,
+ performSettlementAction,upgradeRoster,skirmish,drawWorld,showScreen,zoomAt,
+ trackParty,clearPursuit,openEncounter,closeEncounter,handleEncounterAction,beginTacticalBattle,settleCampaignBattle};
 })();
