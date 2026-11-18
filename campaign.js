@@ -7,7 +7,7 @@ const KEY='ua-campaign-v1',VERSION=1,MAXPARTY=75;
 const clamp=W.clamp,dist=(a,b,x,y)=>Math.hypot(a-x,b-y),esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const canvas=$('worldCanvas'),ctx=canvas.getContext('2d'),mini=$('minimap'),mctx=mini.getContext('2d');
 let state=null,selected=null,selectedFaction=6,modalStack=[],focus=true,camera={x:3870,y:5320,zoom:.47},keys=new Set(),drag=null,last=0,lastHud=0,lastMini=0,lastSave=0,toastUntil=0,menuOpen=true,miniBase=null,view={w:900,h:600},inspectorDirty=true;
-const screens=['screenMenu','screenCreate','screenFactions','screenOptions','screenPause','screenParty','screenCharacter'];
+const screens=['screenMenu','screenCreate','screenFactions','screenAtlas','screenOptions','screenPause','screenParty','screenCharacter'];
 const settingsDefault={borders:true,labels:true,roads:true,minimap:true,follow:true};
 function notify(msg){const t=$('toast');t.textContent=msg;t.classList.remove('hidden');toastUntil=performance.now()+4200}
 function log(message){if(!state)return;state.messages.unshift({day:state.day,text:message});state.messages.length=Math.min(12,state.messages.length)}
@@ -478,6 +478,69 @@ function refreshInspector(){
  }
  box.innerHTML=html;inspectorDirty=false;
 }
+// World Atlas is accessible before creating a character. It uses the exact
+// live map renderer, not a separately illustrated or hand-edited map.
+const atlasCanvas=$('atlasCanvas'),atlasCtx=atlasCanvas.getContext('2d');
+let atlasView={w:940,h:570},atlasCam={x:W.WIDTH/2,y:W.HEIGHT/2,zoom:.07},atlasDrag=null;
+function resetAtlas(){
+ const rect=atlasCanvas.getBoundingClientRect();
+ atlasView={w:Math.max(1,rect.width),h:Math.max(1,rect.height)};
+ atlasCam.x=W.WIDTH/2;atlasCam.y=W.HEIGHT/2;
+ atlasCam.zoom=Math.min(atlasView.w/W.WIDTH,atlasView.h/W.HEIGHT)*.94;
+ drawAtlas();
+}
+function drawAtlas(){
+ if($('screenAtlas').classList.contains('hidden'))return;
+ const rect=atlasCanvas.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);
+ atlasView={w:Math.max(1,rect.width),h:Math.max(1,rect.height)};
+ const sw=Math.ceil(atlasView.w*dpr),sh=Math.ceil(atlasView.h*dpr);
+ if(atlasCanvas.width!==sw||atlasCanvas.height!==sh){atlasCanvas.width=sw;atlasCanvas.height=sh}
+ atlasCtx.setTransform(dpr,0,0,dpr,0,0);
+ atlasCtx.clearRect(0,0,atlasView.w,atlasView.h);
+ atlasCtx.fillStyle='#294c59';atlasCtx.fillRect(0,0,atlasView.w,atlasView.h);
+ atlasCtx.translate(atlasView.w/2,atlasView.h/2);
+ atlasCtx.scale(atlasCam.zoom,atlasCam.zoom);
+ atlasCtx.translate(-atlasCam.x,-atlasCam.y);
+ window.UAMapPainter.draw(atlasCtx,W,atlasCam,atlasView,{borders:true,roads:true});
+ for(const f of F){
+  const x=f.capital[0],y=f.capital[1];
+  atlasCtx.fillStyle='#13241b';atlasCtx.beginPath();atlasCtx.arc(x,y,54,0,Math.PI*2);atlasCtx.fill();
+  atlasCtx.strokeStyle=f.color;atlasCtx.lineWidth=14;atlasCtx.stroke();
+  atlasCtx.fillStyle='#f3e0ab';atlasCtx.beginPath();atlasCtx.arc(x,y,18,0,Math.PI*2);atlasCtx.fill();
+  atlasCtx.font='bold 153px Georgia,serif';atlasCtx.textAlign='center';atlasCtx.textBaseline='top';
+  atlasCtx.lineWidth=15;atlasCtx.strokeStyle='#11231ddd';
+  atlasCtx.strokeText(f.name,x,y+65);atlasCtx.fillStyle='#f6e7bf';atlasCtx.fillText(f.name,x,y+65);
+ }
+}
+function atlasZoom(mult,clientX,clientY){
+ const w=atlasView.w,h=atlasView.h;
+ const x=clientX===undefined?w/2:clientX,y=clientY===undefined?h/2:clientY;
+ const wx=atlasCam.x+(x-w/2)/atlasCam.zoom,wy=atlasCam.y+(y-h/2)/atlasCam.zoom;
+ const minZoom=Math.min(w/W.WIDTH,h/W.HEIGHT)*.8;
+ atlasCam.zoom=clamp(atlasCam.zoom*mult,minZoom,1.1);
+ atlasCam.x=clamp(wx-(x-w/2)/atlasCam.zoom,0,W.WIDTH);
+ atlasCam.y=clamp(wy-(y-h/2)/atlasCam.zoom,0,W.HEIGHT);
+ drawAtlas();
+}
+function openAtlas(){
+ openModal('screenAtlas');resetAtlas();
+}
+atlasCanvas.addEventListener('pointerdown',e=>{
+ atlasCanvas.setPointerCapture(e.pointerId);
+ atlasDrag={startX:e.clientX,startY:e.clientY,x:atlasCam.x,y:atlasCam.y};
+});
+atlasCanvas.addEventListener('pointermove',e=>{
+ if(!atlasDrag)return;
+ atlasCam.x=clamp(atlasDrag.x-(e.clientX-atlasDrag.startX)/atlasCam.zoom,0,W.WIDTH);
+ atlasCam.y=clamp(atlasDrag.y-(e.clientY-atlasDrag.startY)/atlasCam.zoom,0,W.HEIGHT);
+ drawAtlas();
+});
+atlasCanvas.addEventListener('pointerup',()=>atlasDrag=null);
+atlasCanvas.addEventListener('pointercancel',()=>atlasDrag=null);
+atlasCanvas.addEventListener('wheel',e=>{
+ e.preventDefault();const r=atlasCanvas.getBoundingClientRect();
+ atlasZoom(e.deltaY<0?1.18:1/1.18,e.clientX-r.left,e.clientY-r.top);
+},{passive:false});
 function showFactionDetails(id){
  selectedFaction=id;const f=F[id];
  const enemies=W.wars.filter(pair=>pair.includes(id)).map(pair=>F[pair[0]===id?pair[1]:pair[0]].name);
@@ -519,8 +582,12 @@ function saveOptions(){
 }
 function button(id,action){$(id).addEventListener('click',action)}
 button('menuNew',selectNew);button('menuContinue',loadGame);
-button('menuFactions',openFactions);button('menuOptions',showOptions);
+button('menuFactions',openFactions);button('menuAtlas',openAtlas);button('menuOptions',showOptions);
 button('createStart',startCampaign);button('createCancel',()=>showScreen('screenMenu'));
+button('atlasClose',closeModal);
+button('atlasZoomIn',()=>atlasZoom(1.30));
+button('atlasZoomOut',()=>atlasZoom(1/1.30));
+button('atlasReset',resetAtlas);
 button('factionsClose',closeModal);
 button('optionsClose',closeModal);
 button('optionsApply',saveOptions);
@@ -594,7 +661,9 @@ window.addEventListener('keydown',e=>{
 window.addEventListener('keyup',e=>keys.delete(e.key.length===1?e.key.toLowerCase():e.key));
 window.addEventListener('blur',()=>keys.clear());
 window.addEventListener('beforeunload',()=>{if(state)saveGame(true)});
-window.addEventListener('resize',resize);
+window.addEventListener('resize',()=>{
+ resize();if(!$('screenAtlas').classList.contains('hidden'))drawAtlas();
+});
 if('ResizeObserver' in window)new ResizeObserver(resize).observe(canvas.parentElement);
 function frame(now){
  const dt=Math.min(.075,Math.max(0,(now-last)/1000||.016));last=now;
