@@ -72,7 +72,7 @@ function startCampaign(){
    day:1,hour:8,speed:1,paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,
    parties:[],options:{...settingsDefault},messages:[],unseen:[],lastEncounter:-100};
  state.parties=generateParties();selected={type:'settlement',id:origin*8};
- camera.zoom=.47;resetView();$('game').classList.remove('hidden');showScreen(null);
+ camera.zoom=.47;resetView();$('game').classList.remove('hidden');showScreen(null);resize();
  log('Your story begins beneath the banners of '+F[origin].name+'.');
  log('Your first task: recruit three volunteers from a settlement.');
  refreshUI();saveGame(true);notify('Welcome to the continent of Asterra. Click anywhere to travel.');
@@ -89,7 +89,7 @@ function loadGame(){
   state.parties=generateParties();
   if(Array.isArray(raw.parties))for(const saved of raw.parties){const a=state.parties.find(v=>v.id===saved.id);
     if(a&&Number.isFinite(saved.x)&&Number.isFinite(saved.y)){Object.assign(a,saved);a.path=[];a.pathIndex=0}}
-  camera.zoom=clamp(raw.zoom||.47,.12,1.9);resetView();$('game').classList.remove('hidden');showScreen(null);
+  camera.zoom=clamp(raw.zoom||.47,.12,1.9);resetView();$('game').classList.remove('hidden');showScreen(null);resize();
   selected={type:'land'};log('Campaign resumed. Your journey continues.');refreshUI();notify('Campaign loaded.');return true;
  }catch(e){notify('Could not load this campaign save.');return false}
 }
@@ -202,7 +202,7 @@ function stepParties(dt){
  const close=state.parties.find(p=>p.active&&p.kind==='bandit'&&
   dist(state.player.x,state.player.y,p.x,p.y)<92);
  if(close&&state.day-state.lastEncounter>.15&&selected?.id!==close.id){
-  state.path=[];state.pathIndex=0;selected={type:'party',id:close.id};state.lastEncounter=state.day;
+  state.path=[];state.pathIndex=0;selected={type:'party',id:close.id};state.lastEncounter=state.day+state.hour/24;
   inspectorDirty=true;notify('Bandits ahead! Choose to fight or retreat.');
  }
 }
