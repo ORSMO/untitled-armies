@@ -475,12 +475,33 @@ function drawLocations(){
    ctx.fillStyle='#fff2d2';ctx.fillText(s.name,s.x,s.y+r+12);
   }
  }
+ // Discoverable world locations add life between settlements.
+ if(camera.zoom>.23)for(const place of W.landmarks||[]){
+  if(!inView(place.x,place.y,110))continue;
+  const explored=state.visitedLandmarks.includes(place.id);
+  ctx.fillStyle=explored?'#53665bd9':'#4b3d2cf2';
+  ctx.beginPath();ctx.arc(place.x,place.y,16,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle=selected?.type==='landmark'&&selected.id===place.id?'#fff4ba':'#d5bc8ba8';
+  ctx.lineWidth=3;ctx.stroke();
+  ctx.fillStyle=explored?'#abb9a5':'#ffe4ad';
+  ctx.font='bold 21px Georgia,serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(place.icon,place.x,place.y+1);
+  if(camera.zoom>.51){
+   ctx.textBaseline='top';ctx.font='bold 15px Georgia,serif';
+   ctx.strokeStyle='#0b2118';ctx.lineWidth=4;ctx.strokeText(place.name,place.x,place.y+24);
+   ctx.fillStyle='#f5e0b8';ctx.fillText(place.name,place.x,place.y+24);
+  }
+ }
 }
 function drawParties(){
  for(const p of state.parties)if(p.active&&inView(p.x,p.y,100)){
   const f=p.faction>=0?F[p.faction]:null,c=p.kind==='bandit'?'#d47d70':f.color;
   ctx.fillStyle='#0d1d18d9';ctx.beginPath();ctx.arc(p.x,p.y,15,0,6.283);ctx.fill();
   ctx.lineWidth=3;ctx.strokeStyle=c;ctx.stroke();
+  if(state.followPartyId===p.id){
+   ctx.strokeStyle='#ffe5a9';ctx.lineWidth=3.5;
+   ctx.beginPath();ctx.arc(p.x,p.y,26,0,Math.PI*2);ctx.stroke();
+  }
   ctx.fillStyle=c;
   if(p.kind==='bandit'){ctx.beginPath();ctx.moveTo(p.x,p.y-11);ctx.lineTo(p.x+10,p.y+10);ctx.lineTo(p.x-10,p.y+10);ctx.fill()}
   else if(p.kind==='caravan'){ctx.fillRect(p.x-8,p.y-6,16,11);ctx.beginPath();ctx.arc(p.x-6,p.y+7,4,0,6.283);ctx.arc(p.x+6,p.y+7,4,0,6.283);ctx.fill()}
@@ -555,7 +576,23 @@ function refreshUI(){
   state.path.length?'Traveling · '+Math.max(0,state.path.length-state.pathIndex)+' route steps remaining':
   'Click to travel · WASD to walk · Drag to pan · Scroll to zoom';
  $('minimapHolder').classList.toggle('hidden',!state.options.minimap);
+ if(selected?.type==='party'&&state.followPartyId!=null)inspectorDirty=true;
  if(inspectorDirty)refreshInspector();
+}
+function exploreLandmark(id){
+ const place=W.landmarks.find(v=>v.id===id);if(!place||!state)return;
+ if(dist(state.player.x,state.player.y,place.x,place.y)>145){
+  travelTo(place.x,place.y,null);return;
+ }
+ if(state.visitedLandmarks.includes(id)){notify('Already explored this landmark.');return}
+ state.visitedLandmarks.push(id);
+ const food=['camp','grove','ford'].includes(place.kind)?5:2;
+ const gold=['ruins','watchtower','shrine'].includes(place.kind)?45:15;
+ state.player.food+=food;state.player.gold+=gold;state.player.xp+=20;
+ log('Explored '+place.name+'. Found '+food+' provisions, '+gold+' denars and gained 20 XP.');
+ notify(place.name+' explored · +'+food+' food · +'+gold+' denars · +20 XP');
+ while(state.player.xp>=state.player.level*125){state.player.xp-=state.player.level*125;state.player.level++;state.player.hp=100}
+ inspectorDirty=true;refreshUI();saveGame(true);
 }
 function renderActions(items){return items.map(a=>'<button class="btn'+(a.primary?' primary':'')+'" data-act="'+a.act+'"'+(a.id!==undefined?' data-id="'+a.id+'"':'')+(a.disabled?' disabled':'')+'>'+esc(a.label)+'</button>').join('')}
 function refreshInspector(){
@@ -577,8 +614,28 @@ function refreshInspector(){
   const label=enemy.kind==='bandit'?'Outlaw Bandits':enemy.kind==='patrol'?F[enemy.faction].name+' Patrol':F[enemy.faction].name+' Caravan';
   html='<div class="smallcaps">ROAMING PARTY</div><h2>'+esc(label)+'</h2><div class="banner-strip" style="background:'+(enemy.kind==='bandit'?'#c57966':F[enemy.faction].color)+'"></div>';
   html+='<p>Party size: <b>'+enemy.strength+'</b>. Distance: '+Math.round(dist(state.player.x,state.player.y,enemy.x,enemy.y))+' map units.</p>';
-  html+='<div class="eventbox"><b>'+esc(enemy.kind==='bandit'?'Hostile raiders':'Traveling party')+'</b><p>'+(enemy.kind==='bandit'?'Bandits threaten villages and caravans. An automatic skirmish is available once you approach.':'These travelers currently have no hostile orders toward you.')+'</p></div>';
-  html+=renderActions([{act:'travelParty',id:enemy.id,label:'➤ Approach this party',primary:true},...(enemy.kind==='bandit'?[{act:'attackParty',id:enemy.id,label:'⚔ Resolve skirmish',disabled:dist(state.player.x,state.player.y,enemy.x,enemy.y)>155}]:[])]);
+  html+='<div class="eventbox"><b>'+esc(enemy.kind==='bandit'?'Hostile raiders':'Traveling party')+'</b><p>'+
+   (enemy.kind==='bandit'?'Bandits threaten the roads. Follow them to negotiate, flee, or enter a real battle.':
+   'You can speak, trade or challenge this party after catching it.')+'</p></div>';
+  const nearby=dist(state.player.x,state.player.y,enemy.x,enemy.y)<=155;
+  html+=renderActions([{act:'travelParty',id:enemy.id,
+   label:state.followPartyId===enemy.id?'◎ Following · route updating':'➤ Follow moving party',primary:true},
+   {act:'meetParty',id:enemy.id,label:'💬 Meet this party',disabled:!nearby}]);
+ }else if(selected.type==='landmark'){
+  const place=W.landmarks.find(a=>a.id===selected.id);
+  if(!place){selected={type:'land'};return refreshInspector()}
+  const d=Math.round(dist(state.player.x,state.player.y,place.x,place.y));
+  const visited=state.visitedLandmarks.includes(place.id);
+  html='<div class="smallcaps">LANDMARK · '+esc(W.factions[place.faction]?.name||'Wilderness')+'</div>'+
+   '<h2>'+esc(place.icon)+' '+esc(place.name)+'</h2>'+
+   '<div class="banner-strip" style="background:#bda66f"></div>'+
+   '<p>Scattered through the countryside are old ruins, waystations and hidden places. Distance: '+d+' map units.</p>'+
+   '<div class="eventbox"><b>'+(visited?'Already explored':'Unexplored destination')+
+   '</b><p>'+(visited?'Your company remembers the discoveries made here.':
+   'Travel here to explore this location, gather supplies or recover something valuable.')+'</p></div>';
+  html+=renderActions([{act:d<=145?'exploreLandmark':'travelLandmark',id:place.id,
+   label:d<=145?'⚑ Explore this location':'➤ Travel to '+place.name,
+   primary:true,disabled:d<=145&&visited}]);
  }else{
   const p=state.player,land=W.tileAt(p.x,p.y),region=currentRegion();
   html='<div class="smallcaps">EXPLORING ASTERRA</div><h2>'+esc(region.name)+'</h2><div class="banner-strip" style="background:'+region.color+'"></div>';
@@ -758,8 +815,10 @@ $('inspectorContent').addEventListener('click',e=>{
  const id=Number(b.dataset.id),act=b.dataset.act;
  if(['recruit','food','rest','rumors','visit'].includes(act))performSettlementAction(act,id);
  else if(act==='travelSettlement')travelTo(S[id].x,S[id].y,id);
- else if(act==='travelParty'){const p=state.parties.find(v=>v.id===id);if(p)travelTo(p.x,p.y,null)}
- else if(act==='attackParty')skirmish(id);
+ else if(act==='travelParty')followParty(id);
+ else if(act==='meetParty'){const p=state.parties.find(v=>v.id===id);if(p)openEncounter(p)}
+ else if(act==='travelLandmark'){const p=W.landmarks.find(v=>v.id===id);if(p)travelTo(p.x,p.y,null)}
+ else if(act==='exploreLandmark')exploreLandmark(id);
  else if(act==='nearest'){const site=W.closestSettlement(state.player.x,state.player.y);selected={type:'settlement',id:site.id}}
  else if(act==='partyPanel')showParty();else if(act==='factions')openFactions();
  inspectorDirty=true;refreshUI();
