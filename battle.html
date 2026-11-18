@@ -570,7 +570,7 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
   if(!campaignMode)return[];
   const all=[];
   campaignPending.roster.forEach((g,groupIndex)=>{
-   const count=clamp(Math.floor(g.count)||0,0,75);
+   const count=clamp((Math.floor(g.count)||0)-(Math.floor(g.wounded)||0),0,75);
    for(let i=0;i<count&&all.length<75;i++)all.push({groupIndex,faction:g.faction|0,tier:clamp(g.tier|0,0,2)});
   });
   return all;
