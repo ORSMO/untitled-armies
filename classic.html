@@ -478,6 +478,7 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  // Training keeps familiar immortal-allies / replenishing-enemies behavior.
  // Realistic battle rules opt into casualties, morale and terminal outcomes.
  let realisticBattle=false,battleOutcome=null;
+ let battleCollapseSince={friend:null,foe:null};
  function realismActive(){return realisticBattle;}
  function combatants(team){return team==='friend'?friends:foes;}
  function armyLossFraction(team){
@@ -513,16 +514,17 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
    original:units.length,standing:units.filter(u=>!u.dead&&!u.routed&&!u.broken&&!u.surrendered).length,
    killed:units.filter(u=>u.dead&&!u.woundedOut).length,
    wounded:units.filter(u=>u.woundedOut).length,
-   woundedStanding:units.filter(u=>!u.dead&&!u.routed&&!u.surrendered&&u.hp<u.maxHp).length,
+   woundedStanding:units.filter(u=>!u.dead&&!u.routed&&!u.broken&&!u.surrendered&&u.hp<u.maxHp).length,
    escaped:units.filter(u=>u.routed&&!u.surrendered).length,
    surrendered:units.filter(u=>u.surrendered).length,
+   horsesLost:units.filter(u=>u.mountMaxHp>0&&!u.mounted&&u.mountHp<=0).length,
    shaken:units.filter(u=>u.broken&&!u.dead&&!u.routed&&!u.surrendered).length
   };
  }
  function tallyLabel(t){return t.standing+' standing · '+t.killed+' killed · '+
   t.wounded+' incapacitated · '+t.escaped+' escaped · '+
   t.surrendered+' surrendered · '+t.shaken+' still routing · '+
-  t.woundedStanding+' injured survivors';}
+  t.woundedStanding+' injured survivors · '+t.horsesLost+' horses lost';}
  // Two attack styles share the same three-cell range. Heavy hits cost more
  // stamina, deal two damage, and have longer recovery than quick light hits.
  const attackStyles={
@@ -921,7 +923,17 @@ function focusArmy(){
 function determineBattleOutcome(){
  if(!realisticBattle||battleOutcome)return battleOutcome;
  const friend=battleTally('friend'),foe=battleTally('foe');
- if(friend.standing>0&&foe.standing>0)return null;
+ if(friend.standing>0&&foe.standing>0){
+  battleCollapseSince.friend=null;battleCollapseSince.foe=null;return null;
+ }
+ // A momentary complete rout is not necessarily a victory: disciplined
+ // broken soldiers may rally if their commander is still nearby. Give them
+ // a brief chance before declaring the battle terminal.
+ for(const [side,report] of [['friend',friend],['foe',foe]]){
+  if(report.standing>0||report.shaken===0){battleCollapseSince[side]=null;continue;}
+  if(battleCollapseSince[side]===null)battleCollapseSince[side]=t;
+  if(t-battleCollapseSince[side]<4.5)return null;
+ }
  const winner=friend.standing&&foe.standing===0?'friend':
   foe.standing&&friend.standing===0?'foe':'draw';
  const wiped=winner==='friend'?foe:friend;
@@ -934,7 +946,7 @@ function determineBattleOutcome(){
  return battleOutcome;
 }
 function populate(){
-  t=0;battleOutcome=null;refreshBattleRulesUI();
+  t=0;battleOutcome=null;battleCollapseSince={friend:null,foe:null};refreshBattleRulesUI();
   nextId=0;nextSwingId=1;nextEngagementPlan=0;formationType='block';enemyFormationType='block';enemyCommand='auto';enemyMovePending=false;setFormationMenu(false);
   const a=home('friend'),b=home('foe');
   friends=formation('friend',a.x,a.y).map((p,i)=>create('friend',i,p));
