@@ -561,12 +561,12 @@ for(let i=0;i<coastSegments.length;i++){
 // river fords and caravansaries. These are exploration destinations,
 // not new kingdoms or capital-centered rings.
 const landmarkKinds=[
- {kind:'ruins',label:'Forgotten Ruins',icon:'⌂'},
- {kind:'watchtower',label:'Old Watchtower',icon:'♜'},
- {kind:'camp',label:'Traveler Camp',icon:'♧'},
- {kind:'shrine',label:'Wayside Shrine',icon:'✥'},
- {kind:'ford',label:'River Ford',icon:'≈'},
- {kind:'grove',label:'Hidden Grove',icon:'♣'}
+ {kind:'ruins',icon:'⌂',names:['Greywatch Ruins','Thistle Abbey','Marrow Keep','The Sunken Hall','Vesper Ruins','Broken Crown Fort','The Ashen Court','Wolfstone Ruins','Kingsfall Remains','Old Moonspire']},
+ {kind:'watchtower',icon:'♜',names:['Hawkwatch Tower','Blackpine Lookout','Stonewind Beacon','Ravenwatch','Eastwarden Post','Coldspire Signal','Oathwatch Tower','The Silent Beacon','Wolfsentinel']},
+ {kind:'camp',icon:'♧',names:['Larkwood Camp','The Wayfarers Rest','Meadowbank Camp','Fallen Banner Camp','Emberfield Waystop','Three Oaks Camp','Dustpath Rest','The Pilgrims Tent','Lowland Waystation']},
+ {kind:'shrine',icon:'✥',names:['Shrine of Dawn','The Weeping Stone','Saint Orlan’s Cross','White Lantern Shrine','The Old Pilgrim Road','Crescent Shrine','Moonwell Chapel','Sanctuary of Ash','The Watchers Altar']},
+ {kind:'ford',icon:'≈',names:['Wolfwater Ford','Stonebank Crossing','Sable River Ford','Seven Stones Ford','Harrow Crossing','Old Kings Ford','Twin Reeds Crossing','Blackwater Ford','Shallowmist Crossing']},
+ {kind:'grove',icon:'♣',names:['Whispering Grove','Silverleaf Hollow','Deepbriar Grove','The Fallen Oak','Willowheart Thicket','Quietfern Glade','Stagwood Hollow','Greenmist Grove','The Elder Roots']}
 ];
 const landmarks=[];
 for(let i=0;i<55;i++){
@@ -592,7 +592,7 @@ for(let i=0;i<55;i++){
  }
  if(!chosen)continue;
  landmarks.push({id:landmarks.length,kind:type.kind,icon:type.icon,
-  name:type.label,x:chosen.x,y:chosen.y,
+  name:type.names[Math.floor(i/landmarkKinds.length)]||type.kind,x:chosen.x,y:chosen.y,
   faction:tileAt(chosen.x,chosen.y).owner});
 }
 function walkingSpeed(x,y){
