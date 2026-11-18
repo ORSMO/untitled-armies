@@ -327,7 +327,7 @@ function terrainTravelCost(id,from,roadMode){
  let cost=biomeCost[t.kind]||1.2;
  cost+=Math.abs(t.e-a.e)*(roadMode?6:3.5);
  if(roadMode){
-  if(t.kind==='river')cost+=3.8;
+  if(t.kind==='river')cost+=1.25;
   if(t.kind==='marsh')cost+=2;
   if(t.kind==='mountain')cost+=6;
   if(t.owner>=0&&a.owner>=0&&t.owner!==a.owner)cost+=.35;
@@ -354,7 +354,9 @@ function findTilePath(startX,startY,endX,endY,roadMode=false){
   for(const [dx,dy] of directions){
    const nx=tx+dx,ny=ty+dy,next=atGrid(nx,ny);
    if(next<0||!tiles[next].walk||closed[next])continue;
-   if(dx&&dy&&(!walkable(tx+dx,ty)||!walkable(tx,ty+dy)))continue;
+   if(dx&&dy&&(!walkable(tx+dx,ty)||!walkable(tx,ty+dy)||
+     tiles[atGrid(tx+dx,ty)].kind==='river'||
+     tiles[atGrid(tx,ty+dy)].kind==='river'))continue;
    const ng=g[id]+(dx&&dy?1.414:1)*terrainTravelCost(next,id,roadMode);
    if(ng<g[next]){g[next]=ng;came[next]=id;h.push(next,ng+heuristic(nx,ny))}
   }
