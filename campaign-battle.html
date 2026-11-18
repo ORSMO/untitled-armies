@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V3.6</title>
+<title>Untitled Armies — Campaign Battle · V4.2</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -188,6 +188,21 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 .battle-outcome button{background:#87c7a2;color:#12291d;border:0;border-radius:10px;padding:12px;font-weight:800;cursor:pointer}
 .battle-outcome .tally{display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:left;font-size:.85rem}
 .battle-outcome .tally>div{padding:12px;background:#274536;border-radius:10px}
+</style>
+
+<style>
+/* Campaign-only HUD: reused Classic simulation, actual hero controls. */
+#campaignBattleBanner{position:fixed;z-index:160;top:10px;left:50%;transform:translateX(-50%);background:#0b1d17f2;border:1px solid #c4a76d;border-radius:11px;padding:9px 15px;display:flex;align-items:center;gap:12px;box-shadow:0 5px 26px #0009;color:#f3dfaa;font:12px system-ui;max-width:92vw;flex-wrap:wrap;justify-content:center;pointer-events:auto}
+#campaignBattleBanner strong{font:700 15px Georgia,serif}
+#campaignBattleBanner .campaign-hint{color:#d3e2cf;font-size:11px}
+#campaignBattleBanner button,.campaignReturn{background:#8e7348;color:#fff6dc;border:1px solid #ecd399;border-radius:7px;padding:7px 10px;font:bold 12px system-ui;cursor:pointer}
+#campaignBattleBanner button:hover,.campaignReturn:hover{background:#af8f57}
+#campaignBattleExit{background:#3a493c!important}
+body.campaign-battle .info #equipmentButton,body.campaign-battle .info #enemyButton,body.campaign-battle #battleRules,body.campaign-battle #infiniteAmmoButton{display:none!important}
+body.campaign-battle #battleOutcomeRestart{display:none}
+body.campaign-battle #campaignBattleReturn{display:inline-block!important}
+#campaignBattleReturn{display:none}
+@media(max-width:660px){#campaignBattleBanner{top:5px;padding:7px;gap:7px;font-size:10px}#campaignBattleBanner .campaign-hint{font-size:10px}}
 </style>
 </head>
 <body>
@@ -430,11 +445,18 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
  </section>
 </div>
   </main>
- <section id="battleOutcome" class="battle-outcome is-hidden" role="dialog" aria-modal="true" aria-live="polite" aria-labelledby="battleOutcomeTitle">
+ <div id="campaignBattleBanner" aria-label="Campaign battle controls">
+ <strong id="campaignBattleTitle">⚔ Your Battle</strong>
+ <span class="campaign-hint">WASD: move hero · Click / Space: attack · Shift: shield guard · Arrow keys: pan disabled while commanding</span>
+ <span id="campaignBattleHeroHealth">Hero: 100%</span>
+ <button type="button" id="campaignBattleExit">Withdraw from battle</button>
+</div>
+<section id="battleOutcome" class="battle-outcome is-hidden" role="dialog" aria-modal="true" aria-live="polite" aria-labelledby="battleOutcomeTitle">
   <h2 id="battleOutcomeTitle">Battle concluded</h2>
   <p id="battleOutcomeReason">Both armies have finished fighting.</p>
   <div class="tally"><div><strong>🟢 Friendly army</strong><p id="battleOutcomeFriend"></p></div><div><strong>🔴 Enemy army</strong><p id="battleOutcomeFoe"></p></div></div>
   <button type="button" id="battleOutcomeRestart">↻ Fight another battle</button>
+  <button type="button" id="campaignBattleReturn" class="campaignReturn">⮐ Return to Campaign</button>
  </section>
   <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> <span id="stressCaption">Enemy stress</span> <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="commanderButton" class="small-btn" aria-expanded="false" aria-controls="commanderPanel">👑 Commanders</button> <button type="button" id="enemyButton" class="small-btn" aria-expanded="false" aria-controls="enemyPanel">🔴 Enemy orders</button>
     <button type="button" id="infiniteAmmoButton" class="small-btn" aria-pressed="false" title="Unlimited arrows, bolts and javelins for both armies">∞ Ammo: OFF</button>
@@ -512,7 +534,120 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  const stressBalance={takenHit:10,givenHit:1,allyKilled:8,panicSpread:7,closeThreat:1.3,nearThreat:.25,recovery:5.5,breakingBase:68,disciplineResistance:.28};
  // Training keeps familiar immortal-allies / replenishing-enemies behavior.
  // Realistic battle rules opt into casualties, morale and terminal outcomes.
- let realisticBattle=false,battleOutcome=null;
+ // Campaign battles load an exact party snapshot from browser storage.
+// The standalone Classic test has a separate HTML file and is unchanged.
+const campaignSession=(()=>{
+ try{
+  if(!window.location.search.includes('campaign=1'))return null;
+  const raw=JSON.parse(localStorage.getItem('ua-campaign-battle-session-v1')||'null');
+  return raw&&raw.status==='active'&&Array.isArray(raw.troops)&&raw.partyId>=0?raw:null;
+ }catch(e){return null}
+})();
+const campaignMode=!!campaignSession;
+const heroKeys=new Set();
+let heroAttackHeld=false,heroPointer={x:null,y:null},campaignReported=false;
+if(campaignMode)document.body.classList.add('campaign-battle');
+else window.addEventListener('load',()=>{window.location.replace('index.html')},{once:true});
+function campaignEquipment(faction,tier,enemyKind){
+ tier=Math.max(0,Math.min(2,tier||0));
+ const heavy=tier>=2,trained=tier>=1;
+ const defaults={weapon:trained?'sword':'spear',shield:'round',
+  armor:heavy?'plate':trained?'mail':'padded',ranged:null,
+  unitRole:'infantry',horseArmor:'none'};
+ if(enemyKind==='bandit')return {...defaults,weapon:tier?'axe':'shortsword',
+  shield:tier?'round':null,armor:tier?'leather':'padded'};
+ if(enemyKind==='caravan')return {...defaults,weapon:'shortsword',armor:'leather',shield:'round'};
+ switch(faction){
+  case 0:if(heavy)return{...defaults,unitRole:'archer',weapon:'shortsword',ranged:'bow',shield:null};
+    return {...defaults,weapon:trained?'sword':'spear'};
+  case 1:return {...defaults,weapon:heavy?'axe':'sword',shield:trained?null:'round'};
+  case 2:return {...defaults,weapon:trained?'pike':'spear',shield:trained?null:'round'};
+  case 3:if(heavy)return {...defaults,unitRole:'cavalry',weapon:'lance',horseArmor:'mail'};
+    return {...defaults,weapon:trained?'sword':'spear'};
+  case 4:if(heavy)return {...defaults,unitRole:'cavalry',weapon:'lance',horseArmor:'plate'};
+    return {...defaults,unitRole:trained?'archer':'infantry',weapon:'shortsword',
+     ranged:trained?'bow':null,shield:trained?null:'round'};
+  case 5:if(trained)return {...defaults,unitRole:'archer',weapon:'shortsword',ranged:'crossbow',shield:null};
+    return {...defaults,weapon:'spear'};
+  case 6:return {...defaults,weapon:heavy?'sword':'spear',shield:'kite'};
+  case 7:return {...defaults,weapon:'sword',shield:'kite'};
+  case 8:if(heavy)return {...defaults,unitRole:'cavalry',weapon:'lance',horseArmor:'leather'};
+    return {...defaults,unitRole:trained?'archer':'infantry',weapon:'shortsword',ranged:trained?'bow':null,shield:trained?null:'round'};
+  case 9:return {...defaults,unitRole:trained?'horseArcher':'cavalry',
+    weapon:trained?'shortsword':'lance',ranged:trained?'horsebow':null,horseArmor:'leather'};
+  default:return defaults;
+ }
+}
+function campaignFormation(team,n){
+ const h=home(team),columns=Math.max(2,Math.min(9,Math.ceil(Math.sqrt(n*1.9)))),
+  rows=Math.ceil(n/columns),spacing=29;
+ const frontline=team==='friend'?1:-1;
+ return Array.from({length:n},(_,i)=>({x:h.x+frontline*(Math.floor(i/columns)-(rows-1)*.5)*spacing,
+  y:h.y+(i%columns-(columns-1)*.5)*spacing}));
+}
+function campaignDeploy(s,slot,team){
+ const kit=campaignEquipment(slot.faction,slot.tier,campaignSession.kind);
+ Object.assign(s,kit);
+ s.campaignSource=slot.groupIndex;
+ s.campaignSlot=slot.slot;
+ s.battleStartingRole=kit.unitRole;
+ setFighterTraining(s,team,slot.slot,slot.tier===2?'veteran':slot.tier===1?'trained':'recruit',
+   slot.tier===2?'expert':slot.tier===1?'practiced':'novice');
+ initializeRangedEquipment(s);initMount(s);
+ s.stamina=s.maxStamina=100;
+}
+function campaignRecord(outcome){
+ if(!campaignMode||campaignReported)return;
+ const winner=outcome?.winner||'retreat';
+ const entries=friends.map(s=>({
+  groupIndex:s.campaignSource,slot:s.campaignSlot,
+  result:s.surrendered?'surrendered':s.routed?'escaped':
+   s.dead?(s.woundedOut?'incapacitated':'killed'):
+   s.broken?'escaped':'standing',
+  hp:Math.max(0,s.hp),maxHp:s.maxHp
+ }));
+ const hero=commanders.friend;
+ const enemy=foes.filter(s=>!s.dead&&!s.routed&&!s.surrendered).length;
+ const data={sessionId:campaignSession.sessionId,partyId:campaignSession.partyId,
+  kind:campaignSession.kind,faction:campaignSession.faction,
+  winner,seconds:t,entries,heroHp:hero?Math.max(0,hero.hp):0,
+  heroMaxHp:hero?.maxHp||5,enemyRemaining:enemy,
+  enemyInitial:campaignSession.enemyCount,originalTroops:campaignSession.troops.length};
+ try{localStorage.setItem('ua-campaign-battle-result-v1',JSON.stringify(data));campaignReported=true}
+ catch(e){ui.hint.textContent='Unable to save battle result. Enable browser storage.'}
+}
+function campaignReturn(){
+ if(!campaignMode)return;
+ campaignRecord(battleOutcome);
+ if(campaignReported)window.location.href='index.html?battleReturn=1';
+}
+function updateHeroControl(s,dt){
+ s.guardBreak=Math.max(0,(s.guardBreak||0)-dt);
+ const mx=(heroKeys.has('d')?1:0)-(heroKeys.has('a')?1:0);
+ const my=(heroKeys.has('s')?1:0)-(heroKeys.has('w')?1:0);
+ const m=Math.hypot(mx,my);
+ const speed=s.speed*(heroKeys.has('shift')?.77:1.30)*terrainSpeed(s);
+ if(m&&s.stagger<=0){
+  const nx=clamp(s.x+mx/m*speed*dt,14,W-14);
+  const ny=clamp(s.y+my/m*speed*dt,14,H-14);
+  const steered=terrainSteer(s,nx,ny);
+  s.vx=(steered.x-s.x)/Math.max(dt,.001);s.vy=(steered.y-s.y)/Math.max(dt,.001);
+  s.x=steered.x;s.y=steered.y;
+ }else{s.vx=0;s.vy=0}
+ const target=chooseTarget(s).target;
+ if(heroPointer.x!==null)
+  s.faceAngle=Math.atan2(heroPointer.y-s.y,heroPointer.x-s.x);
+ else if(target)
+  s.faceAngle=Math.atan2(target.y-s.y,target.x-s.x);
+ s.guardActive=heroKeys.has('shift')&&!s.attack&&s.stagger<=0&&s.stamina>3;
+ s.meleeReady=true;
+ if(s.guardActive){s.stamina=Math.max(0,s.stamina-dt*2.3);s.guardHold=0}
+ if(s.attack)advanceAttack(s,dt);
+ else if((heroAttackHeld||heroKeys.has(' '))&&!s.guardActive&&target&&s.stagger<=0)
+  beginAttack(s,target);
+}
+
+let realisticBattle=false,battleOutcome=null;
  let battleCollapseSince={friend:null,foe:null};
  function realismActive(){return realisticBattle;}
  function combatants(team){return team==='friend'?friends:foes;}
@@ -979,6 +1114,10 @@ function focusArmy(){
 function determineBattleOutcome(){
  if(!realisticBattle||battleOutcome)return battleOutcome;
  const friend=battleTally('friend'),foe=battleTally('foe');
+ if(campaignMode){
+  if(commanders.friend&&!commanders.friend.dead&&!commanders.friend.routed&&!commanders.friend.broken)friend.standing++;
+  if(commanders.foe&&!commanders.foe.dead&&!commanders.foe.routed&&!commanders.foe.broken)foe.standing++;
+ }
  if(friend.standing>0&&foe.standing>0){
   battleCollapseSince.friend=null;battleCollapseSince.foe=null;return null;
  }
@@ -1015,12 +1154,35 @@ function populate(){
   t=0;battleOutcome=null;battleCollapseSince={friend:null,foe:null};refreshBattleRulesUI();
   nextId=0;nextSwingId=1;nextEngagementPlan=0;formationType='block';enemyFormationType='block';enemyCommand='auto';enemyMovePending=false;setFormationMenu(false);
   const a=home('friend'),b=home('foe');
-  friends=formation('friend',a.x,a.y).map((p,i)=>create('friend',i,p));
-  foes=formation('foe',b.x,b.y).map((p,i)=>create('foe',i,p));
+  if(campaignMode){
+   const count=Math.min(50,campaignSession.troops.length),enemyCount=Math.max(1,Math.min(50,campaignSession.enemyCount));
+   friends=campaignFormation('friend',count).map((pos,i)=>{
+    const s=create('friend',i,pos);
+    campaignDeploy(s,campaignSession.troops[i],'friend');return s;
+   });
+   foes=campaignFormation('foe',enemyCount).map((pos,i)=>{
+    const s=create('foe',i,pos);
+    campaignDeploy(s,{faction:campaignSession.faction,tier:campaignSession.kind==='bandit'?0:
+      campaignSession.kind==='patrol'?1:0,groupIndex:-1,slot:i},'foe');
+    return s;
+   });
+  }else{
+   friends=formation('friend',a.x,a.y).map((p,i)=>create('friend',i,p));
+   foes=formation('foe',b.x,b.y).map((p,i)=>create('foe',i,p));
+  }
    // Preserve configured personalities across battles; clear stale orders.
   squadStates={friend:null,foe:null};
   allocateSquadReserves('friend');allocateSquadReserves('foe');
   commanders.friend=createCommander('friend');commanders.foe=createCommander('foe');
+  if(campaignMode){
+   commanders.friend.hp=commanders.friend.maxHp=6;
+   commanders.friend.speed=76;
+   commanders.friend.isPlayerHero=true;
+   realisticBattle=true;
+   document.querySelector('#campaignBattleTitle').textContent='⚔ '+campaignSession.playerName+
+    ' vs '+(campaignSession.kind==='bandit'?'Outlaws':campaignSession.kind==='patrol'?'Patrol':'Caravan');
+   document.querySelector('#campaignBattleHeroHealth').textContent='Hero: 100%';
+  }
   commanderBrains.friend=newBrain(commanderBrains.friend.personality,commanderBrains.friend.intent,commanderBrains.friend.lineStyle);
   commanderBrains.foe=newBrain(commanderBrains.foe.personality,commanderBrains.foe.intent,commanderBrains.foe.lineStyle);
   generalOrders={all:null,infantry:null,archer:null,cavalry:null,horseArcher:null,reserve:null};selectedGroup='all';
@@ -3149,6 +3311,7 @@ function step(dt){
   s.recoveryDelay=Math.max(0,s.recoveryDelay-dt);
   if(s.recoveryDelay===0)s.stamina=clamp(s.stamina+dt*(6.7+(s.skill||45)*.012),0,s.maxStamina);
   if(s.broken){handleBrokenSoldier(s,dt);continue;}
+  if(campaignMode&&s.isPlayerHero){updateHeroControl(s,dt);continue;}
   const {target,dist}=chooseTarget(s);
   // Ranged units keep their bow in hand until a genuine melee threat.
   s.meleeReady=!!(isArcher(s)&&target&&dist<=meleeThreatRange(s));
@@ -3389,7 +3552,10 @@ function step(dt){
  for(const p of groundedShots)p.life-=dt;
  groundedShots=groundedShots.filter(p=>p.life>0);
  for(const effect of slashes)effect.life-=dt;slashes=slashes.filter(e=>e.life>0);
- if(realisticBattle)determineBattleOutcome();
+ if(realisticBattle){
+  const ended=determineBattleOutcome();
+  if(campaignMode&&ended)campaignRecord(ended);
+ }
 }
 function drawCommanderTerrainPlans(){
  if(!terrainZones.length)return;
@@ -3709,10 +3875,18 @@ function frame(ts){
   last=ts;
   if(!equipmentOpen&&!battleOutcome)t+=dt;
   const panSpeed=600*dt;
-  if(cameraKeys.has('arrowleft')||cameraKeys.has('a'))camera.x-=panSpeed;
-  if(cameraKeys.has('arrowright')||cameraKeys.has('d'))camera.x+=panSpeed;
-  if(cameraKeys.has('arrowup')||cameraKeys.has('w'))camera.y-=panSpeed;
-  if(cameraKeys.has('arrowdown')||cameraKeys.has('s'))camera.y+=panSpeed;
+  if(!campaignMode){
+   if(cameraKeys.has('arrowleft')||cameraKeys.has('a'))camera.x-=panSpeed;
+   if(cameraKeys.has('arrowright')||cameraKeys.has('d'))camera.x+=panSpeed;
+   if(cameraKeys.has('arrowup')||cameraKeys.has('w'))camera.y-=panSpeed;
+   if(cameraKeys.has('arrowdown')||cameraKeys.has('s'))camera.y+=panSpeed;
+  }else if(commanders.friend){
+   camera.x=commanders.friend.x-VW*.5;
+   camera.y=commanders.friend.y-VH*.5;
+   const hero=commanders.friend;
+   document.querySelector('#campaignBattleHeroHealth').textContent=
+    'Hero: '+Math.round(Math.max(0,hero.hp)/Math.max(1,hero.maxHp)*100)+'%';
+  }
   camera.x=clamp(camera.x,0,Math.max(0,W-VW));
   camera.y=clamp(camera.y,0,Math.max(0,H-VH));
   if(!equipmentOpen&&!battleOutcome)step(dt);
@@ -3720,6 +3894,27 @@ function frame(ts){
   if(!equipmentOpen&&Math.floor(t*4)!==Math.floor((t-dt)*4))updateUI();
   requestAnimationFrame(frame);
  }
+// Human controls are battle-only; all Classic test shortcuts stay isolated.
+if(campaignMode){
+ window.addEventListener('keydown',e=>{
+  const k=e.key.length===1?e.key.toLowerCase():e.key.toLowerCase();
+  if(['w','a','s','d',' ','shift'].includes(k)){
+   e.preventDefault();heroKeys.add(k);
+  }
+ });
+ window.addEventListener('keyup',e=>heroKeys.delete(e.key.toLowerCase()));
+ window.addEventListener('blur',()=>{heroKeys.clear();heroAttackHeld=false});
+ canvas.addEventListener('pointermove',e=>{
+  const r=canvas.getBoundingClientRect();
+  heroPointer={x:camera.x+e.clientX-r.left,y:camera.y+e.clientY-r.top};
+ });
+ canvas.addEventListener('pointerdown',e=>{if(e.button===0){heroAttackHeld=true;e.preventDefault()}});
+ window.addEventListener('pointerup',()=>heroAttackHeld=false);
+ document.querySelector('#campaignBattleExit').addEventListener('click',campaignReturn);
+ document.querySelector('#campaignBattleReturn').addEventListener('click',campaignReturn);
+}else{
+ document.querySelector('#campaignBattleBanner').style.display='none';
+}
 window.addEventListener('resize',resize,{passive:true});if('ResizeObserver' in window)new ResizeObserver(resize).observe(board);resize();requestAnimationFrame(frame);
 })();
 </script>
