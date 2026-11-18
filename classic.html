@@ -1075,7 +1075,9 @@ function updateSquadState(team){
  const fewerTop=enemy.filter(s=>s.y<enemyCenter.y).length;
  const fewerBottom=enemy.length-fewerTop;
  const flankSide=fewerBottom<fewerTop?1:fewerTop<fewerBottom?-1:team==='friend'?1:-1;
- squadStates[team]={groups,enemyCenter,pressure,initialInfantryCount:initialInfantry,
+ const terrainObjective=terrainStrategicPlan(team,
+  troopCenter(own,fallback),enemyCenter,own);
+ squadStates[team]={groups,enemyCenter,terrainObjective,pressure,initialInfantryCount:initialInfantry,
   archerPressure:archers.length?pressed/archers.length:0,
   reserveReleased:release,flankSide,enemyArchers:enemy.filter(e=>isArcher(e)).length,
   cohesion:own.length?squadRoles.reduce((n,r)=>n+groups[r].cohesion*groups[r].count,0)/own.length:1};
@@ -1101,6 +1103,19 @@ function squadMovement(s,command,target,dist,x,y,pace){
  if(s.unitRole==='infantry'&&s.squadReserve&&!state.reserveReleased){
   return {x:clamp(ownInfantry.center.x-forward*Math.min(95,W*.17),22,W-22),
    y:clamp(ownInfantry.center.y+s.squadOffsetY*.70,22,H-22),pace:.91};
+ }
+ // Seize useful terrain before engaging: the squad marches to a hilltop,
+ // sheltered woodland or the friendly bank of a crossing. Once enemies are
+ // close, individual combat and the existing physical formation take over.
+ const strategic=(typeof commanderBrains!=='undefined'?
+  commanderBrains[s.team]?.terrainPlan:state.terrainObjective);
+ if(strategic&&dist>Math.max(115,Math.min(180,W*.20))&&
+   (s.unitRole==='infantry'||s.unitRole==='archer')){
+  const behind=s.unitRole==='archer'?forward*Math.min(54,W*.105):0;
+  const goalX=clamp(strategic.x-behind+(s.squadOffsetX||0)*.30,20,W-20);
+  const goalY=clamp(strategic.y+(s.squadOffsetY||0)*.55,20,H-20);
+  if(Math.hypot(s.x-goalX,s.y-goalY)>Math.min(40,H*.14))
+   return {x:goalX,y:goalY,pace:1.08};
  }
  // Infantry correct lateral drift while marching, but close-range combat,
  // shield/parry reactions and routing always take precedence.
@@ -1140,6 +1155,14 @@ function squadMovement(s,command,target,dist,x,y,pace){
    }else return {x:flankX,y:flankY,pace:1.17};
   }
  }else if(!tacticalFlank)s.squadFlankDone=false;
+ // Cavalry avoid taking a full-speed charge across a bog or forest. Their
+ // route uses actual turn radius and speed, and a detour is rejected when
+ // the geography makes going around more expensive than a cautious ford.
+ if(isCavalry(s)&&dist>110&&s.regroupUntil<=t){
+  const route=terrainRouteWaypoint(s,x,y);
+  if(route&&Math.hypot(route.x-s.x,route.y-s.y)>34)
+   return {x:route.x,y:route.y,pace:1.21};
+ }
  return {x,y,pace};
 }
 function allocateSquadReserves(team){
@@ -1178,7 +1201,15 @@ function setCommanderAnchors(team,orders){
    u.anchorX=clamp(rear.x+(slots[i].x-center.x),24,W-24);
    u.anchorY=clamp(rear.y+(slots[i].y-center.y),24,H-24);
   }else if(order==='defend'){
-   u.anchorX=slots[i].x;u.anchorY=slots[i].y;
+   const brain=commanderBrains[team],site=brain?.terrainPlan;
+   const occupy=site&&['seizeGround','holdGround','guardCrossing'].includes(brain.phase);
+   if(occupy){
+    const offsetX=(slots[i]?.x||center.x)-center.x;
+    const offsetY=(slots[i]?.y||center.y)-center.y;
+    const archerRear=u.unitRole==='archer'?(team==='friend'?-52:52):0;
+    u.anchorX=clamp(site.x+offsetX+archerRear,24,W-24);
+    u.anchorY=clamp(site.y+offsetY,24,H-24);
+   }else{u.anchorX=slots[i].x;u.anchorY=slots[i].y;}
   }
   if(order==='defend'||order==='retreat'){
    u.tx=u.anchorX;u.ty=u.anchorY;
@@ -1211,6 +1242,11 @@ function decideCommander(team,dt){
  const panicRate=troops.length?troops.filter(u=>u.stress>67).length/troops.length:1;
  const ammo=archerUnits.reduce((n,u)=>n+(infiniteAmmo?18:u.ammo),0);
  const tactical=squadStates[team];
+ const chosenGround=terrainStrategicPlan(team,a,b,troops);
+ const previousGround=brain.terrainPlan;
+ brain.terrainPlan=chosenGround;
+ const movedGround=chosenGround&&(!previousGround||
+  Math.hypot(chosenGround.x-previousGround.x,chosenGround.y-previousGround.y)>40);
  const endangeredFront=tactical?.pressure||0;
  const endangeredBows=tactical?.archerPressure||0;
  if(tactical&&!tactical.reserveReleased&&(endangeredFront>.32||
@@ -1221,13 +1257,18 @@ function decideCommander(team,dt){
  if(ratio<.58||panicRate>.43)phase='withdraw';
  else if(endangeredFront>.38&&troops.some(u=>u.squadReserve))phase='reinforce';
  else if(threatened)phase='protect';
+ else if(chosenGround&&chosenGround.score>2.5&&distance>175)
+  phase=chosenGround.type==='water'||chosenGround.type==='mud'?
+   'guardCrossing':Math.hypot(a.x-chosenGround.x,a.y-chosenGround.y)>85?
+   'seizeGround':'holdGround';
  else if(distance>360)phase='advance';
  else if(cavalryUnits.length>3&&enemyArchers.length>3&&distance<570)phase='flank';
  else if(brain.personality==='aggressive'&&ratio>.70)phase='press';
  else if(brain.personality==='defensive')phase='hold';
  else if(ratio>1.35&&distance<310)phase='press';
  // Commit to a plan; urgent withdrawal/protection can interrupt it.
- const urgent=phase==='withdraw'||phase==='protect'||phase==='reinforce';
+ const urgent=phase==='withdraw'||phase==='protect'||phase==='reinforce'||
+  phase==='guardCrossing'&&chosenGround?.score>4;
  if(phase!==brain.phase&&brain.elapsed-brain.lastChange<4&&!urgent)
   phase=brain.phase;
  if(phase!==brain.phase){
@@ -1236,6 +1277,9 @@ function decideCommander(team,dt){
    advance:{infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'},
    press:{infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'},
    hold:{infantry:'defend',archer:'attack',cavalry:'defend',horseArcher:'attack'},
+   seizeGround:{infantry:'defend',archer:'defend',cavalry:'attack',horseArcher:'attack'},
+   holdGround:{infantry:'defend',archer:'defend',cavalry:'attack',horseArcher:'attack'},
+   guardCrossing:{infantry:'defend',archer:'defend',cavalry:'attack',horseArcher:'attack'},
    protect:{infantry:'defend',archer:'retreat',cavalry:'attack',horseArcher:'retreat'},
    flank:{infantry:'defend',archer:'attack',cavalry:'attack',horseArcher:'attack'},
    reinforce:{infantry:'attack',archer:'defend',cavalry:'attack',horseArcher:'attack'},
@@ -1244,10 +1288,18 @@ function decideCommander(team,dt){
   brain.orders=plans[phase]||plans.advance;
   if(phase==='flank')brain.flankCalls++;
   setCommanderAnchors(team,brain.orders);
+ }else if(movedGround&&chosenGround&&
+  ['seizeGround','holdGround','guardCrossing'].includes(phase)){
+  // Even when the phase stays the same, changing the chosen defensive
+  // position requires refreshed anchors, never sudden teleportation.
+  setCommanderAnchors(team,brain.orders);
  }
  brain.news=phase==='advance'?'Approaching the enemy':
   phase==='press'?'Pressing the attack':
   phase==='hold'?'Holding a disciplined line':
+  phase==='seizeGround'?'Marching to '+chosenGround?.type+' strongpoint':
+  phase==='holdGround'?'Holding '+chosenGround?.type+' high-value ground':
+  phase==='guardCrossing'?'Defending the dry approach to '+chosenGround?.type:
   phase==='protect'?'Protecting threatened archers':
   phase==='flank'?'Cavalry routing around an exposed wing':
   phase==='reinforce'?'Sending reserves into the threatened line':
@@ -2430,7 +2482,7 @@ function terrainStrategicPlan(team,ownCenter,enemyCenter,roster){
    (a.mud+a.water)*(cavalry>0?5:2.4)-
    dist/Math.max(110,W*.14)-
    (beyondEnemy?9:0)-(enemyDist<70?1.5:0);
-  if(score>1.8&&dist<Math.max(130,W*.44))
+  if(score>1.8&&dist<Math.max(130,W*.36))
    candidates.push({x,y,type,score,enemyDist});
  }
  candidates.sort((a,b)=>b.score-a.score);
