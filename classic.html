@@ -3303,6 +3303,15 @@ function drawMinimap(){
   mctx.clearRect(0,0,mw,mh);
   mctx.fillStyle='#152b24';mctx.fillRect(0,0,mw,mh);
   mctx.strokeStyle='#6e957d';mctx.lineWidth=2;mctx.strokeRect(1,1,mw-2,mh-2);
+  // Terrain also appears on the strategic minimap, so the General can
+  // identify slopes, cover and obstacles before issuing a formation order.
+  for(const z of terrainZones){
+   mctx.fillStyle={hill:'#9fc38695',forest:'#28664aaa',mud:'#78644caa',
+    water:'#65a8ceae',rock:'#bdc3c0e0'}[z.kind]||'#627d65';
+   mctx.beginPath();
+   mctx.ellipse(z.x/W*mw,z.y/H*mh,Math.max(2,z.rx/W*mw),
+    Math.max(2,z.ry/H*mh),0,0,Math.PI*2);mctx.fill();
+  }
   for(const s of foes){if(s.routed||s.dead)continue;mctx.fillStyle='#e47b74';mctx.fillRect(s.x/W*mw-2,s.y/H*mh-2,4,4);}
   for(const s of friends){if(s.routed||s.dead)continue;mctx.fillStyle='#65e4a5';mctx.fillRect(s.x/W*mw-2,s.y/H*mh-2,4,4);}
   for(const team of ['friend','foe']){const c=commanders[team];if(!c||c.dead)continue;
