@@ -27,3 +27,22 @@
 .atlas-hint{font-size:11px;color:#b7c4b1;line-height:1.5;flex:1;min-width:220px}
 .atlas-controls .btn{flex:none}
 @media(max-width:770px){.atlas-modal{padding:12px}.atlas-frame{height:48vh;min-height:250px}}
+
+/* V4.2 living world, moving-party tracking and encounter cards */
+.tracking-badge{position:absolute;top:63px;left:12px;z-index:8;background:#182a22ed;border:1px solid #ddbd81;border-radius:10px;padding:8px 10px;font-size:11px;color:#f4dfb2;box-shadow:0 6px 24px #0007}
+.tracking-badge button{margin-left:8px;border:0;background:#583e33;color:#ffdfc9;border-radius:6px;padding:3px 9px;font-size:15px;cursor:pointer}
+.encounter-modal{width:min(740px,100%);background:linear-gradient(145deg,#253f32,#101d19);border:2px solid #cdb37a;padding:28px}
+.encounter-modal h2{font-size:35px;margin:8px 0 10px}
+.encounter-banner{background:linear-gradient(120deg,#223f32,#304b39);border:1px solid #687c61;border-left:6px solid var(--encounter-color,#bf9c75);border-radius:10px;padding:14px;margin:12px 0}
+.encounter-banner strong{font:700 18px Georgia,serif;color:#faeac2}
+.encounter-banner p{margin:6px 0;color:#d1d7c5}
+.encounter-portrait{font-size:48px;float:left;margin-right:18px;line-height:1.2}
+.encounter-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:12px 0}
+.encounter-stats>div{padding:10px;background:#14271f;border:1px solid #49664f;border-radius:8px;font-size:11px;color:#c1d1c2}
+.encounter-stats strong{display:block;font-size:19px;color:#f2ddb3}
+.encounter-actions{display:grid;gap:8px;margin:18px 0 0}
+.encounter-actions .btn{width:100%;text-align:left;padding:13px}
+.encounter-actions .btn.primary{font-size:15px}
+.poi-label{letter-spacing:.04em}
+.poi-visited{color:#abc9aa}
+@media(max-width:770px){.tracking-badge{top:48px;left:8px;max-width:65%}.encounter-modal{padding:17px}.encounter-stats{gap:5px}}
