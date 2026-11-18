@@ -561,7 +561,7 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  const campaignPending=(()=>{
   try{
    const raw=JSON.parse(localStorage.getItem('ua-battle-pending-v1')||'null');
-   return raw&&raw.version===1&&raw.id&&Array.isArray(raw.roster)&&raw.roster.length?raw:null;
+   return raw&&raw.version===1&&raw.id&&Array.isArray(raw.roster)?raw:null;
   }catch(e){return null}
  })();
  const campaignMode=!!campaignPending;
