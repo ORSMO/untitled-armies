@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — V3.4</title>
+<title>Untitled Armies — V3.5</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -201,7 +201,7 @@ body.lab-mode .lab-area{display:flex}
     <div class="top-actions">
       <a class="lab-classic-link" href="classic.html" title="Open original 50v50 battlefield">Classic battlefield</a>
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
-      <div class="build" aria-label="Version 3.4">V3.4</div>
+      <div class="build" aria-label="Version 3.5">V3.5</div>
     </div>
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
@@ -260,7 +260,7 @@ body.lab-mode .lab-area{display:flex}
       <tr><td>Crossbow</td><td>12</td><td>1125</td><td>1.90s</td><td>Heavy piercing</td></tr>
       <tr><td>Javelins</td><td>6</td><td>624</td><td>1.05s</td><td>Heavy piercing</td></tr>
        <tr><td>Compact horse bow</td><td>24</td><td>710</td><td>0.52s</td><td>Light piercing</td></tr></tbody></table>
-      <p><strong>BATTLEFIELDS &amp; TERRAIN (V3.4):</strong> Use the <strong>Battlefield Terrain</strong> selector in the footer. Choose open ground, a hill, forest, mud, shallow river, rocks or mixed terrain. Hills give higher-ground melee and ranged advantages; forest conceals troops against missile fire; mud and rivers slow movement and tire soldiers and horses; solid rocks block physical movement and low-flying arrows. Cavalry needs clear dry ground to build up a strong charge, and all terrain interacts with existing formations and morale. Switching the terrain resets the current test. The default open plain preserves earlier fairness tests.</p>
+      <p><strong>BATTLEFIELDS &amp; TERRAIN (V3.4):</strong> Use the <strong>Battlefield Terrain</strong> selector in the footer. Choose open ground, a hill, forest, mud, shallow river, rocks or mixed terrain. Terrain can decide the entire battle: elevated defenders have stronger melee and ranged advantages, wooded positions sharply reduce enemy missile effectiveness and weaken mounted shock, and deep mud or river water slows cavalry enough to ruin its charge and discipline. Poor footing weakens braced spear walls and increases exhaustion. Commanders seek ridges and forest positions, defend dry crossing approaches, and send cavalry around hazardous ground; their plans still yield to the General’s manual orders. Solid rocks block movement and low-flying arrows. Cavalry needs clear dry ground to build up a strong charge, and all terrain interacts with existing formations and morale. Switching the terrain resets the current test. The default open plain preserves earlier fairness tests.</p>
       <p><strong>HORSE MOVEMENT (V3.1):</strong> Mounted troops now accelerate and brake instead of instantly changing speed or direction. A horse turns much wider at full gallop, especially when heavily armored or wounded. A mounted charge requires real forward closing speed, and body-to-body collisions absorb momentum. Cavalry ride through an enemy on a committed attack line, break away when surrounded, and regroup for another charge. Mounted archers try to ride out of close threats to recover their shooting distance. Gait animation and hoof dust show speed; the amber bar is horse health and the smaller turquoise bar is horse stamina. Rider and horse health remain separate. A fallen horse cannot be instantly remounted.</p>
       <p><strong>REAL SQUADS (V3.2):</strong> Infantry now hold lateral formation lanes when advancing; archers try to stay behind a surviving infantry screen; cavalry stage flanking routes before attacking ranged units; a fifth of sufficiently large infantry groups remain behind as reserves until the frontline is pressured. Use the <strong>Squad Tests</strong> mode to observe six mixed-class battles with independently equipped sub-squads. Smaller fairness tests keep the original 1-to-5-soldier behavior. The simulation remains the foundation for the future campaign game.</p>
       <p><strong>MORALE &amp; OUTCOMES (V3.3):</strong> The sixth Battle Lab mode runs six scenarios where both sides can be killed, incapacitated, rout, surrender or rally. Discipline, nearby support and casualties affect morale. Each battle ends naturally when one army has no fighters willing to continue. Old Fairness, Mount, Polearm, Squad and Ranged tests keep their existing conditions so previous balance measurements remain comparable.</p>
@@ -507,7 +507,9 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
    fraction*12+(leaderLost?6:0);
   // Fear accumulates from casualties, isolation and enemy pressure, while
   // nearby allies and a living commander help disciplined troops recover.
-  const change=pressure-support-(dist>155?2.8:1.35)-s.disc*.023;
+  const ground=terrainAt(s.x,s.y);
+  const exposed=ground.water*4.2+ground.mud*2.8-ground.elevation*2.3-ground.forest*1.6;
+  const change=pressure-support-(dist>155?2.8:1.35)-s.disc*.023+exposed;
   s.stress=clamp(s.stress+dt*change,0,100);
  }
  function battleTally(team){
@@ -998,7 +1000,12 @@ function updateSquadState(team){
  const fewerTop=enemy.filter(s=>s.y<enemyCenter.y).length;
  const fewerBottom=enemy.length-fewerTop;
  const flankSide=fewerBottom<fewerTop?1:fewerTop<fewerBottom?-1:team==='friend'?1:-1;
- squadStates[team]={groups,enemyCenter,pressure,initialInfantryCount:initialInfantry,
+ const ownCenter=own.length?{
+  x:own.reduce((n,u)=>n+u.x,0)/own.length,
+  y:own.reduce((n,u)=>n+u.y,0)/own.length
+ }:fallback;
+ const terrainObjective=terrainStrategicPlan(team,ownCenter,enemyCenter,own);
+ squadStates[team]={groups,enemyCenter,terrainObjective,pressure,initialInfantryCount:initialInfantry,
   archerPressure:archers.length?pressed/archers.length:0,
   reserveReleased:release,flankSide,enemyArchers:enemy.filter(e=>isArcher(e)).length,
   cohesion:own.length?squadRoles.reduce((n,r)=>n+groups[r].cohesion*groups[r].count,0)/own.length:1};
@@ -1023,6 +1030,25 @@ function squadMovement(s,command,target,dist,x,y,pace){
  if(s.unitRole==='infantry'&&s.squadReserve&&!state.reserveReleased){
   return {x:clamp(ownInfantry.center.x-forward*Math.min(95,W*.17),22,W-22),
    y:clamp(ownInfantry.center.y+s.squadOffsetY*.70,22,H-22),pace:.91};
+ }
+ // Seize useful terrain before engaging: the squad marches to a hilltop,
+ // sheltered woodland or the friendly bank of a crossing. Once enemies are
+ // close, individual combat and the existing physical formation take over.
+ const strategic=(typeof commanderBrains!=='undefined'?
+  commanderBrains[s.team]?.terrainPlan:state.terrainObjective);
+ if(strategic&&!s.terrainPositionHeld&&
+   dist>Math.max(115,Math.min(180,W*.20))&&
+   (s.unitRole==='infantry'||s.unitRole==='archer')){
+  const behind=s.unitRole==='archer'?forward*Math.min(54,W*.105):0;
+  const goalX=clamp(strategic.x-behind+(s.squadOffsetX||0)*.30,20,W-20);
+  const goalY=clamp(strategic.y+(s.squadOffsetY||0)*.55,20,H-20);
+  if(Math.hypot(s.x-goalX,s.y-goalY)>Math.min(40,H*.14))
+   return {x:goalX,y:goalY,pace:1.08};
+  if(!s.terrainPositionHeld){
+   s.terrainPositionHeld=true;
+   const stat=combatLabStats(s.team);
+   if(stat)stat.terrainPositions++;
+  }
  }
  // Infantry correct lateral drift while marching, but close-range combat,
  // shield/parry reactions and routing always take precedence.
@@ -1062,13 +1088,21 @@ function squadMovement(s,command,target,dist,x,y,pace){
    }else return {x:flankX,y:flankY,pace:1.17};
   }
  }else if(!tacticalFlank)s.squadFlankDone=false;
+ // Cavalry avoid taking a full-speed charge across a bog or forest. Their
+ // route uses actual turn radius and speed, and a detour is rejected when
+ // the geography makes going around more expensive than a cautious ford.
+ if(isCavalry(s)&&dist>110&&s.regroupUntil<=t){
+  const route=terrainRouteWaypoint(s,x,y);
+  if(route&&Math.hypot(route.x-s.x,route.y-s.y)>34)
+   return {x:route.x,y:route.y,pace:1.21};
+ }
  return {x,y,pace};
 }
 function allocateSquadReserves(team){
  const teamUnits=team==='friend'?friends:foes;
  teamUnits.forEach(s=>{
   s.squadReserve=false;s.squadSlotRole=null;
-  s.squadInitialInfantry=false;s.squadFlankDone=false;
+  s.squadInitialInfantry=false;s.squadFlankDone=false;s.terrainPositionHeld=false;
  });
  const infantry=teamUnits.filter(s=>s.unitRole==='infantry');
  // Keep the last fifth in reserve, but don't split tiny test formations.
@@ -1659,10 +1693,21 @@ function applyWeaponImpact(attacker,target,a){
  if(parry?.parried)return true;
  const incomingMomentum=a.momentum;
  const shield=shieldImpact(attacker,target,a),damageType=a.move.damageType;
+ const highGround=terrainAt(attacker.x,attacker.y);
+ const defendingGround=terrainAt(target.x,target.y);
  const elevationAdvantage=a.projectile?0:clamp(
-  (terrainAt(attacker.x,attacker.y).elevation-
-   terrainAt(target.x,target.y).elevation)*.09,-.15,.15);
- const afterShield=a.baseDamage*(1+elevationAdvantage)*(1-shield.block);
+  (highGround.elevation-defendingGround.elevation)*.30,-.51,.51);
+ // Uphill assault, poor footing in the water, and trees breaking horse
+ // momentum can outweigh armor/weapon advantages. Dry raised defenders
+ // are much harder to dislodge.
+ const footingPenalty=a.projectile?1:clamp(
+  1-highGround.mud*.25-highGround.water*.35-
+   (isCavalry(attacker)?highGround.forest*.27:0),.48,1);
+ const defenderGroundBonus=a.projectile?1:clamp(
+  1+defendingGround.elevation*.20+
+   defendingGround.forest*(isCavalry(attacker)?.21:.075),1,1.50);
+ const afterShield=a.baseDamage*(1+elevationAdvantage)*footingPenalty*
+  (1-shield.block)/defenderGroundBonus;
  const actual=mitigatedDamage(afterShield,target.armor,damageType);
  if(labMode&&activeLab){
   const offense=activeLab.stats[attacker.team],defense=activeLab.stats[target.team];
@@ -1942,12 +1987,12 @@ function terrainAt(x,y){
 }
 function terrainSpeed(s,x=s.x,y=s.y){
  const a=terrainAt(x,y),horse=isCavalry(s);
- return clamp(1-a.forest*(horse?.34:.15)-a.mud*(horse?.57:.34)-
-  a.water*(horse?.65:.43),.27,1);
+ return clamp(1-a.forest*(horse?.59:.24)-a.mud*(horse?.72:.50)-
+  a.water*(horse?.81:.65),.15,1);
 }
 function terrainFatigue(s,x=s.x,y=s.y){
  const a=terrainAt(x,y);
- return 1+a.mud*(isCavalry(s)?1.8:1.05)+a.water*(isCavalry(s)?2.1:1.25);
+ return 1+a.mud*(isCavalry(s)?3.0:1.7)+a.water*(isCavalry(s)?3.8:2.2);
 }
 // Return parametric first contact with an ellipse on a path (0..1).
 function ellipseHit(ax,ay,bx,by,z,extra=0){
@@ -1993,12 +2038,76 @@ function terrainResolve(s,oldX,oldY){
   }
  }
 }
+// A commander scores actual ground before issuing an order. Prefer high
+// positions, covered archery, dry cavalry lanes, and defending a crossing.
+// This is intentionally shared with the Six-Arena squad AI.
+function terrainStrategicPlan(team,ownCenter,enemyCenter,roster){
+ if(!terrainZones.length||!roster.length)return null;
+ const forward=team==='friend'?1:-1;
+ const infantry=roster.filter(s=>s.unitRole==='infantry').length;
+ const ranged=roster.filter(s=>s.unitRole==='archer').length;
+ const cavalry=roster.filter(s=>isCavalry(s)).length;
+ const candidates=[];
+ for(const z of terrainZones){
+  let x=z.x,y=z.y,type=z.kind,base=0;
+  if(z.kind==='hill'){base=4.8+Math.min(4,ranged*.25);x=z.x-forward*z.rx*.09;}
+  if(z.kind==='forest'){base=3.4+Math.min(3,ranged*.18);x=z.x-forward*z.rx*.16;}
+  if(z.kind==='rock'){base=3.0+Math.min(3,infantry*.13);x=z.x-forward*(z.rx+52);}
+  if(z.kind==='water'){base=4.4+Math.min(3,infantry*.15);x=z.x-forward*(z.rx+42);}
+  if(z.kind==='mud'){base=3.0+Math.min(3,cavalry*.13);x=z.x-forward*(z.rx+55);}
+  x=clamp(x,28,W-28);y=clamp(y,30,H-30);
+  const a=terrainAt(x,y);
+  const dist=Math.hypot(x-ownCenter.x,y-ownCenter.y);
+  const enemyDist=Math.hypot(x-enemyCenter.x,y-enemyCenter.y);
+  // No magical cross-map relocation. Positions behind the enemy are poor
+  // choices unless already occupied, and marches have a real opportunity cost.
+  const beyondEnemy=(x-enemyCenter.x)*forward>25;
+  const score=base+a.elevation*2.2+a.forest*(ranged>0?1.4:.4)-
+   (a.mud+a.water)*(cavalry>0?5:2.4)-
+   dist/Math.max(110,W*.14)-
+   (beyondEnemy?9:0)-(enemyDist<70?1.5:0);
+  if(score>1.8&&dist<Math.max(130,W*.36))
+   candidates.push({x,y,type,score,enemyDist});
+ }
+ candidates.sort((a,b)=>b.score-a.score);
+ return candidates[0]||null;
+}
+function terrainRouteWaypoint(s,goalX,goalY){
+ if(!terrainZones.length||!isCavalry(s))return null;
+ const dist=Math.hypot(goalX-s.x,goalY-s.y);
+ if(dist<105)return null;
+ for(const z of terrainZones){
+  if(!['mud','water','forest','hill'].includes(z.kind))continue;
+  if(z.kind==='hill'){
+   // Charging the face of an occupied ridge is costly. Try a lateral
+   // approach if the rider is on lower ground and the enemy stands above.
+   const enemyHeight=terrainAt(goalX,goalY).elevation;
+   const ownHeight=terrainAt(s.x,s.y).elevation;
+   if(enemyHeight<.85||enemyHeight-ownHeight<.52)continue;
+  }
+  const ix=ellipseHit(s.x,s.y,goalX,goalY,z);
+  if(ix===null||ellipseStrength(s.x,s.y,z)>.35)continue;
+  // A wide flooded bank can be outflanked along its shallow ends.
+  const extra=21;
+  const top=clamp(z.y-z.ry-extra,25,H-25),bottom=clamp(z.y+z.ry+extra,25,H-25);
+  const yy=Math.abs(s.y-top)<Math.abs(s.y-bottom)?top:bottom;
+  const routeX=clamp(z.x+(s.x<z.x?-.3:.3)*z.rx,26,W-26);
+  const length=Math.hypot(routeX-s.x,yy-s.y);
+  // Don't send a rider on a giant detour if the battlefield has no
+  // usable passage; crossing slowly is then the realistic choice.
+  if(length>Math.max(135,dist*1.60))continue;
+  return {x:routeX,y:yy,kind:z.kind};
+ }
+ return null;
+}
 function terrainRangedFactor(attacker,target){
  const a=terrainAt(attacker.x,attacker.y),d=terrainAt(target.x,target.y);
  // Height helps aim and piercing power; forest gives concealment.
- return {scatter:clamp(1+(d.elevation-a.elevation)*.25+
-   d.forest*.72-a.elevation*.10,.65,1.9),
-   damage:clamp(1+(a.elevation-d.elevation)*.10-d.forest*.22,.64,1.22)};
+ const advantage=a.elevation-d.elevation;
+ return {scatter:clamp(1-advantage*.43+d.forest*1.95+
+    a.mud*.25+a.water*.35,.44,3.2),
+   damage:clamp(1+advantage*.26-d.forest*.46-
+    a.mud*.14-a.water*.19,.31,1.56)};
 }
 function drawTerrain(g){
  for(const z of terrainZones){
@@ -2354,9 +2463,11 @@ function updatePolearmBrace(s,dt,command){
  }
  s.braceThreatId=threat.id;
  turnToward(s,Math.atan2(threat.y-s.y,threat.x-s.x),dt*1.3);
- const planted=Math.hypot(s.vx||0,s.vy||0)<28;
+ const ground=terrainAt(s.x,s.y);
+ const planted=Math.hypot(s.vx||0,s.vy||0)<28&&ground.water<.42&&ground.mud<.57;
  const old=s.braceReady||0;
- s.braceReady=clamp(old+dt*(planted?(1.1+s.disc*.006):-.9),0,1);
+ s.braceReady=clamp(old+dt*(planted?
+  (1.1+s.disc*.006)*(1+ground.elevation*.21):-(1.1+ground.mud+ground.water)),0,1);
  if(old<.65&&s.braceReady>=.65){
   s.braceCount++;
   const stats=combatLabStats(s.team);if(stats)stats.braces++;
@@ -2549,6 +2660,11 @@ function step(dt){
   terrainResolve(s,oldX,oldY);
   s.stamina=clamp(s.stamina-Math.hypot(s.x-oldX,s.y-oldY)*
    (.042+equipment*.004)*terrainFatigue(s),0,s.maxStamina);
+  // Bad footing also makes holding a shield wall or recovering from an
+  // attack harder; these costs apply even at low travel speeds.
+  const ground=terrainAt(s.x,s.y);
+  if(ground.mud+ground.water>.23&&s.guardActive)
+   s.stamina=Math.max(0,s.stamina-dt*(ground.mud*4+ground.water*5));
   s.vx=(s.x-oldX)/Math.max(.001,dt);s.vy=(s.y-oldY)/Math.max(.001,dt);
   if(isCavalry(s)){
    const speed=Math.hypot(s.vx,s.vy);
@@ -2556,7 +2672,9 @@ function step(dt){
     dt*(speed>52?-7.4:speed<18?13:2.5)-
     dt*(terrainFatigue(s)-1)*2.0,0,100);
    // Charge momentum reflects *actual forward speed* and horse fatigue.
-   const strideFactor=clamp((speed-34)/68,0,1);
+   const ground=terrainAt(s.x,s.y);
+   const groundCharge=clamp(1-ground.mud*.84-ground.water*.94-ground.forest*.69,.05,1);
+   const strideFactor=clamp((speed-34)/68,0,1)*groundCharge;
    s.gallop=clamp(s.gallop+clamp(
     (s.horseStamina>13?strideFactor:0)-s.gallop,-dt*1.9,dt*1.25),0,1);
    s.chargeCooldown=Math.max(0,(s.chargeCooldown||0)-dt);
@@ -3103,7 +3221,7 @@ function updateLabTitles(){
  labPreset==='outcomes'?
   'OUTCOME TESTS: Both armies can die, become incapacitated, flee, surrender or rally. Casualties cause morale pressure and complete battles have a victor.':
  labPreset==='terrain'?
-  'TERRAIN TESTS: Hills improve high-ground fighting; forest conceals archers; mud and water slow horses and soldiers; rocks block travel and low missiles.':
+  'TERRAIN TESTS: Hold defensible hills and forest, defend crossings and take cavalry around mud or water. Ridges and cover greatly influence battle results; rocks block low missiles.':
   'RANGED MATCHUPS: Arrows, bolts and javelins have travel time. Shields, armor, skill, ammo and melee rushes affect who wins.';
  document.getElementById('labAnalysisHowToRead').textContent=labPreset==='mirrors'?
   'Same gear, rank, proficiency and numbers on both sides. Green and red should each win about half the fights. Minor differences are normal; large consistent differences mean the test is biased.':
@@ -3133,7 +3251,7 @@ document.getElementById('labPresetButton').addEventListener('click',()=>{
 const labSeconds=3600,labStepSeconds=.04,labWorldW=440,labWorldH=210,labMatchTimeout=75;
 let labArenas=[],labPaused=false,labTurn=0,labLastDraw=0,labAnalysisOpen=false,labAnalysisLast=0;
 const labCanvasNodes=Array.from({length:6},(_,i)=>document.getElementById('labCanvas'+i));
-function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0,parries:0,failedParries:0,counters:0,misses:0,shots:0,rangedHits:0,rangedMisses:0,friendlyStops:0,mountHits:0,dismounts:0,horseCharges:0,braces:0,chargeStops:0,flankArrivals:0,reserveDeployments:0,panics:0,surrenders:0,routes:0,rallies:0,incapacitated:0,terrainBlocks:0};}
+function newLabScore(){return {hits:0,damage:0,armorSaved:0,shieldSaved:0,blocks:0,activeBlocks:0,guardBreaks:0,kills:0,parries:0,failedParries:0,counters:0,misses:0,shots:0,rangedHits:0,rangedMisses:0,friendlyStops:0,mountHits:0,dismounts:0,horseCharges:0,braces:0,chargeStops:0,flankArrivals:0,reserveDeployments:0,panics:0,surrenders:0,routes:0,rallies:0,incapacitated:0,terrainBlocks:0,terrainPositions:0};}
 function activateLab(ar){
  activeLab=ar;W=labWorldW;H=labWorldH;t=ar.seconds;mode='attack';
  friends=ar.friends;foes=ar.foes;slashes=ar.slashes;projectiles=ar.projectiles;groundedShots=ar.groundedShots;
@@ -3341,13 +3459,13 @@ function updateLabHUD(){
      labPreset==='polearms'?' · '+(a.stats.friend.braces+a.stats.foe.braces)+' braces':
      labPreset==='squads'?' · '+(a.stats.friend.flankArrivals+a.stats.foe.flankArrivals)+' flank arrivals':
      labPreset==='outcomes'?' · '+(a.stats.friend.panics+a.stats.foe.panics)+' morale breaks':
-     labPreset==='terrain'?' · '+(a.stats.friend.terrainBlocks+a.stats.foe.terrainBlocks)+' shots blocked by rocks':'');
+     labPreset==='terrain'?' · '+(a.stats.friend.terrainPositions+a.stats.foe.terrainPositions)+' positions secured':'');
   document.getElementById('labBlocks'+a.index).textContent=
    (a.stats.friend.blocks+a.stats.foe.blocks)+' blocks · '+
     (labPreset==='mounts'?((a.stats.friend.dismounts+a.stats.foe.dismounts)+' dismounts'):
      labPreset==='polearms'?((a.stats.friend.chargeStops+a.stats.foe.chargeStops)+' horse stops'):
      labPreset==='squads'?((a.stats.friend.reserveDeployments+a.stats.foe.reserveDeployments)+' reserve deployments'):
-     labPreset==='terrain'?((a.stats.friend.horseCharges+a.stats.foe.horseCharges)+' horse charges'):
+     labPreset==='terrain'?((a.stats.friend.terrainBlocks+a.stats.foe.terrainBlocks)+' shots blocked · '+(a.stats.friend.horseCharges+a.stats.foe.horseCharges)+' horse charges'):
      labPreset==='outcomes'?((a.stats.friend.surrenders+a.stats.foe.surrenders)+' surrendered · '+
        (a.stats.friend.routes+a.stats.foe.routes)+' fled · '+
        (a.stats.friend.incapacitated+a.stats.foe.incapacitated)+' incapacitated'):
