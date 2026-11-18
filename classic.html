@@ -1147,6 +1147,9 @@ function squadLineStyle(team,infantry){
   const brain=commanderBrains[team];
   if(brain?.intent==='skirmish')return 'loose';
   asked=brain?.lineStyle||'auto';
+  // A rapid unrestricted assault spreads out unless the General explicitly
+  // ordered a wall. An ordered advance is slower and more disciplined.
+  if(brain?.intent==='aggressive'&&asked==='auto')asked='line';
  }else if(typeof labMode!=='undefined'&&labMode&&
    typeof activeLab!=='undefined'&&activeLab){
   asked=activeLab.spec.lineStyles?.[team]||'auto';
@@ -1191,14 +1194,18 @@ function lineMarch(s,state,group,dist,x,y,pace){
   (rank?spacing*.16:0),22,H-22);
  const danger=clamp((dist-48)/165,0,1);
  const cohesion=clamp(.28+.63*danger,.20,.91);
+ const intent=typeof commanderBrains!=='undefined'?
+  commanderBrains[s.team]?.intent:'adaptive';
+ const control=intent==='ordered'?1.10:intent==='aggressive'?.57:1;
  const freeToFight=s.attack||s.stagger>0||dist<60;
- const grip=freeToFight?cohesion*.31:cohesion;
+ const grip=clamp((freeToFight?cohesion*.31:cohesion)*control,0,.98);
  const adjustedX=x*(1-grip*.63)+xSlot*(grip*.63);
  const adjustedY=y*(1-grip)+ySlot*grip;
  // Dense walls move at infantry pace. An enemy closing into weapon range
  // loosens the wall instead of forcing soldiers to walk past one another.
  return {x:adjustedX,y:adjustedY,
-  pace:dist>125?Math.min(pace,style==='shieldwall'?.95:1.04):pace};
+  pace:dist>125?Math.min(pace,intent==='aggressive'?1.24:
+  style==='shieldwall'?.95:intent==='ordered'?.99:1.04):pace};
 }
 function isManualSquadOrder(s){
  if(s.team==='friend'&&typeof generalOrders!=='undefined')
@@ -1234,8 +1241,14 @@ function squadMovement(s,command,target,dist,x,y,pace){
   const behind=s.unitRole==='archer'?forward*Math.min(54,W*.105):0;
   const goalX=clamp(strategic.x-behind+(s.squadOffsetX||0)*.30,20,W-20);
   const goalY=clamp(strategic.y+(s.squadOffsetY||0)*.55,20,H-20);
-  if(Math.hypot(s.x-goalX,s.y-goalY)>Math.min(40,H*.14))
-   return {x:goalX,y:goalY,pace:1.08};
+  if(Math.hypot(s.x-goalX,s.y-goalY)>Math.min(40,H*.14)){
+   const objective={x:goalX,y:goalY,pace:1.08};
+   // Keep the infantry front connected even while seizing the hill or
+   // approaching a river, rather than racing in one soldier at a time.
+   return s.unitRole==='infantry'?
+    (lineMarch(s,state,group,dist,goalX,goalY,1.08)||objective):
+    objective;
+  }
   if(!s.terrainPositionHeld){
    s.terrainPositionHeld=true;
    const stat=combatLabStats(s.team);
