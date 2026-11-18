@@ -7,7 +7,7 @@ const KEY='ua-campaign-v1',VERSION=1,MAXPARTY=75;
 const clamp=W.clamp,dist=(a,b,x,y)=>Math.hypot(a-x,b-y),esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const canvas=$('worldCanvas'),ctx=canvas.getContext('2d'),mini=$('minimap'),mctx=mini.getContext('2d');
 let state=null,selected=null,selectedFaction=6,modalStack=[],focus=true,camera={x:3870,y:5320,zoom:.47},keys=new Set(),drag=null,last=0,lastHud=0,lastMini=0,lastSave=0,toastUntil=0,menuOpen=true,miniBase=null,view={w:900,h:600},inspectorDirty=true;
-const screens=['screenMenu','screenCreate','screenFactions','screenOptions','screenPause','screenParty','screenCharacter'];
+const screens=['screenMenu','screenCreate','screenFactions','screenAtlas','screenOptions','screenPause','screenParty','screenCharacter'];
 const settingsDefault={borders:true,labels:true,roads:true,minimap:true,follow:true};
 function notify(msg){const t=$('toast');t.textContent=msg;t.classList.remove('hidden');toastUntil=performance.now()+4200}
 function log(message){if(!state)return;state.messages.unshift({day:state.day,text:message});state.messages.length=Math.min(12,state.messages.length)}
@@ -86,12 +86,24 @@ function loadGame(){
   const raw=JSON.parse(localStorage.getItem(KEY));if(!raw||raw.version!==VERSION||!raw.player)throw Error('Wrong save version');
   const p=raw.player;if(!Number.isFinite(p.x)||!Number.isFinite(p.y)||!Number.isFinite(p.gold)||!Array.isArray(p.roster))throw Error('Corrupt data');
   p.x=clamp(p.x,0,W.WIDTH);p.y=clamp(p.y,0,W.HEIGHT);
+  // Saved character locations survive the V4.1 geography rebuild.
+  // If new water now covers an old saved position, reach the nearest land.
+  if(!W.tileAt(p.x,p.y).walk){
+   const land=W.nearestWalk(Math.floor(p.x/W.TILE),Math.floor(p.y/W.TILE));
+   if(land){p.x=(land.x+.5)*W.TILE;p.y=(land.y+.5)*W.TILE}
+  }
   state={version:VERSION,player:p,day:raw.day||1,hour:raw.hour||8,speed:[1,2,4].includes(raw.speed)?raw.speed:1,
    paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,parties:[],options:{...settingsDefault,...raw.options},
    messages:[],lastEncounter:-100};
   state.parties=generateParties();
   if(Array.isArray(raw.parties))for(const saved of raw.parties){const a=state.parties.find(v=>v.id===saved.id);
-    if(a&&Number.isFinite(saved.x)&&Number.isFinite(saved.y)){Object.assign(a,saved);a.path=[];a.pathIndex=0}}
+    if(a&&Number.isFinite(saved.x)&&Number.isFinite(saved.y)){
+     Object.assign(a,saved);a.path=[];a.pathIndex=0;
+     if(!W.tileAt(a.x,a.y).walk){
+      const land=W.nearestWalk(Math.floor(a.x/W.TILE),Math.floor(a.y/W.TILE));
+      if(land){a.x=(land.x+.5)*W.TILE;a.y=(land.y+.5)*W.TILE}
+     }
+    }}
   camera.zoom=clamp(raw.zoom||.47,.12,1.9);resetView();$('game').classList.remove('hidden');showScreen(null);resize();
   selected={type:'land'};log('Campaign resumed. Your journey continues.');refreshUI();notify('Campaign loaded.');return true;
  }catch(e){notify('Could not load this campaign save.');return false}
@@ -312,45 +324,7 @@ function colorAlpha(hex,alpha){
 }
 function inView(x,y,pad=120){const a=toScreen(x,y);return a.x>-pad&&a.y>-pad&&a.x<view.w+pad&&a.y<view.h+pad}
 function drawLand(){
- const zoom=camera.zoom,hw=view.w/(2*zoom),hh=view.h/(2*zoom);
- const c0=clamp(Math.floor((camera.x-hw)/W.TILE)-1,0,W.COLS-1),
- c1=clamp(Math.ceil((camera.x+hw)/W.TILE)+1,0,W.COLS-1),
- r0=clamp(Math.floor((camera.y-hh)/W.TILE)-1,0,W.ROWS-1),
- r1=clamp(Math.ceil((camera.y+hh)/W.TILE)+1,0,W.ROWS-1);
- for(let ty=r0;ty<=r1;ty++)for(let tx=c0;tx<=c1;tx++){
-  const idx=W.tileIndex(tx,ty),tile=W.tiles[idx],x=tx*W.TILE,y=ty*W.TILE,base=W.palette[tile.kind]||'#738e69';
-  ctx.fillStyle=base;ctx.fillRect(x,y,W.TILE+.5,W.TILE+.5);
-  if(tile.shade>0){ctx.fillStyle='rgba(255,243,192,'+Math.max(0,tile.shade*.62)+')';ctx.fillRect(x,y,W.TILE+.5,W.TILE+.5)}
-  else if(tile.shade<0){ctx.fillStyle='rgba(2,15,12,'+(-tile.shade*.7)+')';ctx.fillRect(x,y,W.TILE+.5,W.TILE+.5)}
-  if(state.options.borders&&tile.owner>=0){
-   ctx.fillStyle=colorAlpha(F[tile.owner].color,.075);ctx.fillRect(x,y,W.TILE+.5,W.TILE+.5);
-   const right=tx+1<W.COLS?W.tiles[idx+1].owner:-1,below=ty+1<W.ROWS?W.tiles[idx+W.COLS].owner:-1;
-   if(right!==tile.owner){ctx.fillStyle=colorAlpha(F[tile.owner].color,.72);ctx.fillRect(x+W.TILE-1.4,y,2.8,W.TILE)}
-   if(below!==tile.owner){ctx.fillStyle=colorAlpha(F[tile.owner].color,.72);ctx.fillRect(x,y+W.TILE-1.4,W.TILE,2.8)}
-  }
-  if(zoom>.22){
-   if(tile.kind==='forest'||tile.kind==='marsh'){
-    ctx.fillStyle=tile.kind==='forest'?'#27593ba8':'#3c6a51a8';
-    const xx=x+16+W.hash(tx,ty)*20,yy=y+10+W.hash(ty,tx)*30;
-    ctx.beginPath();ctx.arc(xx,yy,12,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.arc(xx+11,yy+12,9,0,Math.PI*2);ctx.fill();
-   }else if(tile.kind==='mountain'||tile.kind==='hills'){
-    ctx.fillStyle=tile.kind==='mountain'?'#d5ddcf77':'#e4dfb344';
-    ctx.beginPath();ctx.moveTo(x+10,y+43);ctx.lineTo(x+28,y+8);ctx.lineTo(x+49,y+43);ctx.closePath();ctx.fill();
-   }else if(tile.kind==='sea'||tile.kind==='river'){
-    ctx.strokeStyle='#b9dbdc3b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+9,y+30);ctx.quadraticCurveTo(x+20,y+23,x+31,y+30);ctx.stroke();
-   }
-  }
- }
- if(state.options.roads){
-  ctx.lineCap='round';ctx.lineJoin='round';
-  for(const seg of W.roadSegments){
-   if(Math.max(seg.a.x,seg.b.x)<camera.x-hw-120||Math.min(seg.a.x,seg.b.x)>camera.x+hw+120||
-      Math.max(seg.a.y,seg.b.y)<camera.y-hh-120||Math.min(seg.a.y,seg.b.y)>camera.y+hh+120)continue;
-   ctx.strokeStyle='#4a41287d';ctx.lineWidth=zoom<.24?15:19;ctx.beginPath();ctx.moveTo(seg.a.x,seg.a.y);ctx.lineTo(seg.b.x,seg.b.y);ctx.stroke();
-   ctx.strokeStyle='#e4c995af';ctx.lineWidth=zoom<.24?7:10;ctx.stroke();
-  }
- }
+ window.UAMapPainter.draw(ctx,W,camera,view,state.options);
 }
 function drawFlag(x,y,f){
  ctx.fillStyle='#151d1a';ctx.fillRect(x-1,y-35,3,42);
@@ -424,12 +398,7 @@ function drawWorld(time){
  drawLand();drawLocations();drawParties();drawPlayer(time);
 }
 function initMiniBase(){
- const c=document.createElement('canvas');c.width=W.COLS;c.height=W.ROWS;const x=c.getContext('2d');
- for(let ty=0;ty<W.ROWS;ty++)for(let tx=0;tx<W.COLS;tx++){
-  const tile=W.tiles[W.tileIndex(tx,ty)],f=W.factions[tile.owner];x.fillStyle=W.palette[tile.kind];x.fillRect(tx,ty,1,1);
-  if(f){x.fillStyle=colorAlpha(f.color,.24);x.fillRect(tx,ty,1,1)}
- }
- miniBase=c;
+ miniBase=window.UAMapPainter.mini(W);
 }
 function drawMini(){
  if(!state||!state.options.minimap)return;
@@ -496,12 +465,82 @@ function refreshInspector(){
  }else{
   const p=state.player,land=W.tileAt(p.x,p.y),region=currentRegion();
   html='<div class="smallcaps">EXPLORING ASTERRA</div><h2>'+esc(region.name)+'</h2><div class="banner-strip" style="background:'+region.color+'"></div>';
-  html+='<p>'+esc(region.trait)+'. The land around you is '+esc(land.kind)+'.</p>';
+  const biomeNames={taiga:'northern evergreen forest',tundra:'windy tundra',
+   rainforest:'humid southern forest',scrub:'arid scrubland',
+   steppe:'open grass steppe',desert:'sun-baked desert',
+   forest:'temperate woodland',hills:'rolling highland',
+   mountain:'mountain range',marsh:'wetland',river:'river crossing',
+   snow:'snow-covered land',grass:'fertile grassland',sea:'coastal water'};
+  html+='<p>'+esc(region.trait)+'. The landscape here is '+esc(biomeNames[land.kind]||land.kind)+
+   ', shaped by a north-to-south climate and local rainfall.</p>';
   html+='<div class="eventbox"><b>Current objective</b><p>'+esc(questText())+'</p></div>';
   html+=renderActions([{act:'nearest',label:'➤ Find nearest settlement',primary:true},{act:'partyPanel',label:'⚔ Review your army'},{act:'factions',label:'🛡 Explore 10 factions'}]);
  }
  box.innerHTML=html;inspectorDirty=false;
 }
+// World Atlas is accessible before creating a character. It uses the exact
+// live map renderer, not a separately illustrated or hand-edited map.
+const atlasCanvas=$('atlasCanvas'),atlasCtx=atlasCanvas.getContext('2d');
+let atlasView={w:940,h:570},atlasCam={x:W.WIDTH/2,y:W.HEIGHT/2,zoom:.07},atlasDrag=null;
+function resetAtlas(){
+ const rect=atlasCanvas.getBoundingClientRect();
+ atlasView={w:Math.max(1,rect.width),h:Math.max(1,rect.height)};
+ atlasCam.x=W.WIDTH/2;atlasCam.y=W.HEIGHT/2;
+ atlasCam.zoom=Math.min(atlasView.w/W.WIDTH,atlasView.h/W.HEIGHT)*.94;
+ drawAtlas();
+}
+function drawAtlas(){
+ if($('screenAtlas').classList.contains('hidden'))return;
+ const rect=atlasCanvas.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);
+ atlasView={w:Math.max(1,rect.width),h:Math.max(1,rect.height)};
+ const sw=Math.ceil(atlasView.w*dpr),sh=Math.ceil(atlasView.h*dpr);
+ if(atlasCanvas.width!==sw||atlasCanvas.height!==sh){atlasCanvas.width=sw;atlasCanvas.height=sh}
+ atlasCtx.setTransform(dpr,0,0,dpr,0,0);
+ atlasCtx.clearRect(0,0,atlasView.w,atlasView.h);
+ atlasCtx.fillStyle='#294c59';atlasCtx.fillRect(0,0,atlasView.w,atlasView.h);
+ atlasCtx.translate(atlasView.w/2,atlasView.h/2);
+ atlasCtx.scale(atlasCam.zoom,atlasCam.zoom);
+ atlasCtx.translate(-atlasCam.x,-atlasCam.y);
+ window.UAMapPainter.draw(atlasCtx,W,atlasCam,atlasView,{borders:true,roads:true});
+ for(const f of F){
+  const x=f.capital[0],y=f.capital[1];
+  atlasCtx.fillStyle='#13241b';atlasCtx.beginPath();atlasCtx.arc(x,y,54,0,Math.PI*2);atlasCtx.fill();
+  atlasCtx.strokeStyle=f.color;atlasCtx.lineWidth=14;atlasCtx.stroke();
+  atlasCtx.fillStyle='#f3e0ab';atlasCtx.beginPath();atlasCtx.arc(x,y,18,0,Math.PI*2);atlasCtx.fill();
+  atlasCtx.font='bold 153px Georgia,serif';atlasCtx.textAlign='center';atlasCtx.textBaseline='top';
+  atlasCtx.lineWidth=15;atlasCtx.strokeStyle='#11231ddd';
+  atlasCtx.strokeText(f.name,x,y+65);atlasCtx.fillStyle='#f6e7bf';atlasCtx.fillText(f.name,x,y+65);
+ }
+}
+function atlasZoom(mult,clientX,clientY){
+ const w=atlasView.w,h=atlasView.h;
+ const x=clientX===undefined?w/2:clientX,y=clientY===undefined?h/2:clientY;
+ const wx=atlasCam.x+(x-w/2)/atlasCam.zoom,wy=atlasCam.y+(y-h/2)/atlasCam.zoom;
+ const minZoom=Math.min(w/W.WIDTH,h/W.HEIGHT)*.8;
+ atlasCam.zoom=clamp(atlasCam.zoom*mult,minZoom,1.1);
+ atlasCam.x=clamp(wx-(x-w/2)/atlasCam.zoom,0,W.WIDTH);
+ atlasCam.y=clamp(wy-(y-h/2)/atlasCam.zoom,0,W.HEIGHT);
+ drawAtlas();
+}
+function openAtlas(){
+ openModal('screenAtlas');resetAtlas();
+}
+atlasCanvas.addEventListener('pointerdown',e=>{
+ atlasCanvas.setPointerCapture(e.pointerId);
+ atlasDrag={startX:e.clientX,startY:e.clientY,x:atlasCam.x,y:atlasCam.y};
+});
+atlasCanvas.addEventListener('pointermove',e=>{
+ if(!atlasDrag)return;
+ atlasCam.x=clamp(atlasDrag.x-(e.clientX-atlasDrag.startX)/atlasCam.zoom,0,W.WIDTH);
+ atlasCam.y=clamp(atlasDrag.y-(e.clientY-atlasDrag.startY)/atlasCam.zoom,0,W.HEIGHT);
+ drawAtlas();
+});
+atlasCanvas.addEventListener('pointerup',()=>atlasDrag=null);
+atlasCanvas.addEventListener('pointercancel',()=>atlasDrag=null);
+atlasCanvas.addEventListener('wheel',e=>{
+ e.preventDefault();const r=atlasCanvas.getBoundingClientRect();
+ atlasZoom(e.deltaY<0?1.18:1/1.18,e.clientX-r.left,e.clientY-r.top);
+},{passive:false});
 function showFactionDetails(id){
  selectedFaction=id;const f=F[id];
  const enemies=W.wars.filter(pair=>pair.includes(id)).map(pair=>F[pair[0]===id?pair[1]:pair[0]].name);
@@ -543,8 +582,12 @@ function saveOptions(){
 }
 function button(id,action){$(id).addEventListener('click',action)}
 button('menuNew',selectNew);button('menuContinue',loadGame);
-button('menuFactions',openFactions);button('menuOptions',showOptions);
+button('menuFactions',openFactions);button('menuAtlas',openAtlas);button('menuOptions',showOptions);
 button('createStart',startCampaign);button('createCancel',()=>showScreen('screenMenu'));
+button('atlasClose',closeModal);
+button('atlasZoomIn',()=>atlasZoom(1.30));
+button('atlasZoomOut',()=>atlasZoom(1/1.30));
+button('atlasReset',resetAtlas);
 button('factionsClose',closeModal);
 button('optionsClose',closeModal);
 button('optionsApply',saveOptions);
@@ -618,7 +661,9 @@ window.addEventListener('keydown',e=>{
 window.addEventListener('keyup',e=>keys.delete(e.key.length===1?e.key.toLowerCase():e.key));
 window.addEventListener('blur',()=>keys.clear());
 window.addEventListener('beforeunload',()=>{if(state)saveGame(true)});
-window.addEventListener('resize',resize);
+window.addEventListener('resize',()=>{
+ resize();if(!$('screenAtlas').classList.contains('hidden'))drawAtlas();
+});
 if('ResizeObserver' in window)new ResizeObserver(resize).observe(canvas.parentElement);
 function frame(now){
  const dt=Math.min(.075,Math.max(0,(now-last)/1000||.016));last=now;

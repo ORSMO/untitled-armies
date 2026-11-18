@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#091512">
 <meta name="description" content="Untitled Armies: a medieval campaign sandbox. Explore the vast continent of Asterra, meet ten factions, recruit and upgrade faction troops, and build your legend.">
-<title>Untitled Armies — Asterra Campaign · V4.0</title>
+<title>Untitled Armies — Asterra Campaign · V4.1</title>
 <link rel="stylesheet" href="campaign.css">
 </head>
 <body>
 <div id="game" class="hidden">
  <header class="topbar">
-  <div class="brand"><span class="crest">⚔</span><div><strong>UNTITLED ARMIES</strong><small>ASTERRA CAMPAIGN · V4.0 ALPHA</small></div></div>
+  <div class="brand"><span class="crest">⚔</span><div><strong>UNTITLED ARMIES</strong><small>ASTERRA CAMPAIGN · V4.1 ALPHA</small></div></div>
   <div class="top-center">
    <div class="chip">📜 <b id="hudDay">Day 1 · 08:00</b></div>
    <div class="chip">⚑ <b id="hudRegion">Valdorian Kingdom</b></div>
@@ -89,7 +89,7 @@
   <div>
    <div class="menu-eyebrow">THE CONTINENT OF ASTERRA · YEAR 1063</div>
    <h1>UNTITLED<br><i>ARMIES</i></h1>
-   <p class="menu-intro">Ten kingdoms. Countless roads. A world without a crown of your own—yet. Travel as a lone adventurer, gather warriors from the realms, and write the first chapter of your legend.</p>
+   <p class="menu-intro">Ten kingdoms across northern snows, mountain passes, fertile valleys and southern drylands. Travel as an independent adventurer, gather faction warriors and write the first chapter of your legend.</p>
    <div class="menu-summary">
     <div><strong>10</strong>Faction realms</div>
     <div><strong>80</strong>Settlements</div>
@@ -101,12 +101,13 @@
    <p>Create a character and explore the new campaign world. Your journey saves locally in this browser.</p>
    <button id="menuNew" class="btn primary">⚔ NEW CAMPAIGN</button>
    <button id="menuContinue" class="btn" disabled>➤ Continue Campaign</button>
+   <button id="menuAtlas" class="btn">🗺 Explore the World Atlas</button>
    <button id="menuFactions" class="btn">⚑ The Ten Factions</button>
    <button id="menuOptions" class="btn">⚙ Map & Game Settings</button>
    <div class="section-caption">COMBAT TRAINING</div>
    <a href="classic.html" class="btn" style="text-decoration:none;display:block;text-align:center;margin:7px 0">⚔ Classic 50v50 Battle Test</a>
    <a href="lab.html" class="btn" style="text-decoration:none;display:block;text-align:center;margin:7px 0">⚗ Six-Arena Battle Lab</a>
-   <div class="menu-foot">V4.0 · Campaign foundation. Combat testing remains available independently while full overworld-to-battle integration is developed.</div>
+   <div class="menu-foot">V4.1 · Rebuilt geography, realistic climate and terrain-guided trade routes. Campaign battles are still being integrated.</div>
   </div>
  </div>
 </section>
@@ -128,6 +129,21 @@
   </select>
   <div class="eventbox"><b>Starting equipment & party</b><p>8 recruits of your homeland, provisions, denars, and a world to explore. Equipment customization belongs to your future player-founded faction, not to independent wanderers.</p></div>
   <div class="modal-actions"><button class="btn primary" id="createStart">Enter the World ⚔</button></div>
+ </div>
+</section>
+<section id="screenAtlas" class="overlay hidden" aria-label="World Atlas">
+ <div class="modal large atlas-modal">
+  <button class="close" id="atlasClose" aria-label="Close world atlas">×</button>
+  <div class="smallcaps">ASTERRA · THE NATURAL WORLD</div>
+  <h2>A Continent Shaped by Climate &amp; History</h2>
+  <p>The far north is cold, the central valleys are temperate, and the southern interior is warmer and drier. Mountains create rain shadows; rivers descend through the lowlands, and trade roads seek valleys and crossings.</p>
+  <div class="atlas-frame"><canvas id="atlasCanvas" aria-label="Overview of Asterra, with ten factions, natural terrain, rivers and trade routes"></canvas></div>
+  <div class="atlas-controls">
+   <div class="atlas-hint">Colored banners mark faction capitals. Drag to pan; scroll to zoom. Roads follow valleys and river crossings.</div>
+   <button class="btn small" id="atlasZoomIn" title="Zoom atlas in">＋</button>
+   <button class="btn small" id="atlasZoomOut" title="Zoom atlas out">−</button>
+   <button class="btn small" id="atlasReset" title="Show entire continent">◎ Full Map</button>
+  </div>
  </div>
 </section>
 <section id="screenFactions" class="overlay hidden" aria-label="Faction encyclopedia">
@@ -182,6 +198,7 @@
  </div>
 </section>
 <script src="world-data.js"></script>
+<script src="map-painter.js"></script>
 <script src="campaign.js"></script>
 </body>
 </html>

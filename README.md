@@ -1,5 +1,13 @@
 # Untitled Armies
 
+## V4.1 — A more natural continent
+
+Asterra's campaign geography has been rebuilt, not just recolored. The continent uses irregular coastlines with bays and peninsulas, mountain *ranges* with foothills, real downhill drainage, temperature decreasing with latitude, moisture from ocean winds and rain shadows, and a biome classification that blends from northern taiga and snow through central grasslands to southern steppes, scrub and desert. The terrain-aware faction frontier map now spreads through passes and valleys instead of making radial spokes around capitals. All 80 settlement identifiers and original faction capital coordinates are preserved for existing browser saves; old character/party positions that became water are relocated to nearby land on load.
+
+All 80 settlements connect through a **79-link trade and village-road tree**, with primary trade roads following low-cost terrain and local village tracks linked to nearby towns rather than all seven locations directly back to a capital. Routes are true weighted A* polylines, not straight decorative threads; roads and travel avoid impassable water, cannot cut diagonally through river corners, and have 18 physical bridge crossings. River networks drain down actual terrain toward water. The world is rendered with a cached blended-color terrain atlas, softly contoured shorelines, rounded national boundaries, river channels, geographic labels and biome details. At full-continent scale, minor village tracks and smaller tributaries are hidden to prevent visual clutter.
+
+The main menu now includes **Explore the World Atlas**—an interactive preview of the actual generated world, supporting dragging and zoom. Existing Classic 50v50 (`classic.html`) and Six-Arena Battle Lab (`lab.html`) remain unchanged. Campaign saves continue using browser-local storage.
+
 A browser-based medieval warfare game in active development.
 
 ## V4.0 — Asterra Campaign Alpha
