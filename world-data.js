@@ -98,7 +98,7 @@ function geographicSample(x,y){
  // The north is cold, the south is hot. Altitude and local variations
  // cause colder mountain passes and warmer river valleys at any latitude.
  const latitude=y/HEIGHT;
- const temperature=clamp(.055+latitude*.93-altitude*.35+
+ const temperature=clamp(.14+latitude*.91-altitude*.25+
   (fractal(x+6100,y-1700,1740)-.5)*.17,0,1);
  return {isSea,shape,altitude,temperature};
 }
@@ -152,21 +152,22 @@ for(let ty=0;ty<ROWS;ty++){
   const lee=clamp(upwindPeak-t.e-.08,0,.8);
   const uplift=clamp(t.e-upwindPeak+.06,0,.4);
   windMoisture=clamp(windMoisture*.992+uplift*.12-t.e*.009,.09,.98);
-  const humidity=clamp(.14+.34*wetNoise+.27*coastline+
-    windMoisture*.30-lee*.58+(fractal((tx+.5)*TILE,(ty+.5)*TILE+300,720)-.5)*.16,0,1);
+  const humidity=clamp(.09+.41*wetNoise+.24*coastline+
+    windMoisture*.23-lee*.75-Math.max(0,t.temp-.53)*.34+
+    (fractal((tx+.5)*TILE,(ty+.5)*TILE+300,720)-.5)*.21,0,1);
   t.m=humidity;
   upwindPeak=Math.max(t.e,upwindPeak*.983);
   const temperature=t.temp,altitude=t.e;
-  if(altitude>.87){t.kind=temperature<.28?'snow':'mountain';continue}
-  if(altitude>.71){t.kind=temperature<.23?'snow':'hills';continue}
-  if(temperature<.18){t.kind=humidity>.52?'taiga':'snow';continue}
-  if(temperature<.31){t.kind=humidity>.53?'taiga':humidity>.34?'forest':'tundra';continue}
-  if(temperature<.72){
-   t.kind=humidity>.68?'forest':humidity<.32?'steppe':humidity>.61&&altitude<.28?'marsh':'grass';
+  if(altitude>.77){t.kind=temperature<.22?'snow':'mountain';continue}
+  if(altitude>.58){t.kind=temperature<.19?'snow':'hills';continue}
+  if(temperature<.17){t.kind=humidity>.48?'taiga':'snow';continue}
+  if(temperature<.32){t.kind=humidity>.52?'taiga':humidity>.31?'forest':'tundra';continue}
+  if(temperature<.66){
+   t.kind=humidity>.64?'forest':humidity<.34?'steppe':humidity>.61&&altitude<.28?'marsh':'grass';
    continue;
   }
-  t.kind=humidity<.30?'desert':humidity<.47?'scrub':humidity>.73?'rainforest':
-   humidity>.61?'forest':'steppe';
+  t.kind=humidity<.32?'desert':humidity<.46?'scrub':humidity>.73?'rainforest':
+   humidity>.60?'forest':'steppe';
  }
 }
 // Depression-filled priority drainage: every stream ultimately reaches the
