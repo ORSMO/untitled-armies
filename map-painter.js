@@ -79,6 +79,8 @@ function curved(ctx,points){
 function drawRivers(ctx,w,l,r,t,b,zoom){
  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
  for(const river of w.riverPaths){
+  // At continent zoom, show the primary drainages, not every tributary.
+  if(zoom<.15&&river.points.length<39)continue;
   if(!river.bounds){
    const pts=river.points;river.bounds={
     minX:Math.min(...pts.map(p=>p.x)),maxX:Math.max(...pts.map(p=>p.x)),
@@ -97,11 +99,14 @@ function drawRoads(ctx,w,l,r,t,b,zoom){
  for(const road of w.roadSegments){
   if(!visible(road.bounds,l,r,t,b,130))continue;
   const main=road.kind==='trunk';
+  // Village tracks belong on the local map; the world atlas needs only
+  // a readable continental trade network, not a web of hairlines.
+  if(!main&&zoom<.19)continue;
   curved(ctx,road.points);
-  ctx.strokeStyle='#403825b1';ctx.lineWidth=main?14:9;ctx.stroke();
+  ctx.strokeStyle='#403825b1';ctx.lineWidth=main?(zoom<.16?20:14):9;ctx.stroke();
   curved(ctx,road.points);
   ctx.strokeStyle=main?'#d4bd8be3':'#bcaa85a5';
-  ctx.lineWidth=main?6.5:3.7;ctx.stroke();
+  ctx.lineWidth=main?(zoom<.16?10:6.5):3.7;ctx.stroke();
   if(main&&zoom>.5){
    curved(ctx,road.points);
    ctx.strokeStyle='#f1dcac5a';ctx.lineWidth=1.6;ctx.stroke();
