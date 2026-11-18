@@ -308,6 +308,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
       <tr><td>Crossbow</td><td>12</td><td>1125</td><td>1.90s</td><td>Heavy piercing</td></tr>
       <tr><td>Javelins</td><td>6</td><td>624</td><td>1.05s</td><td>Heavy piercing</td></tr>
        <tr><td>Compact horse bow</td><td>24</td><td>710</td><td>0.52s</td><td>Light piercing</td></tr></tbody></table>
+      <p><strong>BATTLEFIELDS &amp; TERRAIN (V3.4):</strong> Use the <strong>Battlefield Terrain</strong> selector in the footer. Choose open ground, a hill, forest, mud, shallow river, rocks or mixed terrain. Hills give higher-ground melee and ranged advantages; forest conceals troops against missile fire; mud and rivers slow movement and tire soldiers and horses; solid rocks block physical movement and low-flying arrows. Cavalry needs clear dry ground to build up a strong charge, and all terrain interacts with existing formations and morale. Switching the terrain resets the current test. The default open plain preserves earlier fairness tests.</p>
       <p><strong>HORSE MOVEMENT (V3.1):</strong> Mounted troops now accelerate and brake instead of instantly changing speed or direction. A horse turns much wider at full gallop, especially when heavily armored or wounded. A mounted charge requires real forward closing speed, and body-to-body collisions absorb momentum. Cavalry ride through an enemy on a committed attack line, break away when surrounded, and regroup for another charge. Mounted archers try to ride out of close threats to recover their shooting distance. Gait animation and hoof dust show speed; the amber bar is horse health and the smaller turquoise bar is horse stamina. Rider and horse health remain separate. A fallen horse cannot be instantly remounted.</p>
       <p><strong>SQUADS & COMMANDERS (V3.2):</strong> Infantry now maintain lanes while advancing and correct drifting ranks. Foot archers stay behind a friendly infantry screen when one exists. Commanders keep a small infantry reserve behind the line, then commit it when troops are under pressure. When enemy archers expose a wing, cavalry first ride around the flank before attacking; mounted movement still uses real acceleration and turning. Commanders display cohesion and reserve status. <strong>Manual General orders always win:</strong> a selected Infantry, Archer, Cavalry or Horse Archer group follows your standing orders until you Return to AI. These are battlefield test mechanics, not a campaign system.</p>
       <p><strong>MORALE &amp; BATTLE OUTCOMES (V3.3):</strong> Use the <strong>🛡 Training mode / ⚔ Real battle</strong> switch in the footer. Switching restarts the current test. Training keeps invulnerable friendly troops and recurring enemies; Real Battle allows both armies to die or be incapacitated, prevents reinforcements, and enables casualty morale, fleeing, surrender and commander-led rallies. A battle ends when one army can no longer fight; an automatic report shows fatalities, incapacitated, routed, surrendering and still-broken soldiers, plus each commander's fate. Press <strong>Fight another battle</strong> to retry with the same rules.</p>
@@ -412,7 +413,16 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
  </section>
   <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> <span id="stressCaption">Enemy stress</span> <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="commanderButton" class="small-btn" aria-expanded="false" aria-controls="commanderPanel">👑 Commanders</button> <button type="button" id="enemyButton" class="small-btn" aria-expanded="false" aria-controls="enemyPanel">🔴 Enemy orders</button>
     <button type="button" id="infiniteAmmoButton" class="small-btn" aria-pressed="false" title="Unlimited arrows, bolts and javelins for both armies">∞ Ammo: OFF</button>
-    <button type="button" id="equipmentButton" class="small-btn" aria-expanded="false" aria-controls="equipmentPanel">⚙ Test gear</button> <button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button> <button type="button" id="battleRules" class="small-btn" aria-pressed="false" title="Training: immortal friendlies and enemy reinforcements. Real battle: vulnerable troops, no respawns, morale, surrender and victory. Switching resets the test.">🛡 Training mode</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
+    <button type="button" id="equipmentButton" class="small-btn" aria-expanded="false" aria-controls="equipmentPanel">⚙ Test gear</button> <button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button>
+ <select id="terrainPreset" class="small-btn" aria-label="Battlefield terrain" title="Choose the battlefield terrain; changing terrain restarts this combat test">
+ <option value="plain">🌾 Open plain</option>
+ <option value="ridge">⛰️ Hill and ridge</option>
+ <option value="forest">🌲 Forest</option>
+ <option value="mud">🟤 Mud</option>
+ <option value="river">🌊 Shallow river</option>
+ <option value="rocks">🪨 Rock outcrop</option>
+ <option value="mixed">🗺️ Mixed terrain</option>
+ </select> <button type="button" id="battleRules" class="small-btn" aria-pressed="false" title="Training: immortal friendlies and enemy reinforcements. Real battle: vulnerable troops, no respawns, morale, surrender and victory. Switching resets the test.">🛡 Training mode</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
 </div>
 <div id="rotateNotice" role="status" aria-live="polite">
  <div class="rotate-icon" aria-hidden="true">↻</div>
@@ -964,6 +974,12 @@ function determineBattleOutcome(){
  refreshBattleRulesUI();updateUI();
  return battleOutcome;
 }
+document.querySelector('#terrainPreset').addEventListener('change',e=>{
+ terrainPreset=terrainModes.includes(e.target.value)?e.target.value:'plain';
+ populate();
+ ui.hint.textContent='Battlefield: '+terrainLabels[terrainPreset]+
+  ' · Terrain affects movement, cover and combat.';
+});
 function populate(){
  setTerrain(terrainPreset);
   t=0;battleOutcome=null;battleCollapseSince={friend:null,foe:null};refreshBattleRulesUI();
