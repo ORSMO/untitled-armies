@@ -1,5 +1,15 @@
 # Untitled Armies
 
+## V4.2 — Moving-party pursuit, encounters and playable campaign battles
+
+- **Click to follow a moving party.** Selecting a roaming bandit, patrol, or caravan begins pursuit instead of simply inspecting their old coordinates. The player's route recalculates as the party moves, keeping the player camera centered while chasing (even if normal map-follow was disabled). Clicking a settlement still offers its normal route.
+- **Conversations before combat.** Catching a party opens a modal with the other party's identity and strength, your troop totals, and choices to speak, trade/ask for news, lead troops into battle, or leave. Nearby hostile bandits also stop the player and open the encounter instead of automatically triggering a win/loss roll. Caravans can sell provisions.
+- **Actually fight the encounter.** `campaign-battle.html` is a separate campaign-linked version of the existing V3.6 Classic physical combat engine. It loads up to 50 of your actual healthy faction troops (with a basic conversion from faction/tier to their weapons, shields, armor and role), your current health and the enemy party's size. Your avatar is the friendly commander: **WASD** to move directly, **click/hold or Space** to attack, **Shift** to raise a shield. The camera follows the hero. Mobile users get an on-screen direction pad and attack/guard controls. Your soldiers still use commander AI, morale, physics, cavalry, shield/spear walls and battle terrain based on the encounter's world biome. The Commander panel remains available for formation and tactical orders. **Withdraw from battle** allows you to disengage without automatic victory.
+- **Results matter in the campaign.** When the physical battle ends, a return button writes its troop-by-troop survivor and casualty records, the hero's remaining health, and winner into the browser's local campaign storage. Loading back into the campaign applies permanent deaths/captures, incapacitated soldiers (wounded units recover by resting at an inn), gold, experience, renown, loot and defeated world-party state. Returning results is single-use, so reloads cannot multiply loot. Troops beyond the current 50-soldier battlefield limit remain in the campaign reserve. If you flee, the enemy remains on the world map.
+- **The overworld feels inhabited.** 54 naturally scattered explorable locations now appear while zoomed in, including abandoned ruins, shrines, watchtowers, traveler camps, hidden groves and river fords. The first visit yields small provisions, denars and experience, and discovery progress saves between sessions. The map interface includes a **Nearby Discovery** option.
+
+This is a major bridge into the tactical engine, but **not yet a 3D third-person Bannerlord battle**. Combat is the existing 2D physics battlefield with direct character controls. Settlement interactions, diplomacy and armies will keep evolving. Original `classic.html` and `lab.html` remain unchanged as developer test environments. Existing V4.0/V4.1 browser-local saves keep their format and remain usable.
+
 ## V4.1 — A more natural continent
 
 Asterra's campaign geography has been rebuilt, not just recolored. The continent uses irregular coastlines with bays and peninsulas, mountain *ranges* with foothills, real downhill drainage, temperature decreasing with latitude, moisture from ocean winds and rain shadows, and a biome classification that blends from northern taiga and snow through central grasslands to southern steppes, scrub and desert. The terrain-aware faction frontier map now spreads through passes and valleys instead of making radial spokes around capitals. All 80 settlement identifiers and original faction capital coordinates are preserved for existing browser saves; old character/party positions that became water are relocated to nearby land on load.
@@ -27,6 +37,7 @@ The main site now launches into a playable campaign **main menu** and a persiste
 - [Campaign main menu](https://untitled-armies.onrender.com/)
 - [Classic 50v50 combat engine](https://untitled-armies.onrender.com/classic.html)
 - [Six-Arena Battle Lab](https://untitled-armies.onrender.com/lab.html)
+- [Campaign tactical battlefield (only through encounters)](https://untitled-armies.onrender.com/campaign-battle.html)
 
 The previous V3.6 default Battle Lab has been **preserved as `lab.html`**, so the campaign menu does not replace or discard any existing battle-test mechanics.
 
