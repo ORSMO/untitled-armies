@@ -1075,8 +1075,11 @@ function updateSquadState(team){
  const fewerTop=enemy.filter(s=>s.y<enemyCenter.y).length;
  const fewerBottom=enemy.length-fewerTop;
  const flankSide=fewerBottom<fewerTop?1:fewerTop<fewerBottom?-1:team==='friend'?1:-1;
- const terrainObjective=terrainStrategicPlan(team,
-  troopCenter(own,fallback),enemyCenter,own);
+ const ownCenter=own.length?{
+  x:own.reduce((n,u)=>n+u.x,0)/own.length,
+  y:own.reduce((n,u)=>n+u.y,0)/own.length
+ }:fallback;
+ const terrainObjective=terrainStrategicPlan(team,ownCenter,enemyCenter,own);
  squadStates[team]={groups,enemyCenter,terrainObjective,pressure,initialInfantryCount:initialInfantry,
   archerPressure:archers.length?pressed/archers.length:0,
   reserveReleased:release,flankSide,enemyArchers:enemy.filter(e=>isArcher(e)).length,
