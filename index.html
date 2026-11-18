@@ -3041,6 +3041,32 @@ const labOutcomeScenarios=[
    {count:3,unitRole:'archer',weapon:'shortsword',ranged:'crossbow',shield:null,armor:'leather'},
    {count:2,unitRole:'cavalry',weapon:'lance',shield:'round',horseArmor:'leather',armor:'mail'}]}}
 ];
+const labTerrainScenarios=[
+ {name:'Archers on high ground',terrain:'ridge',counts:[6,6],
+  green:{unitRole:'archer',weapon:'shortsword',ranged:'bow',armor:'leather',shield:null,experience:'trained',familiarity:'practiced'},
+  red:{unitRole:'archer',weapon:'shortsword',ranged:'bow',armor:'leather',shield:null,experience:'trained',familiarity:'practiced'}},
+ {name:'Forest cover vs crossbows',terrain:'forest',counts:[6,6],
+  green:{unitRole:'archer',weapon:'shortsword',ranged:'bow',armor:'leather',shield:null,experience:'trained',familiarity:'practiced'},
+  red:{unitRole:'archer',weapon:'shortsword',ranged:'crossbow',armor:'leather',shield:null,experience:'trained',familiarity:'practiced'}},
+ {name:'Heavy cavalry in mud',terrain:'mud',counts:[6,7],
+  green:{unitRole:'cavalry',weapon:'lance',armor:'mail',horseArmor:'plate',shield:'round',experience:'veteran',familiarity:'expert'},
+  red:{unitRole:'infantry',weapon:'sword',armor:'mail',shield:'round',experience:'trained',familiarity:'practiced'}},
+ {name:'Shallow river crossing',terrain:'river',counts:[7,7],
+  green:{unitRole:'cavalry',weapon:'sword',armor:'leather',horseArmor:'none',shield:'round',experience:'trained',familiarity:'practiced'},
+  red:{unitRole:'infantry',weapon:'spear',armor:'mail',shield:'round',experience:'trained',familiarity:'practiced'}},
+ {name:'Rock blocking arrows',terrain:'rocks',counts:[6,6],
+  green:{unitRole:'archer',weapon:'shortsword',ranged:'crossbow',armor:'leather',shield:null,experience:'trained',familiarity:'practiced'},
+  red:{unitRole:'archer',weapon:'shortsword',ranged:'bow',armor:'leather',shield:null,experience:'trained',familiarity:'practiced'}},
+ {name:'Mixed battlefield tactics',terrain:'mixed',counts:[12,12],
+  green:{experience:'trained',familiarity:'practiced',squads:[
+   {count:5,unitRole:'infantry',weapon:'pike',shield:null,armor:'mail'},
+   {count:4,unitRole:'archer',weapon:'shortsword',ranged:'bow',shield:null,armor:'leather'},
+   {count:3,unitRole:'cavalry',weapon:'lance',horseArmor:'leather',shield:'round',armor:'mail'}]},
+  red:{experience:'trained',familiarity:'practiced',squads:[
+   {count:6,unitRole:'infantry',weapon:'sword',shield:'round',armor:'mail'},
+   {count:3,unitRole:'archer',weapon:'shortsword',ranged:'crossbow',shield:null,armor:'leather'},
+   {count:3,unitRole:'horseArcher',weapon:'shortsword',ranged:'horsebow',horseArmor:'none',shield:null,armor:'leather'}]}}
+];
 let labPreset='matchups';
 function labGearLabel(gear){
  if(gear.squads)return gear.squads.map(s=>s.count+' '+s.unitRole).join(' + ');
@@ -3063,7 +3089,8 @@ function updateLabTitles(){
   labPreset==='mirrors'?'🐎 Mount tests':
   labPreset==='mounts'?'⚔ Polearm tests':
   labPreset==='polearms'?'🛡 Squad tests':
-  labPreset==='squads'?'🏳 Morale & outcomes':'⚔ Skill matchups';
+  labPreset==='squads'?'🏳 Morale & outcomes':
+  labPreset==='outcomes'?'🗺️ Terrain tests':'⚔ Skill matchups';
  btn.setAttribute('aria-pressed',labPreset==='mirrors'?'true':'false');
  document.getElementById('labPlainExplanation').textContent=labPreset==='mirrors'?
   'FAIRNESS CHECK: Both teams are identical. A result near 50/50 means the combat test is trustworthy. Large differences need investigation, allowing more variation for small samples.':
@@ -3075,6 +3102,8 @@ function updateLabTitles(){
   'SQUAD TESTS: Infantry retain formation lanes, archers use infantry screens, mounted troops flank exposed bows, and reserves deploy under pressure.':
  labPreset==='outcomes'?
   'OUTCOME TESTS: Both armies can die, become incapacitated, flee, surrender or rally. Casualties cause morale pressure and complete battles have a victor.':
+ labPreset==='terrain'?
+  'TERRAIN TESTS: Hills improve high-ground fighting; forest conceals archers; mud and water slow horses and soldiers; rocks block travel and low missiles.':
   'RANGED MATCHUPS: Arrows, bolts and javelins have travel time. Shields, armor, skill, ammo and melee rushes affect who wins.';
  document.getElementById('labAnalysisHowToRead').textContent=labPreset==='mirrors'?
   'Same gear, rank, proficiency and numbers on both sides. Green and red should each win about half the fights. Minor differences are normal; large consistent differences mean the test is biased.':
@@ -3086,18 +3115,20 @@ function updateLabTitles(){
    'Mixed forces are real infantry, archer, cavalry and mounted-archer squads. Compare their movement, infantry cohesion, ranged shots and charge outcomes.':
   labPreset==='outcomes'?
    'A losing army can surrender or flee instead of dying to the last soldier. Record killed, incapacitated, routes and surrenders; compare veteran discipline against recruits.':
+  labPreset==='terrain'?
+   'All terrain tests use the same combat engine. Compare elevated archers, forest cover, horse charges through mud and water, and rock-obstructed ranged fire.':
    'Green and red are the two sides. A 70% win rate means 7 wins out of 10 decisive fights. Bigger armor, weapon, number or skill advantages may legitimately cause one-sided results.';
 }
 function setLabPreset(mode){
  labPreset=mode;
- const options=mode==='mirrors'?labMirrorScenarios:mode==='mounts'?labMountScenarios:mode==='polearms'?labPolearmScenarios:mode==='squads'?labSquadScenarios:mode==='outcomes'?labOutcomeScenarios:labMatchupScenarios;
+ const options=mode==='mirrors'?labMirrorScenarios:mode==='mounts'?labMountScenarios:mode==='polearms'?labPolearmScenarios:mode==='squads'?labSquadScenarios:mode==='outcomes'?labOutcomeScenarios:mode==='terrain'?labTerrainScenarios:labMatchupScenarios;
  options.forEach((v,i)=>Object.assign(labScenarios[i],{
-  name:v.name,counts:[...v.counts],green:{...v.green},red:{...v.red}
+  name:v.name,counts:[...v.counts],green:{...v.green},red:{...v.red},terrain:v.terrain||'plain'
  }));
  initLab();
 }
 document.getElementById('labPresetButton').addEventListener('click',()=>{
- setLabPreset(labPreset==='matchups'?'mirrors':labPreset==='mirrors'?'mounts':labPreset==='mounts'?'polearms':labPreset==='polearms'?'squads':labPreset==='squads'?'outcomes':'matchups');
+ setLabPreset(labPreset==='matchups'?'mirrors':labPreset==='mirrors'?'mounts':labPreset==='mounts'?'polearms':labPreset==='polearms'?'squads':labPreset==='squads'?'outcomes':labPreset==='outcomes'?'terrain':'matchups');
 });
 const labSeconds=3600,labStepSeconds=.04,labWorldW=440,labWorldH=210,labMatchTimeout=75;
 let labArenas=[],labPaused=false,labTurn=0,labLastDraw=0,labAnalysisOpen=false,labAnalysisLast=0;
@@ -3107,11 +3138,12 @@ function activateLab(ar){
  activeLab=ar;W=labWorldW;H=labWorldH;t=ar.seconds;mode='attack';
  friends=ar.friends;foes=ar.foes;slashes=ar.slashes;projectiles=ar.projectiles;groundedShots=ar.groundedShots;
  squadStates=ar.squadStates||{friend:null,foe:null};
+ terrainZones=ar.terrainZones||[];terrainPreset=ar.spec.terrain||'plain';
  nextId=ar.nextId;nextSwingId=ar.nextSwingId;nextEngagementPlan=ar.nextEngagementPlan;
 }
 function storeLab(ar){
  ar.friends=friends;ar.foes=foes;ar.slashes=slashes;ar.projectiles=projectiles;ar.groundedShots=groundedShots;
- ar.squadStates=squadStates;
+ ar.squadStates=squadStates;ar.terrainZones=terrainZones;
  ar.nextId=nextId;ar.nextSwingId=nextSwingId;ar.nextEngagementPlan=nextEngagementPlan;
  ar.seconds=t;
 }
@@ -3171,6 +3203,7 @@ function startLabRound(ar){
  }
  squadStates={friend:null,foe:null};
  allocateSquadReserves('friend');allocateSquadReserves('foe');
+ setTerrain(ar.spec.terrain||'plain');
  ar.roundAge=0;storeLab(ar);
 }
 function initLab(){
@@ -3183,7 +3216,7 @@ function initLab(){
   index,spec,ctx:labCanvasNodes[index].getContext('2d'),
   seconds:0,roundAge:0,rounds:0,greenWins:0,redWins:0,draws:0,
   stats:{friend:newLabScore(),foe:newLabScore()},
-  friends:[],foes:[],slashes:[],projectiles:[],groundedShots:[],nextId:0,nextSwingId:1,nextEngagementPlan:0,done:false
+  friends:[],foes:[],slashes:[],projectiles:[],groundedShots:[],terrainZones:[],nextId:0,nextSwingId:1,nextEngagementPlan:0,done:false
  }));
  for(const arena of labArenas)startLabRound(arena);
  document.getElementById('labPause').textContent='Pause';
@@ -3307,12 +3340,14 @@ function updateLabHUD(){
     (labPreset==='mounts'?' · '+(a.stats.friend.horseCharges+a.stats.foe.horseCharges)+' charges':
      labPreset==='polearms'?' · '+(a.stats.friend.braces+a.stats.foe.braces)+' braces':
      labPreset==='squads'?' · '+(a.stats.friend.flankArrivals+a.stats.foe.flankArrivals)+' flank arrivals':
-     labPreset==='outcomes'?' · '+(a.stats.friend.panics+a.stats.foe.panics)+' morale breaks':'');
+     labPreset==='outcomes'?' · '+(a.stats.friend.panics+a.stats.foe.panics)+' morale breaks':
+     labPreset==='terrain'?' · '+(a.stats.friend.terrainBlocks+a.stats.foe.terrainBlocks)+' shots blocked by rocks':'');
   document.getElementById('labBlocks'+a.index).textContent=
    (a.stats.friend.blocks+a.stats.foe.blocks)+' blocks · '+
     (labPreset==='mounts'?((a.stats.friend.dismounts+a.stats.foe.dismounts)+' dismounts'):
      labPreset==='polearms'?((a.stats.friend.chargeStops+a.stats.foe.chargeStops)+' horse stops'):
      labPreset==='squads'?((a.stats.friend.reserveDeployments+a.stats.foe.reserveDeployments)+' reserve deployments'):
+     labPreset==='terrain'?((a.stats.friend.horseCharges+a.stats.foe.horseCharges)+' horse charges'):
      labPreset==='outcomes'?((a.stats.friend.surrenders+a.stats.foe.surrenders)+' surrendered · '+
        (a.stats.friend.routes+a.stats.foe.routes)+' fled · '+
        (a.stats.friend.incapacitated+a.stats.foe.incapacitated)+' incapacitated'):
@@ -3358,6 +3393,8 @@ function drawLabArena(ar){
  ctx.beginPath();for(let x=0;x<=ww;x+=22){ctx.moveTo(x,0);ctx.lineTo(x,hh);}
  for(let y=0;y<=hh;y+=22){ctx.moveTo(0,y);ctx.lineTo(ww,y);}ctx.stroke();
  ctx.strokeStyle='#b5d6b03a';ctx.beginPath();ctx.moveTo(ww/2,0);ctx.lineTo(ww/2,hh);ctx.stroke();
+ const savedZones=terrainZones;terrainZones=ar.terrainZones||[];
+ drawTerrain(ctx);terrainZones=savedZones;
  for(const s of [...ar.foes,...ar.friends]){
   if(s.routed)continue;
   if(s.dead||s.broken){
