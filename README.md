@@ -29,7 +29,7 @@ The main site now launches into a playable campaign **main menu** and a persiste
 - **Travel:** click to select a settlement or plot a route, click open terrain to travel, WASD / arrow keys to walk, drag to pan, mouse wheel / buttons to zoom, minimap to recenter, adjustable time speed and pause.
 - **Faction roster:** every kingdom has its own culture, locations, initial rivals and three-tier troop progression. Recruited units retain their faction template; upgrades consume denars. Custom troop equipment is **not** unlocked for a wandering character. The future player-founded-faction feature will allow defining custom troop templates.
 - **Settlements:** enter, recruit volunteers, buy food, rest and hear rumors.
-- **Party gameplay:** supplies and food consumption, money, health, experience, renown, level-ups, quests, roaming bandits, caravans and patrols. Bandit skirmishes currently use an abstract party-strength resolution that awards losses and rewards.
+- **Party gameplay:** supplies and food consumption, money, health, experience, renown, level-ups, quests, roaming bandits, caravans and patrols. In V4.0, bandit encounters used an abstract strength roll. V4.2 replaces those rolls with controllable campaign battles.
 - **Save / Continue:** browser-local save file in localStorage (auto-save plus explicit save) and persistent view preferences. Clearing browser storage or changing browser/device removes that local save.
 
 ### Links
@@ -43,8 +43,8 @@ The previous V3.6 default Battle Lab has been **preserved as `lab.html`**, so th
 
 ### Current limits and next steps
 
-This is the **first campaign foundation**, not the finished Mount & Blade-style sandbox. The world has faction borders, preset troops, patrols and static starting wars, but no full economic simulation, diplomacy changes, lords, or AI-led sieges yet. Campaign encounters are **not yet imported into Classic 50v50**, and no tactical battle can currently return its survivor roster to the campaign. That overworld-to-combat integration is the most important next connection to build. A faction can only create custom troop and equipment templates **after the player has founded their own faction**, when that feature is implemented.
+This is the **first campaign foundation**, not the finished Mount & Blade-style sandbox. The world has faction borders, preset troops, patrols and static starting wars, but no full economic simulation, diplomacy changes, lords, or AI-led sieges yet. V4.2 now links campaign parties to a dedicated 2D battle mode using the Classic combat engine and returns actual survivors and casualties. A deeper system for joining full armies, commanding reinforcements, sieges, third-person presentation and faction diplomacy is still to come. A faction can only create custom troop and equipment templates **after the player has founded their own faction**, when that feature is implemented.
 
 ## Development
 
-The app is static HTML, CSS and JavaScript: `index.html` (main menu / campaign), `campaign.css`, `world-data.js`, `campaign.js`, `classic.html` (combat testing), and `lab.html` (six-arena balance laboratory). No server or database is required for the present alpha. 
+The app is static HTML, CSS and JavaScript: `index.html` (main menu / campaign), `campaign.css`, `world-data.js`, `campaign.js`, `campaign-battle.html` (playable campaign encounters), `classic.html` (combat testing), and `lab.html` (six-arena balance laboratory). No server or database is required for the present alpha. 
