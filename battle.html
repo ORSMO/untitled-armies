@@ -1126,12 +1126,29 @@ function populate(){
   t=0;battleOutcome=null;battleCollapseSince={friend:null,foe:null};refreshBattleRulesUI();
   nextId=0;nextSwingId=1;nextEngagementPlan=0;formationType='block';enemyFormationType='block';enemyCommand='auto';enemyMovePending=false;setFormationMenu(false);
   const a=home('friend'),b=home('foe');
-  friends=formation('friend',a.x,a.y).map((p,i)=>create('friend',i,p));
-  foes=formation('foe',b.x,b.y).map((p,i)=>create('foe',i,p));
+  if(campaignMode){
+   friends=campaignFriendlyUnits.map((entry,i)=>campaignTroop('friend',i,entry,campaignFriendlyUnits.length));
+   foes=Array.from({length:campaignEnemyCount},(_,i)=>
+    campaignTroop('foe',i,{},campaignEnemyCount));
+  }else{
+   friends=formation('friend',a.x,a.y).map((p,i)=>create('friend',i,p));
+   foes=formation('foe',b.x,b.y).map((p,i)=>create('foe',i,p));
+  }
    // Preserve configured personalities across battles; clear stale orders.
   squadStates={friend:null,foe:null};
   allocateSquadReserves('friend');allocateSquadReserves('foe');
   commanders.friend=createCommander('friend');commanders.foe=createCommander('foe');
+  if(campaignMode){
+   const hero=commanders.friend;
+   hero.isPlayerHero=true;
+   hero.speed=68;hero.disc=88;hero.stress=0;
+   hero.maxHp=5;hero.hp=clamp(5*(campaignPending.playerHp||100)/100,1.1,5);
+   hero.armor='mail';hero.shield='kite';hero.weapon='sword';
+   hero.x=home('friend').x-72;hero.y=home('friend').y+78;
+   hero.tx=hero.x;hero.ty=hero.y;hero.anchorX=hero.x;hero.anchorY=hero.y;
+   commanderBrains.friend.intent='ordered';
+   updateCampaignHud();
+  }
   commanderBrains.friend=newBrain(commanderBrains.friend.personality,commanderBrains.friend.intent,commanderBrains.friend.lineStyle);
   commanderBrains.foe=newBrain(commanderBrains.foe.personality,commanderBrains.foe.intent,commanderBrains.foe.lineStyle);
   generalOrders={all:null,infantry:null,archer:null,cavalry:null,horseArcher:null,reserve:null};selectedGroup='all';
@@ -2048,22 +2065,38 @@ orderButtons.forEach(b=>b.addEventListener('click',()=>setMode(b.id)));
  mini.addEventListener('pointermove',e=>{if(e.buttons||e.pressure>0)panFromMini(e)});
  // Keyboard navigation on desktop without changing the army's current orders.
  window.addEventListener('keydown',e=>{
+  if(campaignMode&&['a','d','w','s',' ','shift'].includes(e.key.toLowerCase())){
+   if(e.target?.tagName==='BUTTON')return;
+   campaignHeroKeys.add(e.key.toLowerCase());e.preventDefault();return;
+  }
   if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','a','d','w','s','A','D','W','S'].includes(e.key)){
    if(e.target?.tagName==='BUTTON')return;
    cameraKeys.add(e.key.toLowerCase());e.preventDefault();
   }
  });
- window.addEventListener('keyup',e=>cameraKeys.delete(e.key.toLowerCase()));
- window.addEventListener('blur',()=>cameraKeys.clear());
+ window.addEventListener('keyup',e=>{
+  cameraKeys.delete(e.key.toLowerCase());campaignHeroKeys.delete(e.key.toLowerCase());
+ });
+ window.addEventListener('blur',()=>{cameraKeys.clear();campaignHeroKeys.clear()});
 document.querySelector('#stressTest').addEventListener('click',()=>{for(const s of foes){if(!s.dead&&!s.broken){const frontline=foes.indexOf(s)%5===0; s.stress=clamp(s.stress+(frontline?94+rnd(s.id+Math.floor(t)*3)*6:6),0,100);}}updateUI()});
 document.querySelector('#reset').addEventListener('click',populate);
  document.querySelector('#battleRules').addEventListener('click',()=>{
+  if(campaignMode)return;
   realisticBattle=!realisticBattle;populate();
   ui.hint.textContent=realisticBattle?
    'Real battle: both armies vulnerable; no respawns. Watch morale and the casualty report.':
    'Training: your army is invulnerable and enemies replenish. Reset complete.';
  });
- document.querySelector('#battleOutcomeRestart').addEventListener('click',populate);
+ document.querySelector('#battleOutcomeRestart').addEventListener('click',()=>
+  campaignMode?returnCampaign(battleOutcome?.winner||'retreat'):populate());
+ document.querySelector('#campaignBattleRetreat').addEventListener('click',()=>{
+  if(!campaignMode)return;
+  if(!battleOutcome){
+   if(!confirm('Retreat from the field? Your troops will escape if they can.'))return;
+   for(const s of friends)if(!s.dead&&!s.surrendered&&!s.routed){s.routed=true;s.broken=false}
+  }
+  returnCampaign(battleOutcome?.winner||'retreat');
+ });
  const armorBtn=document.querySelector('#armorButton'),armorPanel=document.querySelector('#armorPanel');
  function setArmorPanel(open){
   armorPanel.classList.toggle('is-hidden',!open);
@@ -3287,7 +3320,14 @@ function step(dt){
    }
   }
   let moveX=s.tx,moveY=s.ty,pace=1;
-  if(command==='stop'){moveX=s.x;moveY=s.y;}
+  const heroControlled=campaignMode&&s.isPlayerHero;
+  if(heroControlled){
+   const dx=Number(campaignHeroKeys.has('d'))-Number(campaignHeroKeys.has('a'));
+   const dy=Number(campaignHeroKeys.has('s'))-Number(campaignHeroKeys.has('w'));
+   if(dx||dy){const length=Math.hypot(dx,dy);
+    moveX=s.x+dx/length*180;moveY=s.y+dy/length*180;pace=1.45;
+   }else{moveX=s.x;moveY=s.y}
+  }else if(command==='stop'){moveX=s.x;moveY=s.y;}
   else if(command==='retreat'){moveX=s.anchorX;moveY=s.anchorY;pace=1.45;}
   else if(command==='attack'){
     if(target){
@@ -3483,7 +3523,10 @@ function step(dt){
   }else{
    // Guard timers continue while staggered, but only recovered soldiers
    // can actively defend or begin a new swing.
-   updateShieldGuard(s,dt);
+   if(heroControlled){
+    s.guardActive=campaignHeroKeys.has('shift')&&s.stamina>8&&s.stagger<=0;
+    if(s.guardActive)s.stamina=Math.max(0,s.stamina-dt*2);
+   }else updateShieldGuard(s,dt);
    if(s.stagger>0){s.guardActive=false;s.rangedAim=0;}
    else if(s.attack)advanceAttack(s,dt);
    else if(s.rangedAim>0)advanceRangedAim(s,target,dt);
@@ -3491,7 +3534,8 @@ function step(dt){
     beginRangedAim(s,target,dist);
    // Archers never chase distant enemies with swords, including when
    // out of ammunition. Melee is exclusively an emergency close threat.
-   else if(target&&(!isArcher(s)||dist<=meleeThreatRange(s))&&s.cooldown<=0)
+   else if(target&&(!isArcher(s)||dist<=meleeThreatRange(s))&&s.cooldown<=0&&
+    (!heroControlled||campaignHeroKeys.has(' ')))
     beginAttack(s,target);
   }
  }
@@ -3820,17 +3864,31 @@ function frame(ts){
   last=ts;
   if(!equipmentOpen&&!battleOutcome)t+=dt;
   const panSpeed=600*dt;
-  if(cameraKeys.has('arrowleft')||cameraKeys.has('a'))camera.x-=panSpeed;
-  if(cameraKeys.has('arrowright')||cameraKeys.has('d'))camera.x+=panSpeed;
-  if(cameraKeys.has('arrowup')||cameraKeys.has('w'))camera.y-=panSpeed;
-  if(cameraKeys.has('arrowdown')||cameraKeys.has('s'))camera.y+=panSpeed;
+  if(cameraKeys.has('arrowleft')||(!campaignMode&&cameraKeys.has('a')))camera.x-=panSpeed;
+  if(cameraKeys.has('arrowright')||(!campaignMode&&cameraKeys.has('d')))camera.x+=panSpeed;
+  if(cameraKeys.has('arrowup')||(!campaignMode&&cameraKeys.has('w')))camera.y-=panSpeed;
+  if(cameraKeys.has('arrowdown')||(!campaignMode&&cameraKeys.has('s')))camera.y+=panSpeed;
+  if(campaignMode&&commanders.friend&&!commanders.friend.dead){
+   const hero=commanders.friend,blend=Math.min(1,dt*4);
+   camera.x+=(hero.x-VW*.48-camera.x)*blend;
+   camera.y+=(hero.y-VH*.52-camera.y)*blend;
+  }
   camera.x=clamp(camera.x,0,Math.max(0,W-VW));
   camera.y=clamp(camera.y,0,Math.max(0,H-VH));
   if(!equipmentOpen&&!battleOutcome)step(dt);
   draw();
+  if(campaignMode&&Math.floor(t*3)!==Math.floor((t-dt)*3))updateCampaignHud();
   if(!equipmentOpen&&Math.floor(t*4)!==Math.floor((t-dt)*4))updateUI();
   requestAnimationFrame(frame);
  }
+if(campaignMode){
+ document.body.classList.add('campaign-battle');
+ document.querySelector('#campaignBattleName').textContent='⚔ '+campaignPending.playerName+
+  ' versus '+campaignPending.enemyName;
+ document.querySelector('#battleOutcomeRestart').textContent='↩ Return to Campaign';
+ document.querySelector('#terrainPreset').value=campaignPending.terrain||'plain';
+ terrainPreset=campaignPending.terrain||'plain';
+}else document.querySelector('#campaignBattleHUD').style.display='none';
 window.addEventListener('resize',resize,{passive:true});if('ResizeObserver' in window)new ResizeObserver(resize).observe(board);resize();requestAnimationFrame(frame);
 })();
 </script>
