@@ -36,7 +36,7 @@ function saveGame(silent){
  try{
   const data={version:VERSION,player:state.player,day:state.day,hour:state.hour,
    parties:state.parties.map(p=>({id:p.id,x:p.x,y:p.y,tx:p.tx,ty:p.ty,strength:p.strength,active:p.active,kind:p.kind,faction:p.faction})),
-   options:state.options,speed:state.speed,zoom:camera.zoom,visitedLandmarks:state.visitedLandmarks||[]};
+   options:state.options,speed:state.speed,zoom:camera.zoom,visitedLandmarks:state.visitedLandmarks||[],pendingBattleId:state.pendingBattleId||null};
   localStorage.setItem(KEY,JSON.stringify(data));
   if(!silent)notify('Campaign saved on this device.');
   return true;
@@ -73,7 +73,7 @@ function startCampaign(){
  state={version:VERSION,player:{name,origin,background,x,y,gold:money,food:background==='merchant'?28:22,hp:100,
    level:1,xp:0,renown:0,roster:firstTroops,quest:{id:0,progress:0,goal:3,done:false}},
    day:1,hour:8,speed:1,paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,
-   followPartyId:null,followRepath:0,visitedLandmarks:[],
+   followPartyId:null,followRepath:0,visitedLandmarks:[],pendingBattleId:null,
    parties:[],options:{...settingsDefault},messages:[],unseen:[],lastEncounter:-100};
  state.parties=generateParties();selected={type:'settlement',id:origin*8};
  camera.zoom=.47;resetView();$('game').classList.remove('hidden');showScreen(null);resize();
@@ -95,7 +95,7 @@ function loadGame(){
   }
   state={version:VERSION,player:p,day:raw.day||1,hour:raw.hour||8,speed:[1,2,4].includes(raw.speed)?raw.speed:1,
    paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,
-   followPartyId:null,followRepath:0,visitedLandmarks:Array.isArray(raw.visitedLandmarks)?raw.visitedLandmarks:[],
+   followPartyId:null,followRepath:0,visitedLandmarks:Array.isArray(raw.visitedLandmarks)?raw.visitedLandmarks:[],pendingBattleId:raw.pendingBattleId||null,
    parties:[],options:{...settingsDefault,...raw.options},
    messages:[],lastEncounter:-100};
   state.parties=generateParties();
@@ -108,7 +108,7 @@ function loadGame(){
      }
     }}
   camera.zoom=clamp(raw.zoom||.47,.12,1.9);resetView();$('game').classList.remove('hidden');showScreen(null);resize();
-  selected={type:'land'};log('Campaign resumed. Your journey continues.');refreshUI();notify('Campaign loaded.');return true;
+  selected={type:'land'};log('Campaign resumed. Your journey continues.');refreshUI();if(!consumeBattleResult())notify('Campaign loaded.');return true;
  }catch(e){notify('Could not load this campaign save.');return false}
 }
 function showMenu(){
@@ -297,6 +297,7 @@ function performSettlementAction(action,id){
  }else if(action==='rest'){
   if(p.gold<20){notify('An inn costs 20 denars.');return}
   p.gold-=20;p.hp=Math.min(100,p.hp+32);state.hour=8;state.day++;consumeFood();
+  for(const group of p.roster)if(group.wounded)group.wounded=Math.max(0,group.wounded-3);
   log('Rested at '+site.name+'.');notify('Rested, healed and started a new day.');
  }else if(action==='rumors'){
   log('Rumor: scouts report bandits on roads near '+site.name+'.');
@@ -314,30 +315,101 @@ function upgradeRoster(index){
  p.gold-=cost;g.tier++;p.renown++;log('Promoted '+g.count+' troops into '+troopName(g)+'.');
  notify('Troops upgraded along their faction template.');refreshUI();saveGame(true);
 }
-function skirmish(id){
- const p=state.parties.find(p=>p.id===id&&p.active),me=state.player;
- if(!p)return;
- if(dist(me.x,me.y,p.x,p.y)>155){travelTo(p.x,p.y,null);notify('Approaching the bandits.');return}
- const attack=troopPower()*(.83+Math.random()*.34),defense=p.strength*(1.2+Math.random()*.45);
- const won=attack>=defense,losses=won?Math.min(Math.max(0,Math.floor(defense/attack*Math.random()*3)),rosterCount()-1):
-  Math.min(Math.ceil(p.strength*.24),Math.max(0,rosterCount()-1));
- let remaining=losses;
- for(let i=me.roster.length-1;i>=0&&remaining>0;i--){const g=me.roster[i],n=Math.min(g.count,remaining);g.count-=n;remaining-=n}
- me.roster=me.roster.filter(g=>g.count>0);
- if(won){
-  const gold=65+p.strength*12,exp=42+p.strength*7;me.gold+=gold;me.xp+=exp;me.renown+=3;
-  p.active=false;log('Victory over '+p.strength+' bandits. Lost '+losses+' soldiers; gained '+gold+' denars.');
-  if(me.quest?.id===2)completeQuest(2);
-  notify('Victory! +'+gold+' denars, +'+exp+' XP · '+losses+' casualties.');
- }else{
-  const gold=Math.min(me.gold,Math.floor(me.gold*.22));me.gold-=gold;me.hp=Math.max(20,me.hp-35);state.day++;
-  const site=W.closestSettlement(me.x,me.y);me.x=site.x;me.y=site.y;resetView();
-  log('Defeat! '+losses+' soldiers lost, '+gold+' denars taken. Your party retreated to '+site.name+'.');
-  notify('Defeat. You escaped with the survivors.');
+function openEncounter(party){
+ if(!state||!party?.active||menuOpen)return;
+ state.followPartyId=null;state.path=[];state.pathIndex=0;state.targetSettlement=null;
+ selected={type:'party',id:party.id};inspectorDirty=true;
+ const kind=party.kind;
+ $('encounterName').textContent=partyName(party);
+ $('encounterIntro').textContent=kind==='bandit'?
+  'Armed outlaws block your road. They eye your company and await your decision.':
+  kind==='caravan'?'A merchant caravan slows. Its guards watch your approach.':
+  'A column of soldiers halts beneath its banners. Their captain awaits you.';
+ $('encounterOwnCount').textContent=rosterCount()+' troops · '+state.player.name;
+ $('encounterOwnDetail').textContent='Your health '+state.player.hp+'% · '+state.player.roster.length+' troop classes';
+ $('encounterEnemyCount').textContent=party.strength+' '+(kind==='bandit'?'outlaws':kind==='caravan'?'travelers':'soldiers');
+ $('encounterEnemyDetail').textContent=kind==='bandit'?'Hostile raiders':
+  F[party.faction].name+' · '+(kind==='patrol'?'Guarding the realm':'Trading goods');
+ $('encounterDialogue').innerHTML='<b>The party stops before you.</b><p>You can speak, trade, fight or leave. The choice is yours.</p>';
+ $('encounterTrade').disabled=kind==='bandit';
+ $('encounterTrade').textContent=kind==='caravan'?'🪙 Buy caravan provisions':'📜 Ask for news';
+ openModal('screenEncounter');
+}
+function launchCampaignBattle(party){
+ if(!party?.active||!state)return;
+ const troops=[];
+ for(let groupIndex=0;groupIndex<state.player.roster.length;groupIndex++){
+  const g=state.player.roster[groupIndex],n=Math.max(0,g.count-(g.wounded||0));
+  for(let slot=0;slot<n&&troops.length<50;slot++)
+   troops.push({groupIndex,slot,faction:g.faction,tier:g.tier});
  }
- while(me.xp>=me.level*125){me.xp-=me.level*125;me.level++;me.hp=100;log('You reached level '+me.level+'.')}
- state.lastEncounter=state.day+state.hour/24;state.path=[];state.pathIndex=0;selected={type:'land'};
- refreshUI();saveGame(true);
+ const sessionId='battle-'+Date.now().toString(36)+'-'+Math.floor(Math.random()*1e7).toString(36);
+ const session={status:'active',sessionId,partyId:party.id,kind:party.kind,
+  faction:party.faction,enemyCount:Math.min(50,party.strength),
+  playerName:state.player.name,heroHealth:state.player.hp,troops};
+ state.pendingBattleId=sessionId;
+ state.lastEncounter=state.day+state.hour/24;
+ state.followPartyId=null;state.path=[];state.pathIndex=0;
+ if(!saveGame(true)){notify('Browser storage is needed for campaign battles.');return}
+ try{localStorage.setItem('ua-campaign-battle-session-v1',JSON.stringify(session))}
+ catch(e){notify('Could not open battle. Please allow local browser storage.');return}
+ window.location.href='campaign-battle.html?campaign=1';
+}
+function skirmish(id){
+ const party=state?.parties.find(p=>p.id===id&&p.active);
+ if(!party)return;
+ if(dist(state.player.x,state.player.y,party.x,party.y)>155){followParty(id);return}
+ launchCampaignBattle(party);
+}
+function consumeBattleResult(){
+ if(!state?.pendingBattleId)return false;
+ let result=null;
+ try{result=JSON.parse(localStorage.getItem('ua-campaign-battle-result-v1')||'null')}catch(e){}
+ if(!result||result.sessionId!==state.pendingBattleId)return false;
+ try{
+  localStorage.removeItem('ua-campaign-battle-result-v1');
+  localStorage.removeItem('ua-campaign-battle-session-v1');
+ }catch(e){}
+ state.pendingBattleId=null;state.followPartyId=null;
+ const p=state.player,party=state.parties.find(a=>a.id===result.partyId);
+ const casualties={killed:0,wounded:0,survivors:0};
+ for(const fighter of result.entries||[]){
+  const group=p.roster[fighter.groupIndex];if(!group)continue;
+  if(fighter.result==='killed'||fighter.result==='surrendered'){
+   group.count=Math.max(0,group.count-1);casualties.killed++;
+  }else if(fighter.result==='incapacitated'){
+   group.wounded=Math.min(group.count,(group.wounded||0)+1);casualties.wounded++;
+  }else casualties.survivors++;
+ }
+ p.roster=p.roster.filter(g=>g.count>0);
+ p.hp=Math.max(14,Math.round(100*Math.max(0,result.heroHp)/Math.max(1,result.heroMaxHp)));
+ let reason;
+ if(result.winner==='friend'){
+  const loot=65+(party?.strength||result.enemyInitial||5)*12;
+  const exp=50+(party?.strength||result.enemyInitial||5)*8;
+  p.gold+=loot;p.xp+=exp;p.renown+=party?.kind==='bandit'?3:1;
+  p.food+=party?.kind==='caravan'?5:1;
+  if(party)party.active=false;
+  reason='Victory. You recovered '+loot+' denars and earned '+exp+' experience.';
+  log(reason);
+  if(p.quest?.id===2&&party?.kind==='bandit')completeQuest(2);
+ }else if(result.winner==='foe'||result.winner==='draw'){
+  const lost=Math.min(p.gold,Math.round(p.gold*.14));p.gold-=lost;
+  const refuge=W.closestSettlement(p.x,p.y);
+  if(refuge){p.x=refuge.x;p.y=refuge.y;resetView()}
+  reason='Your party was defeated and retreated. '+lost+' denars lost.';
+  log(reason);
+ }else{reason='You withdrew. The enemy party remains on the roads.';log(reason)}
+ while(p.xp>=p.level*125){p.xp-=p.level*125;p.level++;p.hp=100}
+ selected={type:'land'};inspectorDirty=true;state.lastEncounter=state.day+state.hour/24;
+ $('aftermathTitle').textContent=result.winner==='friend'?'⚔ Victory':
+  result.winner==='retreat'?'↩ Withdrawn from battle':'⚑ Battle lost';
+ $('aftermathDetails').innerHTML='<b>'+esc(reason)+'</b><p>'+
+  casualties.killed+' killed or captured · '+casualties.wounded+' incapacitated · '+
+  casualties.survivors+' returned from battle. Hero health '+p.hp+
+  '%. Wounded troops recover at inns.</p>';
+ saveGame(true);refreshUI();modalStack=[];showScreen('screenAftermath');
+ return true;
 }
 function chooseSelection(x,y){
  const local=toScreen(x,y),allow=28;
@@ -473,7 +545,7 @@ function refreshUI(){
  $('statGold').textContent=p.gold.toLocaleString();$('statFood').textContent=p.food;
  $('statRenown').textContent=p.renown;$('statParty').textContent=rosterCount();
  $('healthBar').style.width=p.hp+'%';$('healthLabel').textContent=p.hp+'/100';
- $('partyRoster').innerHTML=p.roster.map(g=>'<li><span>'+esc(troopName(g))+'<small> · '+F[g.faction].name+'</small></span><b>'+g.count+'</b></li>').join('')||'<li>No soldiers</li>';
+ $('partyRoster').innerHTML=p.roster.map(g=>'<li><span>'+esc(troopName(g))+'<small> · '+F[g.faction].name+(g.wounded?' · '+g.wounded+' wounded':'')+'</small></span><b>'+g.count+'</b></li>').join('')||'<li>No soldiers</li>';
  $('questText').textContent=questText();
  $('logList').innerHTML=state.messages.slice(0,6).map(m=>'<li><b>Day '+m.day+':</b> '+esc(m.text)+'</li>').join('');
  $('mapCoordinates').textContent=near&&dist(p.x,p.y,near.x,near.y)<300?
@@ -626,6 +698,29 @@ function saveOptions(){
  closeModal();refreshUI();
 }
 function button(id,action){$(id).addEventListener('click',action)}
+button('encounterTalk',()=>{
+ const p=state?.parties.find(x=>x.id===selected?.id);if(!p)return;
+ const line=p.kind==='bandit'?'The outlaw chief demands coin and threatens passing villagers.':
+  p.kind==='caravan'?'The merchants seek a market in '+W.closestSettlement(p.x,p.y).name+'.':
+  'The patrol captain warns of raiders and trouble at the border.';
+ $('encounterDialogue').innerHTML='<b>'+esc(partyName(p))+'</b><p>'+esc(line)+'</p>';
+});
+button('encounterTrade',()=>{
+ const p=state?.parties.find(x=>x.id===selected?.id);if(!p)return;
+ if(p.kind==='caravan'){
+  if(state.player.gold<30){$('encounterDialogue').textContent='You need 30 denars.';return}
+  state.player.gold-=30;state.player.food+=8;
+  log('Purchased eight provisions from a caravan.');
+  $('encounterDialogue').textContent='Trade complete: +8 provisions, -30 denars.';
+  saveGame(true);refreshUI();
+ }else $('encounterDialogue').textContent='The captain shares news of bandits on the road.';
+});
+button('encounterFight',()=>{if(selected?.id!=null)skirmish(selected.id)});
+button('encounterLeave',()=>{
+ state.lastEncounter=state.day+state.hour/24;state.followPartyId=null;
+ state.path=[];state.pathIndex=0;closeModal();notify('You leave the party behind.');
+});
+button('aftermathContinue',()=>{showScreen(null);refreshUI()});
 button('menuNew',selectNew);button('menuContinue',loadGame);
 button('menuFactions',openFactions);button('menuAtlas',openAtlas);button('menuOptions',showOptions);
 button('createStart',startCampaign);button('createCancel',()=>showScreen('screenMenu'));
@@ -735,6 +830,10 @@ function init(){
  options.value='6';
  $('game').classList.add('hidden');showScreen('screenMenu');refreshContinue();
  resize();requestAnimationFrame(frame);
+ if(window.location?.search?.includes('battleReturn=1')){
+  if(loadGame()&&window.history?.replaceState)
+   window.history.replaceState({},'',window.location.pathname);
+ }
 }
 init();
 window.UACampaignDebug={getState:()=>state,getCamera:()=>camera,newCampaign:startCampaign,loadGame,saveGame,
