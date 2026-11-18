@@ -557,6 +557,44 @@ for(let i=0;i<coastSegments.length;i++){
   minY:Math.min(...pts.map(p=>p.y)),maxY:Math.max(...pts.map(p=>p.y))
  }});
 }
+// Scattered world encounters: ruins, woodland clearings, old forts,
+// river fords and caravansaries. These are exploration destinations,
+// not new kingdoms or capital-centered rings.
+const landmarkKinds=[
+ {kind:'ruins',icon:'⌂',names:['Greywatch Ruins','Thistle Abbey','Marrow Keep','The Sunken Hall','Vesper Ruins','Broken Crown Fort','The Ashen Court','Wolfstone Ruins','Kingsfall Remains','Old Moonspire']},
+ {kind:'watchtower',icon:'♜',names:['Hawkwatch Tower','Blackpine Lookout','Stonewind Beacon','Ravenwatch','Eastwarden Post','Coldspire Signal','Oathwatch Tower','The Silent Beacon','Wolfsentinel']},
+ {kind:'camp',icon:'♧',names:['Larkwood Camp','The Wayfarers Rest','Meadowbank Camp','Fallen Banner Camp','Emberfield Waystop','Three Oaks Camp','Dustpath Rest','The Pilgrims Tent','Lowland Waystation']},
+ {kind:'shrine',icon:'✥',names:['Shrine of Dawn','The Weeping Stone','Saint Orlan’s Cross','White Lantern Shrine','The Old Pilgrim Road','Crescent Shrine','Moonwell Chapel','Sanctuary of Ash','The Watchers Altar']},
+ {kind:'ford',icon:'≈',names:['Wolfwater Ford','Stonebank Crossing','Sable River Ford','Seven Stones Ford','Harrow Crossing','Old Kings Ford','Twin Reeds Crossing','Blackwater Ford','Shallowmist Crossing']},
+ {kind:'grove',icon:'♣',names:['Whispering Grove','Silverleaf Hollow','Deepbriar Grove','The Fallen Oak','Willowheart Thicket','Quietfern Glade','Stagwood Hollow','Greenmist Grove','The Elder Roots']}
+];
+const landmarks=[];
+for(let i=0;i<55;i++){
+ const type=landmarkKinds[i%landmarkKinds.length];
+ let chosen=null,best=-Infinity;
+ for(let k=0;k<135;k++){
+  const x=410+hash(i*31+k*4,93)* (WIDTH-820);
+  const y=450+hash(i*17+k*9,71)* (HEIGHT-900);
+  const tile=tileAt(x,y);
+  if(!tile.walk||['sea','river','mountain','snow'].includes(tile.kind))continue;
+  const farSettlements=settlements.reduce((d,v)=>Math.min(d,Math.hypot(v.x-x,v.y-y)),Infinity);
+  const farLandmarks=landmarks.reduce((d,v)=>Math.min(d,Math.hypot(v.x-x,v.y-y)),Infinity);
+  if(farSettlements<190||farLandmarks<395)continue;
+  const tileId=tileIndex(Math.floor(x/TILE),Math.floor(y/TILE));
+  const suitable=type.kind==='ford'?tiles[tileId].m>.43:
+   type.kind==='grove'?['forest','taiga','rainforest'].includes(tile.kind):
+   type.kind==='watchtower'?['hills','grass','steppe','scrub'].includes(tile.kind):
+   type.kind==='camp'?roads[tileId]>0:
+   type.kind==='shrine'?tile.e<.68:true;
+  if(!suitable)continue;
+  const score=Math.min(farLandmarks,1000)/450+hash(i+k,331)*.22;
+  if(score>best){best=score;chosen={x,y}}
+ }
+ if(!chosen)continue;
+ landmarks.push({id:landmarks.length,kind:type.kind,icon:type.icon,
+  name:type.names[Math.floor(i/landmarkKinds.length)]||type.kind,x:chosen.x,y:chosen.y,
+  faction:tileAt(chosen.x,chosen.y).owner});
+}
 function walkingSpeed(x,y){
  const i=tileIndex(clamp(Math.floor(x/TILE),0,COLS-1),clamp(Math.floor(y/TILE),0,ROWS-1)),t=tiles[i];
  if(!t.walk)return 0;
@@ -572,7 +610,7 @@ function closestSettlement(x,y,factionId){
  return best;
 }
 window.UAWorld={WIDTH,HEIGHT,TILE,COLS,ROWS,factions,wars,settlements,
- roadSegments,roadLinks,roadTier,roads,bridgePoints,riverPaths,borderPaths,coastPaths,flow,downhill,
+ roadSegments,roadLinks,roadTier,roads,bridgePoints,riverPaths,borderPaths,coastPaths,landmarks,flow,downhill,
  tiles,palette,biomeCost,tileAt,tileIndex,factionAt,findPath,walkingSpeed,
  closestSettlement,getSettlement,nearestWalk,clamp,hash,noise,fractal};
 })();

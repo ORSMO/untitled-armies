@@ -7,7 +7,7 @@ const KEY='ua-campaign-v1',VERSION=1,MAXPARTY=75;
 const clamp=W.clamp,dist=(a,b,x,y)=>Math.hypot(a-x,b-y),esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const canvas=$('worldCanvas'),ctx=canvas.getContext('2d'),mini=$('minimap'),mctx=mini.getContext('2d');
 let state=null,selected=null,selectedFaction=6,modalStack=[],focus=true,camera={x:3870,y:5320,zoom:.47},keys=new Set(),drag=null,last=0,lastHud=0,lastMini=0,lastSave=0,toastUntil=0,menuOpen=true,miniBase=null,view={w:900,h:600},inspectorDirty=true;
-const screens=['screenMenu','screenCreate','screenFactions','screenAtlas','screenOptions','screenPause','screenParty','screenCharacter'];
+const screens=['screenMenu','screenCreate','screenFactions','screenAtlas','screenOptions','screenPause','screenParty','screenCharacter','screenEncounter','screenAftermath'];
 const settingsDefault={borders:true,labels:true,roads:true,minimap:true,follow:true};
 function notify(msg){const t=$('toast');t.textContent=msg;t.classList.remove('hidden');toastUntil=performance.now()+4200}
 function log(message){if(!state)return;state.messages.unshift({day:state.day,text:message});state.messages.length=Math.min(12,state.messages.length)}
@@ -36,7 +36,7 @@ function saveGame(silent){
  try{
   const data={version:VERSION,player:state.player,day:state.day,hour:state.hour,
    parties:state.parties.map(p=>({id:p.id,x:p.x,y:p.y,tx:p.tx,ty:p.ty,strength:p.strength,active:p.active,kind:p.kind,faction:p.faction})),
-   options:state.options,speed:state.speed,zoom:camera.zoom};
+   options:state.options,speed:state.speed,zoom:camera.zoom,visitedLandmarks:state.visitedLandmarks||[],pendingBattleId:state.pendingBattleId||null};
   localStorage.setItem(KEY,JSON.stringify(data));
   if(!silent)notify('Campaign saved on this device.');
   return true;
@@ -73,6 +73,7 @@ function startCampaign(){
  state={version:VERSION,player:{name,origin,background,x,y,gold:money,food:background==='merchant'?28:22,hp:100,
    level:1,xp:0,renown:0,roster:firstTroops,quest:{id:0,progress:0,goal:3,done:false}},
    day:1,hour:8,speed:1,paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,
+   followPartyId:null,followRepath:0,visitedLandmarks:[],pendingBattleId:null,
    parties:[],options:{...settingsDefault},messages:[],unseen:[],lastEncounter:-100};
  state.parties=generateParties();selected={type:'settlement',id:origin*8};
  camera.zoom=.47;resetView();$('game').classList.remove('hidden');showScreen(null);resize();
@@ -93,7 +94,9 @@ function loadGame(){
    if(land){p.x=(land.x+.5)*W.TILE;p.y=(land.y+.5)*W.TILE}
   }
   state={version:VERSION,player:p,day:raw.day||1,hour:raw.hour||8,speed:[1,2,4].includes(raw.speed)?raw.speed:1,
-   paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,parties:[],options:{...settingsDefault,...raw.options},
+   paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,
+   followPartyId:null,followRepath:0,visitedLandmarks:Array.isArray(raw.visitedLandmarks)?raw.visitedLandmarks:[],pendingBattleId:raw.pendingBattleId||null,
+   parties:[],options:{...settingsDefault,...raw.options},
    messages:[],lastEncounter:-100};
   state.parties=generateParties();
   if(Array.isArray(raw.parties))for(const saved of raw.parties){const a=state.parties.find(v=>v.id===saved.id);
@@ -105,7 +108,7 @@ function loadGame(){
      }
     }}
   camera.zoom=clamp(raw.zoom||.47,.12,1.9);resetView();$('game').classList.remove('hidden');showScreen(null);resize();
-  selected={type:'land'};log('Campaign resumed. Your journey continues.');refreshUI();notify('Campaign loaded.');return true;
+  selected={type:'land'};log('Campaign resumed. Your journey continues.');refreshUI();if(!consumeBattleResult())notify('Campaign loaded.');return true;
  }catch(e){notify('Could not load this campaign save.');return false}
 }
 function showMenu(){
@@ -138,10 +141,43 @@ function travelTo(x,y,targetId){
  const route=W.findPath(state.player.x,state.player.y,x,y);
  if(!route.length){notify('No traversable route found.');return}
  state.path=route;state.pathIndex=0;state.targetSettlement=targetId==null?null:targetId;
+ state.followPartyId=null;
  state.pausedManual=false;state.paused=false;focus=state.options.follow;
  if(targetId!=null)notify('Traveling to '+S[targetId].name+'.');
  else notify('Travel route set · '+Math.round(route.length*W.TILE/100)/10+' leagues approximately.');
  refreshUI();
+}
+function partyName(p){
+ if(!p)return'Unknown travelers';
+ return p.kind==='bandit'?'Outlaw Bandits':
+  (F[p.faction]?.name||'Wandering')+' '+(p.kind==='patrol'?'Patrol':'Caravan');
+}
+function followParty(id){
+ if(!state||state.paused)return;
+ const party=state.parties.find(p=>p.id===id&&p.active);
+ if(!party){notify('That party is no longer on the roads.');return}
+ state.followPartyId=id;
+ state.followRepath=0;state.targetSettlement=null;
+ selected={type:'party',id};focus=true;inspectorDirty=true;
+ updateFollow(0);
+ if(!state.paused)notify('Following '+partyName(party)+'. Your route adjusts as they move.');
+ refreshUI();
+}
+function updateFollow(dt){
+ if(!state||state.followPartyId==null)return;
+ const party=state.parties.find(p=>p.id===state.followPartyId&&p.active);
+ if(!party){state.followPartyId=null;state.path=[];state.pathIndex=0;notify('You lost the party you were following.');return}
+ const distance=dist(state.player.x,state.player.y,party.x,party.y);
+ if(distance<=143){state.path=[];state.pathIndex=0;openEncounter(party);return}
+ state.followRepath-=dt*state.speed;
+ if(state.followRepath>0&&state.pathIndex<state.path.length)return;
+ // Aim a few route segments ahead: the target continues moving while
+ // the player travels. Reroute periodically instead of only once.
+ const lead=party.path.length?
+  party.path[Math.min(party.path.length-1,party.pathIndex+3)]:party;
+ const route=W.findPath(state.player.x,state.player.y,lead.x,lead.y);
+ if(route.length){state.path=route;state.pathIndex=0}
+ state.followRepath=1.25;
 }
 function walkPlayer(dx,dy,dt){
  const p=state.player,mag=Math.hypot(dx,dy);if(mag<.0001)return false;
@@ -167,7 +203,9 @@ function stepTravel(dt){
  const p=state.player;
  const dx=(keys.has('d')||keys.has('ArrowRight')?1:0)-(keys.has('a')||keys.has('ArrowLeft')?1:0);
  const dy=(keys.has('s')||keys.has('ArrowDown')?1:0)-(keys.has('w')||keys.has('ArrowUp')?1:0);
- if(dx||dy){state.path=[];state.pathIndex=0;state.targetSettlement=null;walkPlayer(dx,dy,dt);focus=state.options.follow;return}
+ if(dx||dy){state.path=[];state.pathIndex=0;state.targetSettlement=null;state.followPartyId=null;walkPlayer(dx,dy,dt);focus=state.options.follow;return}
+ updateFollow(dt);
+ if(state.paused)return;
  if(state.pathIndex>=state.path.length)return;
  let budget=148*W.walkingSpeed(p.x,p.y)*dt*state.speed;
  let traversed=0;
@@ -221,9 +259,8 @@ function stepParties(dt){
  }
  const close=state.parties.find(p=>p.active&&p.kind==='bandit'&&
   dist(state.player.x,state.player.y,p.x,p.y)<92);
- if(close&&(state.day+state.hour/24)-state.lastEncounter>.08&&selected?.id!==close.id){
-  state.path=[];state.pathIndex=0;selected={type:'party',id:close.id};state.lastEncounter=state.day+state.hour/24;
-  inspectorDirty=true;notify('Bandits ahead! Choose to fight or retreat.');
+ if(close&&(state.day+state.hour/24)-state.lastEncounter>.08&&!menuOpen){
+  state.path=[];state.pathIndex=0;openEncounter(close);
  }
 }
 function questText(){
@@ -260,6 +297,7 @@ function performSettlementAction(action,id){
  }else if(action==='rest'){
   if(p.gold<20){notify('An inn costs 20 denars.');return}
   p.gold-=20;p.hp=Math.min(100,p.hp+32);state.hour=8;state.day++;consumeFood();
+  for(const group of p.roster)if(group.wounded)group.wounded=Math.max(0,group.wounded-3);
   log('Rested at '+site.name+'.');notify('Rested, healed and started a new day.');
  }else if(action==='rumors'){
   log('Rumor: scouts report bandits on roads near '+site.name+'.');
@@ -277,30 +315,104 @@ function upgradeRoster(index){
  p.gold-=cost;g.tier++;p.renown++;log('Promoted '+g.count+' troops into '+troopName(g)+'.');
  notify('Troops upgraded along their faction template.');refreshUI();saveGame(true);
 }
-function skirmish(id){
- const p=state.parties.find(p=>p.id===id&&p.active),me=state.player;
- if(!p)return;
- if(dist(me.x,me.y,p.x,p.y)>155){travelTo(p.x,p.y,null);notify('Approaching the bandits.');return}
- const attack=troopPower()*(.83+Math.random()*.34),defense=p.strength*(1.2+Math.random()*.45);
- const won=attack>=defense,losses=won?Math.min(Math.max(0,Math.floor(defense/attack*Math.random()*3)),rosterCount()-1):
-  Math.min(Math.ceil(p.strength*.24),Math.max(0,rosterCount()-1));
- let remaining=losses;
- for(let i=me.roster.length-1;i>=0&&remaining>0;i--){const g=me.roster[i],n=Math.min(g.count,remaining);g.count-=n;remaining-=n}
- me.roster=me.roster.filter(g=>g.count>0);
- if(won){
-  const gold=65+p.strength*12,exp=42+p.strength*7;me.gold+=gold;me.xp+=exp;me.renown+=3;
-  p.active=false;log('Victory over '+p.strength+' bandits. Lost '+losses+' soldiers; gained '+gold+' denars.');
-  if(me.quest?.id===2)completeQuest(2);
-  notify('Victory! +'+gold+' denars, +'+exp+' XP · '+losses+' casualties.');
- }else{
-  const gold=Math.min(me.gold,Math.floor(me.gold*.22));me.gold-=gold;me.hp=Math.max(20,me.hp-35);state.day++;
-  const site=W.closestSettlement(me.x,me.y);me.x=site.x;me.y=site.y;resetView();
-  log('Defeat! '+losses+' soldiers lost, '+gold+' denars taken. Your party retreated to '+site.name+'.');
-  notify('Defeat. You escaped with the survivors.');
+function openEncounter(party){
+ if(!state||!party?.active||menuOpen)return;
+ state.followPartyId=null;state.path=[];state.pathIndex=0;state.targetSettlement=null;
+ selected={type:'party',id:party.id};inspectorDirty=true;
+ const kind=party.kind;
+ $('encounterName').textContent=partyName(party);
+ $('encounterIntro').textContent=kind==='bandit'?
+  'Armed outlaws block your road. They eye your company and await your decision.':
+  kind==='caravan'?'A merchant caravan slows. Its guards watch your approach.':
+  'A column of soldiers halts beneath its banners. Their captain awaits you.';
+ $('encounterOwnCount').textContent=rosterCount()+' troops · '+state.player.name;
+ $('encounterOwnDetail').textContent='Health '+state.player.hp+'% · '+Math.min(50,state.player.roster.reduce((n,g)=>n+g.count-(g.wounded||0),0))+
+  ' available combatants (maximum 50 deployed)';
+ $('encounterEnemyCount').textContent=party.strength+' '+(kind==='bandit'?'outlaws':kind==='caravan'?'travelers':'soldiers');
+ $('encounterEnemyDetail').textContent=kind==='bandit'?'Hostile raiders':
+  F[party.faction].name+' · '+(kind==='patrol'?'Guarding the realm':'Trading goods');
+ $('encounterDialogue').innerHTML='<b>The party stops before you.</b><p>You can speak, trade, fight or leave. The choice is yours.</p>';
+ $('encounterTrade').disabled=kind==='bandit';
+ $('encounterTrade').textContent=kind==='caravan'?'🪙 Buy caravan provisions':'📜 Ask for news';
+ openModal('screenEncounter');
+}
+function launchCampaignBattle(party){
+ if(!party?.active||!state)return;
+ const troops=[];
+ for(let groupIndex=0;groupIndex<state.player.roster.length;groupIndex++){
+  const g=state.player.roster[groupIndex],n=Math.max(0,g.count-(g.wounded||0));
+  for(let slot=0;slot<n&&troops.length<50;slot++)
+   troops.push({groupIndex,slot,faction:g.faction,tier:g.tier});
  }
- while(me.xp>=me.level*125){me.xp-=me.level*125;me.level++;me.hp=100;log('You reached level '+me.level+'.')}
- state.lastEncounter=state.day+state.hour/24;state.path=[];state.pathIndex=0;selected={type:'land'};
- refreshUI();saveGame(true);
+ const sessionId='battle-'+Date.now().toString(36)+'-'+Math.floor(Math.random()*1e7).toString(36);
+ const session={status:'active',sessionId,partyId:party.id,kind:party.kind,
+  faction:party.faction,enemyCount:Math.min(50,party.strength),
+  playerName:state.player.name,heroHealth:state.player.hp,troops,
+  terrainKind:W.tileAt(state.player.x,state.player.y).kind,
+  reserveCount:Math.max(0,state.player.roster.reduce((n,g)=>n+g.count-(g.wounded||0),0)-troops.length)};
+ state.pendingBattleId=sessionId;
+ state.lastEncounter=state.day+state.hour/24;
+ state.followPartyId=null;state.path=[];state.pathIndex=0;
+ if(!saveGame(true)){notify('Browser storage is needed for campaign battles.');return}
+ try{localStorage.setItem('ua-campaign-battle-session-v1',JSON.stringify(session))}
+ catch(e){notify('Could not open battle. Please allow local browser storage.');return}
+ window.location.href='campaign-battle.html?campaign=1';
+}
+function skirmish(id){
+ const party=state?.parties.find(p=>p.id===id&&p.active);
+ if(!party)return;
+ if(dist(state.player.x,state.player.y,party.x,party.y)>155){followParty(id);return}
+ launchCampaignBattle(party);
+}
+function consumeBattleResult(){
+ if(!state?.pendingBattleId)return false;
+ let result=null;
+ try{result=JSON.parse(localStorage.getItem('ua-campaign-battle-result-v1')||'null')}catch(e){}
+ if(!result||result.sessionId!==state.pendingBattleId)return false;
+ try{
+  localStorage.removeItem('ua-campaign-battle-result-v1');
+  localStorage.removeItem('ua-campaign-battle-session-v1');
+ }catch(e){}
+ state.pendingBattleId=null;state.followPartyId=null;
+ const p=state.player,party=state.parties.find(a=>a.id===result.partyId);
+ const casualties={killed:0,wounded:0,survivors:0};
+ for(const fighter of result.entries||[]){
+  const group=p.roster[fighter.groupIndex];if(!group)continue;
+  if(fighter.result==='killed'||fighter.result==='surrendered'){
+   group.count=Math.max(0,group.count-1);casualties.killed++;
+  }else if(fighter.result==='incapacitated'){
+   group.wounded=Math.min(group.count,(group.wounded||0)+1);casualties.wounded++;
+  }else casualties.survivors++;
+ }
+ p.roster=p.roster.filter(g=>g.count>0);
+ p.hp=Math.max(14,Math.round(100*Math.max(0,result.heroHp)/Math.max(1,result.heroMaxHp)));
+ let reason;
+ if(result.winner==='friend'){
+  const loot=65+(party?.strength||result.enemyInitial||5)*12;
+  const exp=50+(party?.strength||result.enemyInitial||5)*8;
+  p.gold+=loot;p.xp+=exp;p.renown+=party?.kind==='bandit'?3:1;
+  p.food+=party?.kind==='caravan'?5:1;
+  if(party)party.active=false;
+  reason='Victory. You recovered '+loot+' denars and earned '+exp+' experience.';
+  log(reason);
+  if(p.quest?.id===2&&party?.kind==='bandit')completeQuest(2);
+ }else if(result.winner==='foe'||result.winner==='draw'){
+  const lost=Math.min(p.gold,Math.round(p.gold*.14));p.gold-=lost;
+  const refuge=W.closestSettlement(p.x,p.y);
+  if(refuge){p.x=refuge.x;p.y=refuge.y;resetView()}
+  reason='Your party was defeated and retreated. '+lost+' denars lost.';
+  log(reason);
+ }else{reason='You withdrew. The enemy party remains on the roads.';log(reason)}
+ while(p.xp>=p.level*125){p.xp-=p.level*125;p.level++;p.hp=100}
+ selected={type:'land'};inspectorDirty=true;state.lastEncounter=state.day+state.hour/24;
+ $('aftermathTitle').textContent=result.winner==='friend'?'⚔ Victory':
+  result.winner==='retreat'?'↩ Withdrawn from battle':'⚑ Battle lost';
+ $('aftermathDetails').innerHTML='<b>'+esc(reason)+'</b><p>'+
+  casualties.killed+' killed or captured · '+casualties.wounded+' incapacitated · '+
+  casualties.survivors+' returned from battle. Hero health '+p.hp+
+  '%. Wounded troops recover at inns.</p>';
+ saveGame(true);refreshUI();modalStack=[];showScreen('screenAftermath');
+ return true;
 }
 function chooseSelection(x,y){
  const local=toScreen(x,y),allow=28;
@@ -315,7 +427,13 @@ function chooseSelection(x,y){
   const m=toScreen(p.x,p.y),d=dist(m.x,m.y,local.x,local.y);
   if(d<pd){pd=d;party=p}
  }
- if(party){selected={type:'party',id:party.id};inspectorDirty=true;return}
+ if(party){selected={type:'party',id:party.id};inspectorDirty=true;followParty(party.id);return}
+  let landmark=null,ld=22;
+ for(const place of W.landmarks||[]){
+  const v=toScreen(place.x,place.y),d=dist(local.x,local.y,v.x,v.y);
+  if(d<ld){ld=d;landmark=place}
+ }
+ if(landmark){selected={type:'landmark',id:landmark.id};inspectorDirty=true;refreshInspector();return}
  selected={type:'land',x,y};inspectorDirty=true;travelTo(x,y,null);
 }
 function colorAlpha(hex,alpha){
@@ -360,12 +478,33 @@ function drawLocations(){
    ctx.fillStyle='#fff2d2';ctx.fillText(s.name,s.x,s.y+r+12);
   }
  }
+ // Discoverable world locations add life between settlements.
+ if(camera.zoom>.23)for(const place of W.landmarks||[]){
+  if(!inView(place.x,place.y,110))continue;
+  const explored=state.visitedLandmarks.includes(place.id);
+  ctx.fillStyle=explored?'#53665bd9':'#4b3d2cf2';
+  ctx.beginPath();ctx.arc(place.x,place.y,16,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle=selected?.type==='landmark'&&selected.id===place.id?'#fff4ba':'#d5bc8ba8';
+  ctx.lineWidth=3;ctx.stroke();
+  ctx.fillStyle=explored?'#abb9a5':'#ffe4ad';
+  ctx.font='bold 21px Georgia,serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(place.icon,place.x,place.y+1);
+  if(camera.zoom>.51){
+   ctx.textBaseline='top';ctx.font='bold 15px Georgia,serif';
+   ctx.strokeStyle='#0b2118';ctx.lineWidth=4;ctx.strokeText(place.name,place.x,place.y+24);
+   ctx.fillStyle='#f5e0b8';ctx.fillText(place.name,place.x,place.y+24);
+  }
+ }
 }
 function drawParties(){
  for(const p of state.parties)if(p.active&&inView(p.x,p.y,100)){
   const f=p.faction>=0?F[p.faction]:null,c=p.kind==='bandit'?'#d47d70':f.color;
   ctx.fillStyle='#0d1d18d9';ctx.beginPath();ctx.arc(p.x,p.y,15,0,6.283);ctx.fill();
   ctx.lineWidth=3;ctx.strokeStyle=c;ctx.stroke();
+  if(state.followPartyId===p.id){
+   ctx.strokeStyle='#ffe5a9';ctx.lineWidth=3.5;
+   ctx.beginPath();ctx.arc(p.x,p.y,26,0,Math.PI*2);ctx.stroke();
+  }
   ctx.fillStyle=c;
   if(p.kind==='bandit'){ctx.beginPath();ctx.moveTo(p.x,p.y-11);ctx.lineTo(p.x+10,p.y+10);ctx.lineTo(p.x-10,p.y+10);ctx.fill()}
   else if(p.kind==='caravan'){ctx.fillRect(p.x-8,p.y-6,16,11);ctx.beginPath();ctx.arc(p.x-6,p.y+7,4,0,6.283);ctx.arc(p.x+6,p.y+7,4,0,6.283);ctx.fill()}
@@ -430,15 +569,33 @@ function refreshUI(){
  $('statGold').textContent=p.gold.toLocaleString();$('statFood').textContent=p.food;
  $('statRenown').textContent=p.renown;$('statParty').textContent=rosterCount();
  $('healthBar').style.width=p.hp+'%';$('healthLabel').textContent=p.hp+'/100';
- $('partyRoster').innerHTML=p.roster.map(g=>'<li><span>'+esc(troopName(g))+'<small> · '+F[g.faction].name+'</small></span><b>'+g.count+'</b></li>').join('')||'<li>No soldiers</li>';
+ $('partyRoster').innerHTML=p.roster.map(g=>'<li><span>'+esc(troopName(g))+'<small> · '+F[g.faction].name+(g.wounded?' · '+g.wounded+' wounded':'')+'</small></span><b>'+g.count+'</b></li>').join('')||'<li>No soldiers</li>';
  $('questText').textContent=questText();
  $('logList').innerHTML=state.messages.slice(0,6).map(m=>'<li><b>Day '+m.day+':</b> '+esc(m.text)+'</li>').join('');
  $('mapCoordinates').textContent=near&&dist(p.x,p.y,near.x,near.y)<300?
   'Near '+near.name+' · '+region.name:region.name+' · '+Math.floor(p.x)+', '+Math.floor(p.y);
- $('travelText').textContent=state.path.length?'Traveling · '+Math.max(0,state.path.length-state.pathIndex)+' route steps remaining':
+ $('travelText').textContent=state.followPartyId!=null?
+  'Following '+partyName(state.parties.find(p=>p.id===state.followPartyId))+' · updating route':
+  state.path.length?'Traveling · '+Math.max(0,state.path.length-state.pathIndex)+' route steps remaining':
   'Click to travel · WASD to walk · Drag to pan · Scroll to zoom';
  $('minimapHolder').classList.toggle('hidden',!state.options.minimap);
+ if(selected?.type==='party'&&state.followPartyId!=null)inspectorDirty=true;
  if(inspectorDirty)refreshInspector();
+}
+function exploreLandmark(id){
+ const place=W.landmarks.find(v=>v.id===id);if(!place||!state)return;
+ if(dist(state.player.x,state.player.y,place.x,place.y)>145){
+  travelTo(place.x,place.y,null);return;
+ }
+ if(state.visitedLandmarks.includes(id)){notify('Already explored this landmark.');return}
+ state.visitedLandmarks.push(id);
+ const food=['camp','grove','ford'].includes(place.kind)?5:2;
+ const gold=['ruins','watchtower','shrine'].includes(place.kind)?45:15;
+ state.player.food+=food;state.player.gold+=gold;state.player.xp+=20;
+ log('Explored '+place.name+'. Found '+food+' provisions, '+gold+' denars and gained 20 XP.');
+ notify(place.name+' explored · +'+food+' food · +'+gold+' denars · +20 XP');
+ while(state.player.xp>=state.player.level*125){state.player.xp-=state.player.level*125;state.player.level++;state.player.hp=100}
+ inspectorDirty=true;refreshUI();saveGame(true);
 }
 function renderActions(items){return items.map(a=>'<button class="btn'+(a.primary?' primary':'')+'" data-act="'+a.act+'"'+(a.id!==undefined?' data-id="'+a.id+'"':'')+(a.disabled?' disabled':'')+'>'+esc(a.label)+'</button>').join('')}
 function refreshInspector(){
@@ -460,8 +617,28 @@ function refreshInspector(){
   const label=enemy.kind==='bandit'?'Outlaw Bandits':enemy.kind==='patrol'?F[enemy.faction].name+' Patrol':F[enemy.faction].name+' Caravan';
   html='<div class="smallcaps">ROAMING PARTY</div><h2>'+esc(label)+'</h2><div class="banner-strip" style="background:'+(enemy.kind==='bandit'?'#c57966':F[enemy.faction].color)+'"></div>';
   html+='<p>Party size: <b>'+enemy.strength+'</b>. Distance: '+Math.round(dist(state.player.x,state.player.y,enemy.x,enemy.y))+' map units.</p>';
-  html+='<div class="eventbox"><b>'+esc(enemy.kind==='bandit'?'Hostile raiders':'Traveling party')+'</b><p>'+(enemy.kind==='bandit'?'Bandits threaten villages and caravans. An automatic skirmish is available once you approach.':'These travelers currently have no hostile orders toward you.')+'</p></div>';
-  html+=renderActions([{act:'travelParty',id:enemy.id,label:'➤ Approach this party',primary:true},...(enemy.kind==='bandit'?[{act:'attackParty',id:enemy.id,label:'⚔ Resolve skirmish',disabled:dist(state.player.x,state.player.y,enemy.x,enemy.y)>155}]:[])]);
+  html+='<div class="eventbox"><b>'+esc(enemy.kind==='bandit'?'Hostile raiders':'Traveling party')+'</b><p>'+
+   (enemy.kind==='bandit'?'Bandits threaten the roads. Follow them to negotiate, flee, or enter a real battle.':
+   'You can speak, trade or challenge this party after catching it.')+'</p></div>';
+  const nearby=dist(state.player.x,state.player.y,enemy.x,enemy.y)<=155;
+  html+=renderActions([{act:'travelParty',id:enemy.id,
+   label:state.followPartyId===enemy.id?'◎ Following · route updating':'➤ Follow moving party',primary:true},
+   {act:'meetParty',id:enemy.id,label:'💬 Meet this party',disabled:!nearby}]);
+ }else if(selected.type==='landmark'){
+  const place=W.landmarks.find(a=>a.id===selected.id);
+  if(!place){selected={type:'land'};return refreshInspector()}
+  const d=Math.round(dist(state.player.x,state.player.y,place.x,place.y));
+  const visited=state.visitedLandmarks.includes(place.id);
+  html='<div class="smallcaps">LANDMARK · '+esc(W.factions[place.faction]?.name||'Wilderness')+'</div>'+
+   '<h2>'+esc(place.icon)+' '+esc(place.name)+'</h2>'+
+   '<div class="banner-strip" style="background:#bda66f"></div>'+
+   '<p>Scattered through the countryside are old ruins, waystations and hidden places. Distance: '+d+' map units.</p>'+
+   '<div class="eventbox"><b>'+(visited?'Already explored':'Unexplored destination')+
+   '</b><p>'+(visited?'Your company remembers the discoveries made here.':
+   'Travel here to explore this location, gather supplies or recover something valuable.')+'</p></div>';
+  html+=renderActions([{act:d<=145?'exploreLandmark':'travelLandmark',id:place.id,
+   label:d<=145?'⚑ Explore this location':'➤ Travel to '+place.name,
+   primary:true,disabled:d<=145&&visited}]);
  }else{
   const p=state.player,land=W.tileAt(p.x,p.y),region=currentRegion();
   html='<div class="smallcaps">EXPLORING ASTERRA</div><h2>'+esc(region.name)+'</h2><div class="banner-strip" style="background:'+region.color+'"></div>';
@@ -581,6 +758,29 @@ function saveOptions(){
  closeModal();refreshUI();
 }
 function button(id,action){$(id).addEventListener('click',action)}
+button('encounterTalk',()=>{
+ const p=state?.parties.find(x=>x.id===selected?.id);if(!p)return;
+ const line=p.kind==='bandit'?'The outlaw chief demands coin and threatens passing villagers.':
+  p.kind==='caravan'?'The merchants seek a market in '+W.closestSettlement(p.x,p.y).name+'.':
+  'The patrol captain warns of raiders and trouble at the border.';
+ $('encounterDialogue').innerHTML='<b>'+esc(partyName(p))+'</b><p>'+esc(line)+'</p>';
+});
+button('encounterTrade',()=>{
+ const p=state?.parties.find(x=>x.id===selected?.id);if(!p)return;
+ if(p.kind==='caravan'){
+  if(state.player.gold<30){$('encounterDialogue').textContent='You need 30 denars.';return}
+  state.player.gold-=30;state.player.food+=8;
+  log('Purchased eight provisions from a caravan.');
+  $('encounterDialogue').textContent='Trade complete: +8 provisions, -30 denars.';
+  saveGame(true);refreshUI();
+ }else $('encounterDialogue').textContent='The captain shares news of bandits on the road.';
+});
+button('encounterFight',()=>{if(selected?.id!=null)skirmish(selected.id)});
+button('encounterLeave',()=>{
+ state.lastEncounter=state.day+state.hour/24;state.followPartyId=null;
+ state.path=[];state.pathIndex=0;closeModal();notify('You leave the party behind.');
+});
+button('aftermathContinue',()=>{showScreen(null);refreshUI()});
 button('menuNew',selectNew);button('menuContinue',loadGame);
 button('menuFactions',openFactions);button('menuAtlas',openAtlas);button('menuOptions',showOptions);
 button('createStart',startCampaign);button('createCancel',()=>showScreen('screenMenu'));
@@ -608,6 +808,14 @@ button('btnOverview',()=>{focus=false;camera.x=W.WIDTH/2;camera.y=W.HEIGHT/2;cam
 button('btnSpeed',()=>{state.speed=state.speed===1?2:state.speed===2?4:1;refreshUI()});
 button('hudPause',()=>{state.pausedManual=!state.pausedManual;state.paused=state.pausedManual;refreshUI()});
 button('mapNearest',()=>{const s=W.closestSettlement(state.player.x,state.player.y);selected={type:'settlement',id:s.id};inspectorDirty=true;refreshInspector()});
+button('mapDiscover',()=>{
+ if(!state)return;
+ const unseen=W.landmarks.filter(v=>!state.visitedLandmarks.includes(v.id));
+ const pool=unseen.length?unseen:W.landmarks;
+ const nearest=pool.reduce((a,b)=>dist(state.player.x,state.player.y,a.x,a.y)<dist(state.player.x,state.player.y,b.x,b.y)?a:b);
+ selected={type:'landmark',id:nearest.id};inspectorDirty=true;refreshInspector();
+ notify('Discovered on the map: '+nearest.name+'. Inspect the location to travel.');
+});
 button('mapFaction',openFactions);
 button('modalParty',showParty);
 button('modalCharacter',showCharacter);
@@ -618,8 +826,10 @@ $('inspectorContent').addEventListener('click',e=>{
  const id=Number(b.dataset.id),act=b.dataset.act;
  if(['recruit','food','rest','rumors','visit'].includes(act))performSettlementAction(act,id);
  else if(act==='travelSettlement')travelTo(S[id].x,S[id].y,id);
- else if(act==='travelParty'){const p=state.parties.find(v=>v.id===id);if(p)travelTo(p.x,p.y,null)}
- else if(act==='attackParty')skirmish(id);
+ else if(act==='travelParty')followParty(id);
+ else if(act==='meetParty'){const p=state.parties.find(v=>v.id===id);if(p)openEncounter(p)}
+ else if(act==='travelLandmark'){const p=W.landmarks.find(v=>v.id===id);if(p)travelTo(p.x,p.y,null)}
+ else if(act==='exploreLandmark')exploreLandmark(id);
  else if(act==='nearest'){const site=W.closestSettlement(state.player.x,state.player.y);selected={type:'settlement',id:site.id}}
  else if(act==='partyPanel')showParty();else if(act==='factions')openFactions();
  inspectorDirty=true;refreshUI();
@@ -669,8 +879,8 @@ function frame(now){
  const dt=Math.min(.075,Math.max(0,(now-last)/1000||.016));last=now;
  if(state&&!menuOpen){
   if(!state.paused){
-   stepTravel(dt);stepParties(dt);
-   if(focus&&state.options.follow){const t=Math.min(1,dt*5);camera.x+=(state.player.x-camera.x)*t;camera.y+=(state.player.y-camera.y)*t}
+   stepTravel(dt);if(!state.paused)stepParties(dt);
+   if((focus&&state.options.follow)||state.followPartyId!=null){const t=Math.min(1,dt*5);camera.x+=(state.player.x-camera.x)*t;camera.y+=(state.player.y-camera.y)*t}
   }
   drawWorld(now);
   if(now-lastHud>350){refreshUI();lastHud=now}
@@ -690,6 +900,10 @@ function init(){
  options.value='6';
  $('game').classList.add('hidden');showScreen('screenMenu');refreshContinue();
  resize();requestAnimationFrame(frame);
+ if(window.location?.search?.includes('battleReturn=1')){
+  if(loadGame()&&window.history?.replaceState)
+   window.history.replaceState({},'',window.location.pathname);
+ }
 }
 init();
 window.UACampaignDebug={getState:()=>state,getCamera:()=>camera,newCampaign:startCampaign,loadGame,saveGame,
