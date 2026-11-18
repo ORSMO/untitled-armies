@@ -86,12 +86,24 @@ function loadGame(){
   const raw=JSON.parse(localStorage.getItem(KEY));if(!raw||raw.version!==VERSION||!raw.player)throw Error('Wrong save version');
   const p=raw.player;if(!Number.isFinite(p.x)||!Number.isFinite(p.y)||!Number.isFinite(p.gold)||!Array.isArray(p.roster))throw Error('Corrupt data');
   p.x=clamp(p.x,0,W.WIDTH);p.y=clamp(p.y,0,W.HEIGHT);
+  // Saved character locations survive the V4.1 geography rebuild.
+  // If new water now covers an old saved position, reach the nearest land.
+  if(!W.tileAt(p.x,p.y).walk){
+   const land=W.nearestWalk(Math.floor(p.x/W.TILE),Math.floor(p.y/W.TILE));
+   if(land){p.x=(land.x+.5)*W.TILE;p.y=(land.y+.5)*W.TILE}
+  }
   state={version:VERSION,player:p,day:raw.day||1,hour:raw.hour||8,speed:[1,2,4].includes(raw.speed)?raw.speed:1,
    paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,parties:[],options:{...settingsDefault,...raw.options},
    messages:[],lastEncounter:-100};
   state.parties=generateParties();
   if(Array.isArray(raw.parties))for(const saved of raw.parties){const a=state.parties.find(v=>v.id===saved.id);
-    if(a&&Number.isFinite(saved.x)&&Number.isFinite(saved.y)){Object.assign(a,saved);a.path=[];a.pathIndex=0}}
+    if(a&&Number.isFinite(saved.x)&&Number.isFinite(saved.y)){
+     Object.assign(a,saved);a.path=[];a.pathIndex=0;
+     if(!W.tileAt(a.x,a.y).walk){
+      const land=W.nearestWalk(Math.floor(a.x/W.TILE),Math.floor(a.y/W.TILE));
+      if(land){a.x=(land.x+.5)*W.TILE;a.y=(land.y+.5)*W.TILE}
+     }
+    }}
   camera.zoom=clamp(raw.zoom||.47,.12,1.9);resetView();$('game').classList.remove('hidden');showScreen(null);resize();
   selected={type:'land'};log('Campaign resumed. Your journey continues.');refreshUI();notify('Campaign loaded.');return true;
  }catch(e){notify('Could not load this campaign save.');return false}
@@ -312,45 +324,7 @@ function colorAlpha(hex,alpha){
 }
 function inView(x,y,pad=120){const a=toScreen(x,y);return a.x>-pad&&a.y>-pad&&a.x<view.w+pad&&a.y<view.h+pad}
 function drawLand(){
- const zoom=camera.zoom,hw=view.w/(2*zoom),hh=view.h/(2*zoom);
- const c0=clamp(Math.floor((camera.x-hw)/W.TILE)-1,0,W.COLS-1),
- c1=clamp(Math.ceil((camera.x+hw)/W.TILE)+1,0,W.COLS-1),
- r0=clamp(Math.floor((camera.y-hh)/W.TILE)-1,0,W.ROWS-1),
- r1=clamp(Math.ceil((camera.y+hh)/W.TILE)+1,0,W.ROWS-1);
- for(let ty=r0;ty<=r1;ty++)for(let tx=c0;tx<=c1;tx++){
-  const idx=W.tileIndex(tx,ty),tile=W.tiles[idx],x=tx*W.TILE,y=ty*W.TILE,base=W.palette[tile.kind]||'#738e69';
-  ctx.fillStyle=base;ctx.fillRect(x,y,W.TILE+.5,W.TILE+.5);
-  if(tile.shade>0){ctx.fillStyle='rgba(255,243,192,'+Math.max(0,tile.shade*.62)+')';ctx.fillRect(x,y,W.TILE+.5,W.TILE+.5)}
-  else if(tile.shade<0){ctx.fillStyle='rgba(2,15,12,'+(-tile.shade*.7)+')';ctx.fillRect(x,y,W.TILE+.5,W.TILE+.5)}
-  if(state.options.borders&&tile.owner>=0){
-   ctx.fillStyle=colorAlpha(F[tile.owner].color,.075);ctx.fillRect(x,y,W.TILE+.5,W.TILE+.5);
-   const right=tx+1<W.COLS?W.tiles[idx+1].owner:-1,below=ty+1<W.ROWS?W.tiles[idx+W.COLS].owner:-1;
-   if(right!==tile.owner){ctx.fillStyle=colorAlpha(F[tile.owner].color,.72);ctx.fillRect(x+W.TILE-1.4,y,2.8,W.TILE)}
-   if(below!==tile.owner){ctx.fillStyle=colorAlpha(F[tile.owner].color,.72);ctx.fillRect(x,y+W.TILE-1.4,W.TILE,2.8)}
-  }
-  if(zoom>.22){
-   if(tile.kind==='forest'||tile.kind==='marsh'){
-    ctx.fillStyle=tile.kind==='forest'?'#27593ba8':'#3c6a51a8';
-    const xx=x+16+W.hash(tx,ty)*20,yy=y+10+W.hash(ty,tx)*30;
-    ctx.beginPath();ctx.arc(xx,yy,12,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.arc(xx+11,yy+12,9,0,Math.PI*2);ctx.fill();
-   }else if(tile.kind==='mountain'||tile.kind==='hills'){
-    ctx.fillStyle=tile.kind==='mountain'?'#d5ddcf77':'#e4dfb344';
-    ctx.beginPath();ctx.moveTo(x+10,y+43);ctx.lineTo(x+28,y+8);ctx.lineTo(x+49,y+43);ctx.closePath();ctx.fill();
-   }else if(tile.kind==='sea'||tile.kind==='river'){
-    ctx.strokeStyle='#b9dbdc3b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+9,y+30);ctx.quadraticCurveTo(x+20,y+23,x+31,y+30);ctx.stroke();
-   }
-  }
- }
- if(state.options.roads){
-  ctx.lineCap='round';ctx.lineJoin='round';
-  for(const seg of W.roadSegments){
-   if(Math.max(seg.a.x,seg.b.x)<camera.x-hw-120||Math.min(seg.a.x,seg.b.x)>camera.x+hw+120||
-      Math.max(seg.a.y,seg.b.y)<camera.y-hh-120||Math.min(seg.a.y,seg.b.y)>camera.y+hh+120)continue;
-   ctx.strokeStyle='#4a41287d';ctx.lineWidth=zoom<.24?15:19;ctx.beginPath();ctx.moveTo(seg.a.x,seg.a.y);ctx.lineTo(seg.b.x,seg.b.y);ctx.stroke();
-   ctx.strokeStyle='#e4c995af';ctx.lineWidth=zoom<.24?7:10;ctx.stroke();
-  }
- }
+ window.UAMapPainter.draw(ctx,W,camera,view,state.options);
 }
 function drawFlag(x,y,f){
  ctx.fillStyle='#151d1a';ctx.fillRect(x-1,y-35,3,42);
@@ -424,12 +398,7 @@ function drawWorld(time){
  drawLand();drawLocations();drawParties();drawPlayer(time);
 }
 function initMiniBase(){
- const c=document.createElement('canvas');c.width=W.COLS;c.height=W.ROWS;const x=c.getContext('2d');
- for(let ty=0;ty<W.ROWS;ty++)for(let tx=0;tx<W.COLS;tx++){
-  const tile=W.tiles[W.tileIndex(tx,ty)],f=W.factions[tile.owner];x.fillStyle=W.palette[tile.kind];x.fillRect(tx,ty,1,1);
-  if(f){x.fillStyle=colorAlpha(f.color,.24);x.fillRect(tx,ty,1,1)}
- }
- miniBase=c;
+ miniBase=window.UAMapPainter.mini(W);
 }
 function drawMini(){
  if(!state||!state.options.minimap)return;
@@ -496,7 +465,14 @@ function refreshInspector(){
  }else{
   const p=state.player,land=W.tileAt(p.x,p.y),region=currentRegion();
   html='<div class="smallcaps">EXPLORING ASTERRA</div><h2>'+esc(region.name)+'</h2><div class="banner-strip" style="background:'+region.color+'"></div>';
-  html+='<p>'+esc(region.trait)+'. The land around you is '+esc(land.kind)+'.</p>';
+  const biomeNames={taiga:'northern evergreen forest',tundra:'windy tundra',
+   rainforest:'humid southern forest',scrub:'arid scrubland',
+   steppe:'open grass steppe',desert:'sun-baked desert',
+   forest:'temperate woodland',hills:'rolling highland',
+   mountain:'mountain range',marsh:'wetland',river:'river crossing',
+   snow:'snow-covered land',grass:'fertile grassland',sea:'coastal water'};
+  html+='<p>'+esc(region.trait)+'. The landscape here is '+esc(biomeNames[land.kind]||land.kind)+
+   ', shaped by a north-to-south climate and local rainfall.</p>';
   html+='<div class="eventbox"><b>Current objective</b><p>'+esc(questText())+'</p></div>';
   html+=renderActions([{act:'nearest',label:'➤ Find nearest settlement',primary:true},{act:'partyPanel',label:'⚔ Review your army'},{act:'factions',label:'🛡 Explore 10 factions'}]);
  }
