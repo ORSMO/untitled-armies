@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#091512">
 <meta name="description" content="Untitled Armies: a medieval campaign sandbox. Explore the vast continent of Asterra, meet ten factions, recruit and upgrade faction troops, and build your legend.">
-<title>Untitled Armies — Asterra Campaign · V4.1</title>
+<title>Untitled Armies — Asterra Campaign · V4.2</title>
 <link rel="stylesheet" href="campaign.css">
 </head>
 <body>
 <div id="game" class="hidden">
  <header class="topbar">
-  <div class="brand"><span class="crest">⚔</span><div><strong>UNTITLED ARMIES</strong><small>ASTERRA CAMPAIGN · V4.1 ALPHA</small></div></div>
+  <div class="brand"><span class="crest">⚔</span><div><strong>UNTITLED ARMIES</strong><small>ASTERRA CAMPAIGN · V4.2 ALPHA</small></div></div>
   <div class="top-center">
    <div class="chip">📜 <b id="hudDay">Day 1 · 08:00</b></div>
    <div class="chip">⚑ <b id="hudRegion">Valdorian Kingdom</b></div>
@@ -59,6 +59,7 @@
     <div class="location-chip" id="mapCoordinates">Asterra · Explore the world</div>
     <div class="map-help">Click to select a city or set a route. Drag to pan. Scroll to zoom. <span class="keyhint">W</span><span class="keyhint">A</span><span class="keyhint">S</span><span class="keyhint">D</span> move.</div>
    </div>
+   <div class="tracking-badge hidden" id="trackingBadge" role="status">◎ Pursuing a moving party <button id="trackingCancel" title="Stop pursuit" aria-label="Stop tracking">×</button></div>
    <div class="map-bottom" id="travelText">Click to travel · WASD to walk</div>
    <div class="map-controls">
     <button class="iconbtn" id="btnZoomIn" title="Zoom in">＋</button>
@@ -80,7 +81,7 @@
    <p class="subtle">Roaming bandits, patrols and caravans travel through this world. Set a destination and follow the roads.</p>
   </aside>
  </div>
- <div class="footer-hint">ASTERRA CAMPAIGN ALPHA · 10 factions · 80 settlements · real travel & faction troops · <a href="classic.html">Classic Combat</a> · <a href="lab.html">Battle Lab</a></div>
+ <div class="footer-hint">ASTERRA CAMPAIGN ALPHA · player-led battles · roaming encounters · landmarks · 10 factions · <a href="classic.html">Classic Combat</a> · <a href="lab.html">Battle Lab</a></div>
 </div>
 <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 <section id="screenMenu" class="overlay" aria-label="Main menu">
@@ -176,7 +177,24 @@
   <p>Your journey pauses while this menu is open. You can save, adjust map settings or return to the title screen.</p>
   <div class="modal-actions"><button class="btn primary" id="pauseResume">▶ Resume Campaign</button><button class="btn" id="pauseSave">💾 Save Campaign</button></div>
   <div class="modal-actions"><button class="btn" id="pauseOptions">⚙ Map Settings</button><button class="btn" id="pauseMenu">🏰 Main Menu</button></div>
-  <div class="eventbox"><b>Combat training</b><p>These are preserved test arenas, not yet integrated into campaign casualties or rewards.</p><a href="classic.html">Classic 50v50</a> · <a href="lab.html">Six-Arena Lab</a></div>
+  <div class="eventbox"><b>Combat training</b><p>These are independent testing arenas. Campaign encounters now launch their own persistent battlefield using the same combat engine.</p><a href="classic.html">Classic 50v50</a> · <a href="lab.html">Six-Arena Lab</a></div>
+ </div>
+</section>
+
+<section id="screenEncounter" class="overlay hidden" aria-label="Encounter with another party">
+ <div class="modal encounter-modal">
+  <div class="smallcaps">YOU HAVE ENCOUNTERED A PARTY</div>
+  <h2 id="encounterTitle">Travelers on the road</h2>
+  <div id="encounterContent"></div>
+  <div class="encounter-actions" id="encounterActions"></div>
+ </div>
+</section>
+<section id="screenAftermath" class="overlay hidden" aria-label="Battle aftermath">
+ <div class="modal encounter-modal">
+  <div class="smallcaps">THE AFTERMATH · CAMPAIGN BATTLE</div>
+  <h2 id="aftermathTitle">Battle concluded</h2>
+  <div id="aftermathContent"></div>
+  <div class="modal-actions"><button class="btn primary" id="aftermathContinue">↩ Continue Your Journey</button></div>
  </div>
 </section>
 <section id="screenParty" class="overlay hidden" aria-label="Your party">
