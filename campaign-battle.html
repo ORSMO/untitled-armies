@@ -1202,6 +1202,7 @@ function populate(){
    commanders.friend.isPlayerHero=true;
    realisticBattle=true;
    document.querySelector('#terrainPreset').value=terrainPreset;
+   refreshBattleRulesUI();
    document.querySelector('#campaignBattleTitle').textContent='⚔ '+campaignSession.playerName+
     ' vs '+(campaignSession.kind==='bandit'?'Outlaws':campaignSession.kind==='patrol'?'Patrol':'Caravan');
    document.querySelector('#campaignBattleHeroHealth').textContent='Hero: 100%';
@@ -3879,7 +3880,7 @@ function drawMinimap(){
   canvas.width=Math.round(VW*dpr);canvas.height=Math.round(VH*dpr);
   canvas.style.width=VW+'px';canvas.style.height=VH+'px';
   ctx.setTransform(dpr,0,0,dpr,0,0);
-  if(!friends.length){
+  if(!friends.length&&!commanders.friend){
    // Increase playable battlefield AREA by exactly three times, preserving
    // the original shape and soldier/weapon scale.
    const worldScale=Math.sqrt(3);
