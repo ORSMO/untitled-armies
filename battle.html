@@ -1114,7 +1114,10 @@ function focusArmy(){
 function determineBattleOutcome(){
  if(!realisticBattle||battleOutcome)return battleOutcome;
  const friend=battleTally('friend'),foe=battleTally('foe');
- if(friend.standing>0&&foe.standing>0){
+ const playerStanding=campaignMode&&commanders.friend&&
+  !commanders.friend.dead&&!commanders.friend.broken&&!commanders.friend.routed?1:0;
+ const friendStanding=friend.standing+playerStanding;
+ if(friendStanding>0&&foe.standing>0){
   battleCollapseSince.friend=null;battleCollapseSince.foe=null;return null;
  }
  // A momentary complete rout is not necessarily a victory: disciplined
@@ -1122,13 +1125,14 @@ function determineBattleOutcome(){
  // a brief chance before declaring the battle terminal.
  let waitingForRally=false;
  for(const [side,report] of [['friend',friend],['foe',foe]]){
-  if(report.standing>0||report.shaken===0){battleCollapseSince[side]=null;continue;}
+  const standing=side==='friend'?friendStanding:report.standing;
+  if(standing>0||report.shaken===0){battleCollapseSince[side]=null;continue;}
   if(battleCollapseSince[side]===null)battleCollapseSince[side]=t;
   if(t-battleCollapseSince[side]<4.5)waitingForRally=true;
  }
  if(waitingForRally)return null;
- const winner=friend.standing&&foe.standing===0?'friend':
-  foe.standing&&friend.standing===0?'foe':'draw';
+ const winner=friendStanding&&foe.standing===0?'friend':
+  foe.standing&&friendStanding===0?'foe':'draw';
  const wiped=winner==='friend'?foe:friend;
  const reason=winner==='draw'?'Both armies became unable to fight':
   wiped.surrendered>0||wiped.escaped>0||wiped.shaken>0?
