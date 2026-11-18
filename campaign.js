@@ -6,7 +6,7 @@ const $=id=>document.getElementById(id),F=W.factions,S=W.settlements;
 const KEY='ua-campaign-v1',VERSION=1,MAXPARTY=75;
 const clamp=W.clamp,dist=(a,b,x,y)=>Math.hypot(a-x,b-y),esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const canvas=$('worldCanvas'),ctx=canvas.getContext('2d'),mini=$('minimap'),mctx=mini.getContext('2d');
-let state=null,selected=null,selectedFaction=6,focus=true,camera={x:3870,y:5320,zoom:.47},keys=new Set(),drag=null,last=0,lastHud=0,lastMini=0,lastSave=0,toastUntil=0,menuOpen=true,miniBase=null,view={w:900,h:600},inspectorDirty=true;
+let state=null,selected=null,selectedFaction=6,modalStack=[],focus=true,camera={x:3870,y:5320,zoom:.47},keys=new Set(),drag=null,last=0,lastHud=0,lastMini=0,lastSave=0,toastUntil=0,menuOpen=true,miniBase=null,view={w:900,h:600},inspectorDirty=true;
 const screens=['screenMenu','screenCreate','screenFactions','screenOptions','screenPause','screenParty','screenCharacter'];
 const settingsDefault={borders:true,labels:true,roads:true,minimap:true,follow:true};
 function notify(msg){const t=$('toast');t.textContent=msg;t.classList.remove('hidden');toastUntil=performance.now()+4200}
@@ -15,6 +15,15 @@ function showScreen(id){
  for(const s of screens)$(s).classList.toggle('hidden',s!==id);
  menuOpen=!!id;
  if(state)state.paused=menuOpen||state.pausedManual;
+}
+function openModal(id){
+ const active=screens.find(s=>!$(s).classList.contains('hidden'))||null;
+ modalStack.push(active);
+ showScreen(id);
+}
+function closeModal(){
+ const previous=modalStack.length?modalStack.pop():state?'screenPause':'screenMenu';
+ showScreen(previous);
 }
 function savedExists(){try{return !!localStorage.getItem(KEY)}catch(e){return false}}
 function refreshContinue(){$('menuContinue').disabled=!savedExists()}
@@ -49,8 +58,9 @@ function generateParties(){
  return parties;
 }
 function startCampaign(){
+ modalStack=[];
  const name=($('newName').value||'Wanderer').trim().slice(0,28)||'Wanderer';
- const origin=Number($('originSelect').value)||0;
+ const origin=clamp(Number($('originSelect').value)||0,0,9);
  const background=$('backgroundSelect').value;
  const cap=F[origin].capital;
  const walk=W.nearestWalk(Math.floor((cap[0]+112)/W.TILE),Math.floor((cap[1]+112)/W.TILE));
@@ -67,6 +77,7 @@ function startCampaign(){
  refreshUI();saveGame(true);notify('Welcome to the continent of Asterra. Click anywhere to travel.');
 }
 function loadGame(){
+ modalStack=[];
  try{
   const raw=JSON.parse(localStorage.getItem(KEY));if(!raw||raw.version!==VERSION||!raw.player)throw Error('Wrong save version');
   const p=raw.player;if(!Number.isFinite(p.x)||!Number.isFinite(p.y)||!Number.isFinite(p.gold)||!Array.isArray(p.roster))throw Error('Corrupt data');
@@ -82,10 +93,12 @@ function loadGame(){
  }catch(e){notify('Could not load this campaign save.');return false}
 }
 function showMenu(){
+ modalStack=[];
  if(state)saveGame(true);
  $('game').classList.add('hidden');showScreen('screenMenu');refreshContinue();selected=null;keys.clear();
 }
 function selectNew(){
+ modalStack=[];
  $('newName').value='Wanderer';$('originSelect').value='6';$('backgroundSelect').value='wanderer';showScreen('screenCreate')
 }
 function resize(){
@@ -487,7 +500,7 @@ function showFactionDetails(id){
 }
 function openFactions(){
  $('factionGrid').innerHTML=F.map(f=>'<button class="faction-card" data-faction="'+f.id+'"><span class="faction-flag" style="background:'+f.color+'">'+esc(f.symbol)+'</span><span><strong>'+esc(f.name)+'</strong><small>'+esc(f.culture)+'</small><small>'+esc(f.trait)+'</small></span></button>').join('');
- showScreen('screenFactions');showFactionDetails(selectedFaction);
+ openModal('screenFactions');showFactionDetails(selectedFaction);
 }
 function showParty(){
  if(!state)return;
@@ -496,31 +509,31 @@ function showParty(){
   const upgrade=g.tier<2?' · Upgrade cost '+(g.count*(g.tier===0?75:135))+' denars':' · Elite tier';
   return '<div class="eventbox"><b>'+g.count+' × '+esc(troopName(g))+'</b><p>'+esc(F[g.faction].name)+upgrade+'</p>'+(g.tier<2?'<button class="btn" data-upgrade="'+i+'">⬆ Promote to '+esc(F[g.faction].troops[g.tier+1])+'</button>':'')+'</div>';
  }).join('')+'<p class="subtle">Custom equipment and creating new troop trees unlock when founding your own faction. That campaign feature is planned, not available yet.</p>';
- showScreen('screenParty');
+ openModal('screenParty');
 }
 function showCharacter(){
  if(!state)return;const p=state.player,f=F[p.origin];
  $('characterModalContent').innerHTML='<div class="hero-card"><div class="hero-icon">'+esc(f.symbol)+'</div><div class="hero-name">'+esc(p.name)+'</div><div class="hero-sub">'+esc(f.culture)+' · '+esc(p.background)+'</div><div class="statgrid"><div class="stat"><div class="stat-label">Level</div><div class="stat-value">'+p.level+'</div></div><div class="stat"><div class="stat-label">Experience</div><div class="stat-value">'+p.xp+'/'+(p.level*125)+'</div></div><div class="stat"><div class="stat-label">Renown</div><div class="stat-value">'+p.renown+'</div></div><div class="stat"><div class="stat-label">Health</div><div class="stat-value">'+p.hp+'%</div></div></div></div><p>Recruit faction soldiers, gain renown through quests and skirmishes, and travel between the ten kingdoms. A full character-equipment system will follow in later campaign development.</p>';
- showScreen('screenCharacter');
+ openModal('screenCharacter');
 }
 function showOptions(){
  if(state){$('optBorders').checked=state.options.borders;$('optLabels').checked=state.options.labels;
  $('optRoads').checked=state.options.roads;$('optMinimap').checked=state.options.minimap;$('optFollow').checked=state.options.follow}
- showScreen('screenOptions');
+ openModal('screenOptions');
 }
 function saveOptions(){
  if(state){
   state.options={borders:$('optBorders').checked,labels:$('optLabels').checked,roads:$('optRoads').checked,minimap:$('optMinimap').checked,follow:$('optFollow').checked};
   saveGame(true);inspectorDirty=true;
  }
- showScreen(state?'screenPause':'screenMenu');refreshUI();
+ closeModal();refreshUI();
 }
 function button(id,action){$(id).addEventListener('click',action)}
 button('menuNew',selectNew);button('menuContinue',loadGame);
 button('menuFactions',openFactions);
 button('createStart',startCampaign);button('createCancel',()=>showScreen('screenMenu'));
-button('factionsClose',()=>showScreen(state?'screenPause':'screenMenu'));
-button('optionsClose',()=>showScreen(state?'screenPause':'screenMenu'));
+button('factionsClose',closeModal);
+button('optionsClose',closeModal);
 button('optionsApply',saveOptions);
 button('pauseResume',()=>{state.pausedManual=false;showScreen(null)});
 button('pauseSave',()=>saveGame(false));button('pauseOptions',showOptions);
@@ -530,8 +543,8 @@ button('btnSave',()=>saveGame(false));
 button('btnParty',showParty);button('btnCharacter',showCharacter);button('btnFactions',openFactions);
 button('btnSidebar',()=>$('sidebar').classList.toggle('mobile-hide'));
 button('btnInspect',()=>$('inspector').classList.toggle('mobile-hide'));
-button('partyClose',()=>showScreen(null));
-button('characterClose',()=>showScreen(null));
+button('partyClose',closeModal);
+button('characterClose',closeModal);
 button('btnZoomIn',()=>zoomAt(1.32));
 button('btnZoomOut',()=>zoomAt(1/1.32));
 button('btnCenter',()=>{resetView();notify('Camera following your character.')});
@@ -576,7 +589,7 @@ mini.addEventListener('click',e=>{if(!state)return;const r=mini.getBoundingClien
 window.addEventListener('keydown',e=>{
  if(e.key==='Escape'){
   if($('screenCreate').classList.contains('hidden')===false)showScreen('screenMenu');
-  else if(menuOpen)showScreen(state?'screenPause':'screenMenu');
+  else if(menuOpen)closeModal();
   else if(state)showScreen('screenPause');
   return;
  }
