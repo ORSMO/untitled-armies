@@ -326,7 +326,8 @@ function openEncounter(party){
   kind==='caravan'?'A merchant caravan slows. Its guards watch your approach.':
   'A column of soldiers halts beneath its banners. Their captain awaits you.';
  $('encounterOwnCount').textContent=rosterCount()+' troops · '+state.player.name;
- $('encounterOwnDetail').textContent='Your health '+state.player.hp+'% · '+state.player.roster.length+' troop classes';
+ $('encounterOwnDetail').textContent='Health '+state.player.hp+'% · '+Math.min(50,state.player.roster.reduce((n,g)=>n+g.count-(g.wounded||0),0))+
+  ' available combatants (maximum 50 deployed)';
  $('encounterEnemyCount').textContent=party.strength+' '+(kind==='bandit'?'outlaws':kind==='caravan'?'travelers':'soldiers');
  $('encounterEnemyDetail').textContent=kind==='bandit'?'Hostile raiders':
   F[party.faction].name+' · '+(kind==='patrol'?'Guarding the realm':'Trading goods');
@@ -346,7 +347,9 @@ function launchCampaignBattle(party){
  const sessionId='battle-'+Date.now().toString(36)+'-'+Math.floor(Math.random()*1e7).toString(36);
  const session={status:'active',sessionId,partyId:party.id,kind:party.kind,
   faction:party.faction,enemyCount:Math.min(50,party.strength),
-  playerName:state.player.name,heroHealth:state.player.hp,troops};
+  playerName:state.player.name,heroHealth:state.player.hp,troops,
+  terrainKind:W.tileAt(state.player.x,state.player.y).kind,
+  reserveCount:Math.max(0,state.player.roster.reduce((n,g)=>n+g.count-(g.wounded||0),0)-troops.length)};
  state.pendingBattleId=sessionId;
  state.lastEncounter=state.day+state.hour/24;
  state.followPartyId=null;state.path=[];state.pathIndex=0;
@@ -869,7 +872,7 @@ function frame(now){
  if(state&&!menuOpen){
   if(!state.paused){
    stepTravel(dt);if(!state.paused)stepParties(dt);
-   if(focus&&state.options.follow){const t=Math.min(1,dt*5);camera.x+=(state.player.x-camera.x)*t;camera.y+=(state.player.y-camera.y)*t}
+   if((focus&&state.options.follow)||state.followPartyId!=null){const t=Math.min(1,dt*5);camera.x+=(state.player.x-camera.x)*t;camera.y+=(state.player.y-camera.y)*t}
   }
   drawWorld(now);
   if(now-lastHud>350){refreshUI();lastHud=now}
