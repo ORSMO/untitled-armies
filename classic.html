@@ -308,7 +308,7 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
       <tr><td>Crossbow</td><td>12</td><td>1125</td><td>1.90s</td><td>Heavy piercing</td></tr>
       <tr><td>Javelins</td><td>6</td><td>624</td><td>1.05s</td><td>Heavy piercing</td></tr>
        <tr><td>Compact horse bow</td><td>24</td><td>710</td><td>0.52s</td><td>Light piercing</td></tr></tbody></table>
-      <p><strong>BATTLEFIELDS &amp; TERRAIN (V3.4):</strong> Use the <strong>Battlefield Terrain</strong> selector in the footer. Choose open ground, a hill, forest, mud, shallow river, rocks or mixed terrain. Hills give higher-ground melee and ranged advantages; forest conceals troops against missile fire; mud and rivers slow movement and tire soldiers and horses; solid rocks block physical movement and low-flying arrows. Cavalry needs clear dry ground to build up a strong charge, and all terrain interacts with existing formations and morale. Switching the terrain resets the current test. The default open plain preserves earlier fairness tests.</p>
+      <p><strong>BATTLEFIELDS &amp; TERRAIN (V3.4):</strong> Use the <strong>Battlefield Terrain</strong> selector in the footer. Choose open ground, a hill, forest, mud, shallow river, rocks or mixed terrain. Terrain can decide the entire battle: elevated defenders have stronger melee and ranged advantages, wooded positions sharply reduce enemy missile effectiveness and weaken mounted shock, and deep mud or river water slows cavalry enough to ruin its charge and discipline. Poor footing weakens braced spear walls and increases exhaustion. Commanders seek ridges and forest positions, defend dry crossing approaches, and send cavalry around hazardous ground; their plans still yield to the General’s manual orders. Solid rocks block movement and low-flying arrows. Cavalry needs clear dry ground to build up a strong charge, and all terrain interacts with existing formations and morale. Switching the terrain resets the current test. The default open plain preserves earlier fairness tests.</p>
       <p><strong>HORSE MOVEMENT (V3.1):</strong> Mounted troops now accelerate and brake instead of instantly changing speed or direction. A horse turns much wider at full gallop, especially when heavily armored or wounded. A mounted charge requires real forward closing speed, and body-to-body collisions absorb momentum. Cavalry ride through an enemy on a committed attack line, break away when surrounded, and regroup for another charge. Mounted archers try to ride out of close threats to recover their shooting distance. Gait animation and hoof dust show speed; the amber bar is horse health and the smaller turquoise bar is horse stamina. Rider and horse health remain separate. A fallen horse cannot be instantly remounted.</p>
       <p><strong>SQUADS & COMMANDERS (V3.2):</strong> Infantry now maintain lanes while advancing and correct drifting ranks. Foot archers stay behind a friendly infantry screen when one exists. Commanders keep a small infantry reserve behind the line, then commit it when troops are under pressure. When enemy archers expose a wing, cavalry first ride around the flank before attacking; mounted movement still uses real acceleration and turning. Commanders display cohesion and reserve status. <strong>Manual General orders always win:</strong> a selected Infantry, Archer, Cavalry or Horse Archer group follows your standing orders until you Return to AI. These are battlefield test mechanics, not a campaign system.</p>
       <p><strong>MORALE &amp; BATTLE OUTCOMES (V3.3):</strong> Use the <strong>🛡 Training mode / ⚔ Real battle</strong> switch in the footer. Switching restarts the current test. Training keeps invulnerable friendly troops and recurring enemies; Real Battle allows both armies to die or be incapacitated, prevents reinforcements, and enables casualty morale, fleeing, surrender and commander-led rallies. A battle ends when one army can no longer fight; an automatic report shows fatalities, incapacitated, routed, surrendering and still-broken soldiers, plus each commander's fate. Press <strong>Fight another battle</strong> to retry with the same rules.</p>
@@ -1116,6 +1116,11 @@ function squadMovement(s,command,target,dist,x,y,pace){
   const goalY=clamp(strategic.y+(s.squadOffsetY||0)*.55,20,H-20);
   if(Math.hypot(s.x-goalX,s.y-goalY)>Math.min(40,H*.14))
    return {x:goalX,y:goalY,pace:1.08};
+  if(!s.terrainPositionHeld){
+   s.terrainPositionHeld=true;
+   const stat=combatLabStats(s.team);
+   if(stat)stat.terrainPositions++;
+  }
  }
  // Infantry correct lateral drift while marching, but close-range combat,
  // shield/parry reactions and routing always take precedence.
@@ -1169,7 +1174,7 @@ function allocateSquadReserves(team){
  const teamUnits=team==='friend'?friends:foes;
  teamUnits.forEach(s=>{
   s.squadReserve=false;s.squadSlotRole=null;
-  s.squadInitialInfantry=false;s.squadFlankDone=false;
+  s.squadInitialInfantry=false;s.squadFlankDone=false;s.terrainPositionHeld=false;
  });
  const infantry=teamUnits.filter(s=>s.unitRole==='infantry');
  // Keep the last fifth in reserve, but don't split tiny test formations.
@@ -3185,6 +3190,25 @@ function step(dt){
  for(const effect of slashes)effect.life-=dt;slashes=slashes.filter(e=>e.life>0);
  if(realisticBattle)determineBattleOutcome();
 }
+function drawCommanderTerrainPlans(){
+ if(!terrainZones.length)return;
+ for(const team of ['foe','friend']){
+  const commander=commanders[team],brain=commanderBrains[team];
+  const pos=brain?.terrainPlan;
+  if(!commander||commander.dead||!pos||!['seizeGround','holdGround','guardCrossing'].includes(brain.phase))continue;
+  const color=team==='friend'?'#ffe4a0':'#f7aa9a';
+  ctx.save();
+  ctx.lineWidth=2;ctx.setLineDash([5,6]);ctx.strokeStyle=color+'bb';
+  ctx.beginPath();ctx.arc(pos.x,pos.y,24,0,Math.PI*2);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle=color;ctx.beginPath();ctx.moveTo(pos.x,pos.y-34);
+  ctx.lineTo(pos.x,pos.y-57);ctx.stroke();
+  ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(pos.x,pos.y-57);
+  ctx.lineTo(pos.x+19,pos.y-51);ctx.lineTo(pos.x,pos.y-45);
+  ctx.fill();
+  ctx.restore();
+ }
+}
 function background(){ctx.fillStyle='#203b30';ctx.fillRect(0,0,W,H);const grad=ctx.createLinearGradient(0,0,W,H);grad.addColorStop(0,'#355746');grad.addColorStop(.45,'#29483a');grad.addColorStop(1,'#244538');ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
  ctx.beginPath();for(let x=.5;x<=W;x+=cell){ctx.moveTo(x,0);ctx.lineTo(x,H)}for(let y=.5;y<=H;y+=cell){ctx.moveTo(0,y);ctx.lineTo(W,y)}ctx.lineWidth=.7;ctx.strokeStyle='#c3e2b22a';ctx.stroke();
  ctx.strokeStyle='#d9f5cd24';ctx.setLineDash([3,8]);ctx.beginPath();ctx.moveTo(W*.5,0);ctx.lineTo(W*.5,H);ctx.stroke();ctx.setLineDash([]);
@@ -3400,7 +3424,7 @@ function draw(){
  if(!VW)return;
  ctx.clearRect(0,0,VW,VH);
  ctx.save();ctx.translate(-camera.x,-camera.y);
- background();if(marker){const age=t-marker.when;if(age<1.3){ctx.beginPath();ctx.arc(marker.x,marker.y,14+age*11,0,2*Math.PI);ctx.strokeStyle='rgba(211,255,218,'+(1-age/1.3)*.6+')';ctx.lineWidth=2;ctx.stroke();}else marker=null;}
+ background();drawCommanderTerrainPlans();if(marker){const age=t-marker.when;if(age<1.3){ctx.beginPath();ctx.arc(marker.x,marker.y,14+age*11,0,2*Math.PI);ctx.strokeStyle='rgba(211,255,218,'+(1-age/1.3)*.6+')';ctx.lineWidth=2;ctx.stroke();}else marker=null;}
  // Selection means selected soldiers are highlighted, but never hides their stats or swords.
  for(const s of foes)drawUnit(s);for(const s of friends)drawUnit(s);
  for(const team of ['foe','friend'])if(commanders[team])drawUnit(commanders[team]);
@@ -3442,6 +3466,12 @@ function drawMinimap(){
    mctx.beginPath();
    mctx.ellipse(z.x/W*mw,z.y/H*mh,Math.max(2,z.rx/W*mw),
     Math.max(2,z.ry/H*mh),0,0,Math.PI*2);mctx.fill();
+  }
+  for(const team of ['friend','foe']){
+   const brain=commanderBrains[team],pos=brain?.terrainPlan;
+   if(!pos||!['seizeGround','holdGround','guardCrossing'].includes(brain.phase))continue;
+   mctx.fillStyle=team==='friend'?'#ffe19e':'#ff9f91';
+   mctx.beginPath();mctx.arc(pos.x/W*mw,pos.y/H*mh,3.4,0,Math.PI*2);mctx.fill();
   }
   for(const s of foes){if(s.routed||s.dead)continue;mctx.fillStyle='#e47b74';mctx.fillRect(s.x/W*mw-2,s.y/H*mh-2,4,4);}
   for(const s of friends){if(s.routed||s.dead)continue;mctx.fillStyle='#65e4a5';mctx.fillRect(s.x/W*mw-2,s.y/H*mh-2,4,4);}
