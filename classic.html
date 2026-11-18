@@ -1112,7 +1112,8 @@ function squadMovement(s,command,target,dist,x,y,pace){
  // close, individual combat and the existing physical formation take over.
  const strategic=(typeof commanderBrains!=='undefined'?
   commanderBrains[s.team]?.terrainPlan:state.terrainObjective);
- if(strategic&&dist>Math.max(115,Math.min(180,W*.20))&&
+ if(strategic&&!s.terrainPositionHeld&&
+   dist>Math.max(115,Math.min(180,W*.20))&&
    (s.unitRole==='infantry'||s.unitRole==='archer')){
   const behind=s.unitRole==='archer'?forward*Math.min(54,W*.105):0;
   const goalX=clamp(strategic.x-behind+(s.squadOffsetX||0)*.30,20,W-20);
@@ -1265,10 +1266,13 @@ function decideCommander(team,dt){
  if(ratio<.58||panicRate>.43)phase='withdraw';
  else if(endangeredFront>.38&&troops.some(u=>u.squadReserve))phase='reinforce';
  else if(threatened)phase='protect';
- else if(chosenGround&&chosenGround.score>2.5&&distance>175)
-  phase=chosenGround.type==='water'||chosenGround.type==='mud'?
-   'guardCrossing':Math.hypot(a.x-chosenGround.x,a.y-chosenGround.y)>85?
-   'seizeGround':'holdGround';
+ else if(chosenGround&&chosenGround.score>2.5&&distance>175){
+  const ford=chosenGround.type==='water'||chosenGround.type==='mud';
+  phase=ford&&brain.elapsed>18?'forceCrossing':
+   ford?'guardCrossing':
+   Math.hypot(a.x-chosenGround.x,a.y-chosenGround.y)>85?
+    'seizeGround':'holdGround';
+ }
  else if(distance>360)phase='advance';
  else if(cavalryUnits.length>3&&enemyArchers.length>3&&distance<570)phase='flank';
  else if(brain.personality==='aggressive'&&ratio>.70)phase='press';
@@ -1288,6 +1292,7 @@ function decideCommander(team,dt){
    seizeGround:{infantry:'defend',archer:'defend',cavalry:'attack',horseArcher:'attack'},
    holdGround:{infantry:'defend',archer:'defend',cavalry:'attack',horseArcher:'attack'},
    guardCrossing:{infantry:'defend',archer:'defend',cavalry:'attack',horseArcher:'attack'},
+   forceCrossing:{infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'},
    protect:{infantry:'defend',archer:'retreat',cavalry:'attack',horseArcher:'retreat'},
    flank:{infantry:'defend',archer:'attack',cavalry:'attack',horseArcher:'attack'},
    reinforce:{infantry:'attack',archer:'defend',cavalry:'attack',horseArcher:'attack'},
@@ -1308,6 +1313,7 @@ function decideCommander(team,dt){
   phase==='seizeGround'?'Marching to '+chosenGround?.type+' strongpoint':
   phase==='holdGround'?'Holding '+chosenGround?.type+' high-value ground':
   phase==='guardCrossing'?'Defending the dry approach to '+chosenGround?.type:
+  phase==='forceCrossing'?'Crossing '+chosenGround?.type+' under orders':
   phase==='protect'?'Protecting threatened archers':
   phase==='flank'?'Cavalry routing around an exposed wing':
   phase==='reinforce'?'Sending reserves into the threatened line':
