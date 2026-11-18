@@ -586,7 +586,7 @@ function campaignFormation(team,n){
   y:h.y+(i%columns-(columns-1)*.5)*spacing}));
 }
 function campaignDeploy(s,slot,team){
- const kit=campaignEquipment(slot.faction,slot.tier,campaignSession.kind);
+ const kit=campaignEquipment(slot.faction,slot.tier,team==='foe'?campaignSession.kind:null);
  Object.assign(s,kit);
  s.campaignSource=slot.groupIndex;
  s.campaignSlot=slot.slot;
@@ -1175,7 +1175,8 @@ function populate(){
   allocateSquadReserves('friend');allocateSquadReserves('foe');
   commanders.friend=createCommander('friend');commanders.foe=createCommander('foe');
   if(campaignMode){
-   commanders.friend.hp=commanders.friend.maxHp=6;
+   commanders.friend.maxHp=6;
+   commanders.friend.hp=Math.max(.8,6*clamp((campaignSession.heroHealth||100)/100,0,1));
    commanders.friend.speed=76;
    commanders.friend.isPlayerHero=true;
    realisticBattle=true;
