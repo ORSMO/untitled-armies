@@ -442,6 +442,19 @@ for(let i=0;i<capitals.length;i++)for(let j=i+1;j<capitals.length;j++){
 }
 candidate.sort((a,b)=>a.d-b.d);
 for(const v of candidate.slice(0,2))connect(v.a,v.b,'trunk');
+// Small wooden/stone crossings are visible where established roads
+// meet the naturally generated drainage network.
+const bridgePoints=[];
+for(let ty=1;ty<ROWS-1;ty++)for(let tx=1;tx<COLS-1;tx++){
+ const i=tileIndex(tx,ty);
+ if(!roads[i]||tiles[i].kind!=='river')continue;
+ const x=(tx+.5)*TILE,y=(ty+.5)*TILE;
+ if(bridgePoints.some(b=>Math.hypot(b.x-x,b.y-y)<TILE*2.7))continue;
+ const horiz=Number(roads[i-1])+Number(roads[i+1]);
+ const vert=Number(roads[i-COLS])+Number(roads[i+COLS]);
+ const angle=horiz>=vert?0:Math.PI/2;
+ bridgePoints.push({x,y,angle});
+}
 // Smooth faction-border contours, drawn once as faint continuous paths
 // instead of a sharp grid of block-shaped national edges.
 const borderEdges=new Map();
@@ -557,7 +570,7 @@ function closestSettlement(x,y,factionId){
  return best;
 }
 window.UAWorld={WIDTH,HEIGHT,TILE,COLS,ROWS,factions,wars,settlements,
- roadSegments,roadLinks,roadTier,roads,riverPaths,borderPaths,coastPaths,flow,downhill,
+ roadSegments,roadLinks,roadTier,roads,bridgePoints,riverPaths,borderPaths,coastPaths,flow,downhill,
  tiles,palette,biomeCost,tileAt,tileIndex,factionAt,findPath,walkingSpeed,
  closestSettlement,getSettlement,nearestWalk,clamp,hash,noise,fractal};
 })();
