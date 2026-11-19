@@ -7,8 +7,19 @@ const KEY='ua-campaign-v1',VERSION=1,MAXPARTY=75;
 const clamp=W.clamp,dist=(a,b,x,y)=>Math.hypot(a-x,b-y),esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const canvas=$('worldCanvas'),ctx=canvas.getContext('2d'),mini=$('minimap'),mctx=mini.getContext('2d');
 let state=null,selected=null,selectedFaction=6,modalStack=[],focus=true,camera={x:3870,y:5320,zoom:.47},keys=new Set(),drag=null,last=0,lastHud=0,lastMini=0,lastSave=0,toastUntil=0,menuOpen=true,miniBase=null,view={w:900,h:600},inspectorDirty=true;
-const screens=['screenMenu','screenCreate','screenFactions','screenAtlas','screenOptions','screenPause','screenParty','screenCharacter','screenEncounter','screenAftermath'];
+const screens=['screenMenu','screenCreate','screenFactions','screenAtlas','screenOptions','screenPause','screenParty','screenCharacter','screenTown','screenEncounter','screenAftermath'];
 const settingsDefault={borders:true,labels:true,roads:true,minimap:true,follow:true};
+const ITEMS={
+ sword:{name:'Arming sword',slot:'weapon',price:180,icon:'⚔'},axe:{name:'Battle axe',slot:'weapon',price:220,icon:'🪓'},
+ spear:{name:'Soldier spear',slot:'weapon',price:145,icon:'🔱'},bow:{name:'Hunting bow',slot:'weapon',price:260,icon:'🏹'},
+ paddedArmor:{name:'Padded coat',slot:'armor',price:95,icon:'🧥'},leatherArmor:{name:'Leather armor',slot:'armor',price:230,icon:'🥋'},
+ mailArmor:{name:'Mail hauberk',slot:'armor',price:510,icon:'🛡'},plateArmor:{name:'Plate harness',slot:'armor',price:980,icon:'⚙'},
+ buckler:{name:'Buckler',slot:'shield',price:90,icon:'🛡'},roundShield:{name:'Round shield',slot:'shield',price:125,icon:'🛡'},kiteShield:{name:'Kite shield',slot:'shield',price:270,icon:'🛡'},
+ quiver:{name:'Leather quiver',slot:'quiver',price:85,icon:'🏹'},rockPouch:{name:'Throwing-stone pouch',slot:'quiver',price:70,icon:'🪨'},
+ arrows:{name:'Arrows · 12',stack:true,price:24,icon:'➶'},stones:{name:'Throwing stones · 6',stack:true,price:18,icon:'●'},food:{name:'Provisions · 8',stack:true,price:28,icon:'🍞'}
+};
+const SHOP_ITEMS=['food','sword','axe','spear','bow','paddedArmor','leatherArmor','mailArmor','plateArmor','roundShield','kiteShield','quiver','rockPouch','arrows','stones'];
+const ITEM_SLOT_LABELS={weapon:'Weapon',armor:'Armor',shield:'Shield',quiver:'Pouch / quiver'};
 function notify(msg){const t=$('toast');t.textContent=msg;t.classList.remove('hidden');toastUntil=performance.now()+4200}
 function log(message){if(!state)return;state.messages.unshift({day:state.day,text:message});state.messages.length=Math.min(12,state.messages.length)}
 function showScreen(id){
@@ -30,6 +41,20 @@ function savedExists(){try{return !!localStorage.getItem(KEY)}catch(e){return fa
 function refreshContinue(){$('menuContinue').disabled=!savedExists()}
 function rosterCount(){return state?state.player.roster.reduce((n,t)=>n+t.count,0):0}
 function troopName(group){return F[group.faction]?.troops[clamp(group.tier,0,2)]||'Unknown soldier'}
+function preparePlayer(p){
+ p.stats={strength:5,agility:5,tactics:5,leadership:5,...(p.stats||{})};
+ p.statPoints=Math.max(0,Number(p.statPoints)||0);
+ p.inventory={arrows:24,stones:0,food:0,...(p.inventory||{})};
+ p.equipment={weapon:'sword',armor:'paddedArmor',shield:'roundShield',quiver:'quiver',...(p.equipment||{})};
+ for(const id of Object.keys(ITEMS))if(ITEMS[id].slot&&p.equipment[ITEMS[id].slot]===id)p.inventory[id]=Math.max(0,Number(p.inventory[id])||0);
+ return p;
+}
+function grantItem(id,count=1){const inv=state.player.inventory;inv[id]=(Number(inv[id])||0)+count}
+function grantXP(amount){
+ const p=state.player;p.xp=(Number(p.xp)||0)+amount;let levels=0;
+ while(p.xp>=p.level*125){p.xp-=p.level*125;p.level++;p.hp=100;p.statPoints=(p.statPoints||0)+1;levels++}
+ if(levels)notify('Level up! Level '+p.level+' · '+levels+' stat point'+(levels===1?'':'s')+' to spend.');
+}
 function troopPower(){return state.player.roster.reduce((n,g)=>n+g.count*(1+g.tier*.95),0)+state.player.level*1.8}
 function saveGame(silent){
  if(!state)return false;
@@ -75,7 +100,8 @@ function startCampaign(){
    day:1,hour:8,speed:1,paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,
    followPartyId:null,followRepath:0,visitedLandmarks:[],pendingBattleId:null,
    parties:[],options:{...settingsDefault},messages:[],unseen:[],lastEncounter:-100};
- state.parties=generateParties();selected={type:'settlement',id:origin*8};
+  state.player=preparePlayer(state.player);
+  state.parties=generateParties();selected={type:'settlement',id:origin*8};
  camera.zoom=.47;resetView();$('game').classList.remove('hidden');showScreen(null);resize();
  log('Your story begins beneath the banners of '+F[origin].name+'.');
  log('Your first task: recruit three volunteers from a settlement.');
@@ -85,7 +111,7 @@ function loadGame(){
  modalStack=[];
  try{
   const raw=JSON.parse(localStorage.getItem(KEY));if(!raw||raw.version!==VERSION||!raw.player)throw Error('Wrong save version');
-  const p=raw.player;if(!Number.isFinite(p.x)||!Number.isFinite(p.y)||!Number.isFinite(p.gold)||!Array.isArray(p.roster))throw Error('Corrupt data');
+   const p=raw.player;if(!Number.isFinite(p.x)||!Number.isFinite(p.y)||!Number.isFinite(p.gold)||!Array.isArray(p.roster))throw Error('Corrupt data');preparePlayer(p);
   p.x=clamp(p.x,0,W.WIDTH);p.y=clamp(p.y,0,W.HEIGHT);
   // Saved character locations survive the V4.1 geography rebuild.
   // If new water now covers an old saved position, reach the nearest land.
@@ -272,9 +298,8 @@ function questText(){
 }
 function completeQuest(id){
  const p=state.player,q=p.quest;if(!q||q.id!==id)return;
- const rewards=[150,225,360],exp=[65,95,190];p.gold+=rewards[id];p.xp+=exp[id];p.renown+=id+1;
+ const rewards=[150,225,360],exp=[65,95,190];p.gold+=rewards[id];grantXP(exp[id]);p.renown+=id+1;
  q.id=id+1;q.progress=0;q.goal=3;
- while(p.xp>=p.level*125){p.xp-=p.level*125;p.level++;p.hp=100;notify('Level up! You are now level '+p.level+'.')}
  log('Quest completed! Earned '+rewards[id]+' denars and '+exp[id]+' experience.');
  notify('Quest complete · +'+rewards[id]+' denars · +'+exp[id]+' XP');inspectorDirty=true;
 }
@@ -304,9 +329,43 @@ function performSettlementAction(action,id){
   notify('Villagers warn you about raiders and distant wars.');
  }else if(action==='visit'){
   log('Visited '+site.name+'. Garrison: '+site.garrison+'. Prosperity: '+site.prosperity+'.');
-  notify('You walk through the gates of '+site.name+'.');
+   showTown(id);saveGame(true);return;
  }
  refreshUI();saveGame(true);
+}
+function showTown(id){
+ const site=S[id];if(!site)return;const f=F[site.faction];
+ $('townName').textContent=site.name;$('townFaction').textContent=site.type.toUpperCase()+' · '+f.name;
+ $('townDescription').textContent=f.culture+' · '+site.prosperity+' prosperity · Garrison '+site.garrison+'. The road and world stand still while you are inside.';
+ $('townServices').innerHTML=renderActions([
+  {act:'recruit',id,label:'Recruit volunteers · 45 denars each'},
+  {act:'food',id,label:'Buy provisions · 35 denars'},
+  {act:'rest',id,label:'Rest at the inn · 20 denars'},
+  {act:'rumors',id,label:'Ask for local news'}
+ ]);
+ $('townShop').innerHTML=SHOP_ITEMS.map(itemId=>{const it=ITEMS[itemId],owned=itemId==='food'?state.player.food:state.player.inventory[itemId]||0;
+  return '<article class="shop-item"><span class="shop-icon">'+it.icon+'</span><span><b>'+esc(it.name)+'</b><small>'+(it.slot?ITEM_SLOT_LABELS[it.slot]+' equipment':owned+' owned')+'</small></span><button class="btn small" data-buy-item="'+itemId+'">Buy · '+it.price+'</button></article>'
+ }).join('');
+ openModal('screenTown');notify('Entered '+site.name+'. Campaign time is paused.');
+}
+function buyItem(id){
+ const it=ITEMS[id],p=state?.player;if(!it||!p)return;
+ if(p.gold<it.price){notify('Not enough denars.');return}
+ p.gold-=it.price;
+ if(id==='food')p.food+=8;else grantItem(id,id==='arrows'?12:id==='stones'?6:1);
+ log('Bought '+it.name+' at the market.');refreshUI();saveGame(true);showTown(selected.id);
+}
+function equipItem(id){
+ const item=ITEMS[id],p=state?.player;if(!item?.slot||!p)return;
+ if((p.inventory[id]||0)<1){notify('You do not have that item.');return}
+ const slot=item.slot,old=p.equipment[slot];p.inventory[id]--;
+ if(old)grantItem(old,1);p.equipment[slot]=id;
+ log('Equipped '+item.name+'.');refreshUI();saveGame(true);showCharacter();
+}
+function improveStat(name){
+ const p=state?.player;if(!p||!p.statPoints||!Object.prototype.hasOwnProperty.call(p.stats,name))return;
+ p.stats[name]++;p.statPoints--;if(name==='strength')p.maxHp=(p.maxHp||100)+2;
+ log('Improved '+name+'.');saveGame(true);showCharacter();
 }
 function upgradeRoster(index){
  const p=state.player,g=p.roster[index];if(!g||g.count<1||g.tier>=2)return;
@@ -345,10 +404,12 @@ function launchCampaignBattle(party){
    troops.push({groupIndex,slot,faction:g.faction,tier:g.tier});
  }
  const sessionId='battle-'+Date.now().toString(36)+'-'+Math.floor(Math.random()*1e7).toString(36);
- const session={status:'active',sessionId,partyId:party.id,kind:party.kind,
+  const tile=W.tileAt(state.player.x,state.player.y),battleSeed=Math.abs((party.id*31+Math.floor(state.player.x/90)*17+Math.floor(state.player.y/90)*13+state.day*7)%50);
+  const session={status:'active',sessionId,partyId:party.id,kind:party.kind,
   faction:party.faction,enemyCount:Math.min(50,party.strength),
-  playerName:state.player.name,heroHealth:state.player.hp,troops,
-  terrainKind:W.tileAt(state.player.x,state.player.y).kind,
+   playerName:state.player.name,heroHealth:state.player.hp,level:state.player.level,troops,
+   equipment:state.player.equipment,inventory:state.player.inventory,stats:state.player.stats,
+   terrainKind:tile.kind,battleX:state.player.x,battleY:state.player.y,mapSeed:battleSeed,
   reserveCount:Math.max(0,state.player.roster.reduce((n,g)=>n+g.count-(g.wounded||0),0)-troops.length)};
  state.pendingBattleId=sessionId;
  state.lastEncounter=state.day+state.hour/24;
@@ -386,14 +447,18 @@ function consumeBattleResult(){
  }
  p.roster=p.roster.filter(g=>g.count>0);
  p.hp=Math.max(14,Math.round(100*Math.max(0,result.heroHp)/Math.max(1,result.heroMaxHp)));
+  p.inventory.arrows=Math.max(0,(p.inventory.arrows||0)-(result.heroAmmoSpent||0));
+  p.inventory.stones=Math.max(0,(p.inventory.stones||0)-(result.stonesSpent||0));
  let reason;
  if(result.winner==='friend'){
-  const loot=65+(party?.strength||result.enemyInitial||5)*12;
+   const loot=65+(party?.strength||result.enemyInitial||5)*12;
   const exp=50+(party?.strength||result.enemyInitial||5)*8;
-  p.gold+=loot;p.xp+=exp;p.renown+=party?.kind==='bandit'?3:1;
+   p.gold+=loot;grantXP(exp);p.renown+=party?.kind==='bandit'?3:1;
   p.food+=party?.kind==='caravan'?5:1;
   if(party)party.active=false;
-  reason='Victory. You recovered '+loot+' denars and earned '+exp+' experience.';
+   const drops=['arrows','stones','sword','leatherArmor','buckler'];
+   const drop=drops[Math.abs((party?.id||0)*11+(party?.strength||5)+state.day)%drops.length];grantItem(drop,drop==='arrows'?12:drop==='stones'?6:1);
+   reason='Victory. You recovered '+loot+' denars, '+exp+' experience and '+ITEMS[drop].name+'.';
   log(reason);
   if(p.quest?.id===2&&party?.kind==='bandit')completeQuest(2);
  }else if(result.winner==='foe'||result.winner==='draw'){
@@ -403,7 +468,6 @@ function consumeBattleResult(){
   reason='Your party was defeated and retreated. '+lost+' denars lost.';
   log(reason);
  }else{reason='You withdrew. The enemy party remains on the roads.';log(reason)}
- while(p.xp>=p.level*125){p.xp-=p.level*125;p.level++;p.hp=100}
  selected={type:'land'};inspectorDirty=true;state.lastEncounter=state.day+state.hour/24;
  $('aftermathTitle').textContent=result.winner==='friend'?'⚔ Victory':
   result.winner==='retreat'?'↩ Withdrawn from battle':'⚑ Battle lost';
@@ -562,8 +626,9 @@ function refreshUI(){
  $('hudParty').textContent=rosterCount()+'/'+MAXPARTY;
  $('hudGold').textContent=p.gold.toLocaleString();
  $('hudFood').textContent=String(p.food);
- $('hudSpeed').textContent=state.speed+'×';
- $('hudPause').textContent=state.pausedManual?'▶ Resume':'⏸ Pause';
+  $('hudPause').textContent=state.pausedManual?'▶ Resume':'⏸ Pause';
+  $('mobilePause').textContent=state.pausedManual?'▶':'Ⅱ';
+  document.querySelectorAll('.speed-choice').forEach(b=>b.classList.toggle('selected',Number(b.dataset.speed)===state.speed));
  $('charName').textContent=p.name;$('charCulture').textContent='Level '+p.level+' · '+F[p.origin].name;
  $('charAvatar').textContent=F[p.origin].symbol;
  $('statGold').textContent=p.gold.toLocaleString();$('statFood').textContent=p.food;
@@ -591,10 +656,9 @@ function exploreLandmark(id){
  state.visitedLandmarks.push(id);
  const food=['camp','grove','ford'].includes(place.kind)?5:2;
  const gold=['ruins','watchtower','shrine'].includes(place.kind)?45:15;
- state.player.food+=food;state.player.gold+=gold;state.player.xp+=20;
+  state.player.food+=food;state.player.gold+=gold;grantXP(20);
  log('Explored '+place.name+'. Found '+food+' provisions, '+gold+' denars and gained 20 XP.');
  notify(place.name+' explored · +'+food+' food · +'+gold+' denars · +20 XP');
- while(state.player.xp>=state.player.level*125){state.player.xp-=state.player.level*125;state.player.level++;state.player.hp=100}
  inspectorDirty=true;refreshUI();saveGame(true);
 }
 function renderActions(items){return items.map(a=>'<button class="btn'+(a.primary?' primary':'')+'" data-act="'+a.act+'"'+(a.id!==undefined?' data-id="'+a.id+'"':'')+(a.disabled?' disabled':'')+'>'+esc(a.label)+'</button>').join('')}
@@ -740,7 +804,10 @@ function showParty(){
 }
 function showCharacter(){
  if(!state)return;const p=state.player,f=F[p.origin];
- $('characterModalContent').innerHTML='<div class="hero-card"><div class="hero-icon">'+esc(f.symbol)+'</div><div class="hero-name">'+esc(p.name)+'</div><div class="hero-sub">'+esc(f.culture)+' · '+esc(p.background)+'</div><div class="statgrid"><div class="stat"><div class="stat-label">Level</div><div class="stat-value">'+p.level+'</div></div><div class="stat"><div class="stat-label">Experience</div><div class="stat-value">'+p.xp+'/'+(p.level*125)+'</div></div><div class="stat"><div class="stat-label">Renown</div><div class="stat-value">'+p.renown+'</div></div><div class="stat"><div class="stat-label">Health</div><div class="stat-value">'+p.hp+'%</div></div></div></div><p>Recruit faction soldiers, gain renown through quests and skirmishes, and travel between the ten kingdoms. A full character-equipment system will follow in later campaign development.</p>';
+ const stats=Object.entries({strength:'Strength',agility:'Agility',tactics:'Tactics',leadership:'Leadership'}).map(([key,label])=>'<div class="attribute"><b>'+label+'</b><strong>'+p.stats[key]+'</strong><button class="btn small" data-stat="'+key+'" '+(p.statPoints?'':'disabled')+'>＋</button></div>').join('');
+ const slots=Object.entries(ITEM_SLOT_LABELS).map(([key,label])=>'<div class="gear-slot"><small>'+label+'</small><b>'+(ITEMS[p.equipment[key]]?.icon||'—')+' '+esc(ITEMS[p.equipment[key]]?.name||'Empty')+'</b></div>').join('');
+ const inventory=Object.entries({...p.inventory,food:p.food}).filter(([,count])=>count>0).map(([id,count])=>{const it=ITEMS[id];if(!it)return'';return '<div class="inventory-item"><span>'+it.icon+' '+esc(it.name)+' <small>×'+count+'</small></span>'+(it.slot?'<button class="btn small" data-equip="'+id+'">Equip</button>':'')+'</div>'}).join('')||'<p class="subtle">Your pack is empty.</p>';
+ $('characterModalContent').innerHTML='<div class="hero-card"><div class="hero-icon">'+esc(f.symbol)+'</div><div class="hero-name">'+esc(p.name)+'</div><div class="hero-sub">'+esc(f.culture)+' · '+esc(p.background)+'</div><div class="statgrid"><div class="stat"><div class="stat-label">Level</div><div class="stat-value">'+p.level+'</div></div><div class="stat"><div class="stat-label">Experience</div><div class="stat-value">'+p.xp+'/'+(p.level*125)+'</div></div><div class="stat"><div class="stat-label">Renown</div><div class="stat-value">'+p.renown+'</div></div><div class="stat"><div class="stat-label">Health</div><div class="stat-value">'+p.hp+'%</div></div></div></div><div class="section-caption">CHARACTER ATTRIBUTES · '+p.statPoints+' POINTS TO SPEND</div><div class="attributes">'+stats+'</div><div class="section-caption">EQUIPPED GEAR</div><div class="gear-slots">'+slots+'</div><div class="section-caption">INVENTORY</div><div class="inventory-list">'+inventory+'</div><p class="subtle">Buy equipment and supplies from a settlement market. A bow needs arrows in your quiver; a stone pouch lets you throw rocks in manual battles.</p>';
  openModal('screenCharacter');
 }
 function showOptions(){
@@ -758,6 +825,8 @@ function saveOptions(){
  closeModal();refreshUI();
 }
 function button(id,action){$(id).addEventListener('click',action)}
+function setSpeed(value){if(!state)return;state.speed=[1,2,4].includes(value)?value:1;state.pausedManual=false;state.paused=menuOpen;refreshUI();saveGame(true)}
+function togglePause(){if(!state)return;state.pausedManual=!state.pausedManual;state.paused=menuOpen||state.pausedManual;refreshUI()}
 button('encounterTalk',()=>{
  const p=state?.parties.find(x=>x.id===selected?.id);if(!p)return;
  const line=p.kind==='bandit'?'The outlaw chief demands coin and threatens passing villagers.':
@@ -801,12 +870,13 @@ button('btnSidebar',()=>$('sidebar').classList.toggle('mobile-hide'));
 button('btnInspect',()=>$('inspector').classList.toggle('mobile-hide'));
 button('partyClose',closeModal);
 button('characterClose',closeModal);
+button('townLeave',closeModal);
 button('btnZoomIn',()=>zoomAt(1.32));
 button('btnZoomOut',()=>zoomAt(1/1.32));
 button('btnCenter',()=>{resetView();notify('Camera following your character.')});
 button('btnOverview',()=>{focus=false;camera.x=W.WIDTH/2;camera.y=W.HEIGHT/2;camera.zoom=.115});
-button('btnSpeed',()=>{state.speed=state.speed===1?2:state.speed===2?4:1;refreshUI()});
-button('hudPause',()=>{state.pausedManual=!state.pausedManual;state.paused=state.pausedManual;refreshUI()});
+document.querySelectorAll('.speed-choice').forEach(b=>b.addEventListener('click',()=>setSpeed(Number(b.dataset.speed))));
+button('hudPause',togglePause);button('mobilePause',togglePause);
 button('mapNearest',()=>{const s=W.closestSettlement(state.player.x,state.player.y);selected={type:'settlement',id:s.id};inspectorDirty=true;refreshInspector()});
 button('mapDiscover',()=>{
  if(!state)return;
@@ -821,6 +891,9 @@ button('modalParty',showParty);
 button('modalCharacter',showCharacter);
 $('factionGrid').addEventListener('click',e=>{const b=e.target.closest('[data-faction]');if(b)showFactionDetails(Number(b.dataset.faction))});
 $('partyModalContent').addEventListener('click',e=>{const b=e.target.closest('[data-upgrade]');if(b){upgradeRoster(Number(b.dataset.upgrade));showParty()}});
+$('characterModalContent').addEventListener('click',e=>{const equip=e.target.closest('[data-equip]'),stat=e.target.closest('[data-stat]');if(equip)equipItem(equip.dataset.equip);else if(stat)improveStat(stat.dataset.stat)});
+$('townServices').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(b)performSettlementAction(b.dataset.act,Number(b.dataset.id))});
+$('townShop').addEventListener('click',e=>{const b=e.target.closest('[data-buy-item]');if(b)buyItem(b.dataset.buyItem)});
 $('inspectorContent').addEventListener('click',e=>{
  const b=e.target.closest('[data-act]');if(!b||!state)return;
  const id=Number(b.dataset.id),act=b.dataset.act;
@@ -879,7 +952,10 @@ function frame(now){
  const dt=Math.min(.075,Math.max(0,(now-last)/1000||.016));last=now;
  if(state&&!menuOpen){
   if(!state.paused){
-   stepTravel(dt);if(!state.paused)stepParties(dt);
+   const beforeX=state.player.x,beforeY=state.player.y;
+   stepTravel(dt);
+   const moved=dist(beforeX,beforeY,state.player.x,state.player.y),normal=148*W.walkingSpeed(beforeX,beforeY)*dt*state.speed;
+   if(!state.paused&&moved>0)stepParties(dt*clamp(moved/Math.max(1,normal),0,1));
    if((focus&&state.options.follow)||state.followPartyId!=null){const t=Math.min(1,dt*5);camera.x+=(state.player.x-camera.x)*t;camera.y+=(state.player.y-camera.y)*t}
   }
   drawWorld(now);

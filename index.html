@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#091512">
 <meta name="description" content="Untitled Armies: a medieval campaign sandbox. Explore the vast continent of Asterra, meet ten factions, recruit and upgrade faction troops, and build your legend.">
-<title>Untitled Armies — Asterra Campaign · V4.2</title>
+<title>Untitled Armies — Asterra Campaign · V4.4</title>
 <link rel="stylesheet" href="campaign.css">
 </head>
 <body>
 <div id="game" class="hidden">
  <header class="topbar">
-  <div class="brand"><span class="crest">⚔</span><div><strong>UNTITLED ARMIES</strong><small>ASTERRA CAMPAIGN · V4.2 ALPHA</small></div></div>
+   <div class="brand"><span class="crest">⚔</span><div><strong>UNTITLED ARMIES</strong><small>ASTERRA CAMPAIGN · V4.4</small></div></div>
   <div class="top-center">
    <div class="chip">📜 <b id="hudDay">Day 1 · 08:00</b></div>
    <div class="chip">⚑ <b id="hudRegion">Valdorian Kingdom</b></div>
@@ -73,8 +73,10 @@
    <div class="section-caption">CONTINENT MAP</div>
    <div id="minimapHolder"><canvas id="minimap" width="260" height="170" aria-label="Continent overview, click to move the camera"></canvas><div class="legend">Gold dot: you · Colored dots: faction capitals</div></div>
    <div class="section-caption">TIME & ORDERS</div>
-   <button class="btn" id="hudPause">⏸ Pause</button>
-   <button class="btn" id="btnSpeed">⏩ Speed <span id="hudSpeed">1×</span></button>
+    <div class="time-controls" aria-label="World time controls">
+     <button class="btn" id="hudPause">⏸ Pause</button>
+     <button class="btn speed-choice" data-speed="1">1×</button><button class="btn speed-choice" data-speed="2">2×</button><button class="btn speed-choice" data-speed="4">4×</button>
+    </div>
    <button class="btn" id="mapNearest">🏰 Nearest Settlement</button>
    <button class="btn" id="mapDiscover">✦ Nearby Discovery</button>
    <button class="btn" id="mapFaction">⚑ Faction Atlas</button>
@@ -109,7 +111,7 @@
    <div class="section-caption">COMBAT TRAINING</div>
    <a href="classic.html" class="btn" style="text-decoration:none;display:block;text-align:center;margin:7px 0">⚔ Classic 50v50 Battle Test</a>
    <a href="lab.html" class="btn" style="text-decoration:none;display:block;text-align:center;margin:7px 0">⚗ Six-Arena Battle Lab</a>
-   <div class="menu-foot">V4.2 · Follow moving parties, negotiate encounters, explore landmarks and fight battles in person. In active development.</div>
+   <div class="menu-foot">V4.4 · Pursue roaming parties, enter paused town markets, grow your character and choose how you fight. In active development.</div>
   </div>
  </div>
 </section>
@@ -129,7 +131,7 @@
    <option value="soldier">Former Soldier · modest starting funds</option>
    <option value="merchant">Merchant Apprentice · extra starting denars</option>
   </select>
-  <div class="eventbox"><b>Starting equipment & party</b><p>8 recruits of your homeland, provisions, denars, and a world to explore. Equipment customization belongs to your future player-founded faction, not to independent wanderers.</p></div>
+  <div class="eventbox"><b>Starting equipment & party</b><p>8 recruits, a sword, padded armor, a shield, a quiver of arrows and denars. Improve your character, buy gear and supplies in town, and equip what you find.</p></div>
   <div class="modal-actions"><button class="btn primary" id="createStart">Enter the World ⚔</button></div>
  </div>
 </section>
@@ -149,7 +151,7 @@
    <button class="btn danger" id="encounterFight">⚔ Lead your troops into battle</button>
    <button class="btn" id="encounterLeave">↩ Leave peacefully</button>
   </div>
-  <p class="subtle">Fighting launches a playable battlefield. Move your character with WASD, attack with click/Space, guard with Shift, and lead your army with the Commander panel.</p>
+   <p class="subtle">Battles begin under your commander’s automatic tactics. Switch to Manual during battle to move and fight yourself; touch controls appear on phones.</p>
  </div>
 </section>
 <section id="screenAftermath" class="overlay hidden" aria-label="Battle aftermath">
@@ -226,6 +228,17 @@
   <div class="modal-actions"><button class="btn" id="modalParty">⚔ Army & Upgrades</button></div>
  </div>
 </section>
+<section id="screenTown" class="overlay hidden" aria-label="Settlement and market">
+ <div class="modal large town-modal">
+  <div class="town-heading"><div><div class="smallcaps" id="townFaction">SETTLEMENT</div><h2 id="townName">Town</h2></div><button class="btn primary" id="townLeave">↩ Return to the road</button></div>
+  <p id="townDescription" class="subtle"></p>
+  <div class="town-services" id="townServices"></div>
+  <div class="smallcaps">MARKET &amp; ARMOURY</div><div class="town-shop" id="townShop"></div>
+ </div>
+</section>
+<div class="mobile-timebar" aria-label="Time controls">
+ <button id="mobilePause" aria-label="Pause or resume">Ⅱ</button><button class="speed-choice" data-speed="1">1×</button><button class="speed-choice" data-speed="2">2×</button><button class="speed-choice" data-speed="4">4×</button>
+</div>
 <script src="world-data.js"></script>
 <script src="map-painter.js"></script>
 <script src="campaign.js"></script>
