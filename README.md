@@ -1,5 +1,15 @@
 # Untitled Armies
 
+## V4.5 — Army command, economy, contracts and portable saves
+
+- **Command your troops in campaign battles.** Issue advance, hold, stop or retreat orders to the whole company or a troop group; return any group to commander AI at any time. Hero Auto/Manual control remains separate.
+- **Daily upkeep has consequences.** Travel and resting advance campaign days, charging troop wages and provisions. Paid, supplied troops recover morale; unpaid or hungry troops lose it, suffer health loss, and can desert if it collapses. The Quartermaster perk reduces upkeep.
+- **Every settlement has its own market.** Capitals, towns, castles and villages stock different goods. Prosperity, biome and faction standing affect prices; finite stock slowly replenishes. The Silver Tongue perk improves market prices.
+- **Perks make progression count.** Earn a perk point every three levels and choose from combat, command, trade, medical, supply and travel benefits. Equipment inventory shows a slot comparison before equipping.
+- **Take campaign contracts.** Town boards offer courier, landmark survey and bandit bounty work. Up to three can be active; completion pays denars and XP and improves standing with a faction.
+- **Export, import and restore saves.** Download or import a campaign JSON save from the title or pause menu. Two rotating local backups are available. Existing local saves remain on version 1 and gain sensible defaults for the new systems.
+- **Testing modes stay intact.** Campaign battle orders are available in the campaign HUD; stress testing and combat lab controls remain isolated to Classic and Lab.
+
 ## V4.4 — Character growth, markets and hands-on campaign battles
 
 - **Choose how to fight.** Campaign battles start in automatic mode, where your hero uses the battle AI. Switch to Manual at any time to move with WASD or the on-screen phone controls, hold attack, guard, and throw stones from an equipped pouch. Campaign battles do not expose stress tests, training switches, or other balance tools; Classic and Lab remain the test modes.
@@ -51,7 +61,7 @@ The previous V3.6 default Battle Lab has been **preserved as `lab.html`**, so th
 
 ### Current limits and next steps
 
-This is the **first campaign foundation**, not the finished Mount & Blade-style sandbox. The world has faction borders, preset troops, patrols and static starting wars, but no full economic simulation, diplomacy changes, lords, or AI-led sieges yet. V4.2 now links campaign parties to a dedicated 2D battle mode using the Classic combat engine and returns actual survivors and casualties. A deeper system for joining full armies, commanding reinforcements, sieges, third-person presentation and faction diplomacy is still to come. A faction can only create custom troop and equipment templates **after the player has founded their own faction**, when that feature is implemented.
+The campaign is still an evolving sandbox: it has upkeep, markets, faction standing, contracts and playable 2D battles, while lords, AI-led sieges, third-person battles and player-founded factions remain future work. Classic and Lab preserve the original combat test modes.
 
 ## Development
 

@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#091512">
 <meta name="description" content="Untitled Armies: a medieval campaign sandbox. Explore the vast continent of Asterra, meet ten factions, recruit and upgrade faction troops, and build your legend.">
-<title>Untitled Armies — Asterra Campaign · V4.4</title>
+<title>Untitled Armies — Asterra Campaign · V4.5</title>
 <link rel="stylesheet" href="campaign.css">
 </head>
 <body>
 <div id="game" class="hidden">
  <header class="topbar">
-   <div class="brand"><span class="crest">⚔</span><div><strong>UNTITLED ARMIES</strong><small>ASTERRA CAMPAIGN · V4.4</small></div></div>
+   <div class="brand"><span class="crest">⚔</span><div><strong>UNTITLED ARMIES</strong><small>ASTERRA CAMPAIGN · V4.5</small></div></div>
   <div class="top-center">
    <div class="chip">📜 <b id="hudDay">Day 1 · 08:00</b></div>
    <div class="chip">⚑ <b id="hudRegion">Valdorian Kingdom</b></div>
@@ -40,6 +40,7 @@
      <div class="stat"><div class="stat-label">🍞 Provisions</div><div class="stat-value" id="statFood">22</div></div>
      <div class="stat"><div class="stat-label">⚑ Renown</div><div class="stat-value" id="statRenown">0</div></div>
      <div class="stat"><div class="stat-label">⚔ Troops</div><div class="stat-value" id="statParty">8</div></div>
+     <div class="stat"><div class="stat-label">♥ Morale</div><div class="stat-value" id="statMorale">65</div></div>
     </div>
    </div>
    <button class="btn wide" id="btnCharacter">♙ Character</button>
@@ -49,6 +50,7 @@
    <ul id="partyRoster" class="party-list"></ul>
    <div class="section-caption">YOUR FIRST QUEST</div>
    <div class="eventbox"><b>📜 The road to renown</b><p id="questText">Recruit three volunteers.</p></div>
+   <div class="section-caption">ACTIVE CONTRACTS</div><div id="contractsText" class="contract-minis">No contracts. Visit a town to find work.</div>
    <div class="section-caption">CHRONICLE</div>
    <ul class="log-list" id="logList"></ul>
    <p class="sidebar-note">Your soldiers retain their faction's troop templates. Founding your own faction and editing its troop tree will come in a future campaign update.</p>
@@ -83,7 +85,7 @@
    <p class="subtle">Click roaming parties to pursue them as they move. At close range, you can talk, trade or enter battle. Ruins, shrines and camps reward exploration.</p>
   </aside>
  </div>
- <div class="footer-hint">FOLLOW MOVING PARTIES · SPEAK BEFORE BATTLE · DIRECTLY CONTROL YOUR HERO · ASTERRA CAMPAIGN ALPHA · 10 factions · 80 settlements · real travel & faction troops · <a href="classic.html">Classic Combat</a> · <a href="lab.html">Battle Lab</a></div>
+ <div class="footer-hint">FOLLOW MOVING PARTIES · COMMAND ARMIES · MANAGE SUPPLIES · TAKE CONTRACTS · ASTERRA CAMPAIGN V4.5 · <a href="classic.html">Classic Combat</a> · <a href="lab.html">Battle Lab</a></div>
 </div>
 <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 <section id="screenMenu" class="overlay" aria-label="Main menu">
@@ -102,7 +104,7 @@
   </div>
   <div class="menu-box">
    <h2>Begin your story</h2>
-   <p>Create a character and explore the new campaign world. Your journey saves locally in this browser.</p>
+   <p>Create a character and explore the campaign world. Your journey saves here; export a copy to move it to another device.</p>
    <button id="menuNew" class="btn primary">⚔ NEW CAMPAIGN</button>
    <button id="menuContinue" class="btn" disabled>➤ Continue Campaign</button>
    <button id="menuAtlas" class="btn">🗺 Explore the World Atlas</button>
@@ -111,7 +113,8 @@
    <div class="section-caption">COMBAT TRAINING</div>
    <a href="classic.html" class="btn" style="text-decoration:none;display:block;text-align:center;margin:7px 0">⚔ Classic 50v50 Battle Test</a>
    <a href="lab.html" class="btn" style="text-decoration:none;display:block;text-align:center;margin:7px 0">⚗ Six-Arena Battle Lab</a>
-   <div class="menu-foot">V4.4 · Pursue roaming parties, enter paused town markets, grow your character and choose how you fight. In active development.</div>
+   <button id="menuImport" class="btn">📥 Import Campaign Save</button>
+   <div class="menu-foot">V4.5 · Lead troops, manage supplies, take contracts and protect your campaign saves. In active development.</div>
   </div>
  </div>
 </section>
@@ -204,8 +207,10 @@
  <div class="modal">
   <div class="smallcaps">PAUSED · UNTITLED ARMIES</div>
   <h2>Campaign Menu</h2>
-  <p>Your journey pauses while this menu is open. You can save, adjust map settings or return to the title screen.</p>
+  <p>Your journey pauses while this menu is open. Save, export or restore a backup, import a campaign from another device, adjust settings, or return to the title screen.</p>
   <div class="modal-actions"><button class="btn primary" id="pauseResume">▶ Resume Campaign</button><button class="btn" id="pauseSave">💾 Save Campaign</button></div>
+  <div class="modal-actions"><button class="btn" id="exportSave">📤 Export Save</button><button class="btn" id="importSave">📥 Import Save</button></div>
+  <div class="modal-actions"><button class="btn" id="restoreBackup">↶ Restore Previous Save</button><button class="btn" id="restoreOlderBackup">↶ Restore Older Backup</button></div>
   <div class="modal-actions"><button class="btn" id="pauseOptions">⚙ Map Settings</button><button class="btn" id="pauseMenu">🏰 Main Menu</button></div>
   <div class="eventbox"><b>Combat training</b><p>These are preserved test arenas, not yet integrated into campaign casualties or rewards.</p><a href="classic.html">Classic 50v50</a> · <a href="lab.html">Six-Arena Lab</a></div>
  </div>
@@ -233,12 +238,14 @@
   <div class="town-heading"><div><div class="smallcaps" id="townFaction">SETTLEMENT</div><h2 id="townName">Town</h2></div><button class="btn primary" id="townLeave">↩ Return to the road</button></div>
   <p id="townDescription" class="subtle"></p>
   <div class="town-services" id="townServices"></div>
-  <div class="smallcaps">MARKET &amp; ARMOURY</div><div class="town-shop" id="townShop"></div>
+  <div class="smallcaps">LOCAL MARKET · PRICES &amp; STOCK VARY</div><div class="town-shop" id="townShop"></div>
+  <div class="smallcaps contract-board-title">CONTRACT BOARD</div><div id="townContracts" class="contract-list"></div>
  </div>
 </section>
 <div class="mobile-timebar" aria-label="Time controls">
  <button id="mobilePause" aria-label="Pause or resume">Ⅱ</button><button class="speed-choice" data-speed="1">1×</button><button class="speed-choice" data-speed="2">2×</button><button class="speed-choice" data-speed="4">4×</button>
 </div>
+<input id="importSaveFile" type="file" accept="application/json,.json" hidden>
 <script src="world-data.js"></script>
 <script src="map-painter.js"></script>
 <script src="campaign.js"></script>
