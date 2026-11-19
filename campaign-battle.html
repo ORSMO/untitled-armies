@@ -191,14 +191,19 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 </style>
 
 <style>
-/* Campaign-only HUD: reused Classic simulation, actual hero controls. */
+/* Campaign battles use the same simulation, but present as an automatic campaign battle. */
 #campaignBattleBanner{position:fixed;z-index:160;top:10px;left:50%;transform:translateX(-50%);background:#0b1d17f2;border:1px solid #c4a76d;border-radius:11px;padding:9px 15px;display:flex;align-items:center;gap:12px;box-shadow:0 5px 26px #0009;color:#f3dfaa;font:12px system-ui;max-width:92vw;flex-wrap:wrap;justify-content:center;pointer-events:auto}
 #campaignBattleBanner strong{font:700 15px Georgia,serif}
 #campaignBattleBanner .campaign-hint{color:#d3e2cf;font-size:11px}
 #campaignBattleBanner button,.campaignReturn{background:#8e7348;color:#fff6dc;border:1px solid #ecd399;border-radius:7px;padding:7px 10px;font:bold 12px system-ui;cursor:pointer}
 #campaignBattleBanner button:hover,.campaignReturn:hover{background:#af8f57}
 #campaignBattleExit{background:#3a493c!important}
-body.campaign-battle .info #equipmentButton,body.campaign-battle .info #enemyButton,body.campaign-battle #battleRules,body.campaign-battle #infiniteAmmoButton{display:none!important}
+body.campaign-battle .training-only,body.campaign-battle .info .tip,
+body.campaign-battle .map-guide,body.campaign-battle .overlay-top,
+body.campaign-battle .rail,body.campaign-battle .bottom-note,
+body.campaign-battle #minimap,body.campaign-battle #campaignTouchControls,
+body.campaign-battle #commanderPanel,body.campaign-battle #enemyPanel,
+body.campaign-battle #armorPanel,body.campaign-battle #equipmentBackdrop{display:none!important}
 body.campaign-battle #battleOutcomeRestart{display:none}
 body.campaign-battle #campaignBattleReturn{display:inline-block!important}
 #campaignTouchControls{display:none;position:fixed;z-index:145;bottom:72px;left:14px;right:14px;pointer-events:none;justify-content:space-between;align-items:end}
@@ -207,17 +212,29 @@ body.campaign-battle #campaignBattleReturn{display:inline-block!important}
 .campaignDpad{width:142px;height:114px;display:grid;gap:4px;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr)}
 .campaignDpad .north{grid-area:1/2}.campaignDpad .west{grid-area:2/1}.campaignDpad .south{grid-area:2/2}.campaignDpad .east{grid-area:2/3}
 .campaignActions{display:flex;gap:8px;align-items:end}.campaignActions button{min-height:57px}
-body.campaign-battle #campaignTouchControls{display:flex}
-@media(min-width:900px) and (pointer:fine){body.campaign-battle #campaignTouchControls{display:none}}
 @media(max-width:650px){#campaignTouchControls{bottom:58px;left:4px;right:4px}.campaignDpad{width:130px}.campaignActions button{padding:12px 8px}}
 #campaignBattleReturn{display:none}
 @media(max-width:660px){#campaignBattleBanner{top:5px;padding:7px;gap:7px;font-size:10px}#campaignBattleBanner .campaign-hint{font-size:10px}}
+body.campaign-battle .app{width:min(1450px,100%);gap:0}
+body.campaign-battle .top{padding:8px 12px}
+body.campaign-battle .brand p{color:#d8c89c}
+body.campaign-battle .build{display:none}
+body.campaign-battle .info{justify-content:center;gap:22px;padding:8px 12px;color:#f0e5c5;font-size:13px}
+body.campaign-battle .info .campaign-counts{display:flex;align-items:center;gap:9px}
+body:not(.campaign-battle) .campaign-counts{display:none}
+body.campaign-battle .info .campaign-counts strong{font-size:15px;color:#f7e5b9}
+body.campaign-battle #campaignBattleBanner{top:9px}
+body.campaign-battle #campaignBattleBanner .campaign-hint{display:none}
+body.campaign-battle #campaignBattleHeroHealth{font-weight:750;color:#d9f0d4}
+body.campaign-battle .board{border-radius:12px}
+body.campaign-battle #rotateNotice{display:none}
+@media(max-width:650px){body.campaign-battle .top{padding:7px 9px}body.campaign-battle .board{border-radius:0}body.campaign-battle .info{gap:12px;padding:7px;font-size:11px}body.campaign-battle #campaignBattleBanner{top:5px}}
 </style>
 </head>
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p>Armor · Shields · Physical combat</p></div></div>
+    <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p id="battleSubtitle">Armor · Shields · Physical combat</p></div></div>
     <div class="top-actions">
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
       <div class="build" aria-label="Version 3.6">V3.6</div>
@@ -454,23 +471,10 @@ body.campaign-battle #campaignTouchControls{display:flex}
  </section>
 </div>
   </main>
- <div id="campaignTouchControls" aria-label="Touch battle controls">
- <div class="campaignDpad">
-  <button data-hero-key="w" class="north" aria-label="Move up">▲</button>
-  <button data-hero-key="a" class="west" aria-label="Move left">◀</button>
-  <button data-hero-key="s" class="south" aria-label="Move down">▼</button>
-  <button data-hero-key="d" class="east" aria-label="Move right">▶</button>
- </div>
- <div class="campaignActions">
-  <button data-hero-key="shift" aria-label="Raise shield">🛡 Guard</button>
-  <button data-hero-key="attack" aria-label="Swing weapon">⚔ Attack</button>
- </div>
-</div>
-<div id="campaignBattleBanner" aria-label="Campaign battle controls">
+<div id="campaignBattleBanner" aria-label="Campaign battle">
  <strong id="campaignBattleTitle">⚔ Your Battle</strong>
- <span class="campaign-hint">WASD: move hero · Click / Space: attack · Shift: shield guard · Arrow keys: pan disabled while commanding</span>
  <span id="campaignBattleHeroHealth">Hero: 100%</span>
- <button type="button" id="campaignBattleExit">Withdraw from battle</button>
+ <button type="button" id="campaignBattleExit">Leave battle</button>
 </div>
 <section id="battleOutcome" class="battle-outcome is-hidden" role="dialog" aria-modal="true" aria-live="polite" aria-labelledby="battleOutcomeTitle">
   <h2 id="battleOutcomeTitle">Battle concluded</h2>
@@ -479,7 +483,7 @@ body.campaign-battle #campaignTouchControls{display:flex}
   <button type="button" id="battleOutcomeRestart">↻ Fight another battle</button>
   <button type="button" id="campaignBattleReturn" class="campaignReturn">⮐ Return to Campaign</button>
  </section>
-  <footer class="info"><span><strong id="friendlyCount">50 / 50</strong> &nbsp; soldiers <span class="divider">·</span> Enemies <strong id="enemyCount">50 / 50</strong> <span class="divider">·</span> <span id="stressCaption">Enemy stress</span> <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="commanderButton" class="small-btn" aria-expanded="false" aria-controls="commanderPanel">👑 Commanders</button> <button type="button" id="enemyButton" class="small-btn" aria-expanded="false" aria-controls="enemyPanel">🔴 Enemy orders</button>
+  <footer class="info"><span class="campaign-counts"><strong id="friendlyCount">50 / 50</strong><span>friendly soldiers</span><span class="divider">·</span><span>Enemies</span><strong id="enemyCount">50 / 50</strong></span><span class="training-only"><span id="stressCaption">Enemy stress</span> <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="commanderButton" class="small-btn" aria-expanded="false" aria-controls="commanderPanel">👑 Commanders</button> <button type="button" id="enemyButton" class="small-btn" aria-expanded="false" aria-controls="enemyPanel">🔴 Enemy orders</button>
     <button type="button" id="infiniteAmmoButton" class="small-btn" aria-pressed="false" title="Unlimited arrows, bolts and javelins for both armies">∞ Ammo: OFF</button>
     <button type="button" id="equipmentButton" class="small-btn" aria-expanded="false" aria-controls="equipmentPanel">⚙ Test gear</button> <button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button>
  <select id="terrainPreset" class="small-btn" aria-label="Battlefield terrain" title="Choose the battlefield terrain; changing terrain restarts this combat test">
@@ -565,9 +569,11 @@ const campaignSession=(()=>{
  }catch(e){return null}
 })();
 const campaignMode=!!campaignSession;
-const heroKeys=new Set();
-let heroAttackHeld=false,heroPointer={x:null,y:null},campaignReported=false;
-if(campaignMode)document.body.classList.add('campaign-battle');
+let campaignReported=false;
+if(campaignMode){
+ document.body.classList.add('campaign-battle');
+ document.querySelector('#battleSubtitle').textContent='Campaign battle';
+}
 else window.addEventListener('load',()=>{window.location.replace('index.html')},{once:true});
 function campaignEquipment(faction,tier,enemyKind){
  tier=Math.max(0,Math.min(2,tier||0));
@@ -642,32 +648,6 @@ function campaignReturn(){
  campaignRecord(battleOutcome);
  if(campaignReported)window.location.href='index.html?battleReturn=1';
 }
-function updateHeroControl(s,dt){
- s.guardBreak=Math.max(0,(s.guardBreak||0)-dt);
- const mx=(heroKeys.has('d')?1:0)-(heroKeys.has('a')?1:0);
- const my=(heroKeys.has('s')?1:0)-(heroKeys.has('w')?1:0);
- const m=Math.hypot(mx,my);
- const speed=s.speed*(heroKeys.has('shift')?.77:1.30)*terrainSpeed(s);
- if(m&&s.stagger<=0){
-  const nx=clamp(s.x+mx/m*speed*dt,14,W-14);
-  const ny=clamp(s.y+my/m*speed*dt,14,H-14);
-  const steered=terrainSteer(s,nx,ny);
-  s.vx=(steered.x-s.x)/Math.max(dt,.001);s.vy=(steered.y-s.y)/Math.max(dt,.001);
-  s.x=steered.x;s.y=steered.y;
- }else{s.vx=0;s.vy=0}
- const target=chooseTarget(s).target;
- if(heroPointer.x!==null)
-  s.faceAngle=Math.atan2(heroPointer.y-s.y,heroPointer.x-s.x);
- else if(target)
-  s.faceAngle=Math.atan2(target.y-s.y,target.x-s.x);
- s.guardActive=heroKeys.has('shift')&&!s.attack&&s.stagger<=0&&s.stamina>3;
- s.meleeReady=true;
- if(s.guardActive){s.stamina=Math.max(0,s.stamina-dt*2.3);s.guardHold=0}
- if(s.attack)advanceAttack(s,dt);
- else if((heroAttackHeld||heroKeys.has(' '))&&!s.guardActive&&target&&s.stagger<=0)
-  beginAttack(s,target);
-}
-
 let realisticBattle=false,battleOutcome=null;
  let battleCollapseSince={friend:null,foe:null};
  function realismActive(){return realisticBattle;}
@@ -1203,6 +1183,10 @@ function populate(){
    realisticBattle=true;
    document.querySelector('#terrainPreset').value=terrainPreset;
    refreshBattleRulesUI();
+    ['commanderButton','enemyButton','infiniteAmmoButton','equipmentButton','armorButton',
+     'stressTest','terrainPreset','battleRules','reset'].forEach(id=>{
+      const control=document.getElementById(id);if(control)control.disabled=true;
+     });
    document.querySelector('#campaignBattleTitle').textContent='⚔ '+campaignSession.playerName+
     ' vs '+(campaignSession.kind==='bandit'?'Outlaws':campaignSession.kind==='patrol'?'Patrol':'Caravan');
    document.querySelector('#campaignBattleHeroHealth').textContent='Hero: 100%';
@@ -1660,7 +1644,7 @@ function decideCommander(team,dt){
  updateCommanderUI();
 }
 function resolveCombatCommand(s){
- if(s.isCommander)return 'defend';
+ if(s.isCommander)return campaignMode?'attack':'defend';
  const role=s.unitRole||'infantry';
  if(s.team==='foe'&&enemyCommand!=='auto')return enemyCommand;
  if(s.team==='friend'){
@@ -3337,7 +3321,6 @@ function step(dt){
   s.recoveryDelay=Math.max(0,s.recoveryDelay-dt);
   if(s.recoveryDelay===0)s.stamina=clamp(s.stamina+dt*(6.7+(s.skill||45)*.012),0,s.maxStamina);
   if(s.broken){handleBrokenSoldier(s,dt);continue;}
-  if(campaignMode&&s.isPlayerHero){updateHeroControl(s,dt);continue;}
   const {target,dist}=chooseTarget(s);
   // Ranged units keep their bow in hand until a genuine melee threat.
   s.meleeReady=!!(isArcher(s)&&target&&dist<=meleeThreatRange(s));
@@ -3920,30 +3903,9 @@ function frame(ts){
   if(!equipmentOpen&&Math.floor(t*4)!==Math.floor((t-dt)*4))updateUI();
   requestAnimationFrame(frame);
  }
-// Human controls are battle-only; all Classic test shortcuts stay isolated.
+// Campaign controls are limited to leaving or returning from the battle.
 if(campaignMode){
- window.addEventListener('keydown',e=>{
-  const k=e.key.length===1?e.key.toLowerCase():e.key.toLowerCase();
-  if(['w','a','s','d',' ','shift'].includes(k)){
-   e.preventDefault();heroKeys.add(k);
-  }
- });
- window.addEventListener('keyup',e=>heroKeys.delete(e.key.toLowerCase()));
- window.addEventListener('blur',()=>{heroKeys.clear();heroAttackHeld=false});
- canvas.addEventListener('pointermove',e=>{
-  const r=canvas.getBoundingClientRect();
-  heroPointer={x:camera.x+e.clientX-r.left,y:camera.y+e.clientY-r.top};
- });
- canvas.addEventListener('pointerdown',e=>{if(e.button===0){heroAttackHeld=true;e.preventDefault()}});
- window.addEventListener('pointerup',()=>heroAttackHeld=false);
  document.querySelector('#campaignBattleExit').addEventListener('click',campaignReturn);
- document.querySelectorAll('[data-hero-key]').forEach(btn=>{
-  const key=btn.dataset.heroKey;
-  const down=e=>{e.preventDefault();e.stopPropagation();if(key==='attack')heroAttackHeld=true;else heroKeys.add(key)};
-  const up=e=>{e.preventDefault();e.stopPropagation();if(key==='attack')heroAttackHeld=false;else heroKeys.delete(key)};
-  btn.addEventListener('pointerdown',down);btn.addEventListener('pointerup',up);
-  btn.addEventListener('pointercancel',up);btn.addEventListener('lostpointercapture',up);
- });
  document.querySelector('#campaignBattleReturn').addEventListener('click',campaignReturn);
 }else{
  document.querySelector('#campaignBattleBanner').style.display='none';
