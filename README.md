@@ -1,5 +1,13 @@
 # Untitled Armies
 
+## V4.6 — Kingdom standing and a living road network
+
+- **Kingdoms remember your actions.** Existing faction reputation now has clear standing tiers. Contracts and victories against bandits improve local standing; attacking a patrol or caravan damages your relationship with its kingdom.
+- **Standing changes settlement life.** Goods cost less with trusted factions. At high standing, volunteers are cheaper and more numerous; outlawed travelers are refused recruits. Town and faction screens show your relationship and recruiting status.
+- **Road parties pursue their own goals.** Patrols hunt nearby outlaw bands, while bandits seek merchant caravans. They reroute as targets move and can fight, repel or raid one another during travel; a small trickle of travelers replaces losses over time.
+- **World events respect campaign time.** Party movement and clashes advance only while the player travels. Towns, menus and the pause control still stop the world; distant encounters do not flood the player's event log.
+- **Existing saves stay compatible.** V4.6 uses the current campaign save format and retains existing faction reputation, parties, markets and backups.
+
 ## V4.5 — Army command, economy, contracts and portable saves
 
 - **Command your troops in campaign battles.** Issue advance, hold, stop or retreat orders to the whole company or a troop group; return any group to commander AI at any time. Hero Auto/Manual control remains separate.
@@ -66,3 +74,4 @@ The campaign is still an evolving sandbox: it has upkeep, markets, faction stand
 ## Development
 
 The app is static HTML, CSS and JavaScript: `index.html` (main menu / campaign), `campaign.css`, `world-data.js`, `campaign.js`, `campaign-battle.html` (playable campaign encounters), `classic.html` (combat testing), and `lab.html` (six-arena balance laboratory). No server or database is required for the present alpha. 
+

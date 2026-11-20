@@ -49,6 +49,19 @@ function savedExists(){try{return !!localStorage.getItem(KEY)}catch(e){return fa
 function refreshContinue(){$('menuContinue').disabled=!savedExists()}
 function rosterCount(){return state?state.player.roster.reduce((n,t)=>n+t.count,0):0}
 function troopName(group){return F[group.faction]?.troops[clamp(group.tier,0,2)]||'Unknown soldier'}
+function standingLabel(value){return value>=60?'Trusted':value>=25?'Respected':value<=-60?'Outlawed':value<=-25?'Unwelcome':'Neutral'}
+function recruitmentTerms(site){
+ const standing=Number(state.player.reputation[site.faction])||0;
+ return {count:Math.min(standing>=40?6:4,MAXPARTY-rosterCount()),unit:Math.max(1,Math.round(45*clamp(1-standing*.004,.72,1.4))),access:standing>-60};
+}
+function changeStanding(faction,amount){
+ if(!Number.isInteger(faction)||faction<0||faction>=F.length)return;
+ const rep=state.player.reputation;rep[faction]=clamp((Number(rep[faction])||0)+amount,-100,100);
+}
+function reportWorldEvent(x,y,message){
+ if(dist(state.player.x,state.player.y,x,y)>2100)return;
+ log(message);notify(message);
+}
 function preparePlayer(p){
  p.stats={strength:5,agility:5,tactics:5,leadership:5,...(p.stats||{})};
  p.statPoints=Math.max(0,Number(p.statPoints)||0);
@@ -72,7 +85,7 @@ function saveGame(silent){
  if(!state)return false;
  try{
   const data={version:VERSION,player:state.player,day:state.day,hour:state.hour,
-   parties:state.parties.map(p=>({id:p.id,x:p.x,y:p.y,tx:p.tx,ty:p.ty,strength:p.strength,active:p.active,kind:p.kind,faction:p.faction})),
+   parties:state.parties.map(p=>({id:p.id,x:p.x,y:p.y,tx:p.tx,ty:p.ty,strength:p.strength,active:p.active,kind:p.kind,faction:p.faction,targetPartyId:p.targetPartyId??null})),
    options:state.options,speed:state.speed,zoom:camera.zoom,visitedLandmarks:state.visitedLandmarks||[],pendingBattleId:state.pendingBattleId||null,
    marketStocks:state.marketStocks||{},completedContracts:state.completedContracts||[]};
   const serialized=JSON.stringify(data),previous=localStorage.getItem(KEY);
@@ -140,7 +153,12 @@ function loadGame(){
    parties:[],options:{...settingsDefault,...raw.options},
    messages:[],lastEncounter:-100,marketStocks:raw.marketStocks&&typeof raw.marketStocks==='object'?raw.marketStocks:{},completedContracts:Array.isArray(raw.completedContracts)?raw.completedContracts:[]};
   state.parties=generateParties();
-  if(Array.isArray(raw.parties))for(const saved of raw.parties){const a=state.parties.find(v=>v.id===saved.id);
+  if(Array.isArray(raw.parties))for(const saved of raw.parties){let a=state.parties.find(v=>v.id===saved.id);
+    if(!a&&Number.isInteger(saved.id)&&saved.id>=68&&['bandit','patrol','caravan'].includes(saved.kind)&&
+     (saved.kind==='bandit'?saved.faction===-1:Number.isInteger(saved.faction)&&saved.faction>=0&&saved.faction<F.length)&&
+     Number.isFinite(saved.strength)&&typeof saved.active==='boolean'){
+     a={id:saved.id,kind:saved.kind,faction:saved.faction,strength:saved.strength,active:saved.active,x:saved.x,y:saved.y,tx:saved.x,ty:saved.y,path:[],pathIndex:0};state.parties.push(a);
+    }
     if(a&&Number.isFinite(saved.x)&&Number.isFinite(saved.y)){
      Object.assign(a,saved);a.path=[];a.pathIndex=0;
      if(!W.tileAt(a.x,a.y).walk){
@@ -239,7 +257,25 @@ function dailyWages(){
  const raw=p.roster.reduce((sum,g)=>sum+g.count*rate[clamp(g.tier,0,2)],0);
  return Math.max(0,Math.ceil(raw*(p.perks.includes('quartermaster')?.85:1)));
 }
-function advanceDay(){state.day++;consumeFood()}
+function advanceDay(){state.day++;consumeFood();replenishRoadParties()}
+function replenishRoadParties(){
+ const limits={bandit:27,patrol:21,caravan:20};
+ for(const [kind,limit] of Object.entries(limits)){
+  if(state.parties.filter(p=>p.active&&p.kind===kind).length>=limit)continue;
+  const id=state.parties.reduce((n,p)=>Math.max(n,p.id),-1)+1,faction=(id*7+state.day*3)%F.length;
+  let x,y;
+  if(kind==='caravan'){
+   const site=S[(id*13+state.day*5)%S.length];x=site.x+(W.hash(id,state.day+91)-.5)*520;y=site.y+(W.hash(id+7,state.day+27)-.5)*520;
+  }else if(kind==='patrol'){
+   const cap=F[faction].capital;x=cap[0]+(W.hash(id,82)-.5)*1000;y=cap[1]+(W.hash(id,91)-.5)*1000;
+  }else{x=350+W.hash(id,state.day+71)*(W.WIDTH-700);y=370+W.hash(id,state.day+66)*(W.HEIGHT-740)}
+  const near=W.nearestWalk(clamp(Math.floor(x/W.TILE),0,W.COLS-1),clamp(Math.floor(y/W.TILE),0,W.ROWS-1));
+  if(near){x=near.x*W.TILE+28;y=near.y*W.TILE+28}
+  state.parties.push({id,kind,faction:kind==='bandit'?-1:faction,x,y,tx:x,ty:y,
+   strength:kind==='bandit'?4+(id*13)%11:kind==='patrol'?22+(id*3)%25:9+(id*5)%16,
+   active:true,path:[],pathIndex:0,targetPartyId:null});
+ }
+}
 function consumeFood(){
  const p=state.player,baseNeed=Math.max(1,Math.ceil(rosterCount()/10));
  const need=Math.max(1,Math.ceil(baseNeed*(p.perks.includes('quartermaster')?.85:1)));
@@ -290,16 +326,57 @@ function arriveSettlement(id){
 }
 function nextPartyDestination(p){
  let dest;
- if(p.kind==='bandit'){const angle=(p.id*2.399+state.day*.3)%6.28;dest={x:clamp(p.x+Math.cos(angle)*720,270,W.WIDTH-270),y:clamp(p.y+Math.sin(angle)*680,260,W.HEIGHT-260)}}
+ if(p.kind==='bandit'){
+  // Outlaws prey on nearby trade, but keep roaming when no easy target is close.
+  const prey=state.parties.filter(a=>a.active&&a.kind==='caravan'&&dist(p.x,p.y,a.x,a.y)<1450)
+   .sort((a,b)=>dist(p.x,p.y,a.x,a.y)-dist(p.x,p.y,b.x,b.y))[0];
+  if(prey){dest=prey;p.targetPartyId=prey.id}
+  else{p.targetPartyId=null;const angle=(p.id*2.399+state.day*.3)%6.28;dest={x:clamp(p.x+Math.cos(angle)*720,270,W.WIDTH-270),y:clamp(p.y+Math.sin(angle)*680,260,W.HEIGHT-260)}}
+ }
+ else if(p.kind==='patrol'){
+  const quarry=state.parties.filter(a=>a.active&&a.kind==='bandit'&&dist(p.x,p.y,a.x,a.y)<2100)
+   .sort((a,b)=>dist(p.x,p.y,a.x,a.y)-dist(p.x,p.y,b.x,b.y))[0];
+  if(quarry){dest=quarry;p.targetPartyId=quarry.id}
+  else{p.targetPartyId=null;const options=S.filter(s=>s.faction===p.faction);dest=options[(p.id*19+Math.floor(state.day*1.3)+p.strength)%options.length]}
+ }
  else{const options=S.filter(s=>p.kind==='caravan'||s.faction===p.faction);
- dest=options[(p.id*19+Math.floor(state.day*1.3)+p.strength)%options.length]}
+ dest=options[(p.id*19+Math.floor(state.day*1.3)+p.strength)%options.length];p.targetPartyId=null}
  p.path=W.findPath(p.x,p.y,dest.x,dest.y);p.pathIndex=0;
+}
+function resolveWorldClashes(){
+ const parties=state.parties;
+ for(const a of parties){
+  if(!a.active||!['patrol','bandit'].includes(a.kind))continue;
+  const target=parties.find(b=>b.id===a.targetPartyId&&b.active&&
+   ((a.kind==='patrol'&&b.kind==='bandit')||(a.kind==='bandit'&&b.kind==='caravan')));
+  if(!target||dist(a.x,a.y,target.x,target.y)>64)continue;
+  const patrol=a.kind==='patrol'?a:target,raider=a.kind==='bandit'?a:target;
+  if(patrol.kind==='patrol'&&raider.kind==='bandit'){
+   const patrolWins=patrol.strength>=raider.strength*.78;
+   if(patrolWins){patrol.strength=Math.max(5,patrol.strength-Math.max(1,Math.ceil(raider.strength*.14)));raider.active=false;
+    reportWorldEvent(patrol.x,patrol.y,(F[patrol.faction]?.name||'A patrol')+' patrol scattered an outlaw band on the roads.')}
+   else{raider.strength=Math.max(3,raider.strength-Math.ceil(patrol.strength*.16));patrol.active=false;
+    reportWorldEvent(patrol.x,patrol.y,'Outlaws overwhelmed a patrol near '+W.closestSettlement(patrol.x,patrol.y).name+'.')}
+  }else if(raider.kind==='bandit'&&target.kind==='caravan'){
+   const raidersWin=raider.strength>=target.strength*.48;
+   if(raidersWin){raider.strength=Math.min(28,raider.strength+Math.ceil(target.strength*.12));target.active=false;
+    reportWorldEvent(target.x,target.y,'Bandits raided a '+F[target.faction].name+' caravan near '+W.closestSettlement(target.x,target.y).name+'.')}
+   else{target.strength=Math.max(4,target.strength-Math.ceil(raider.strength*.12));raider.active=false;
+    reportWorldEvent(target.x,target.y,'A caravan guard detail repelled bandits on the road.')}
+  }
+  a.path=[];target.path=[];a.targetPartyId=null;target.targetPartyId=null;
+ }
 }
 function stepParties(dt){
  // Stagger pathfinding so dozens of NPC parties cannot block the first frame.
  let routingBudget=3;
  for(const p of state.parties){
   if(!p.active)continue;
+  const movingTarget=state.parties.find(a=>a.id===p.targetPartyId&&a.active);
+  if(movingTarget&&p.path.length){
+   const endpoint=p.path[p.path.length-1];
+   if(dist(endpoint.x,endpoint.y,movingTarget.x,movingTarget.y)>310){p.path=[];p.pathIndex=0}
+  }
   if(!p.path.length||p.pathIndex>=p.path.length){
    if(routingBudget<=0)continue;
    routingBudget--;nextPartyDestination(p);
@@ -313,6 +390,7 @@ function stepParties(dt){
    if(step>=d-1)p.pathIndex++;else break;
   }
  }
+ resolveWorldClashes();
  const close=state.parties.find(p=>p.active&&p.kind==='bandit'&&
   dist(state.player.x,state.player.y,p.x,p.y)<92);
  if(close&&(state.day+state.hour/24)-state.lastEncounter>.08&&!menuOpen){
@@ -338,7 +416,8 @@ function performSettlementAction(action,id){
  if(!site)return;
  if(dist(p.x,p.y,site.x,site.y)>155){notify('Travel closer to enter '+site.name+'.');return}
  if(action==='recruit'){
-  const available=MAXPARTY-rosterCount(),number=Math.min(4,available),cost=number*45;
+  const terms=recruitmentTerms(site),number=terms.count,cost=number*terms.unit;
+  if(!terms.access){notify('The local authorities will not enlist you while your standing is outlawed.');return}
   if(number<=0){notify('Your party has reached its current limit.');return}
   if(p.gold<cost){notify('Not enough denars to recruit volunteers.');return}
   p.gold-=cost;let group=p.roster.find(g=>g.faction===site.faction&&g.tier===0);
@@ -367,9 +446,10 @@ function showTown(id){
  const site=S[id];if(!site)return;const f=F[site.faction];
  state.currentTownId=id;
  $('townName').textContent=site.name;$('townFaction').textContent=site.type.toUpperCase()+' · '+f.name;
- $('townDescription').textContent=f.culture+' · '+site.prosperity+' prosperity · Garrison '+site.garrison+'. Morale '+Math.round(state.player.morale)+' · Daily wages '+dailyWages()+'. The road and world stand still while you are inside.';
+ const standing=Number(state.player.reputation[site.faction])||0;
+ $('townDescription').textContent=f.culture+' · '+site.prosperity+' prosperity · Garrison '+site.garrison+'. Your standing: '+standingLabel(standing)+' ('+(standing>0?'+':'')+standing+'). Morale '+Math.round(state.player.morale)+' · Daily wages '+dailyWages()+'. The road and world stand still while you are inside.';
  $('townServices').innerHTML=renderActions([
-  {act:'recruit',id,label:'Recruit volunteers · 45 denars each'},
+  {act:'recruit',id,label:recruitmentTerms(site).access?'Recruit up to '+recruitmentTerms(site).count+' volunteers · '+recruitmentTerms(site).unit+' denars each':'Recruitment denied · standing outlawed',disabled:!recruitmentTerms(site).access||recruitmentTerms(site).count<1},
   {act:'food',id,label:'Buy provisions · 35 denars'},
   {act:'rest',id,label:'Rest at the inn · 20 denars'},
   {act:'rumors',id,label:'Ask for local news'}
@@ -454,7 +534,7 @@ function acceptContract(contractId,townId){
 function completeContract(contractId){
  const p=state.player,index=p.activeContracts.findIndex(c=>c.id===contractId);if(index<0)return;
  const c=p.activeContracts.splice(index,1)[0];p.gold+=c.reward;grantXP(c.xp);p.renown+=1;
- if(Number.isInteger(c.faction)&&p.reputation[c.faction]!==undefined)p.reputation[c.faction]=clamp(p.reputation[c.faction]+5,-100,100);
+ if(Number.isInteger(c.faction))changeStanding(c.faction,5);
  state.completedContracts=state.completedContracts||[];state.completedContracts.push(c.id);
  log('Contract complete: '+c.title+'. +'+c.reward+' denars, +'+c.xp+' XP.');notify('Contract complete · '+c.title+' · +'+c.reward+' denars');
 }
@@ -544,6 +624,11 @@ function consumeBattleResult(){
  }catch(e){}
  state.pendingBattleId=null;state.followPartyId=null;
  const p=state.player,party=state.parties.find(a=>a.id===result.partyId);
+ if(party?.kind==='patrol'){
+  changeStanding(party.faction,-18);log('Attacking a realm patrol damaged your standing with '+F[party.faction].name+'.');
+ }else if(party?.kind==='caravan'){
+  changeStanding(party.faction,-28);log('Raiding a merchant caravan damaged your standing with '+F[party.faction].name+'.');
+ }
  const casualties={killed:0,wounded:0,survivors:0};
  for(const fighter of result.entries||[]){
   const group=p.roster[fighter.groupIndex];if(!group)continue;
@@ -560,6 +645,9 @@ function consumeBattleResult(){
  let reason;
  if(result.winner==='friend'){
    p.morale=clamp(p.morale+3-casualties.wounded*1.2-casualties.killed*3,0,100);
+  if(party?.kind==='bandit'){
+   const local=W.closestSettlement(p.x,p.y);if(local)changeStanding(local.faction,3);
+  }
    const loot=65+(party?.strength||result.enemyInitial||5)*12;
   const exp=50+(party?.strength||result.enemyInitial||5)*8;
    p.gold+=loot;grantXP(exp);p.renown+=party?.kind==='bandit'?3:1;
@@ -786,7 +874,7 @@ function refreshInspector(){
   html+='<p>'+esc(f.culture)+'. Population '+(site.prosperity*120).toLocaleString()+' · garrison '+site.garrison+'.</p>';
   html+='<div class="eventbox"><b>'+esc(f.symbol)+' '+esc(f.motto)+'</b><p>'+esc(f.trait)+'.</p></div>';
   html+='<div class="smallcaps">'+(close?'YOU ARE AT THE GATES':'DISTANCE: '+distance+' MAP UNITS')+'</div>';
-  if(close)html+=renderActions([{act:'visit',id:site.id,label:'🏰 Enter settlement',primary:true},{act:'recruit',id:site.id,label:'⚔ Recruit 4 volunteers · 180 denars'},{act:'food',id:site.id,label:'🍞 Buy 12 provisions · 35 denars'},{act:'rest',id:site.id,label:'🛌 Rest at an inn · 20 denars'},{act:'rumors',id:site.id,label:'📜 Ask for local rumors'}]);
+  if(close){const terms=recruitmentTerms(site);html+=renderActions([{act:'visit',id:site.id,label:'🏰 Enter settlement',primary:true},{act:'recruit',id:site.id,label:terms.access?'⚔ Recruit up to '+terms.count+' · '+terms.unit+' denars each':'⚔ Recruitment denied · outlawed',disabled:!terms.access||terms.count<1},{act:'food',id:site.id,label:'🍞 Buy provisions · 35 denars'},{act:'rest',id:site.id,label:'🛌 Rest at an inn · 20 denars'},{act:'rumors',id:site.id,label:'📜 Ask for local rumors'}])}
   else html+=renderActions([{act:'travelSettlement',id:site.id,label:'➤ Travel to '+site.name,primary:true}]);
   html+='<p class="subtle">Faction troop progression: '+f.troops.map(esc).join(' → ')+'.</p>';
  }else if(selected.type==='party'){
@@ -797,7 +885,8 @@ function refreshInspector(){
   html+='<p>Party size: <b>'+enemy.strength+'</b>. Distance: '+Math.round(dist(state.player.x,state.player.y,enemy.x,enemy.y))+' map units.</p>';
   html+='<div class="eventbox"><b>'+esc(enemy.kind==='bandit'?'Hostile raiders':'Traveling party')+'</b><p>'+
    (enemy.kind==='bandit'?'Bandits threaten the roads. Follow them to negotiate, flee, or enter a real battle.':
-   'You can speak, trade or challenge this party after catching it.')+'</p></div>';
+   (enemy.targetPartyId!=null?(enemy.kind==='patrol'?'Patrolling against nearby outlaws.':enemy.kind==='bandit'?'Hunting a merchant caravan.':'Moving between markets.'):
+    'You can speak, trade or challenge this party after catching it.'))+'</p></div>';
   const nearby=dist(state.player.x,state.player.y,enemy.x,enemy.y)<=155;
   html+=renderActions([{act:'travelParty',id:enemy.id,
    label:state.followPartyId===enemy.id?'◎ Following · route updating':'➤ Follow moving party',primary:true},
@@ -902,7 +991,7 @@ function showFactionDetails(id){
  const standing=state?.player.reputation[id]||0;
  document.querySelectorAll('[data-faction]').forEach(b=>b.classList.toggle('selected',Number(b.dataset.faction)===id));
  $('factionDetail').innerHTML='<h3><span style="color:'+f.color+'">'+esc(f.symbol)+'</span> '+esc(f.name)+'</h3><p>'+esc(f.culture)+'. '+esc(f.trait)+'.</p><p><em>'+esc(f.motto)+'</em></p><div class="smallcaps">FACTION TROOP TREE · PRESET UPGRADES</div><div class="trooptree">'+f.troops.map((n,i)=>'<div><small>Tier '+(i+1)+'</small>'+esc(n)+'</div>').join('')+'</div><p class="subtle">Capital: '+esc(f.cities[0])+' · 8 settlements. Faction troops use these upgrades unless you eventually found your own faction.</p>'+
- '<p><b>Your standing:</b> '+(standing>0?'+'+standing:standing)+' · <b>Current wars:</b> '+(enemies.length?enemies.map(esc).join(', '):'No declared wars')+'.</p>';
+ '<p><b>Your standing:</b> '+standingLabel(standing)+' ('+(standing>0?'+':'')+standing+') · <b>Recruiting:</b> '+(standing<=-60?'denied':standing>=40?'up to six volunteers at a discount':'available')+' · <b>Current wars:</b> '+(enemies.length?enemies.map(esc).join(', '):'No declared wars')+'.</p><p class="subtle">Contracts improve standing. Respected travelers pay less for goods; outlawed travelers cannot recruit here. Attacking patrols or caravans damages standing.</p>';
 }
 function openFactions(){
  $('factionGrid').innerHTML=F.map(f=>'<button class="faction-card" data-faction="'+f.id+'"><span class="faction-flag" style="background:'+f.color+'">'+esc(f.symbol)+'</span><span><strong>'+esc(f.name)+'</strong><small>'+esc(f.culture)+'</small><small>'+esc(f.trait)+'</small></span></button>').join('');
@@ -1139,3 +1228,4 @@ init();
 window.UACampaignDebug={getState:()=>state,getCamera:()=>camera,newCampaign:startCampaign,loadGame,saveGame,
  travelTo,advance:stepTravel,stepParties,world:W,showFactionDetails,refreshUI,performSettlementAction,upgradeRoster,skirmish,drawWorld,showScreen,zoomAt};
 })();
+
