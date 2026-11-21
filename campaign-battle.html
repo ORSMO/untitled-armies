@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 14793)
-Total output lines: 510
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -184,7 +181,220 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 .commander-panel .enemy-command-grid button[aria-pressed=true]{background:#806c39;border-color:#f1d595}
 #commanderButton[aria-expanded=true]{background:#51482c;border-color:#e2c475}
 @media(max-width:580px){.commander-panel{width:calc(100% - 105px)}}
-.battle-outcome{position:fixed;z-index:900;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,520px);padding:22px;border:1px solid #b4d5ad;border-radius:16px;ba…5793 tokens truncated…pons. The General's manual Attack with a selected Shield Wall or Spear Wall can also move as a line.</p>
+.battle-outcome{position:fixed;z-index:900;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,520px);padding:22px;border:1px solid #b4d5ad;border-radius:16px;background:#182d25f2;box-shadow:0 10px 70px #000a;color:#eefbe9;display:flex;flex-direction:column;gap:12px;text-align:center}
+.battle-outcome.is-hidden{display:none}
+.battle-outcome h2{margin:0;font-size:1.5rem}
+.battle-outcome p{margin:0;line-height:1.5}
+.battle-outcome button{background:#87c7a2;color:#12291d;border:0;border-radius:10px;padding:12px;font-weight:800;cursor:pointer}
+.battle-outcome .tally{display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:left;font-size:.85rem}
+.battle-outcome .tally>div{padding:12px;background:#274536;border-radius:10px}
+</style>
+
+<style>
+/* Campaign battles use the same simulation, but present as an automatic campaign battle. */
+#campaignBattleBanner{position:fixed;z-index:160;top:10px;left:50%;transform:translateX(-50%);background:#0b1d17f2;border:1px solid #c4a76d;border-radius:11px;padding:9px 15px;display:flex;align-items:center;gap:12px;box-shadow:0 5px 26px #0009;color:#f3dfaa;font:12px system-ui;max-width:92vw;flex-wrap:wrap;justify-content:center;pointer-events:auto}
+#campaignBattleBanner{width:max-content;max-width:calc(100vw - 20px);flex-wrap:nowrap;white-space:nowrap}
+#campaignBattleBanner strong{font:700 15px Georgia,serif;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#campaignBattleBanner .campaign-hint{color:#d3e2cf;font-size:11px}
+#campaignBattleBanner button,.campaignReturn{background:#8e7348;color:#fff6dc;border:1px solid #ecd399;border-radius:7px;padding:7px 10px;font:bold 12px system-ui;cursor:pointer}
+#campaignBattleBanner button:hover,.campaignReturn:hover{background:#af8f57}
+#campaignBattleExit{background:#3a493c!important}
+body.campaign-battle .training-only,body.campaign-battle .info .tip,
+body.campaign-battle .map-guide,body.campaign-battle .overlay-top,
+body.campaign-battle .rail,body.campaign-battle .bottom-note,
+body.campaign-battle #minimap,
+body.campaign-battle #commanderPanel,body.campaign-battle #enemyPanel,
+body.campaign-battle #armorPanel,body.campaign-battle #equipmentBackdrop{display:none!important}
+body.campaign-battle #battleOutcomeRestart{display:none}
+body.campaign-battle #campaignBattleReturn{display:inline-block!important}
+body.campaign-battle.battle-finished #campaignBattleBanner,
+body.campaign-battle.battle-finished #campaignArmyOrders{display:none!important}
+#campaignTouchControls{display:none;position:fixed;z-index:145;bottom:72px;left:14px;right:14px;pointer-events:none;justify-content:space-between;align-items:end}
+#campaignTouchControls button{pointer-events:auto;touch-action:none;user-select:none;background:#1a3529e8;color:#f8e3b2;border:1px solid #b6a572;border-radius:11px;padding:12px;font-size:16px;font-weight:800}
+#campaignTouchControls button:active{background:#a88a52}
+.campaignDpad{width:142px;height:114px;display:grid;gap:4px;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr)}
+.campaignDpad .north{grid-area:1/2}.campaignDpad .west{grid-area:2/1}.campaignDpad .south{grid-area:2/2}.campaignDpad .east{grid-area:2/3}
+.campaignActions{display:flex;gap:8px;align-items:end}.campaignActions button{min-height:57px}
+@media(max-width:650px){#campaignTouchControls{bottom:58px;left:4px;right:4px}.campaignDpad{width:130px}.campaignActions button{padding:12px 8px}}
+#campaignBattleReturn{display:none}
+@media(max-width:660px){#campaignBattleBanner{top:5px;padding:7px;gap:7px;font-size:10px}#campaignBattleBanner .campaign-hint{font-size:10px}}
+body.campaign-battle .app{width:min(1450px,100%);gap:0}
+body.campaign-battle .top{padding:8px 12px}
+body.campaign-battle .brand p{color:#d8c89c}
+body.campaign-battle .build{display:none}
+body.campaign-battle .info{justify-content:center;gap:22px;padding:8px 12px;color:#f0e5c5;font-size:13px}
+body.campaign-battle .info .campaign-counts{display:flex;align-items:center;gap:9px}
+body:not(.campaign-battle) .campaign-counts{display:none}
+body.campaign-battle .info .campaign-counts strong{font-size:15px;color:#f7e5b9}
+body.campaign-battle #campaignBattleBanner{top:9px}
+body.campaign-battle #campaignBattleBanner .campaign-hint{display:none}
+body.campaign-battle #campaignBattleHeroHealth{font-weight:750;color:#d9f0d4}
+body.campaign-battle .board{border-radius:12px}
+body.campaign-battle .campaign-manual-button[aria-pressed="true"]{background:#315e49;border-color:#b9e7a4}
+body.campaign-battle #campaignArmyOrdersToggle[aria-expanded="true"]{background:#315e49;border-color:#b9e7a4}
+body.campaign-battle .campaign-army-orders{position:fixed;z-index:155;top:72px;left:50%;transform:translateX(-50%);width:min(560px,94vw);padding:11px;border:1px solid #b6a572;border-radius:12px;background:#0d201af5;box-shadow:0 8px 30px #000a}
+body.campaign-battle .campaign-army-orders[hidden]{display:none}
+body.campaign-battle .campaign-order-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:7px 0}
+body.campaign-battle .campaign-order-row button{min-height:40px;border:1px solid #627d68;border-radius:8px;padding:7px 10px;background:#20392c;color:#edf5db;font-weight:750;touch-action:manipulation}
+body.campaign-battle .campaign-order-row button[aria-pressed="true"]{border-color:#e7cb86;background:#665334;color:#fff1ca}
+body.campaign-battle .campaign-order-status{text-align:center;color:#bacbb7;font-size:11px;margin:5px}
+body.campaign-battle #campaignTouchControls{display:none!important}
+body.campaign-battle.campaign-manual #campaignTouchControls{display:flex!important}
+#campaignThrowRock{display:none}
+body.campaign-battle.campaign-manual #campaignThrowRock{display:none}
+@media(min-width:900px) and (pointer:fine){body.campaign-battle.campaign-manual #campaignTouchControls{display:none}}
+@media(max-width:650px){body.campaign-battle .top{padding:7px 9px}body.campaign-battle .board{border-radius:0}body.campaign-battle .info{gap:12px;padding:7px;font-size:11px}body.campaign-battle #campaignBattleBanner{top:5px}}
+@media(max-width:650px){body.campaign-battle .campaign-army-orders{top:105px;max-height:calc(100dvh - 120px);overflow:auto;padding:8px}body.campaign-battle .campaign-order-row button{min-height:42px;padding:7px 8px;font-size:11px}}
+@media(orientation:landscape) and (max-width:1024px){body{padding:0}.app{width:100%;height:100dvh;gap:0}.top{height:42px;min-height:42px;padding:3px 7px;gap:5px}.emblem{width:30px;height:30px;font-size:17px}.brand{gap:6px}.brand h1{font-size:12px}.brand p{font-size:8px}.board{flex:1;min-height:0;height:auto;border-radius:0;border-left:0;border-right:0}.info{min-height:30px;padding:3px 8px;font-size:9px;gap:5px}.info .tip{font-size:8px}.rail{width:62px;padding:3px;gap:3px}.right{width:68px}.orders{gap:3px}.dot{width:44px;height:44px;font-size:18px}.control{min-width:48px;font-size:8px;gap:1px}.overlay-top{top:4px;max-width:calc(100% - 128px);gap:4px}.pill{font-size:8px;padding:4px 6px}.bottom-note{display:none}#minimap{left:68px;bottom:5px;width:105px;height:59px}.map-guide{display:none}.formation-menu{transform:translateY(-50%) scale(.82);transform-origin:left center}.campaign-army-orders{top:46px!important;max-height:calc(100dvh - 52px);overflow:auto}}
+@media(orientation:landscape) and (max-width:1024px){body.campaign-battle #campaignBattleBanner{gap:6px;padding:6px 8px;max-width:calc(100vw - 12px)}body.campaign-battle #campaignBattleBanner strong{font-size:12px;max-width:min(36vw,260px)}body.campaign-battle #campaignBattleBanner button{padding:6px 7px;font-size:10px}}
+@media(orientation:landscape) and (max-height:390px){.top{height:38px;min-height:38px}.brand p{display:none}.dot{width:40px;height:40px}.info{min-height:26px}.formation-menu{transform:translateY(-50%) scale(.74)}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p id="battleSubtitle">Armor · Shields · Physical combat</p></div></div>
+    <div class="top-actions">
+      <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
+      <div class="build" aria-label="Version 3.6">V3.6</div>
+    </div>
+  </header>
+  <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
+    <canvas id="field"></canvas>
+    <canvas id="minimap" width="180" height="102" aria-label="Battlefield minimap: touch or click to pan"></canvas>
+    <div class="map-guide">3× LARGER WORLD · DRAG TO PAN · MINIMAP TO TRAVEL</div>
+    <div class="overlay-top" aria-live="polite"><span class="pill"><span class="light"></span><span id="count">50 SOLDIERS</span></span><span class="pill dim" id="status">IDLE</span><span class="pill dim" id="rangeBadge">⚔ WEAPON REACH</span><span class="pill dim" id="commandHeadline">👑 Commander AI</span></div>
+    <aside class="rail left">
+  <button class="control" type="button" id="select" aria-pressed="false" aria-label="Select all soldiers"><span class="dot" aria-hidden="true">◎</span><span id="select-label">Select</span></button>
+  <div class="formation-anchor is-hidden" id="formationAnchor">
+   <button class="control" type="button" id="formationBtn" aria-label="Press and slide toward a formation" aria-expanded="false" aria-controls="formationMenu"><span class="dot" aria-hidden="true">◇</span><span>Formation</span></button>
+   <div class="formation-menu is-hidden" id="formationMenu" role="group" aria-label="Choose a formation">
+    <button class="formation-option" type="button" data-form="line">Line</button>
+    <button class="formation-option" type="button" data-form="wedge">Wedge</button>
+    <button class="formation-option" type="button" data-form="block">Block</button>
+    <button class="formation-option" type="button" data-form="column">Column</button>
+    <button class="formation-option" type="button" data-form="spearwall">Spear wall</button>
+    <button class="formation-option" type="button" data-form="shieldwall">Shield wall</button>
+   </div>
+  </div>
+ </aside>
+    <aside class="rail right"><div class="orders is-hidden" id="orders">
+      <button class="control attack" id="attack" type="button" aria-label="Attack: advance"><span class="dot" aria-hidden="true">⚔</span><span>Attack</span></button>
+      <button class="control defend" id="defend" type="button" aria-label="Defend: reform and hold"><span class="dot" aria-hidden="true">⬡</span><span>Defend</span></button>
+      <button class="control stop" id="stop" type="button" aria-label="Stop all soldiers"><span class="dot" aria-hidden="true">■</span><span>Stop</span></button>
+      <button class="control retreat" id="retreat" type="button" aria-label="Retreat to left side"><span class="dot" aria-hidden="true">↶</span><span>Retreat</span></button>
+    </div></aside>
+    <div class="bottom-note" id="hint" aria-live="polite">Select your army · swipe to explore the battlefield</div>
+ <section class="enemy-command-panel commander-panel is-hidden" id="commanderPanel" aria-label="Commander and general controls">
+  <div class="enemy-command-header"><strong>👑 COMMANDERS & THE GENERAL</strong>
+   <button id="commanderClose" type="button" aria-label="Close commander panel">✕</button></div>
+  <p>Your commander runs the battle automatically. Choose a group, including the infantry reserve, and issue a manual order to override him. Your order remains until you return that group to AI.</p>
+  <div class="commander-status"><strong>🟢 Your commander</strong><span id="friendCommanderStatus">Tactical · Assessing</span></div>
+  <div class="enemy-command-label">COMMANDER TEMPERAMENT (PERSONALITY)</div>
+  <div class="enemy-command-grid" aria-label="Your commander style">
+   <button type="button" data-commander-team="friend" data-style="aggressive">Aggressive</button>
+   <button type="button" data-commander-team="friend" data-style="defensive">Defensive</button>
+   <button type="button" data-commander-team="friend" data-style="tactical">Tactical</button>
+  </div>
+  <div class="enemy-command-label">COMMANDER'S BATTLE DIRECTIVE · YOUR INFLUENCE</div>
+  <p>Choose the goal and let your commander manage the troops. Unlike manual General orders, these directives keep his tactical AI in charge.</p>
+  <div class="enemy-command-grid commander-directive" role="group" aria-label="Commander's battle directive">
+   <button type="button" data-commander-intent="adaptive">🧠 Adaptive</button>
+   <button type="button" data-commander-intent="hold">🛡 Hold defensively</button>
+   <button type="button" data-commander-intent="ordered">⚔ Ordered advance</button>
+   <button type="button" data-commander-intent="aggressive">🔥 Aggressive assault</button>
+   <button type="button" data-commander-intent="skirmish">🏹 Skirmish & screen</button>
+  </div>
+  <div class="enemy-command-label">INFANTRY FORMATION DOCTRINE</div>
+  <div class="enemy-command-grid commander-lines" role="group" aria-label="Infantry marching formation">
+   <button type="button" data-commander-line="auto">Auto by equipment</button>
+   <button type="button" data-commander-line="shieldwall">🛡 Shield wall</button>
+   <button type="button" data-commander-line="spearwall">⚔ Spear wall</button>
+   <button type="button" data-commander-line="line">⚑ Open line</button>
+   <button type="button" data-commander-line="loose">⋯ Loose formation</button>
+  </div>
+  <p>Walls advance in two flexible ranks, tighten when supported by neighbors, and loosen as soldiers enter melee. Spear walls require actual spear or pike equipment; shield walls require real shields. The General's direct orders still override your commander.</p>
+  <div class="commander-status"><strong>🔴 Enemy commander</strong><span id="foeCommanderStatus">Aggressive · Assessing</span></div>
+  <div class="enemy-command-grid" aria-label="Enemy commander style">
+   <button type="button" data-commander-team="foe" data-style="aggressive">Aggressive</button>
+   <button type="button" data-commander-team="foe" data-style="defensive">Defensive</button>
+   <button type="button" data-commander-team="foe" data-style="tactical">Tactical</button>
+  </div>
+  <div class="enemy-command-label">YOUR GENERAL ORDERS APPLY TO</div>
+  <div class="enemy-command-grid" role="group" aria-label="Manual command group">
+   <button type="button" data-general-group="all">All soldiers</button>
+   <button type="button" data-general-group="infantry">⚔ Infantry</button>
+   <button type="button" data-general-group="archer">🏹 Archers</button>
+   <button type="button" data-general-group="cavalry">🐎 Cavalry</button><button type="button" data-general-group="horseArcher">🏇 Horse Archers</button><button type="button" data-general-group="reserve">🛡 Infantry Reserve</button>
+  </div>
+  <p id="generalOverrideStatus">All groups currently follow Commander AI.</p>
+  <div class="enemy-command-foot">
+   <button type="button" id="takeGeneral">Take command of group</button>
+   <button type="button" id="releaseGeneral">Return group to AI</button>
+   <button type="button" id="releaseAll">Return all to AI</button>
+  </div>
+ </section>
+ <section class="enemy-command-panel is-hidden" id="enemyPanel" aria-label="Enemy army control panel">
+  <div class="enemy-command-header">
+   <strong>🔴 ENEMY ARMY COMMANDS</strong>
+   <button id="enemyClose" type="button" aria-label="Close enemy orders">✕</button>
+  </div>
+  <p>Command the enemy's 50 soldiers independently. They still take damage and can panic.</p>
+  <div class="enemy-command-grid" role="group" aria-label="Enemy orders">
+   <button type="button" data-enemy-order="auto">AI Auto</button>
+   <button type="button" data-enemy-order="attack">Charge</button>
+   <button type="button" data-enemy-order="defend">Hold / Fight</button>
+   <button type="button" data-enemy-order="stop">Stand still</button>
+   <button type="button" data-enemy-order="retreat">Retreat</button>
+   <button type="button" data-enemy-order="move">Tap to move</button>
+  </div>
+  <div class="enemy-command-label">FORMATION</div>
+  <div class="enemy-command-grid" role="group" aria-label="Enemy formations">
+   <button type="button" data-enemy-form="block">Block</button>
+   <button type="button" data-enemy-form="line">Line</button>
+   <button type="button" data-enemy-form="wedge">Wedge</button>
+   <button type="button" data-enemy-form="column">Column</button><button type="button" data-enemy-form="spearwall">Spear wall</button>
+  </div>
+  <div class="enemy-command-foot">
+   <button type="button" id="enemyFocus">⌖ View enemy army</button>
+   <span id="enemyCommandStatus">AI Auto · Block</span>
+  </div>
+ </section>
+     <section class="armor-panel is-hidden" id="armorPanel" aria-label="Armor, weapons and shields reference">
+      <div class="armor-panel-header"><strong>⚔ WEAPONS · SHIELDS · ARMOR</strong><button class="armor-close" type="button" id="closeArmor" aria-label="Close armor reference">✕</button></div>
+      <p>Each value is <strong>flat reduction / percentage reduction</strong> for that damage category.</p>
+      <table><thead><tr><th>Armor</th><th>Slash</th><th>Piercing</th><th>Blunt</th></tr></thead><tbody>
+       <tr><td><span class="armor-chip" style="background:#f0d0ac"></span>Unarmored</td><td>0 / 0%</td><td>0 / 0%</td><td>0 / 0%</td></tr>
+       <tr><td><span class="armor-chip" style="background:#d5b690"></span>Padded</td><td>0.04 / 5%</td><td>0.03 / 3%</td><td>0.11 / 14%</td></tr>
+       <tr><td><span class="armor-chip" style="background:#b98250"></span>Leather</td><td>0.17 / 15%</td><td>0.08 / 8%</td><td>0.09 / 9%</td></tr>
+       <tr><td><span class="armor-chip" style="background:#aeb7bc"></span>Mail</td><td>0.38 / 28%</td><td>0.15 / 14%</td><td>0.05 / 5%</td></tr>
+       <tr><td><span class="armor-chip" style="background:#e0e9f2"></span>Plate</td><td>0.68 / 45%</td><td>0.40 / 28%</td><td>0.10 / 9%</td></tr>
+      </tbody></table>
+      <p>Damage taken = max(0, attack damage − flat) × (1 − percentage / 100).</p>
+      <p>Armor also resists <strong>weapon momentum</strong>: a heavy slash can pass through several unarmored targets but is stopped by plate or a strong shield.</p>
+      <p><strong>WEAPONS</strong> — weight slows movement and makes swings cost more stamina.</p>
+      <table><thead><tr><th>Weapon</th><th>Weight</th><th>Reach</th><th>Attacks</th></tr></thead><tbody>
+       <tr><td>Short sword</td><td>1.00</td><td>31 px</td><td>Slashes, stab, pommel</td></tr>
+       <tr><td>Arming sword</td><td>1.55</td><td>36 px</td><td>Slashes, overhead, stab, pommel</td></tr>
+       <tr><td>Greatsword</td><td>3.35</td><td>47 px</td><td>Wide cleave, slashes, stab, pommel</td></tr>
+       <tr><td>Battle axe</td><td>3.80</td><td>43 px</td><td>Wide cleave, slashes, pommel</td></tr>
+      </tbody></table>
+      <p><strong>SHIELDS</strong> — smaller shields are quick; larger ones cover a wider frontal angle. Passive guarding reduces damage automatically. Soldiers also <strong>actively raise</strong> shields when they spot a wind-up, spending more stamina to stop a blow.</p>
+      <table><thead><tr><th>Shield</th><th>Weight</th><th>Size</th><th>Passive cut</th></tr></thead><tbody>
+       <tr><td>Buckler</td><td>0.85</td><td>8</td><td>20%</td></tr>
+       <tr><td>Round</td><td>1.80</td><td>11</td><td>35%</td></tr>
+       <tr><td>Kite</td><td>2.70</td><td>13</td><td>48%</td></tr>
+       <tr><td>Tower</td><td>4.00</td><td>16</td><td>62%</td></tr>
+      </tbody></table>
+      <p><strong>EXPERIENCE:</strong> Recruit (18), Trained (45), Veteran (72), Elite (92). Rank improves reaction speed, attack precision, defense and stamina efficiency without adding health or armor. <strong>WEAPON MASTERY:</strong> each fighter remembers separate familiarity with shortswords, arming swords, greatswords and axes (18–97). A skilled swordsman can still be new to axes. Experienced fighters may parry telegraphed blows; a successful parry gives only 0.72 seconds to begin a counterattack. Mastery improves weapon timing and stamina use, but cannot create extra health or damage. A light weapon still cannot deflect an overwhelmingly powerful cleave.</p>
+      <table><thead><tr><th>Ranged</th><th>Ammo</th><th>Range</th><th>Reload</th><th>Impact</th></tr></thead>
+      <tbody><tr><td>War bow</td><td>18</td><td>1005</td><td>0.64s</td><td>Light piercing</td></tr>
+      <tr><td>Crossbow</td><td>12</td><td>1125</td><td>1.90s</td><td>Heavy piercing</td></tr>
+      <tr><td>Javelins</td><td>6</td><td>624</td><td>1.05s</td><td>Heavy piercing</td></tr>
+       <tr><td>Compact horse bow</td><td>24</td><td>710</td><td>0.52s</td><td>Light piercing</td></tr></tbody></table>
+      <p><strong>BATTLEFIELDS &amp; TERRAIN (V3.4):</strong> Use the <strong>Battlefield Terrain</strong> selector in the footer. Choose open ground, a hill, forest, mud, shallow river, rocks or mixed terrain. Terrain can decide the entire battle: elevated defenders have stronger melee and ranged advantages, wooded positions sharply reduce enemy missile effectiveness and weaken mounted shock, and deep mud or river water slows cavalry enough to ruin its charge and discipline. Poor footing weakens braced spear walls and increases exhaustion. Commanders seek ridges and forest positions, defend dry crossing approaches, and send cavalry around hazardous ground; their plans still yield to the General’s manual orders. Solid rocks block movement and low-flying arrows. Cavalry needs clear dry ground to build up a strong charge, and all terrain interacts with existing formations and morale. Switching the terrain resets the current test. The default open plain preserves earlier fairness tests.</p>
+      <p><strong>HORSE MOVEMENT (V3.1):</strong> Mounted troops now accelerate and brake instead of instantly changing speed or direction. A horse turns much wider at full gallop, especially when heavily armored or wounded. A mounted charge requires real forward closing speed, and body-to-body collisions absorb momentum. Cavalry ride through an enemy on a committed attack line, break away when surrounded, and regroup for another charge. Mounted archers try to ride out of close threats to recover their shooting distance. Gait animation and hoof dust show speed; the amber bar is horse health and the smaller turquoise bar is horse stamina. Rider and horse health remain separate. A fallen horse cannot be instantly remounted.</p>
+      <p><strong>COMMANDER INFLUENCE &amp; MOVING FORMATIONS (V3.6):</strong> Open <strong>👑 Commanders</strong> to set the battle directive: Adaptive, Hold Defensively, Ordered Advance, Aggressive Assault, or Skirmish &amp; Screen. The commander's own personality still affects decisions, but your goal takes priority until the army is in serious danger. Choose Infantry Formation Doctrine: automatic by equipment, Shield Wall, Spear Wall, Open Line, or Loose. A supported shield wall reduces incoming hits and conserves shield stamina; a planted, supported spear wall prepares its anti-cavalry points faster. Walls advance as two ranks but flex into melee so they can still fight. Every advantage depends on real nearby soldiers and appropriate weapons. The General's manual Attack with a selected Shield Wall or Spear Wall can also move as a line.</p>
       <p><strong>SQUADS & COMMANDERS (V3.2):</strong> Infantry now maintain lanes while advancing and correct drifting ranks. Foot archers stay behind a friendly infantry screen when one exists. Commanders keep a small infantry reserve behind the line, then commit it when troops are under pressure. When enemy archers expose a wing, cavalry first ride around the flank before attacking; mounted movement still uses real acceleration and turning. Commanders display cohesion and reserve status. <strong>Manual General orders always win:</strong> a selected Infantry, Archer, Cavalry or Horse Archer group follows your standing orders until you Return to AI. These are battlefield test mechanics, not a campaign system.</p>
       <p><strong>MORALE &amp; BATTLE OUTCOMES (V3.3):</strong> Use the <strong>🛡 Training mode / ⚔ Real battle</strong> switch in the footer. Switching restarts the current test. Training keeps invulnerable friendly troops and recurring enemies; Real Battle allows both armies to die or be incapacitated, prevents reinforcements, and enables casualty morale, fleeing, surrender and commander-led rallies. A battle ends when one army can no longer fight; an automatic report shows fatalities, incapacitated, routed, surrendering and still-broken soldiers, plus each commander's fate. Press <strong>Fight another battle</strong> to retry with the same rules.</p>
       <p><strong>POLEARMS & BRACING:</strong> <strong>Infantry spears</strong> have 65 reach and can pair with shields. <strong>Long pikes</strong> have 89 reach and occupy both hands. Polearm tips cannot hit reliably inside their minimum range, so crowded soldiers use weaker blunt butt strikes. A spearman or pikeman facing a fast-approaching horse automatically plants his feet and raises the weapon over time. A ready frontal brace can halt a charge and wound or dismount the horse, while flanking, attacking before the spear is ready, or exhausting the soldier can break through. The <strong>🛡 Spear Wall</strong> formation is available in Classic. Try the new Spears vs Swords and Pikes vs Cavalry presets.</p>
@@ -298,7 +508,6 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
  </div>
  <div class="campaign-order-row" aria-label="Issue army order">
   <button data-campaign-order="attack">⚔ Advance</button><button data-campaign-order="defend">🛡 Hold</button><button data-campaign-order="stop">■ Stop</button><button data-campaign-order="retreat">↶ Retreat</button><button data-campaign-order="auto">🧠 Return to AI</button>
-
  </div>
 </section>
 <section id="battleOutcome" class="battle-outcome is-hidden" role="dialog" aria-modal="true" aria-live="polite" aria-labelledby="battleOutcomeTitle">
@@ -809,7 +1018,6 @@ const shieldProfiles={
    soldier.guardBreak=0;soldier.shieldRecoil=0;soldier.guardBreakFlash=0;
    soldier.cooldown=Math.min(Math.max(soldier.cooldown,0),.26);
   });
-
   // Re-equipping classes also updates formation anchors. Archers in a
   // newly mixed army can take the rear ranks without teleporting soldiers.
   if(soldiers.length===50){
@@ -1320,7 +1528,6 @@ function squadMovement(s,command,target,dist,x,y,pace){
   }
  }
  // Carry a two-rank moving wall toward contact, then relax structure to
-
  // allow thrusts, blocks, body spacing and local initiative.
  if(s.unitRole==='infantry'){
   const line=lineMarch(s,state,group,dist,x,y,pace);
@@ -1832,7 +2039,6 @@ window.addEventListener('keydown',e=>{
  if(e.key==='Escape')setCommanderPanel(false);
 });
 
-
 // Enemy-only tactical orders; the user's army remains separately controlled.
 const enemyButton=document.querySelector('#enemyButton');
 const enemyPanel=document.querySelector('#enemyPanel');
@@ -2342,7 +2548,6 @@ function shieldImpact(attacker,defender,a){
   defender.recoveryDelay=Math.max(defender.recoveryDelay,.22);
   defender.parryPose=.30;
   if(!success){
-
    const stats=combatLabStats(defender.team);if(stats)stats.failedParries++;
    defender.stagger=Math.max(defender.stagger,.12);
    return {parried:false};
@@ -2853,7 +3058,6 @@ function separateSoldiers(){
  const minDistance=20.7;
  for(let pass=0;pass<4;pass++){
   for(let i=0;i<all.length;i++){
-
    const a=all[i];
    for(let j=i+1;j<all.length;j++){
     const b=all[j];let dx=b.x-a.x,dy=b.y-a.y;
@@ -3364,7 +3568,6 @@ function step(dt){
    barding.speed*staminaFactor*woundFactor:1;
   const oldX=s.x,oldY=s.y;
   // STOP brakes an actual horse; foot soldiers still stop immediately.
-
   if(command!=='stop'||isCavalry(s))
    approach(s,moveX,moveY,dt,command==='stop'?0:
     pace*disciplineControl*fatiguePace*loadPace*fightingPace*mountPace);
@@ -3870,5 +4073,4 @@ window.addEventListener('resize',resize,{passive:true});if('ResizeObserver' in w
 </script>
 </body>
 </html>
-
 
