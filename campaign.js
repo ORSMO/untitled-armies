@@ -684,7 +684,12 @@ function chooseSelection(x,y){
   const p=toScreen(s.x,s.y),d=dist(local.x,local.y,p.x,p.y);
   if(d<sd){sd=d;site=s}
  }
- if(site){selected={type:'settlement',id:site.id};inspectorDirty=true;return}
+ if(site){
+  selected={type:'settlement',id:site.id};inspectorDirty=true;
+  if(dist(state.player.x,state.player.y,site.x,site.y)>155)travelTo(site.x,site.y,site.id);
+  else showTown(site.id);
+  return;
+ }
  let party=null,pd=19;
  for(const p of state.parties)if(p.active){
   const m=toScreen(p.x,p.y),d=dist(m.x,m.y,local.x,local.y);
@@ -696,7 +701,12 @@ function chooseSelection(x,y){
   const v=toScreen(place.x,place.y),d=dist(local.x,local.y,v.x,v.y);
   if(d<ld){ld=d;landmark=place}
  }
- if(landmark){selected={type:'landmark',id:landmark.id};inspectorDirty=true;refreshInspector();return}
+ if(landmark){
+  selected={type:'landmark',id:landmark.id};inspectorDirty=true;
+  if(dist(state.player.x,state.player.y,landmark.x,landmark.y)>145){travelTo(landmark.x,landmark.y,null);notify('Traveling to '+landmark.name+'.');}
+  else exploreLandmark(landmark.id);
+  return;
+ }
  selected={type:'land',x,y};inspectorDirty=true;travelTo(x,y,null);
 }
 function colorAlpha(hex,alpha){
