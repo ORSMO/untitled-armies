@@ -1065,6 +1065,7 @@ function readImportFile(file){
  reader.onerror=()=>notify('Could not read that file.');reader.readAsText(file);
 }
 function button(id,action){$(id).addEventListener('click',action)}
+function lockLandscape(){try{if(screen.orientation?.lock)screen.orientation.lock('landscape').catch(()=>{})}catch(e){}}
 function setSpeed(value){if(!state)return;state.speed=[1,2,4].includes(value)?value:1;state.pausedManual=false;state.paused=menuOpen;refreshUI();saveGame(true)}
 function togglePause(){if(!state)return;state.pausedManual=!state.pausedManual;state.paused=menuOpen||state.pausedManual;refreshUI()}
 button('encounterTalk',()=>{
@@ -1090,9 +1091,9 @@ button('encounterLeave',()=>{
  state.path=[];state.pathIndex=0;closeModal();notify('You leave the party behind.');
 });
 button('aftermathContinue',()=>{showScreen(null);refreshUI()});
-button('menuNew',selectNew);button('menuContinue',loadGame);
+button('menuNew',()=>{lockLandscape();selectNew()});button('menuContinue',()=>{lockLandscape();loadGame()});
 button('menuFactions',openFactions);button('menuAtlas',openAtlas);button('menuOptions',showOptions);
-button('createStart',startCampaign);button('createCancel',()=>showScreen('screenMenu'));
+button('createStart',()=>{lockLandscape();startCampaign()});button('createCancel',()=>showScreen('screenMenu'));
 button('atlasClose',closeModal);
 button('atlasZoomIn',()=>atlasZoom(1.30));
 button('atlasZoomOut',()=>atlasZoom(1/1.30));
@@ -1228,4 +1229,5 @@ init();
 window.UACampaignDebug={getState:()=>state,getCamera:()=>camera,newCampaign:startCampaign,loadGame,saveGame,
  travelTo,advance:stepTravel,stepParties,world:W,showFactionDetails,refreshUI,performSettlementAction,upgradeRoster,skirmish,drawWorld,showScreen,zoomAt};
 })();
+
 

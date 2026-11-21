@@ -2,16 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#091512">
 <meta name="description" content="Untitled Armies: a medieval campaign sandbox. Explore the vast continent of Asterra, meet ten factions, recruit and upgrade faction troops, and build your legend.">
-<title>Untitled Armies — Asterra Campaign · V4.6</title>
+<title>Untitled Armies — Asterra Campaign · V4.7</title>
 <link rel="stylesheet" href="campaign.css">
 </head>
 <body>
+<div id="rotateNotice" role="status" aria-live="polite">
+ <div class="rotate-phone" aria-hidden="true">▱<span>↻</span></div>
+ <strong>Turn your phone sideways</strong>
+ <p>Untitled Armies is designed to be played in landscape.</p>
+</div>
 <div id="game" class="hidden">
  <header class="topbar">
-   <div class="brand"><span class="crest">⚔</span><div><strong>UNTITLED ARMIES</strong><small>ASTERRA CAMPAIGN · V4.6</small></div></div>
+   <div class="brand"><span class="crest">⚔</span><div><strong>UNTITLED ARMIES</strong><small>ASTERRA CAMPAIGN · V4.7</small></div></div>
   <div class="top-center">
    <div class="chip">📜 <b id="hudDay">Day 1 · 08:00</b></div>
    <div class="chip">⚑ <b id="hudRegion">Valdorian Kingdom</b></div>
@@ -85,7 +90,7 @@
    <p class="subtle">Click roaming parties to pursue them as they move. At close range, you can talk, trade or enter battle. Ruins, shrines and camps reward exploration.</p>
   </aside>
  </div>
- <div class="footer-hint">KINGDOM STANDING · LIVING ROADS · COMMAND ARMIES · TAKE CONTRACTS · ASTERRA CAMPAIGN V4.6 · <a href="classic.html">Classic Combat</a> · <a href="lab.html">Battle Lab</a></div>
+ <div class="footer-hint">KINGDOM STANDING · LIVING ROADS · COMMAND ARMIES · PHONE LANDSCAPE · ASTERRA CAMPAIGN V4.7 · <a href="classic.html">Classic Combat</a> · <a href="lab.html">Battle Lab</a></div>
 </div>
 <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 <section id="screenMenu" class="overlay" aria-label="Main menu">
@@ -114,7 +119,7 @@
    <a href="classic.html" class="btn" style="text-decoration:none;display:block;text-align:center;margin:7px 0">⚔ Classic 50v50 Battle Test</a>
    <a href="lab.html" class="btn" style="text-decoration:none;display:block;text-align:center;margin:7px 0">⚗ Six-Arena Battle Lab</a>
    <button id="menuImport" class="btn">📥 Import Campaign Save</button>
-   <div class="menu-foot">V4.6 · Build trust with kingdoms and watch the roads change around you. In active development.</div>
+   <div class="menu-foot">V4.7 · Designed for phone play in landscape. Build trust and lead your company across Asterra.</div>
   </div>
  </div>
 </section>
@@ -238,8 +243,8 @@
   <div class="town-heading"><div><div class="smallcaps" id="townFaction">SETTLEMENT</div><h2 id="townName">Town</h2></div><button class="btn primary" id="townLeave">↩ Return to the road</button></div>
   <p id="townDescription" class="subtle"></p>
   <div class="town-services" id="townServices"></div>
-  <div class="smallcaps">LOCAL MARKET · PRICES &amp; STOCK VARY</div><div class="town-shop" id="townShop"></div>
-  <div class="smallcaps contract-board-title">CONTRACT BOARD</div><div id="townContracts" class="contract-list"></div>
+  <div class="smallcaps market-caption">LOCAL MARKET · PRICES &amp; STOCK VARY</div><div class="town-shop" id="townShop"></div>
+  <div class="smallcaps contract-board-title contract-caption">CONTRACT BOARD</div><div id="townContracts" class="contract-list"></div>
  </div>
 </section>
 <div class="mobile-timebar" aria-label="Time controls">
@@ -251,4 +256,5 @@
 <script src="campaign.js"></script>
 </body>
 </html>
+
 

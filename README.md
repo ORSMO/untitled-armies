@@ -1,5 +1,12 @@
 # Untitled Armies
 
+## V4.7 — Phone-first landscape play
+
+- **Landscape is the play orientation.** Portrait screens show a clear rotate prompt. Campaign launch also requests the browser's landscape lock where the installed browser supports it.
+- **The campaign fits a short phone screen.** The map takes the available space, status chips scroll in a compact header, side panels open as drawers, and travel controls stay within thumb reach.
+- **Town, encounter and menu screens are rearranged for landscape.** Town services, inventory and contracts remain usable in short-height screens, with independent scrolling for long lists.
+- **Tactical battles keep a wide field and reachable controls.** The campaign battle now enforces the same landscape prompt and uses compact battlefield HUD, equipment and army-order controls. Classic and Lab already use landscape-only play; their controls remain touch-friendly.
+
 ## V4.6 — Kingdom standing and a living road network
 
 - **Kingdoms remember your actions.** Existing faction reputation now has clear standing tiers. Contracts and victories against bandits improve local standing; attacking a patrol or caravan damages your relationship with its kingdom.
@@ -73,5 +80,6 @@ The campaign is still an evolving sandbox: it has upkeep, markets, faction stand
 
 ## Development
 
-The app is static HTML, CSS and JavaScript: `index.html` (main menu / campaign), `campaign.css`, `world-data.js`, `campaign.js`, `campaign-battle.html` (playable campaign encounters), `classic.html` (combat testing), and `lab.html` (six-arena balance laboratory). No server or database is required for the present alpha. 
+The app is static HTML, CSS and JavaScript: `index.html` (main menu / campaign), `campaign.css`, `world-data.js`, `campaign.js`, `campaign-battle.html` (playable campaign encounters), `classic.html` (combat testing), and `lab.html` (six-arena balance laboratory). No server or database is required for the present alpha.
+
 
