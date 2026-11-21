@@ -93,6 +93,14 @@
  .factions-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:34dvh;gap:4px}.faction-card{padding:6px;gap:6px}.faction-flag{width:30px;height:34px;font-size:18px}.faction-card strong{font-size:10px}.faction-card small{font-size:8px;margin-top:2px}.faction-details{margin:5px 0;padding:7px}.trooptree div{padding:5px 3px;font-size:9px}
  .atlas-modal{padding:9px}.atlas-modal h2{font-size:18px}.atlas-modal>p,.atlas-hint{font-size:9px}.atlas-frame{height:48dvh;min-height:120px}.atlas-controls{margin-top:5px}.atlas-controls .btn{min-height:38px}
  .time-controls .btn{min-height:40px;padding:5px 2px;font-size:10px}
+ #screenCreate .modal{width:min(800px,100%);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto auto auto auto auto auto minmax(0,1fr) auto;column-gap:12px;row-gap:2px;align-content:start}
+ #screenCreate .modal>.close{position:absolute;top:8px;right:8px;float:none}
+ #screenCreate .modal>.smallcaps,#screenCreate .modal>h2,#screenCreate .modal>p{grid-column:1/3}
+ #screenCreate label[for="newName"]{grid-column:1;grid-row:4}#screenCreate #newName{grid-column:1;grid-row:5}
+ #screenCreate label[for="originSelect"]{grid-column:2;grid-row:4}#screenCreate #originSelect{grid-column:2;grid-row:5}
+ #screenCreate label[for="backgroundSelect"]{grid-column:1;grid-row:6}#screenCreate #backgroundSelect{grid-column:1;grid-row:7}
+ #screenCreate .eventbox{grid-column:2;grid-row:6/8;align-self:stretch;margin:0;padding:8px}
+ #screenCreate .modal-actions{grid-column:1/3;grid-row:8;margin:0}
 }
 @media(orientation:landscape) and (max-height:390px){
  .topbar{height:44px;min-height:44px}.brand{display:none}.chip{padding:4px;font-size:8px}.topbar .btn{min-height:36px;padding:4px 6px}.town-modal{height:calc(100dvh - 8px);max-height:calc(100dvh - 8px)}
