@@ -1,12 +1,17 @@
 # Untitled Armies
 
+## V4.8 — Bannerlord-inspired town activity hub
+
+- **Town visits open a proper activity hub.** Choose Overview, Market, Inn, Garrison, Contracts or Local News, with clear actions and a quick return to the road.
+- **Town time pauses while you decide.** Inn and Garrison show useful campaign details, local rumors react to nearby parties, and the hub is laid out for landscape phone screens.
+- **Phone-first landscape play continues.** Portrait screens show a rotate prompt; town, encounter and menu screens keep their compact landscape layout.
+
 ## V4.7 — Phone-first landscape play
 
 - **Landscape is the play orientation.** Portrait screens show a clear rotate prompt. Campaign launch also requests the browser's landscape lock where the installed browser supports it.
 - **The campaign fits a short phone screen.** The map takes the available space, status chips scroll in a compact header, side panels open as drawers, and travel controls stay within thumb reach.
 - **Town, encounter and menu screens are rearranged for landscape.** Town services, inventory and contracts remain usable in short-height screens, with independent scrolling for long lists.
 - **Tactical battles keep a wide field and reachable controls.** The campaign battle now enforces the same landscape prompt and uses compact battlefield HUD, equipment and army-order controls. Classic and Lab already use landscape-only play; their controls remain touch-friendly.
-
 ## V4.6 — Kingdom standing and a living road network
 
 - **Kingdoms remember your actions.** Existing faction reputation now has clear standing tiers. Contracts and victories against bandits improve local standing; attacking a patrol or caravan damages your relationship with its kingdom.
