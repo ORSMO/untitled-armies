@@ -2,8 +2,8 @@
 (function(){
 'use strict';
 const W=window.UAWorld;if(!W)throw Error('World data is missing');
-const $=id=>document.getElementById(id),F=W.factions,S=W.settlements;
-const KEY='ua-campaign-v1',VERSION=1,MAXPARTY=75;
+const $=id=>document.getElementById(id),F=W.factions,S=W.settlements,BASE_SETTLEMENTS=S.map(site=>({prosperity:site.prosperity,garrison:site.garrison}));
+const KEY='ua-campaign-v1',VERSION=1,MAXPARTY=75,MAX_ACTIVE_WORLD_WARS=2;
 const clamp=W.clamp,dist=(a,b,x,y)=>Math.hypot(a-x,b-y),esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const canvas=$('worldCanvas'),ctx=canvas.getContext('2d'),mini=$('minimap'),mctx=mini.getContext('2d');
 let state=null,selected=null,selectedFaction=6,modalStack=[],focus=true,camera={x:3870,y:5320,zoom:.47},keys=new Set(),drag=null,last=0,lastHud=0,lastMini=0,lastSave=0,toastUntil=0,menuOpen=true,miniBase=null,view={w:900,h:600},inspectorDirty=true;
@@ -16,9 +16,10 @@ const ITEMS={
  mailArmor:{name:'Mail hauberk',slot:'armor',price:510,icon:'🛡',rating:4},plateArmor:{name:'Plate harness',slot:'armor',price:980,icon:'⚙',rating:6},
  buckler:{name:'Buckler',slot:'shield',price:90,icon:'🛡',rating:1},roundShield:{name:'Round shield',slot:'shield',price:125,icon:'🛡',rating:2},kiteShield:{name:'Kite shield',slot:'shield',price:270,icon:'🛡',rating:3},
  quiver:{name:'Leather quiver',slot:'quiver',price:85,icon:'🏹',rating:2},rockPouch:{name:'Throwing-stone pouch',slot:'quiver',price:70,icon:'🪨',rating:2},
- arrows:{name:'Arrows · 12',stack:true,price:24,icon:'➶'},stones:{name:'Throwing stones · 6',stack:true,price:18,icon:'●'},food:{name:'Provisions · 8',stack:true,price:28,icon:'🍞'}
+ arrows:{name:'Arrows · 12',stack:true,price:24,icon:'➶'},stones:{name:'Throwing stones · 6',stack:true,price:18,icon:'●'},food:{name:'Provisions · 8',stack:true,price:28,icon:'🍞'},grain:{name:'Grain',stack:true,resource:true,price:8,icon:'🌾'},timber:{name:'Timber',stack:true,resource:true,price:13,icon:'🪵'},iron:{name:'Iron',stack:true,resource:true,price:20,icon:'⛏'},tools:{name:'Tools',stack:true,resource:true,price:25,icon:'🔧'},salt:{name:'Salt',stack:true,resource:true,price:15,icon:'🧂'}
 };
-const SHOP_ITEMS=['food','sword','axe','spear','bow','paddedArmor','leatherArmor','mailArmor','plateArmor','roundShield','kiteShield','quiver','rockPouch','arrows','stones'];
+const TRADE_RESOURCES=['grain','timber','iron','tools','salt'];
+const SHOP_ITEMS=['food','sword','axe','spear','bow','paddedArmor','leatherArmor','mailArmor','plateArmor','roundShield','kiteShield','quiver','rockPouch','arrows','stones',...TRADE_RESOURCES];
 const ITEM_SLOT_LABELS={weapon:'Weapon',armor:'Armor',shield:'Shield',quiver:'Pouch / quiver'};
 const PERKS={
  armsmaster:{name:'Armsmaster',icon:'⚔',description:'+10 hero combat skill in campaign battles.'},
@@ -62,6 +63,7 @@ function reportWorldEvent(x,y,message){
  if(dist(state.player.x,state.player.y,x,y)>2100)return;
  log(message);notify(message);
 }
+function restoreSettlementState(saved){for(let i=0;i<S.length;i++){const base=BASE_SETTLEMENTS[i],item=Array.isArray(saved)?saved[i]:null;S[i].prosperity=clamp(Number.isFinite(item?.prosperity)?item.prosperity:base.prosperity,0,100);S[i].garrison=Math.max(0,Math.round(Number.isFinite(item?.garrison)?item.garrison:base.garrison))}}
 function preparePlayer(p){
  p.stats={strength:5,agility:5,tactics:5,leadership:5,...(p.stats||{})};
  p.statPoints=Math.max(0,Number(p.statPoints)||0);
@@ -69,7 +71,7 @@ function preparePlayer(p){
  p.perkPoints=Math.max(p.perkPoints,Math.floor((Number(p.level)||1)/3)-p.perks.length);
  p.morale=clamp(Number.isFinite(Number(p.morale))?Number(p.morale):65,0,100);p.reputation=Array.isArray(p.reputation)?Array.from({length:F.length},(_,i)=>clamp(Number(p.reputation[i])||0,-100,100)):Array(F.length).fill(0);
  p.activeContracts=Array.isArray(p.activeContracts)?p.activeContracts:[];
- p.inventory={arrows:24,stones:0,food:0,...(p.inventory||{})};
+ p.inventory={arrows:24,stones:0,food:0,grain:0,timber:0,iron:0,tools:0,salt:0,...(p.inventory||{})};
  p.equipment={weapon:'sword',armor:'paddedArmor',shield:'roundShield',quiver:'quiver',...(p.equipment||{})};
  for(const id of Object.keys(ITEMS))if(ITEMS[id].slot&&p.equipment[ITEMS[id].slot]===id)p.inventory[id]=Math.max(0,Number(p.inventory[id])||0);
  return p;
@@ -85,9 +87,9 @@ function saveGame(silent){
  if(!state)return false;
  try{
   const data={version:VERSION,player:state.player,day:state.day,hour:state.hour,
-   parties:state.parties.map(p=>({id:p.id,x:p.x,y:p.y,tx:p.tx,ty:p.ty,strength:p.strength,active:p.active,kind:p.kind,faction:p.faction,targetPartyId:p.targetPartyId??null})),
+   parties:state.parties.map(p=>({id:p.id,x:p.x,y:p.y,tx:p.tx,ty:p.ty,strength:p.strength,active:p.active,kind:p.kind,faction:p.faction,targetPartyId:p.targetPartyId??null,cargo:p.cargo??null,tradeTargetId:p.tradeTargetId??null})),
    options:state.options,speed:state.speed,zoom:camera.zoom,visitedLandmarks:state.visitedLandmarks||[],pendingBattleId:state.pendingBattleId||null,
-   marketStocks:state.marketStocks||{},completedContracts:state.completedContracts||[]};
+   marketStocks:state.marketStocks||{},completedContracts:state.completedContracts||[],diplomacy:state.diplomacy,settlementProjects:state.settlementProjects||{},settlementState:S.map(site=>({prosperity:site.prosperity,garrison:site.garrison}))};
   const serialized=JSON.stringify(data),previous=localStorage.getItem(KEY);
   if(previous&&previous!==serialized){try{const older=localStorage.getItem(KEY+'-backup-1');if(older)localStorage.setItem(KEY+'-backup-2',older);localStorage.setItem(KEY+'-backup-1',previous)}catch(e){}}
   localStorage.setItem(KEY,serialized);
@@ -107,12 +109,12 @@ function generateParties(){
   else{x=capital[0]+(W.hash(i,82)-.5)*1300;y=capital[1]+(W.hash(i,91)-.5)*1300}
   const near=W.nearestWalk(clamp(Math.floor(x/W.TILE),0,W.COLS-1),clamp(Math.floor(y/W.TILE),0,W.ROWS-1));
   if(near){x=near.x*W.TILE+28;y=near.y*W.TILE+28}
-  parties.push({id:i,kind,faction:kind==='bandit'?-1:fid,x,y,tx:x,ty:y,strength:kind==='bandit'?4+(i*13)%11:kind==='patrol'?22+(i*3)%25:9+(i*5)%16,active:true,path:[],pathIndex:0});
+  parties.push({id:i,kind,faction:kind==='bandit'?-1:fid,x,y,tx:x,ty:y,strength:kind==='bandit'?4+(i*13)%11:kind==='patrol'?22+(i*3)%25:9+(i*5)%16,active:true,path:[],pathIndex:0,cargo:null,tradeTargetId:null});
  }
  return parties;
 }
 function startCampaign(){
- modalStack=[];
+ modalStack=[];restoreSettlementState();
  const name=($('newName').value||'Wanderer').trim().slice(0,28)||'Wanderer';
  const origin=clamp(Number($('originSelect').value)||0,0,9);
  const background=$('backgroundSelect').value;
@@ -127,9 +129,9 @@ function startCampaign(){
    level:1,xp:0,renown:0,roster:firstTroops,quest:{id:0,progress:0,goal:3,done:false}},
    day:1,hour:8,speed:1,paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,
    followPartyId:null,followRepath:0,visitedLandmarks:[],pendingBattleId:null,
-   parties:[],options:{...settingsDefault},messages:[],unseen:[],lastEncounter:-100,marketStocks:{},completedContracts:[]};
+   parties:[],options:{...settingsDefault},messages:[],unseen:[],lastEncounter:-100,marketStocks:{},completedContracts:[],diplomacy:createDiplomacy(),settlementProjects:{}};
   state.player=preparePlayer(state.player);
-  state.parties=generateParties();selected={type:'settlement',id:origin*8};
+  state.parties=generateParties();initializeMarkets();selected={type:'settlement',id:origin*8};
  camera.zoom=.47;resetView();$('game').classList.remove('hidden');showScreen(null);resize();
  log('Your story begins beneath the banners of '+F[origin].name+'.');
  log('Your first task: recruit three volunteers from a settlement.');
@@ -151,8 +153,8 @@ function loadGame(){
    paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,
    followPartyId:null,followRepath:0,visitedLandmarks:Array.isArray(raw.visitedLandmarks)?raw.visitedLandmarks:[],pendingBattleId:raw.pendingBattleId||null,
    parties:[],options:{...settingsDefault,...raw.options},
-   messages:[],lastEncounter:-100,marketStocks:raw.marketStocks&&typeof raw.marketStocks==='object'?raw.marketStocks:{},completedContracts:Array.isArray(raw.completedContracts)?raw.completedContracts:[]};
-  state.parties=generateParties();
+   messages:[],lastEncounter:-100,marketStocks:raw.marketStocks&&typeof raw.marketStocks==='object'?raw.marketStocks:{},completedContracts:Array.isArray(raw.completedContracts)?raw.completedContracts:[],diplomacy:normalizeDiplomacy(raw.diplomacy),settlementProjects:raw.settlementProjects&&typeof raw.settlementProjects==='object'?raw.settlementProjects:{}};
+  restoreSettlementState(raw.settlementState);state.parties=generateParties();initializeMarkets();
   if(Array.isArray(raw.parties))for(const saved of raw.parties){let a=state.parties.find(v=>v.id===saved.id);
     if(!a&&Number.isInteger(saved.id)&&saved.id>=68&&['bandit','patrol','caravan'].includes(saved.kind)&&
      (saved.kind==='bandit'?saved.faction===-1:Number.isInteger(saved.faction)&&saved.faction>=0&&saved.faction<F.length)&&
@@ -252,12 +254,186 @@ function advanceTime(distance){
  state.hour+=distance/230;
  while(state.hour>=24){state.hour-=24;advanceDay();if(state.player.hp<100)state.player.hp=Math.min(100,state.player.hp+3)}
 }
+function createDiplomacy(){
+ const relations=Array.from({length:F.length},()=>Array(F.length).fill(0));
+ const tension=Array.from({length:F.length},()=>Array(F.length).fill(0));
+ for(let a=0;a<F.length;a++)for(let b=a+1;b<F.length;b++){
+  const value=22+Math.floor(W.hash(a+11,b+37)*19);
+  relations[a][b]=relations[b][a]=value;
+ }
+ return {relations,tension,wars:[],alliances:[],history:[],truceUntil:{},lastIncidentByPair:{},nextIncidentDay:8};
+}
+function normalizeDiplomacy(raw){
+ const base=createDiplomacy();
+ if(!raw||!Array.isArray(raw.relations))return base;
+ for(let a=0;a<F.length;a++)for(let b=a+1;b<F.length;b++){
+  const value=Number(raw.relations[a]?.[b]),heat=Number(raw.tension?.[a]?.[b]);
+  if(Number.isFinite(value))base.relations[a][b]=base.relations[b][a]=clamp(value,-100,100);
+  if(Number.isFinite(heat))base.tension[a][b]=base.tension[b][a]=clamp(heat,0,100);
+ }
+ const validPairs=list=>(Array.isArray(list)?list:[]).filter(x=>x&&Number.isInteger(x.a)&&Number.isInteger(x.b)&&x.a>=0&&x.b>=0&&x.a<F.length&&x.b<F.length&&x.a!==x.b).map(x=>({...x,a:Math.min(x.a,x.b),b:Math.max(x.a,x.b)}));
+ base.wars=validPairs(raw.wars).map(w=>({...w,startDay:Number.isFinite(w.startDay)?Math.max(1,w.startDay):Math.max(1,state?.day||1),score:Number.isFinite(w.score)?w.score:0}));base.alliances=validPairs(raw.alliances);
+ base.history=Array.isArray(raw.history)?raw.history.filter(x=>x&&Number.isFinite(x.day)&&typeof x.text==='string').slice(0,12):[];
+ base.truceUntil=raw.truceUntil&&typeof raw.truceUntil==='object'?raw.truceUntil:{};
+ base.lastIncidentByPair=raw.lastIncidentByPair&&typeof raw.lastIncidentByPair==='object'?raw.lastIncidentByPair:{};
+ base.nextIncidentDay=Number.isFinite(raw.nextIncidentDay)?Math.max(8,raw.nextIncidentDay):base.nextIncidentDay;
+ return base;
+}function pairHas(list,a,b){const lo=Math.min(a,b),hi=Math.max(a,b);return list.some(x=>x.a===lo&&x.b===hi)}
+function factionsAtWar(a,b){return !!state&&a!==b&&pairHas(state.diplomacy.wars,a,b)}
+function factionsAllied(a,b){return !!state&&a!==b&&pairHas(state.diplomacy.alliances,a,b)}
+function factionRelation(a,b){return a===b?100:state?.diplomacy?.relations?.[a]?.[b]??0}
+function factionTension(a,b){return a===b?0:state?.diplomacy?.tension?.[a]?.[b]??0}
+function setFactionTension(a,b,value){if(a===b)return;state.diplomacy.tension[a][b]=state.diplomacy.tension[b][a]=clamp(value,0,100)}
+function setFactionRelation(a,b,value){if(a===b)return;state.diplomacy.relations[a][b]=state.diplomacy.relations[b][a]=clamp(value,-100,100)}
+function recordDiplomacy(text){
+ const d=state.diplomacy;d.history.unshift({day:state.day,text});d.history=d.history.slice(0,12);log('Day '+state.day+': '+text);
+ if(state.day%3===0)notify(text);
+}
+function factionResourceTotal(faction,resource){
+ return S.filter(site=>site.faction===faction).reduce((n,site)=>n+(state.marketStocks[site.id]?.stock?.[resource]||0),0);
+}
+function declareWar(a,b){
+ const d=state.diplomacy,activeFor=id=>d.wars.filter(w=>w.a===id||w.b===id).length;
+ if(factionsAtWar(a,b)||factionsAllied(a,b)||(d.truceUntil[pairKey(a,b)]||0)>state.day||activeFor(a)>=2||activeFor(b)>=2||d.wars.length>=MAX_ACTIVE_WORLD_WARS)return;
+ d.wars.push({a:Math.min(a,b),b:Math.max(a,b),attacker:a,defender:b,startDay:state.day,score:0});
+ setFactionRelation(a,b,-40);
+ recordDiplomacy(F[a].name+' and '+F[b].name+' have declared war.');
+ const pact=d.alliances.find(x=>x.a===b||x.b===b),ally=pact?(pact.a===b?pact.b:pact.a):-1;
+ if(ally>=0&&d.wars.length<MAX_ACTIVE_WORLD_WARS&&!factionsAtWar(ally,a)&&!factionsAllied(ally,a)&&factionRelation(ally,a)<38&&activeFor(ally)<2){
+  d.wars.push({a:Math.min(ally,a),b:Math.max(ally,a),attacker:a,defender:ally,startDay:state.day,score:0,defensive:true});
+  setFactionRelation(ally,a,-32);
+  recordDiplomacy(F[ally].name+' honored its defensive pact and joined the war.');
+ }
+}
+function pairKey(a,b){return Math.min(a,b)+':'+Math.max(a,b)}
+function diplomacyDay(){
+ const d=state.diplomacy;
+ for(const war of [...d.wars]){
+  const age=state.day-war.startDay;
+  if(age>=8){setFactionRelation(war.a,war.b,factionRelation(war.a,war.b)+2);setFactionTension(war.a,war.b,factionTension(war.a,war.b)-1)}
+  if(age>=11&&(factionRelation(war.a,war.b)>=-8||age>=22||Math.abs(war.score||0)>=4&&age>=14)){
+   d.wars=d.wars.filter(w=>w!==war);d.truceUntil[pairKey(war.a,war.b)]=state.day+30;
+   setFactionRelation(war.a,war.b,Math.max(-12,factionRelation(war.a,war.b)));
+   setFactionTension(war.a,war.b,Math.max(0,factionTension(war.a,war.b)-25));
+   recordDiplomacy(F[war.a].name+' and '+F[war.b].name+' signed a truce after '+age+' days of war.');
+  }
+ }
+ if(state.day>=d.nextIncidentDay){
+  const pairs=[];
+  for(let a=0;a<F.length;a++)for(let b=a+1;b<F.length;b++){
+   const key=pairKey(a,b),last=Number(d.lastIncidentByPair[key])||0;
+   if(!pairHas(d.wars,a,b)&&!pairHas(d.alliances,a,b)&&last<=state.day-6&&(d.truceUntil[key]||0)<=state.day)pairs.push([a,b]);
+  }
+  if(pairs.length){
+   const index=Math.floor(W.hash(state.day,713)*pairs.length),[a,b]=pairs[index],key=pairKey(a,b);
+   const relation=factionRelation(a,b),heat=factionTension(a,b),shortage=Math.min(factionResourceTotal(a,'grain'),factionResourceTotal(b,'grain'))<30;
+   const goodwill=W.hash(state.day,911)>.76;
+   if(goodwill){
+    setFactionRelation(a,b,relation+10);setFactionTension(a,b,heat-12);
+    recordDiplomacy(F[a].name+' and '+F[b].name+' opened a shared trade compact.');
+   }else{
+    const strain=7+Math.floor(W.hash(state.day,127)*5)+(shortage?4:0);
+    setFactionRelation(a,b,relation-strain);setFactionTension(a,b,heat+9+(shortage?8:0));
+    recordDiplomacy((shortage?'Grain shortages worsened ':'A border dispute strained ')+F[a].name+' and '+F[b].name+' relations.');
+   }
+   d.lastIncidentByPair[key]=state.day;
+   const nextRelation=factionRelation(a,b),nextHeat=factionTension(a,b);
+   if(nextRelation>=54&&nextHeat<=24&&!pairHas(d.alliances,a,b)&&state.day>=21){
+    d.alliances.push({a,b,formedDay:state.day});recordDiplomacy(F[a].name+' and '+F[b].name+' formed a defensive alliance.');
+   }else if(nextRelation<=-18&&nextHeat>=42&&!factionsAtWar(a,b)&&state.day>=35)declareWar(a,b);
+  }
+  d.nextIncidentDay=state.day+4+Math.floor(W.hash(state.day,581)*4);
+ }
+}
+function resourceProduction(site){
+ const kind=W.tileAt(site.x,site.y).kind,r={grain:1,timber:0,iron:0,tools:0,salt:0};
+ if(['grass','steppe','marsh','rainforest'].includes(kind))r.grain+=2;
+ if(['forest','taiga','rainforest'].includes(kind))r.timber=3;
+ if(['hills','mountain'].includes(kind))r.iron=2;
+ if(['desert','scrub','marsh'].includes(kind))r.salt=2;
+ if(site.type==='village'){
+  const specialty=Object.keys(r).filter(k=>k!=='tools').sort((a,b)=>r[b]-r[a])[0];
+  if(r[specialty]>0)r[specialty]+=2;
+ }else if(site.type==='town'||site.type==='capital'){
+  r.grain++;for(const key of ['timber','iron','salt'])if(r[key])r[key]++;
+  r.tools=1;
+ }else if(site.type==='castle'){r.iron=kind==='mountain'||kind==='hills'?3:1;r.tools=1}
+ const yieldFactor=clamp(.75+site.prosperity/200,.75,1.25);for(const key of ['grain','timber','iron','salt'])r[key]=Math.round(r[key]*yieldFactor);
+ return r;
+}
+function resourceCapacity(id,site){
+ const base={grain:90,timber:70,iron:55,tools:42,salt:50}[id]||20;
+ return base+(state.settlementProjects?.[site.id]?.granary&&id==='grain'?40:0);
+}
+function defaultMarketCapacity(id,site){
+ if(TRADE_RESOURCES.includes(id))return resourceCapacity(id,site);
+ if(id==='food')return 5+Math.floor(site.prosperity/18);
+ return ['arrows','stones'].includes(id)?3:2;
+}
+function ensureMarket(site){
+ state.marketStocks=state.marketStocks||{};
+ let market=state.marketStocks[site.id];
+ if(!market||typeof market!=='object')market=state.marketStocks[site.id]={stock:{},capacity:{},lastDay:state.day};
+ market.stock=market.stock&&typeof market.stock==='object'?market.stock:{};
+ market.capacity=market.capacity&&typeof market.capacity==='object'?market.capacity:{};
+ for(const itemId of marketGoods(site)){
+  if(!Number.isFinite(market.stock[itemId])){
+   if(TRADE_RESOURCES.includes(itemId)){
+    const rate=resourceProduction(site)[itemId],capacity=resourceCapacity(itemId,site);
+    market.stock[itemId]=Math.round(clamp(capacity*.34+rate*5+(site.prosperity-50)*.12,5,capacity));
+   }else if(itemId==='food')market.stock[itemId]=3+Math.floor(site.prosperity/24);
+   else{
+    const expensive=['mailArmor','plateArmor','kiteShield','bow'].includes(itemId);
+    market.stock[itemId]=expensive?1+(site.prosperity>75?1:0):1;
+   }
+  }
+  market.capacity[itemId]=Math.max(market.stock[itemId],market.capacity[itemId]||defaultMarketCapacity(itemId,site));
+ }
+ market.lastDay=Number.isFinite(market.lastDay)?market.lastDay:state.day;
+ return market;
+}
+function initializeMarkets(){
+ if(!state)return;
+ for(const site of S){const market=ensureMarket(site);market.lastDay=state.day}
+}
+function advanceEconomy(){
+ for(const site of S){
+  const market=ensureMarket(site),stock=market.stock,rates=resourceProduction(site),granary=!!state.settlementProjects[site.id]?.granary;
+  if(!Number.isFinite(stock.food))stock.food=0;
+  const grainUse=site.type==='capital'?2:site.type==='town'?2:site.type==='castle'?2:1;
+  const underWar=state.diplomacy.wars.some(w=>w.a===site.faction||w.b===site.faction);
+  if(underWar&&['capital','castle'].includes(site.type)&&state.day%2===0)stock.grain=Math.max(0,stock.grain-1);
+  if(underWar&&['capital','castle'].includes(site.type)&&state.day%3===0&&stock.iron>0)stock.iron=Math.max(0,stock.iron-1);
+  for(const id of TRADE_RESOURCES){
+   if(id==='tools'){
+    if(['town','capital','castle'].includes(site.type)&&stock.iron>=2&&stock.timber>=2){stock.iron--;stock.timber--;stock.tools=Math.min(resourceCapacity(id,site),stock.tools+1)}
+    continue;
+   }
+   stock[id]=clamp(stock[id]+rates[id],0,resourceCapacity(id,site));
+  }
+  if(stock.grain>=grainUse){
+   stock.grain-=grainUse;
+   stock.food=Math.min(market.capacity.food||defaultMarketCapacity('food',site),stock.food+(granary?2:1));
+   site.prosperity=clamp(site.prosperity+.04,0,100);
+  }else{
+   stock.grain=0;site.prosperity=clamp(site.prosperity-.22,0,100);
+   if(site.garrison>5&&state.day%5===0)site.garrison--;
+  }
+  for(const id of TRADE_RESOURCES)stock[id]=Math.min(resourceCapacity(id,site),stock[id]);
+  for(const id of Object.keys(stock)){
+   if(TRADE_RESOURCES.includes(id)||id==='food')continue;
+   const cap=market.capacity[id]||defaultMarketCapacity(id,site),restock=['arrows','stones'].includes(id)&&state.day%2===0?1:state.day%4===0?1:0;
+   stock[id]=Math.min(cap,stock[id]+restock);
+  }
+  market.lastDay=state.day;
+ }
+}
 function dailyWages(){
  const p=state.player,rate=[2,4,7];
  const raw=p.roster.reduce((sum,g)=>sum+g.count*rate[clamp(g.tier,0,2)],0);
  return Math.max(0,Math.ceil(raw*(p.perks.includes('quartermaster')?.85:1)));
 }
-function advanceDay(){state.day++;consumeFood();replenishRoadParties()}
+function advanceDay(){state.day++;advanceEconomy();diplomacyDay();consumeFood();replenishRoadParties()}
 function replenishRoadParties(){
  const limits={bandit:27,patrol:21,caravan:20};
  for(const [kind,limit] of Object.entries(limits)){
@@ -324,23 +500,58 @@ function arriveSettlement(id){
  for(const c of [...state.player.activeContracts])if(c.type==='courier'&&c.destinationId===id)completeContract(c.id);
  focus=true;inspectorDirty=true;notify('Arrived at '+site.name+'. Visit, recruit or resupply.');
 }
-function nextPartyDestination(p){
+function chooseCaravanTrade(p){
+ const source=W.closestSettlement(p.x,p.y);if(!source)return null;
+ const sourceMarket=ensureMarket(source),candidates=[];
+ for(const target of S){
+  if(target.id===source.id||dist(source.x,source.y,target.x,target.y)>6200||factionsAtWar(source.faction,target.faction))continue;
+  const targetMarket=ensureMarket(target);
+  for(const resource of ['food',...TRADE_RESOURCES]){
+   const cap=resource==='food'?(sourceMarket.capacity.food||defaultMarketCapacity('food',source)):resourceCapacity(resource,source),targetCap=resource==='food'?(targetMarket.capacity.food||defaultMarketCapacity('food',target)):resourceCapacity(resource,target);
+   const surplus=(sourceMarket.stock[resource]||0)-cap*.66;
+   const shortage=targetCap*.42-(targetMarket.stock[resource]||0);
+   if(surplus<4||shortage<3)continue;
+   const distance=dist(source.x,source.y,target.x,target.y),score=Math.min(surplus,shortage)*2-distance/1600;
+   candidates.push({source,target,resource,quantity:Math.min(resource==='grain'?10:6,Math.floor(surplus),Math.ceil(shortage)),score,distance});
+  }
+ }
+ candidates.sort((a,b)=>b.score-a.score||a.distance-b.distance);
+ const trade=candidates[0];if(!trade||trade.quantity<1)return null;
+ sourceMarket.stock[trade.resource]-=trade.quantity;
+ return trade;
+}function deliverCaravan(p){
+ if(!p?.cargo||!Number.isInteger(p.tradeTargetId))return false;
+ const destination=S[p.tradeTargetId];if(!destination||dist(p.x,p.y,destination.x,destination.y)>=135)return false;
+ const market=ensureMarket(destination),id=p.cargo.resource,capacity=resourceCapacity(id,destination);
+ market.stock[id]=Math.min(id==='food'?(market.capacity.food||defaultMarketCapacity('food',destination)):capacity,(market.stock[id]||0)+p.cargo.quantity);
+ if(Number.isInteger(p.cargo.from)&&S[p.cargo.from]&&S[p.cargo.from].faction!==destination.faction&&!factionsAtWar(S[p.cargo.from].faction,destination.faction)){
+  const from=S[p.cargo.from].faction,to=destination.faction;
+  setFactionRelation(from,to,factionRelation(from,to)+1);setFactionTension(from,to,factionTension(from,to)-2);
+ }
+ p.cargo=null;p.tradeTargetId=null;p.path=[];p.pathIndex=0;
+ reportWorldEvent(destination.x,destination.y,'A caravan delivered supplies to '+destination.name+'.');
+ return true;
+}function nextPartyDestination(p){
  let dest;
  if(p.kind==='bandit'){
-  // Outlaws prey on nearby trade, but keep roaming when no easy target is close.
   const prey=state.parties.filter(a=>a.active&&a.kind==='caravan'&&dist(p.x,p.y,a.x,a.y)<1450)
    .sort((a,b)=>dist(p.x,p.y,a.x,a.y)-dist(p.x,p.y,b.x,b.y))[0];
   if(prey){dest=prey;p.targetPartyId=prey.id}
   else{p.targetPartyId=null;const angle=(p.id*2.399+state.day*.3)%6.28;dest={x:clamp(p.x+Math.cos(angle)*720,270,W.WIDTH-270),y:clamp(p.y+Math.sin(angle)*680,260,W.HEIGHT-260)}}
- }
- else if(p.kind==='patrol'){
-  const quarry=state.parties.filter(a=>a.active&&a.kind==='bandit'&&dist(p.x,p.y,a.x,a.y)<2100)
+ }else if(p.kind==='patrol'){
+  const outlaws=state.parties.filter(a=>a.active&&a.kind==='bandit'&&dist(p.x,p.y,a.x,a.y)<2100)
    .sort((a,b)=>dist(p.x,p.y,a.x,a.y)-dist(p.x,p.y,b.x,b.y))[0];
+  const realmEnemies=state.parties.filter(a=>a.active&&a.kind==='patrol'&&factionsAtWar(p.faction,a.faction)&&dist(p.x,p.y,a.x,a.y)<1900)
+   .sort((a,b)=>dist(p.x,p.y,a.x,a.y)-dist(p.x,p.y,b.x,b.y))[0];
+  const quarry=outlaws||realmEnemies;
   if(quarry){dest=quarry;p.targetPartyId=quarry.id}
   else{p.targetPartyId=null;const options=S.filter(s=>s.faction===p.faction);dest=options[(p.id*19+Math.floor(state.day*1.3)+p.strength)%options.length]}
- }
- else{const options=S.filter(s=>p.kind==='caravan'||s.faction===p.faction);
- dest=options[(p.id*19+Math.floor(state.day*1.3)+p.strength)%options.length];p.targetPartyId=null}
+ }else if(p.kind==='caravan'){
+  const trade=chooseCaravanTrade(p);
+  if(trade){p.cargo={resource:trade.resource,quantity:trade.quantity,from:trade.source.id,unitPrice:marketPrice(trade.source,trade.resource)};p.tradeTargetId=trade.target.id;dest=trade.target}
+  else{const source=W.closestSettlement(p.x,p.y),options=S.filter(s=>s.id!==source?.id);dest=options[(p.id*19+Math.floor(state.day*1.3)+p.strength)%options.length];p.cargo=null;p.tradeTargetId=dest.id}
+  p.targetPartyId=null;
+ }else{const options=S.filter(s=>s.faction===p.faction);dest=options[(p.id*19+Math.floor(state.day*1.3)+p.strength)%options.length];p.targetPartyId=null}
  p.path=W.findPath(p.x,p.y,dest.x,dest.y);p.pathIndex=0;
 }
 function resolveWorldClashes(){
@@ -348,26 +559,36 @@ function resolveWorldClashes(){
  for(const a of parties){
   if(!a.active||!['patrol','bandit'].includes(a.kind))continue;
   const target=parties.find(b=>b.id===a.targetPartyId&&b.active&&
-   ((a.kind==='patrol'&&b.kind==='bandit')||(a.kind==='bandit'&&b.kind==='caravan')));
+   ((a.kind==='patrol'&&b.kind==='bandit')||(a.kind==='bandit'&&b.kind==='caravan')||
+    (a.kind==='patrol'&&b.kind==='patrol'&&factionsAtWar(a.faction,b.faction))));
   if(!target||dist(a.x,a.y,target.x,target.y)>64)continue;
-  const patrol=a.kind==='patrol'?a:target,raider=a.kind==='bandit'?a:target;
-  if(patrol.kind==='patrol'&&raider.kind==='bandit'){
-   const patrolWins=patrol.strength>=raider.strength*.78;
-   if(patrolWins){patrol.strength=Math.max(5,patrol.strength-Math.max(1,Math.ceil(raider.strength*.14)));raider.active=false;
-    reportWorldEvent(patrol.x,patrol.y,(F[patrol.faction]?.name||'A patrol')+' patrol scattered an outlaw band on the roads.')}
-   else{raider.strength=Math.max(3,raider.strength-Math.ceil(patrol.strength*.16));patrol.active=false;
-    reportWorldEvent(patrol.x,patrol.y,'Outlaws overwhelmed a patrol near '+W.closestSettlement(patrol.x,patrol.y).name+'.')}
-  }else if(raider.kind==='bandit'&&target.kind==='caravan'){
-   const raidersWin=raider.strength>=target.strength*.48;
-   if(raidersWin){raider.strength=Math.min(28,raider.strength+Math.ceil(target.strength*.12));target.active=false;
-    reportWorldEvent(target.x,target.y,'Bandits raided a '+F[target.faction].name+' caravan near '+W.closestSettlement(target.x,target.y).name+'.')}
-   else{target.strength=Math.max(4,target.strength-Math.ceil(raider.strength*.12));raider.active=false;
-    reportWorldEvent(target.x,target.y,'A caravan guard detail repelled bandits on the road.')}
+  if(a.kind==='patrol'&&target.kind==='patrol'){
+   const war=state.diplomacy.wars.find(w=>w.a===Math.min(a.faction,target.faction)&&w.b===Math.max(a.faction,target.faction));
+   const winner=a.strength>=target.strength? a:target,loser=winner===a?target:a;
+   winner.strength=Math.max(5,winner.strength-Math.max(2,Math.ceil(loser.strength*.22)));loser.active=false;
+   if(war)war.score=(war.score||0)+(winner.faction===war.attacker?1:-1);
+   reportWorldEvent(a.x,a.y,F[winner.faction].name+' won a clash with '+F[loser.faction].name+' near '+W.closestSettlement(a.x,a.y).name+'.');
+  }else{
+   const patrol=a.kind==='patrol'?a:target,raider=a.kind==='bandit'?a:target;
+   if(patrol.kind==='patrol'&&raider.kind==='bandit'){
+    const patrolWins=patrol.strength>=raider.strength*.78;
+    if(patrolWins){patrol.strength=Math.max(5,patrol.strength-Math.max(1,Math.ceil(raider.strength*.14)));raider.active=false;
+     reportWorldEvent(patrol.x,patrol.y,(F[patrol.faction]?.name||'A patrol')+' patrol scattered an outlaw band on the roads.')}
+    else{raider.strength=Math.max(3,raider.strength-Math.ceil(patrol.strength*.16));patrol.active=false;
+     reportWorldEvent(patrol.x,patrol.y,'Outlaws overwhelmed a patrol near '+W.closestSettlement(patrol.x,patrol.y).name+'.')}
+   }else if(raider.kind==='bandit'&&target.kind==='caravan'){
+    const raidersWin=raider.strength>=target.strength*.48;
+    if(raidersWin){raider.strength=Math.min(28,raider.strength+Math.ceil(target.strength*.12));target.active=false;
+     const destination=state.marketStocks[W.closestSettlement(target.x,target.y)?.id];
+     if(destination)destination.stock.grain=Math.max(0,(destination.stock.grain||0)-5);
+     reportWorldEvent(target.x,target.y,'Bandits raided a '+F[target.faction].name+' caravan; nearby grain supplies were lost.')}
+    else{target.strength=Math.max(4,target.strength-Math.ceil(raider.strength*.12));raider.active=false;
+     reportWorldEvent(target.x,target.y,'A caravan guard detail repelled bandits on the road.')}
+   }
   }
   a.path=[];target.path=[];a.targetPartyId=null;target.targetPartyId=null;
  }
-}
-function stepParties(dt){
+}function stepParties(dt){
  // Stagger pathfinding so dozens of NPC parties cannot block the first frame.
  let routingBudget=3;
  for(const p of state.parties){
@@ -389,6 +610,7 @@ function stepParties(dt){
    const step=Math.min(d,budget);p.x+=(n.x-p.x)/d*step;p.y+=(n.y-p.y)/d*step;budget-=step;
    if(step>=d-1)p.pathIndex++;else break;
   }
+  if(p.kind==='caravan')deliverCaravan(p);
  }
  resolveWorldClashes();
  const close=state.parties.find(p=>p.active&&p.kind==='bandit'&&
@@ -426,13 +648,15 @@ function performSettlementAction(action,id){
   if(p.quest?.id===0){p.quest.progress+=number;if(p.quest.progress>=p.quest.goal)completeQuest(0)}
   notify(number+' volunteers joined your party.');
  }else if(action==='food'){
-  if(p.gold<35){notify('Not enough denars for provisions.');return}
-  p.gold-=35;p.food+=12;log('Bought 12 provisions in '+site.name+'.');notify('Purchased provisions.');
+  const offer=townMarket(site.id).find(item=>item.id==='food');if(!offer||offer.stock<1){notify('This settlement has no provisions for sale.');return}
+  if(p.gold<offer.price){notify('Not enough denars for provisions.');return}
+  p.gold-=offer.price;state.marketStocks[site.id].stock.food--;p.food+=8;log('Bought eight provisions in '+site.name+' for '+offer.price+' denars.');notify('Purchased eight provisions.');
  }else if(action==='rest'){
   if(p.gold<20){notify('An inn costs 20 denars.');return}
   p.gold-=20;p.hp=Math.min(100,p.hp+32+(p.perks.includes('fieldMedic')?16:0));p.morale=clamp(p.morale+3+(p.perks.includes('fieldMedic')?5:0),0,100);state.hour=8;advanceDay();
   for(const group of p.roster)if(group.wounded)group.wounded=Math.max(0,group.wounded-3);
   log('Rested at '+site.name+'.');notify('Rested, healed and started a new day.');
+ }else if(action==='granary'){buildGranary(id);return;
  }else if(action==='rumors'){
   const report=townRumor(site);$('townNewsText').textContent=report;
   log('Rumor in '+site.name+': '+report);
@@ -460,14 +684,22 @@ function showTown(id){
  const terms=recruitmentTerms(site),canRecruit=terms.access&&terms.count>0;
  const wounded=state.player.roster.reduce((sum,group)=>sum+(group.wounded||0),0);
  $('townInnSummary').innerHTML='<div class="town-service-stat"><b>'+state.player.hp+' / 100</b><small>Hero health</small></div><div class="town-service-stat"><b>'+Math.round(state.player.morale)+' / 100</b><small>Company morale</small></div><div class="town-service-stat"><b>'+wounded+'</b><small>Wounded soldiers</small></div><p class="town-service-note">A night at the inn costs 20 denars, restores health and morale, treats up to 3 wounded soldiers per troop group, and advances the campaign to morning. Food and wages may be due.</p>';
- $('townGarrisonSummary').innerHTML='<div class="town-service-stat"><b>'+site.garrison.toLocaleString()+'</b><small>Garrisoned defenders</small></div><div class="town-service-stat"><b>'+terms.count+'</b><small>Volunteers available</small></div><div class="town-service-stat"><b>'+rosterCount()+' / '+MAXPARTY+'</b><small>Company capacity</small></div><p class="town-service-note">Local '+esc(F[site.faction].troops[0])+' cost '+terms.unit+' denars each. Your standing here is '+esc(standingLabel(standing).toLowerCase())+'.</p>';
+ const granaryBuilt=!!state.settlementProjects[id]?.granary;
+ $('townGarrisonSummary').innerHTML='<div class="town-service-stat"><b>'+site.garrison.toLocaleString()+'</b><small>Garrisoned defenders</small></div><div class="town-service-stat"><b>'+terms.count+'</b><small>Volunteers available</small></div><div class="town-service-stat"><b>'+rosterCount()+' / '+MAXPARTY+'</b><small>Company capacity</small></div><p class="town-service-note">Local '+esc(F[site.faction].troops[0])+' cost '+terms.unit+' denars each. Your standing here is '+esc(standingLabel(standing).toLowerCase())+'. '+(granaryBuilt?'Granary built · grain capacity +40 and extra provisions each day.':'Build a granary to add 40 grain capacity and extra provisions each day.')+'</p>';
  $('townInnAction').innerHTML=renderActions([{act:'rest',id,primary:true,label:'Rest at the inn · 20 denars'}]);
- $('townGarrisonAction').innerHTML=renderActions([{act:'recruit',id,primary:true,label:!terms.access?'Recruitment unavailable · standing outlawed':terms.count>0?'Recruit '+terms.count+' '+F[site.faction].troops[0]+' · '+(terms.count*terms.unit)+' denars':'No volunteers available',disabled:!canRecruit}]);
+ $('townGarrisonAction').innerHTML=renderActions([{act:'recruit',id,primary:true,label:!terms.access?'Recruitment unavailable · standing outlawed':terms.count>0?'Recruit '+terms.count+' '+F[site.faction].troops[0]+' · '+(terms.count*terms.unit)+' denars':'No volunteers available',disabled:!canRecruit},{act:'granary',id,label:granaryBuilt?'Granary built · +40 grain capacity':'+ Build a granary · 8 timber, 3 iron, 4 tools, 180 denars',disabled:granaryBuilt}]);
  $('townNewsText').textContent=townRumor(site);
  $('townNewsAction').innerHTML=renderActions([{act:'rumors',id,primary:true,label:'Ask for fresh news'}]);
  const market=townMarket(id);
- $('townShop').innerHTML=market.map(item=>{const it=ITEMS[item.id],owned=item.id==='food'?state.player.food:state.player.inventory[item.id]||0;
-  return '<article class="shop-item"><span class="shop-icon">'+it.icon+'</span><span><b>'+esc(it.name)+'</b><small>'+(it.slot?ITEM_SLOT_LABELS[it.slot]+' · '+owned+' owned':owned+' owned')+' · '+item.stock+' in stock</small></span><button class="btn small" data-buy-item="'+item.id+'" '+(item.stock<1||state.player.gold<item.price?'disabled':'')+'>Buy · '+item.price+'</button></article>'
+ $('townShop').innerHTML=market.map(item=>{
+  const it=ITEMS[item.id],owned=item.id==='food'?state.player.food:state.player.inventory[item.id]||0;
+  const resource=!!it.resource,quantity=resource?5:1,total=item.price*quantity;
+  const stockLabel=resource?item.stock+' / '+item.capacity+' in stock':item.stock+' in stock';
+  const buyDisabled=resource?item.stock<quantity||state.player.gold<total:item.stock<1||state.player.gold<item.price;
+  const buyLabel=resource?'Buy 5 · '+total:item.id==='food'?'Buy provisions · '+item.price:'Buy · '+item.price;
+  const sell=resource?'<button class="btn small secondary" data-sell-resource="'+item.id+'" '+(owned<1||item.stock>=item.capacity?'disabled':'')+'>Sell up to 5</button>':item.id==='food'?'<button class="btn small secondary" data-sell-food '+(owned<8||item.stock>=item.capacity?'disabled':'')+'>Sell 8 · '+Math.max(1,Math.floor(item.price*.68))+'</button>':'';
+  const itemDetail=it.slot?ITEM_SLOT_LABELS[it.slot]+' · '+owned+' owned':owned+(resource?' units owned':' owned');
+  return '<article class="shop-item'+(resource?' resource-item':'')+'"><span class="shop-icon">'+it.icon+'</span><span><b>'+esc(it.name)+'</b><small>'+esc(itemDetail)+' · '+stockLabel+(resource?' · local supply':'')+'</small></span><span class="shop-actions"><button class="btn small" data-buy-item="'+item.id+'" '+(buyDisabled?'disabled':'')+'>'+buyLabel+'</button>'+sell+'</span></article>'
  }).join('');
  $('townContracts').innerHTML=renderTownContracts(id);
  setTownView('overview');
@@ -477,47 +709,73 @@ function marketGoods(site){
  const kind=W.tileAt(site.x,site.y).kind;
  const basic=['food','sword','spear','paddedArmor','roundShield','quiver','rockPouch','arrows','stones'];
  const military=['sword','axe','spear','bow','paddedArmor','leatherArmor','mailArmor','plateArmor','roundShield','kiteShield','quiver','rockPouch','arrows','stones'];
- let available=site.type==='village'?basic:site.type==='castle'?military:SHOP_ITEMS;
+ let available=site.type==='village'?basic:site.type==='castle'?military:SHOP_ITEMS.filter(id=>!TRADE_RESOURCES.includes(id));
  if(kind==='desert'||kind==='scrub')available=available.filter(id=>id!=='food'||site.type!=='village');
  if(site.type==='village'&&['snow','tundra'].includes(kind))available=available.filter(id=>!['rockPouch','bow'].includes(id));
- return available;
+ const localResources=TRADE_RESOURCES;
+ return [...new Set([...available,...localResources])];
 }
 function marketPrice(site,itemId){
- const item=ITEMS[itemId],tile=W.tileAt(site.x,site.y);
+ const item=ITEMS[itemId],tile=W.tileAt(site.x,site.y),market=state.marketStocks?.[site.id];
  const typeFactor=site.type==='capital'?.88:site.type==='town'?.95:site.type==='castle'?.98:1.12;
  const prosperity=clamp(1.16-(site.prosperity||50)/260,.78,1.12);
  const climate=itemId==='food'&&['desert','scrub'].includes(tile.kind)?1.42:
    itemId==='food'&&['forest','grass','marsh'].includes(tile.kind)?.86:1;
  const standing=clamp(1-(state.player.reputation[site.faction]||0)*.001,.82,1.25);
  const trader=state.player.perks.includes('trader')?.90:1;
- return Math.max(1,Math.round(item.price*typeFactor*prosperity*climate*standing*trader));
+ const stock=market?.stock?.[itemId]||0,capacity=market?.capacity?.[itemId]||defaultMarketCapacity(itemId,site);
+ const supply=clamp(1.55-(stock/Math.max(1,capacity))*.92,.68,1.65);
+ const adjusted=Math.round(item.price*typeFactor*prosperity*climate*standing*trader*(item.resource||itemId==='food'?supply:1));
+ return clamp(adjusted,Math.max(1,Math.round(item.price*.65)),Math.max(1,Math.round(item.price*2)));
 }
 function townMarket(id){
- const site=S[id];if(!site)return[];state.marketStocks=state.marketStocks||{};
- let market=state.marketStocks[id];
- if(!market){const stock={};for(const itemId of marketGoods(site)){
-   const expensive=['mailArmor','plateArmor','kiteShield','bow'].includes(itemId),base=itemId==='food'?3+Math.floor(site.prosperity/24):expensive?1+(site.prosperity>75?1:0):itemId==='arrows'||itemId==='stones'?2:1;
-   stock[itemId]=base;
-  }
-  market=state.marketStocks[id]={stock,lastDay:state.day};
- }
- const days=Math.max(0,state.day-(market.lastDay||state.day));
- if(days){for(const [itemId,cap] of Object.entries(market.stock)){
-   const restock=itemId==='food'?days*2:ITEMS[itemId]?.stack?Math.floor(days/2):Math.floor(days/3);
-   market.stock[itemId]=Math.min(cap,market.stock[itemId]+restock);
-  }market.lastDay=state.day;
- }
- return marketGoods(site).map(itemId=>({id:itemId,stock:market.stock[itemId]||0,price:marketPrice(site,itemId)}));
+ const site=S[id];if(!site)return[];const market=ensureMarket(site);
+ return marketGoods(site).map(itemId=>({id:itemId,stock:market.stock[itemId]||0,capacity:market.capacity[itemId]||defaultMarketCapacity(itemId,site),price:marketPrice(site,itemId)}));
 }
 function buyItem(id){
  const it=ITEMS[id],p=state?.player,site=S[state?.currentTownId];if(!it||!p||!site)return;
- const item=townMarket(site.id).find(v=>v.id===id);if(!item||item.stock<1){notify('The local market is sold out.');return}
- if(p.gold<item.price){notify('Not enough denars.');return}
- p.gold-=item.price;state.marketStocks[site.id].stock[id]--;
- if(id==='food')p.food+=8;else grantItem(id,id==='arrows'?12:id==='stones'?6:1);
- log('Bought '+it.name+' in '+site.name+' for '+item.price+' denars.');refreshUI();saveGame(true);showTown(site.id);
+ const market=ensureMarket(site),item=townMarket(site.id).find(v=>v.id===id);if(!item||item.stock<1){notify('The local market is sold out.');return}
+ const quantity=it.resource?5:1,unitPrice=item.price,total=unitPrice*quantity;
+ if(it.resource&&item.stock<quantity){notify('The market needs more stock before it can sell a bundle of '+quantity+'.');return}
+ if(p.gold<total){notify('Not enough denars.');return}
+ p.gold-=total;market.stock[id]-=quantity;
+ if(site.faction!==p.origin){setFactionRelation(p.origin,site.faction,factionRelation(p.origin,site.faction)+1);setFactionTension(p.origin,site.faction,factionTension(p.origin,site.faction)-1)}
+ if(it.resource)grantItem(id,quantity);else if(id==='food')p.food+=8;else grantItem(id,id==='arrows'?12:id==='stones'?6:1);
+ log('Bought '+(it.resource?quantity+' '+it.name.toLowerCase():it.name)+' in '+site.name+' for '+total+' denars.');
+ refreshUI();saveGame(true);showTown(site.id);
 }
-function contractOffers(townId){
+function sellResource(id){
+ const item=ITEMS[id],site=S[state?.currentTownId],p=state?.player;if(!item?.resource||!site||!p)return;
+ const market=ensureMarket(site),owned=Number(p.inventory[id])||0,room=Math.max(0,resourceCapacity(id,site)-(market.stock[id]||0));
+ const quantity=Math.min(5,owned,room);if(!quantity){notify(owned?'This market has no room for more.':'You have none to sell.');return}
+ const unit=Math.max(1,Math.floor(marketPrice(site,id)*.68)),total=unit*quantity;
+ p.inventory[id]-=quantity;market.stock[id]+=quantity;p.gold+=total;if(site.faction!==p.origin){setFactionRelation(p.origin,site.faction,factionRelation(p.origin,site.faction)+1);setFactionTension(p.origin,site.faction,factionTension(p.origin,site.faction)-1)}
+ log('Sold '+quantity+' '+item.name.toLowerCase()+' in '+site.name+' for '+total+' denars.');
+ refreshUI();saveGame(true);showTown(site.id);
+}
+function sellFood(){
+ const site=S[state?.currentTownId],p=state?.player;if(!site||!p)return;
+ const market=ensureMarket(site),room=(market.capacity.food||defaultMarketCapacity('food',site))-market.stock.food;
+ if(p.food<8||room<1){notify(p.food<8?'You need eight provisions to sell a bundle.':'This market has no room for more provisions.');return}
+ const price=Math.max(1,Math.floor(marketPrice(site,'food')*.68));
+ p.food-=8;market.stock.food++;p.gold+=price;if(site.faction!==p.origin){setFactionRelation(p.origin,site.faction,factionRelation(p.origin,site.faction)+1);setFactionTension(p.origin,site.faction,factionTension(p.origin,site.faction)-1)}log('Sold eight provisions in '+site.name+' for '+price+' denars.');
+ refreshUI();saveGame(true);showTown(site.id);
+}
+function buildGranary(id){
+ const site=S[id],p=state?.player;if(!site||!p)return;
+ const project=state.settlementProjects[id]||{};
+ if(project.granary){notify('This settlement already has a granary.');return}
+ const cost={gold:180,timber:8,iron:3,tools:4};
+ if(p.gold<cost.gold||p.inventory.timber<cost.timber||p.inventory.iron<cost.iron||p.inventory.tools<cost.tools){
+  notify('A granary needs 180 denars, 8 timber, 3 iron and 4 tools.');return;
+ }
+ p.gold-=cost.gold;p.inventory.timber-=cost.timber;p.inventory.iron-=cost.iron;p.inventory.tools-=cost.tools;
+ state.settlementProjects[id]={...project,granary:true};
+ const market=ensureMarket(site);market.capacity.grain=resourceCapacity('grain',site);market.stock.grain=Math.min(market.capacity.grain,market.stock.grain+12);
+ market.stock.food=Math.min(market.capacity.food||defaultMarketCapacity('food',site),market.stock.food+3);
+ log('Built a granary in '+site.name+'. Grain stores now hold more and provisions reach the market faster.');
+ notify('Granary built · larger grain stores and more provisions.');saveGame(true);showTown(id);
+}function contractOffers(townId){
  const town=S[townId];if(!town)return[];const day=state.day;
  const destinations=S.filter(s=>s.id!==townId).sort((a,b)=>dist(town.x,town.y,a.x,a.y)-dist(town.x,town.y,b.x,b.y));
  const landmark=(W.landmarks||[]).filter(a=>!state.visitedLandmarks.includes(a.id)).sort((a,b)=>dist(town.x,town.y,a.x,a.y)-dist(town.x,town.y,b.x,b.y))[0]||W.landmarks?.[0];
@@ -546,7 +804,7 @@ function acceptContract(contractId,townId){
 function completeContract(contractId){
  const p=state.player,index=p.activeContracts.findIndex(c=>c.id===contractId);if(index<0)return;
  const c=p.activeContracts.splice(index,1)[0];p.gold+=c.reward;grantXP(c.xp);p.renown+=1;
- if(Number.isInteger(c.faction))changeStanding(c.faction,5);
+ if(Number.isInteger(c.faction)){changeStanding(c.faction,5);if(c.faction!==p.origin){setFactionRelation(p.origin,c.faction,factionRelation(p.origin,c.faction)+2);setFactionTension(p.origin,c.faction,factionTension(p.origin,c.faction)-2)}}
  state.completedContracts=state.completedContracts||[];state.completedContracts.push(c.id);
  log('Contract complete: '+c.title+'. +'+c.reward+' denars, +'+c.xp+' XP.');notify('Contract complete · '+c.title+' · +'+c.reward+' denars');
 }
@@ -637,7 +895,10 @@ function consumeBattleResult(){
  state.pendingBattleId=null;state.followPartyId=null;
  const p=state.player,party=state.parties.find(a=>a.id===result.partyId);
  if(party?.kind==='patrol'){
-  changeStanding(party.faction,-18);log('Attacking a realm patrol damaged your standing with '+F[party.faction].name+'.');
+  changeStanding(party.faction,-18);
+  if(party.faction!==p.origin&&!factionsAtWar(p.origin,party.faction)){setFactionRelation(p.origin,party.faction,factionRelation(p.origin,party.faction)-8);setFactionTension(p.origin,party.faction,factionTension(p.origin,party.faction)+18);recordDiplomacy('A clash with '+F[party.faction].name+' patrols strained relations with '+F[p.origin].name+'.')}
+  const war=state.diplomacy.wars.find(w=>(w.a===p.origin||w.b===p.origin)&&(w.a===party.faction||w.b===party.faction));if(war&&result.winner==='friend')war.score=(war.score||0)+(war.attacker===p.origin?1:-1);
+  log('Attacking a realm patrol damaged your standing with '+F[party.faction].name+'.');
  }else if(party?.kind==='caravan'){
   changeStanding(party.faction,-28);log('Raiding a merchant caravan damaged your standing with '+F[party.faction].name+'.');
  }
@@ -880,9 +1141,10 @@ function exploreLandmark(id){
  for(const c of [...state.player.activeContracts])if(c.type==='survey'&&(c.landmarkId==null||c.landmarkId===id))completeContract(c.id);
  const food=['camp','grove','ford'].includes(place.kind)?5:2;
  const gold=['ruins','watchtower','shrine'].includes(place.kind)?45:15;
-  state.player.food+=food;state.player.gold+=gold;grantXP(20);
- log('Explored '+place.name+'. Found '+food+' provisions, '+gold+' denars and gained 20 XP.');
- notify(place.name+' explored · +'+food+' food · +'+gold+' denars · +20 XP');
+ const biome=W.tileAt(place.x,place.y).kind,resource=['forest','taiga','rainforest'].includes(biome)?'timber':['mountain','hills'].includes(biome)?'iron':['desert','scrub'].includes(biome)?'salt':['steppe','grass','marsh'].includes(biome)?'grain':'tools',found=2+Math.floor(W.hash(id,state.day+71)*4);
+ state.player.food+=food;state.player.gold+=gold;grantItem(resource,found);grantXP(20);
+ log('Explored '+place.name+'. Found '+food+' provisions, '+found+' '+resource+', '+gold+' denars and gained 20 XP.');
+ notify(place.name+' explored · +'+food+' food · +'+found+' '+resource+' · +'+gold+' denars · +20 XP');
  inspectorDirty=true;refreshUI();saveGame(true);
 }
 function renderActions(items){return items.map(a=>'<button class="btn'+(a.primary?' primary':'')+'" data-act="'+a.act+'"'+(a.id!==undefined?' data-id="'+a.id+'"':'')+(a.disabled?' disabled':'')+'>'+esc(a.label)+'</button>').join('')}
@@ -896,7 +1158,7 @@ function setTownView(name,focusTab=false){
 function townRumor(site){
  const nearby=state.parties.filter(p=>p.active&&dist(site.x,site.y,p.x,p.y)<1050)
   .sort((a,b)=>dist(site.x,site.y,a.x,a.y)-dist(site.x,site.y,b.x,b.y))[0];
- if(!nearby)return 'The roads around '+site.name+' are quiet for now. Local traders are watching the weather and waiting for the next caravan.';
+ if(!nearby){const worldNews=state.diplomacy?.history?.[0];if(worldNews&&state.day-worldNews.day<=4)return 'Travelers bring word from the wider realm: '+worldNews.text;return 'The roads around '+site.name+' are quiet for now. Local traders are watching the weather and waiting for the next caravan.';}
  const nearest=W.closestSettlement(nearby.x,nearby.y)?.name||'the nearby roads';
  if(nearby.kind==='bandit')return 'Travelers warn that Outlaw Bandits were seen near '+nearest+'. Keep a watch on the road.';
  if(nearby.kind==='patrol')return (F[nearby.faction]?.name||'A local')+' patrol is moving near '+nearest+'.';
@@ -912,7 +1174,7 @@ function refreshInspector(){
   html+='<p>'+esc(f.culture)+'. Population '+(site.prosperity*120).toLocaleString()+' · garrison '+site.garrison+'.</p>';
   html+='<div class="eventbox"><b>'+esc(f.symbol)+' '+esc(f.motto)+'</b><p>'+esc(f.trait)+'.</p></div>';
   html+='<div class="smallcaps">'+(close?'YOU ARE AT THE GATES':'DISTANCE: '+distance+' MAP UNITS')+'</div>';
-  if(close){const terms=recruitmentTerms(site);html+=renderActions([{act:'visit',id:site.id,label:'🏰 Enter settlement',primary:true},{act:'recruit',id:site.id,label:terms.access?'⚔ Recruit up to '+terms.count+' · '+terms.unit+' denars each':'⚔ Recruitment denied · outlawed',disabled:!terms.access||terms.count<1},{act:'food',id:site.id,label:'🍞 Buy provisions · 35 denars'},{act:'rest',id:site.id,label:'🛌 Rest at an inn · 20 denars'},{act:'rumors',id:site.id,label:'📜 Ask for local rumors'}])}
+  if(close){const terms=recruitmentTerms(site);html+=renderActions([{act:'visit',id:site.id,label:'🏰 Enter settlement',primary:true},{act:'recruit',id:site.id,label:terms.access?'⚔ Recruit up to '+terms.count+' · '+terms.unit+' denars each':'⚔ Recruitment denied · outlawed',disabled:!terms.access||terms.count<1},{act:'food',id:site.id,label:'🍞 Buy provisions at local market'},{act:'rest',id:site.id,label:'🛌 Rest at an inn · 20 denars'},{act:'rumors',id:site.id,label:'📜 Ask for local rumors'}])}
   else html+=renderActions([{act:'travelSettlement',id:site.id,label:'➤ Travel to '+site.name,primary:true}]);
   html+='<p class="subtle">Faction troop progression: '+f.troops.map(esc).join(' → ')+'.</p>';
  }else if(selected.type==='party'){
@@ -1023,16 +1285,26 @@ atlasCanvas.addEventListener('wheel',e=>{
  e.preventDefault();const r=atlasCanvas.getBoundingClientRect();
  atlasZoom(e.deltaY<0?1.18:1/1.18,e.clientX-r.left,e.clientY-r.top);
 },{passive:false});
+function factionDiplomacyLabel(id){
+ if(!state?.diplomacy)return 'Peace · new campaigns begin here';
+ const wars=state.diplomacy.wars.filter(w=>w.a===id||w.b===id).map(w=>F[w.a===id?w.b:w.a].name);
+ const allies=state.diplomacy.alliances.filter(w=>w.a===id||w.b===id).map(w=>F[w.a===id?w.b:w.a].name);
+ const heat=state.diplomacy.tension[id].reduce((n,value,index)=>n+(index===id?0:value),0)/Math.max(1,F.length-1);
+ return wars.length?'At war with '+wars.join(', '):allies.length?'Allied with '+allies.join(', '):heat>=40?'In a rivalry':heat>=18?'Tense peace':'At peace';
+}
 function showFactionDetails(id){
- selectedFaction=id;const f=F[id];
- const enemies=W.wars.filter(pair=>pair.includes(id)).map(pair=>F[pair[0]===id?pair[1]:pair[0]].name);
- const standing=state?.player.reputation[id]||0;
+ selectedFaction=id;const f=F[id],standing=state?.player.reputation[id]||0;
  document.querySelectorAll('[data-faction]').forEach(b=>b.classList.toggle('selected',Number(b.dataset.faction)===id));
- $('factionDetail').innerHTML='<h3><span style="color:'+f.color+'">'+esc(f.symbol)+'</span> '+esc(f.name)+'</h3><p>'+esc(f.culture)+'. '+esc(f.trait)+'.</p><p><em>'+esc(f.motto)+'</em></p><div class="smallcaps">FACTION TROOP TREE · PRESET UPGRADES</div><div class="trooptree">'+f.troops.map((n,i)=>'<div><small>Tier '+(i+1)+'</small>'+esc(n)+'</div>').join('')+'</div><p class="subtle">Capital: '+esc(f.cities[0])+' · 8 settlements. Faction troops use these upgrades unless you eventually found your own faction.</p>'+
- '<p><b>Your standing:</b> '+standingLabel(standing)+' ('+(standing>0?'+':'')+standing+') · <b>Recruiting:</b> '+(standing<=-60?'denied':standing>=40?'up to six volunteers at a discount':'available')+' · <b>Current wars:</b> '+(enemies.length?enemies.map(esc).join(', '):'No declared wars')+'.</p><p class="subtle">Contracts improve standing. Respected travelers pay less for goods; outlawed travelers cannot recruit here. Attacking patrols or caravans damages standing.</p>';
+ const relations=F.filter(other=>other.id!==id).map(other=>({other,value:factionRelation(id,other.id),war:factionsAtWar(id,other.id),ally:factionsAllied(id,other.id),tension:factionTension(id,other.id)}))
+  .sort((a,b)=>b.value-a.value);
+ const current=state?factionDiplomacyLabel(id):'Peace · new campaigns begin in peace';
+ const recent=state?.diplomacy.history.slice(0,4)||[];
+ const relationList=relations.map(r=>'<span class="diplomacy-chip '+(r.war?'war':r.ally?'ally':r.tension>=40?'rivalry':r.tension>=18?'tense':'peace')+'"><b>'+esc(r.other.name)+'</b> '+(r.war?'⚔ War':r.ally?'◆ Ally':r.tension>=40?'Rivalry':r.tension>=18?'Tense':'Peace')+' · '+r.value+'</span>').join('');
+ const news=recent.length?recent.map(e=>'<li><b>Day '+e.day+'</b> · '+esc(e.text)+'</li>').join(''):'<li>Trade ties and border incidents will emerge as your campaign advances.</li>';
+ $('factionDetail').innerHTML='<h3><span style="color:'+f.color+'">'+esc(f.symbol)+'</span> '+esc(f.name)+'</h3><p>'+esc(f.culture)+'. '+esc(f.trait)+'.</p><p><em>'+esc(f.motto)+'</em></p><div class="smallcaps">FACTION TROOP TREE · PRESET UPGRADES</div><div class="trooptree">'+f.troops.map((n,i)=>'<div><small>Tier '+(i+1)+'</small>'+esc(n)+'</div>').join('')+'</div><p class="subtle">Capital: '+esc(f.cities[0])+' · 8 settlements. Faction troops use these upgrades unless you eventually found your own faction.</p><div class="diplomacy-board"><b>Foreign affairs · '+esc(current)+'</b><div class="diplomacy-relations">'+relationList+'</div><details><summary>Recent world news</summary><ul>'+news+'</ul></details></div><p><b>Your standing:</b> '+standingLabel(standing)+' ('+(standing>0?'+':'')+standing+') · <b>Recruiting:</b> '+(standing<=-60?'denied':standing>=40?'up to six volunteers at a discount':'available')+'. Contracts improve standing and trusted travelers pay less.</p>';
 }
 function openFactions(){
- $('factionGrid').innerHTML=F.map(f=>'<button class="faction-card" data-faction="'+f.id+'"><span class="faction-flag" style="background:'+f.color+'">'+esc(f.symbol)+'</span><span><strong>'+esc(f.name)+'</strong><small>'+esc(f.culture)+'</small><small>'+esc(f.trait)+'</small></span></button>').join('');
+ $('factionGrid').innerHTML=F.map(f=>'<button class="faction-card" data-faction="'+f.id+'"><span class="faction-flag" style="background:'+f.color+'">'+esc(f.symbol)+'</span><span><strong>'+esc(f.name)+'</strong><small>'+esc(f.culture)+'</small><small>'+esc(f.trait)+'</small><small class="faction-peace">'+esc(factionDiplomacyLabel(f.id))+'</small></span></button>').join('');
  openModal('screenFactions');showFactionDetails(selectedFaction);
 }
 function showParty(){
@@ -1114,12 +1386,15 @@ button('encounterTalk',()=>{
  $('encounterDialogue').innerHTML='<b>'+esc(partyName(p))+'</b><p>'+esc(line)+'</p>';
 });
 button('encounterTrade',()=>{
- const p=state?.parties.find(x=>x.id===selected?.id);if(!p)return;
- if(p.kind==='caravan'){
-  if(state.player.gold<30){$('encounterDialogue').textContent='You need 30 denars.';return}
-  state.player.gold-=30;state.player.food+=8;
-  log('Purchased eight provisions from a caravan.');
-  $('encounterDialogue').textContent='Trade complete: +8 provisions, -30 denars.';
+ const party=state?.parties.find(x=>x.id===selected?.id);if(!party)return;
+ if(party.kind==='caravan'){
+  if(party.cargo?.resource!=='food'||party.cargo.quantity<1){$('encounterDialogue').textContent='This caravan is not carrying provisions right now.';return}
+  const price=Math.max(1,Math.round(party.cargo.unitPrice||30));
+  if(state.player.gold<price){$('encounterDialogue').textContent='You need '+price+' denars.';return}
+  state.player.gold-=price;state.player.food+=8;if(party.faction!==state.player.origin){setFactionRelation(state.player.origin,party.faction,factionRelation(state.player.origin,party.faction)+1);setFactionTension(state.player.origin,party.faction,factionTension(state.player.origin,party.faction)-1)}party.cargo.quantity--;
+  if(party.cargo.quantity<=0){party.cargo=null;party.tradeTargetId=null;party.path=[];party.pathIndex=0}
+  log('Purchased eight provisions from a traveling caravan for '+price+' denars.');
+  $('encounterDialogue').textContent='Trade complete: +8 provisions, -'+price+' denars.';
   saveGame(true);refreshUI();
  }else $('encounterDialogue').textContent='The captain shares news of bandits on the road.';
 });
@@ -1178,6 +1453,8 @@ $('screenTown').addEventListener('click',e=>{
  if(destination){setTownView(destination.dataset.townView);return}
  const action=e.target.closest('[data-act]');if(action){performSettlementAction(action.dataset.act,Number(action.dataset.id));return}
  const item=e.target.closest('[data-buy-item]');if(item){buyItem(item.dataset.buyItem);return}
+ const sold=e.target.closest('[data-sell-resource]');if(sold){sellResource(sold.dataset.sellResource);return}
+ if(e.target.closest('[data-sell-food]')){sellFood();return}
  const contract=e.target.closest('[data-contract-accept]');if(contract)acceptContract(contract.dataset.contractAccept,state.currentTownId);
 });
 document.querySelector('.town-nav').addEventListener('keydown',e=>{
@@ -1189,7 +1466,7 @@ document.querySelector('.town-nav').addEventListener('keydown',e=>{
 $('inspectorContent').addEventListener('click',e=>{
  const b=e.target.closest('[data-act]');if(!b||!state)return;
  const id=Number(b.dataset.id),act=b.dataset.act;
- if(['recruit','food','rest','rumors','visit'].includes(act))performSettlementAction(act,id);
+ if(['recruit','food','rest','rumors','visit','granary'].includes(act))performSettlementAction(act,id);
  else if(act==='travelSettlement')travelTo(S[id].x,S[id].y,id);
  else if(act==='travelParty')followParty(id);
  else if(act==='meetParty'){const p=state.parties.find(v=>v.id===id);if(p)openEncounter(p)}
@@ -1275,7 +1552,7 @@ function init(){
 }
 init();
 window.UACampaignDebug={getState:()=>state,getCamera:()=>camera,newCampaign:startCampaign,loadGame,saveGame,
- travelTo,advance:stepTravel,stepParties,world:W,showFactionDetails,refreshUI,performSettlementAction,upgradeRoster,skirmish,drawWorld,showScreen,zoomAt};
+ travelTo,advance:stepTravel,stepParties,world:W,showFactionDetails,refreshUI,performSettlementAction,upgradeRoster,skirmish,drawWorld,showScreen,zoomAt,market:townMarket,marketPrice,buyItem,sellResource,sellFood,buildGranary,advanceEconomy,diplomacyTick:diplomacyDay,advanceDay,showTown,factionDiplomacyLabel,chooseCaravanTrade,deliverCaravan};
 })();
 
 
