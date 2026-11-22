@@ -1,5 +1,13 @@
 # Untitled Armies
 
+## V4.9 — A living economy and changing alliances
+
+- **Settlements make and use resources.** Grain, timber, iron, tools and salt reflect each site's terrain and role. Town and castle workshops turn timber and iron into tools; households use grain to supply provisions, and war strains grain and iron reserves.
+- **Trade follows supply and demand.** Every settlement has finite market stock; shortages raise prices within a fair price range. Buy and sell five-resource bundles, discover local materials at landmarks, and watch caravans carry surplus goods to markets that need them. Bandit raids can steal cargo.
+- **Build useful local projects.** Spend denars, timber, iron and tools on a granary to expand grain storage and increase daily provisions. Project and market changes are saved with the campaign.
+- **Peace can give way to conflict.** All ten realms start peacefully. Border disputes and shortages can strain relations, while trade compacts build trust and may lead to alliances. Wars require day 35, poor relations and high tension; one defensive ally may join. Each realm can fight at most two wars, the world allows at most two at a time, and a thirty-day truce with reduced tension slows repeat wars.
+- **Older campaigns remain usable.** V4.x saves keep their existing format and receive safe defaults for diplomacy, resources and settlement projects.
+
 ## V4.8 — Bannerlord-inspired town activity hub
 
 - **Town visits open a proper activity hub.** Choose Overview, Market, Inn, Garrison, Contracts or Local News, with clear actions and a quick return to the road.
