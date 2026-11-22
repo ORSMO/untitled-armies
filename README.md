@@ -12,6 +12,7 @@
 - **The campaign fits a short phone screen.** The map takes the available space, status chips scroll in a compact header, side panels open as drawers, and travel controls stay within thumb reach.
 - **Town, encounter and menu screens are rearranged for landscape.** Town services, inventory and contracts remain usable in short-height screens, with independent scrolling for long lists.
 - **Tactical battles keep a wide field and reachable controls.** The campaign battle now enforces the same landscape prompt and uses compact battlefield HUD, equipment and army-order controls. Classic and Lab already use landscape-only play; their controls remain touch-friendly.
+
 ## V4.6 — Kingdom standing and a living road network
 
 - **Kingdoms remember your actions.** Existing faction reputation now has clear standing tiers. Contracts and victories against bandits improve local standing; attacking a patrol or caravan damages your relationship with its kingdom.
