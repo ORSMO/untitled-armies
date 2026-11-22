@@ -233,3 +233,25 @@
 #screenTown .town-activity-card>.town-activity-arrow{flex:0 0 auto;color:#e1c989;font-size:18px}
 @media(orientation:landscape) and (min-width:600px) and (max-width:1024px){#screenTown #townServices{grid-template-columns:repeat(3,minmax(0,1fr))}#screenTown #townServices .town-activity-card{min-height:62px}}
 
+
+/* Resource trade and evolving diplomacy */
+#screenTown .shop-actions{display:grid;grid-template-columns:1fr;gap:4px;flex:0 0 auto}
+#screenTown .shop-actions .btn{min-height:34px;padding:5px 7px;font-size:9px;white-space:nowrap}
+#screenTown .resource-item{border-color:#88764c;background:linear-gradient(110deg,#2a3424,#17271f)}
+#screenTown .resource-item .shop-icon{font-size:19px}
+#screenTown .resource-item small{line-height:1.35}
+#screenFactions .diplomacy-board{margin-top:10px;padding:10px;border:1px solid #647557;border-radius:9px;background:linear-gradient(120deg,#1e3328,#17271f)}
+#screenFactions .diplomacy-board>b{display:block;color:#ead49f;font:700 13px Georgia,serif}
+#screenFactions .diplomacy-relations{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}
+#screenFactions .diplomacy-chip{padding:4px 7px;border:1px solid #576d53;border-radius:14px;background:#24392b;color:#d8e2cf;font-size:10px}
+#screenFactions .diplomacy-chip.war{border-color:#a45d50;background:#482d29;color:#ffd3c5}
+#screenFactions .diplomacy-chip.ally{border-color:#c4a45e;background:#403b27;color:#f5dfa0}
+#screenFactions .diplomacy-board details{margin-top:6px;color:#bdcbb7;font-size:11px}
+#screenFactions .diplomacy-board summary{min-height:32px;display:flex;align-items:center;cursor:pointer;color:#e3d4aa}
+#screenFactions .diplomacy-board ul{margin:5px 0;padding-left:18px;line-height:1.5}
+#screenFactions .faction-peace{color:#b8c7a9}
+@media(orientation:landscape) and (max-width:1024px){
+ #screenTown .shop-actions .btn{min-height:36px;padding:4px 5px;font-size:8px}
+ #screenFactions .diplomacy-board{padding:6px;margin-top:5px}
+ #screenFactions .diplomacy-chip{font-size:8px;padding:3px 5px}
+}
