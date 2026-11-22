@@ -15,7 +15,7 @@ const factions=[
  {id:9,name:'Red Steppe Khanate',color:'#c66e57',symbol:'➳',culture:'Eastern horse clans',capital:[10600,5770],motto:'The horizon has no walls.',trait:'Fast horse archers and nomadic riders',troops:['Steppe Rider','Steppe Horse Archer','Crimson Khan Guard'],cities:['Kharadan','Tumar','Ordu','Redcrest','Khagan','Uldan','Kesh','Tengri']}
 ];
 
-const wars=[[0,3],[1,2],[3,7],[4,9],[5,6],[7,8]].map(p=>p.slice());
+const wars=[];
 const palette={
  sea:'#284d5a',river:'#638e9a',mountain:'#888a7c',hills:'#929579',
  forest:'#4b7754',grass:'#849c6f',steppe:'#aa9f77',desert:'#c6ae7a',
