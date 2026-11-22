@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#091512">
 <meta name="description" content="Untitled Armies: a medieval campaign sandbox. Explore the vast continent of Asterra, meet ten factions, recruit and upgrade faction troops, and build your legend.">
-<title>Untitled Armies — Asterra Campaign · V4.7</title>
+<title>Untitled Armies — Asterra Campaign · V4.8</title>
 <link rel="stylesheet" href="campaign.css">
 </head>
 <body>
@@ -16,7 +16,7 @@
 </div>
 <div id="game" class="hidden">
  <header class="topbar">
-   <div class="brand"><span class="crest">⚔</span><div><strong>UNTITLED ARMIES</strong><small>ASTERRA CAMPAIGN · V4.7</small></div></div>
+   <div class="brand"><span class="crest">⚔</span><div><strong>UNTITLED ARMIES</strong><small>ASTERRA CAMPAIGN · V4.8</small></div></div>
   <div class="top-center">
    <div class="chip">📜 <b id="hudDay">Day 1 · 08:00</b></div>
    <div class="chip">⚑ <b id="hudRegion">Valdorian Kingdom</b></div>
@@ -90,7 +90,7 @@
    <p class="subtle">Click roaming parties to pursue them as they move. At close range, you can talk, trade or enter battle. Ruins, shrines and camps reward exploration.</p>
   </aside>
  </div>
- <div class="footer-hint">KINGDOM STANDING · LIVING ROADS · COMMAND ARMIES · PHONE LANDSCAPE · ASTERRA CAMPAIGN V4.7 · <a href="classic.html">Classic Combat</a> · <a href="lab.html">Battle Lab</a></div>
+ <div class="footer-hint">KINGDOM STANDING · LIVING ROADS · COMMAND ARMIES · PHONE LANDSCAPE · ASTERRA CAMPAIGN V4.8 · <a href="classic.html">Classic Combat</a> · <a href="lab.html">Battle Lab</a></div>
 </div>
 <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 <section id="screenMenu" class="overlay" aria-label="Main menu">
@@ -119,7 +119,7 @@
    <a href="classic.html" class="btn" style="text-decoration:none;display:block;text-align:center;margin:7px 0">⚔ Classic 50v50 Battle Test</a>
    <a href="lab.html" class="btn" style="text-decoration:none;display:block;text-align:center;margin:7px 0">⚗ Six-Arena Battle Lab</a>
    <button id="menuImport" class="btn">📥 Import Campaign Save</button>
-   <div class="menu-foot">V4.7 · Designed for phone play in landscape. Build trust and lead your company across Asterra.</div>
+   <div class="menu-foot">V4.8 · Designed for phone play in landscape. Build trust and lead your company across Asterra.</div>
   </div>
  </div>
 </section>
@@ -238,13 +238,53 @@
   <div class="modal-actions"><button class="btn" id="modalParty">⚔ Army & Upgrades</button></div>
  </div>
 </section>
-<section id="screenTown" class="overlay hidden" aria-label="Settlement and market">
- <div class="modal large town-modal">
-  <div class="town-heading"><div><div class="smallcaps" id="townFaction">SETTLEMENT</div><h2 id="townName">Town</h2></div><button class="btn primary" id="townLeave">↩ Return to the road</button></div>
-  <p id="townDescription" class="subtle"></p>
-  <div class="town-services" id="townServices"></div>
-  <div class="smallcaps market-caption">LOCAL MARKET · PRICES &amp; STOCK VARY</div><div class="town-shop" id="townShop"></div>
-  <div class="smallcaps contract-board-title contract-caption">CONTRACT BOARD</div><div id="townContracts" class="contract-list"></div>
+<section id="screenTown" class="overlay hidden" aria-label="Settlement visit">
+ <div class="modal large town-modal" role="dialog" aria-modal="true" aria-labelledby="townName" aria-describedby="townDescription">
+  <header class="town-heading">
+   <div class="town-title-block"><div class="smallcaps" id="townFaction">SETTLEMENT</div><h2 id="townName">Town</h2></div>
+   <button class="btn primary" id="townLeave" type="button">↩ Return to the road</button>
+  </header>
+  <p id="townDescription" class="subtle town-description"></p>
+  <nav class="town-nav" role="tablist" aria-orientation="horizontal" aria-label="Town activities">
+   <button class="town-nav-button is-active" id="townTabOverview" type="button" data-town-view="overview" role="tab" aria-selected="true" aria-controls="townPanelOverview">🏘 Overview</button>
+   <button class="town-nav-button" id="townTabMarket" type="button" data-town-view="market" role="tab" aria-selected="false" aria-controls="townPanelMarket" tabindex="-1">🛒 Market</button>
+   <button class="town-nav-button" id="townTabInn" type="button" data-town-view="inn" role="tab" aria-selected="false" aria-controls="townPanelInn" tabindex="-1">🍺 Inn</button>
+   <button class="town-nav-button" id="townTabGarrison" type="button" data-town-view="garrison" role="tab" aria-selected="false" aria-controls="townPanelGarrison" tabindex="-1">🛡 Garrison</button>
+   <button class="town-nav-button" id="townTabContracts" type="button" data-town-view="contracts" role="tab" aria-selected="false" aria-controls="townPanelContracts" tabindex="-1">📜 Contracts</button>
+   <button class="town-nav-button" id="townTabNews" type="button" data-town-view="news" role="tab" aria-selected="false" aria-controls="townPanelNews" tabindex="-1">🗞 Local news</button>
+  </nav>
+  <div class="town-content">
+   <section class="town-panel is-active" id="townPanelOverview" data-town-panel="overview" role="tabpanel" aria-labelledby="townTabOverview">
+    <div class="town-welcome-card">
+     <div class="smallcaps">THE TOWN SQUARE</div>
+     <p>Take a moment in town. Visit the market, find a bed at the inn, gather recruits, or hear what is happening on the roads.</p>
+    </div>
+    <div class="town-services-heading"><h3>Choose what to do</h3><span>Time stands still while you are here.</span></div>
+    <div class="town-services" id="townServices" aria-label="Town square actions"></div>
+   </section>
+   <section class="town-panel" id="townPanelMarket" data-town-panel="market" role="tabpanel" aria-labelledby="townTabMarket" hidden>
+    <div class="town-destination-heading"><div class="smallcaps market-caption">LOCAL MARKET</div><p>Browse supplies and equipment. Stock and prices vary by settlement.</p></div>
+    <div class="town-shop" id="townShop" aria-label="Items for sale"></div>
+   </section>
+   <section class="town-panel" id="townPanelInn" data-town-panel="inn" role="tabpanel" aria-labelledby="townTabInn" hidden>
+    <div class="town-destination-heading"><div class="smallcaps">THE INN</div><p>Rest, recover, and let your wounded soldiers heal before taking the road again.</p></div>
+   <div class="town-service-summary" id="townInnSummary" aria-label="Party condition at the inn"></div>
+    <div class="town-panel-actions" id="townInnAction" aria-label="Inn services"></div>
+   </section>
+   <section class="town-panel" id="townPanelGarrison" data-town-panel="garrison" role="tabpanel" aria-labelledby="townTabGarrison" hidden>
+    <div class="town-destination-heading"><div class="smallcaps">THE GARRISON</div><p>Recruit local volunteers and strengthen your company.</p></div>
+   <div class="town-service-summary" id="townGarrisonSummary" aria-label="Garrison and recruitment details"></div>
+    <div class="town-panel-actions" id="townGarrisonAction" aria-label="Recruitment services"></div>
+   </section>
+   <section class="town-panel" id="townPanelContracts" data-town-panel="contracts" role="tabpanel" aria-labelledby="townTabContracts" hidden>
+    <div class="town-destination-heading"><div class="smallcaps contract-board-title contract-caption">CONTRACT BOARD</div><p>Take on work from local patrons and earn coin, experience, and renown.</p></div>
+    <div id="townContracts" class="contract-list" aria-label="Available contracts"></div>
+   </section>
+   <section class="town-panel" id="townPanelNews" data-town-panel="news" role="tabpanel" aria-labelledby="townTabNews" hidden>
+    <div class="town-destination-heading"><div class="smallcaps">GOSSIP &amp; RUMORS</div><p id="townNewsText">Ask around for reports from nearby roads and settlements.</p></div>
+    <div class="town-panel-actions" id="townNewsAction" aria-label="Local news services"></div>
+   </section>
+  </div>
  </div>
 </section>
 <div class="mobile-timebar" aria-label="Time controls">
