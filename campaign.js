@@ -434,8 +434,9 @@ function performSettlementAction(action,id){
   for(const group of p.roster)if(group.wounded)group.wounded=Math.max(0,group.wounded-3);
   log('Rested at '+site.name+'.');notify('Rested, healed and started a new day.');
  }else if(action==='rumors'){
-  log('Rumor: scouts report bandits on roads near '+site.name+'.');
-  notify('Villagers warn you about raiders and distant wars.');
+  const report=townRumor(site);$('townNewsText').textContent=report;
+  log('Rumor in '+site.name+': '+report);
+  notify('Fresh rumors heard in '+site.name+'.');
  }else if(action==='visit'){
   log('Visited '+site.name+'. Garrison: '+site.garrison+'. Prosperity: '+site.prosperity+'.');
    showTown(id);saveGame(true);return;
@@ -448,17 +449,28 @@ function showTown(id){
  $('townName').textContent=site.name;$('townFaction').textContent=site.type.toUpperCase()+' · '+f.name;
  const standing=Number(state.player.reputation[site.faction])||0;
  $('townDescription').textContent=f.culture+' · '+site.prosperity+' prosperity · Garrison '+site.garrison+'. Your standing: '+standingLabel(standing)+' ('+(standing>0?'+':'')+standing+'). Morale '+Math.round(state.player.morale)+' · Daily wages '+dailyWages()+'. The road and world stand still while you are inside.';
- $('townServices').innerHTML=renderActions([
-  {act:'recruit',id,label:recruitmentTerms(site).access?'Recruit up to '+recruitmentTerms(site).count+' volunteers · '+recruitmentTerms(site).unit+' denars each':'Recruitment denied · standing outlawed',disabled:!recruitmentTerms(site).access||recruitmentTerms(site).count<1},
-  {act:'food',id,label:'Buy provisions · 35 denars'},
-  {act:'rest',id,label:'Rest at the inn · 20 denars'},
-  {act:'rumors',id,label:'Ask for local news'}
- ]);
+ const destinations=[
+  {view:'market',icon:'🛒',name:'Visit the market',detail:'Trade for food, arms, and armor.'},
+  {view:'inn',icon:'🍺',name:'Find the inn',detail:'Rest, heal, and recover the company.'},
+  {view:'garrison',icon:'🛡',name:'Visit the garrison',detail:'Recruit volunteers for your party.'},
+  {view:'contracts',icon:'📜',name:'Read the contract board',detail:'Find work and earn coin and renown.'},
+  {view:'news',icon:'🗞',name:'Ask around',detail:'Hear what travelers say about the roads.'}
+ ];
+ $('townServices').innerHTML=destinations.map(d=>'<button class="town-activity-card" type="button" data-town-view="'+d.view+'" aria-label="'+esc(d.name+'. '+d.detail)+'"><span class="town-activity-icon" aria-hidden="true">'+d.icon+'</span><span><b>'+esc(d.name)+'</b><small>'+esc(d.detail)+'</small></span><span class="town-activity-arrow" aria-hidden="true">›</span></button>').join('');
+ const terms=recruitmentTerms(site),canRecruit=terms.access&&terms.count>0;
+ const wounded=state.player.roster.reduce((sum,group)=>sum+(group.wounded||0),0);
+ $('townInnSummary').innerHTML='<div class="town-service-stat"><b>'+state.player.hp+' / 100</b><small>Hero health</small></div><div class="town-service-stat"><b>'+Math.round(state.player.morale)+' / 100</b><small>Company morale</small></div><div class="town-service-stat"><b>'+wounded+'</b><small>Wounded soldiers</small></div><p class="town-service-note">A night at the inn costs 20 denars, restores health and morale, treats up to 3 wounded soldiers per troop group, and advances the campaign to morning. Food and wages may be due.</p>';
+ $('townGarrisonSummary').innerHTML='<div class="town-service-stat"><b>'+site.garrison.toLocaleString()+'</b><small>Garrisoned defenders</small></div><div class="town-service-stat"><b>'+terms.count+'</b><small>Volunteers available</small></div><div class="town-service-stat"><b>'+rosterCount()+' / '+MAXPARTY+'</b><small>Company capacity</small></div><p class="town-service-note">Local '+esc(F[site.faction].troops[0])+' cost '+terms.unit+' denars each. Your standing here is '+esc(standingLabel(standing).toLowerCase())+'.</p>';
+ $('townInnAction').innerHTML=renderActions([{act:'rest',id,primary:true,label:'Rest at the inn · 20 denars'}]);
+ $('townGarrisonAction').innerHTML=renderActions([{act:'recruit',id,primary:true,label:!terms.access?'Recruitment unavailable · standing outlawed':terms.count>0?'Recruit '+terms.count+' '+F[site.faction].troops[0]+' · '+(terms.count*terms.unit)+' denars':'No volunteers available',disabled:!canRecruit}]);
+ $('townNewsText').textContent=townRumor(site);
+ $('townNewsAction').innerHTML=renderActions([{act:'rumors',id,primary:true,label:'Ask for fresh news'}]);
  const market=townMarket(id);
  $('townShop').innerHTML=market.map(item=>{const it=ITEMS[item.id],owned=item.id==='food'?state.player.food:state.player.inventory[item.id]||0;
   return '<article class="shop-item"><span class="shop-icon">'+it.icon+'</span><span><b>'+esc(it.name)+'</b><small>'+(it.slot?ITEM_SLOT_LABELS[it.slot]+' · '+owned+' owned':owned+' owned')+' · '+item.stock+' in stock</small></span><button class="btn small" data-buy-item="'+item.id+'" '+(item.stock<1||state.player.gold<item.price?'disabled':'')+'>Buy · '+item.price+'</button></article>'
  }).join('');
  $('townContracts').innerHTML=renderTownContracts(id);
+ setTownView('overview');
  openModal('screenTown');notify('Entered '+site.name+'. Campaign time is paused.');
 }
 function marketGoods(site){
@@ -874,6 +886,22 @@ function exploreLandmark(id){
  inspectorDirty=true;refreshUI();saveGame(true);
 }
 function renderActions(items){return items.map(a=>'<button class="btn'+(a.primary?' primary':'')+'" data-act="'+a.act+'"'+(a.id!==undefined?' data-id="'+a.id+'"':'')+(a.disabled?' disabled':'')+'>'+esc(a.label)+'</button>').join('')}
+function setTownView(name,focusTab=false){
+ const tabs=[...document.querySelectorAll('.town-nav [data-town-view]')],panels=[...document.querySelectorAll('[data-town-panel]')];
+ if(!tabs.some(tab=>tab.dataset.townView===name))name='overview';
+ for(const tab of tabs){const active=tab.dataset.townView===name;tab.setAttribute('aria-selected',active?'true':'false');tab.tabIndex=active?0:-1;if(active&&focusTab)tab.focus()}
+ for(const panel of panels)panel.hidden=panel.dataset.townPanel!==name;
+ const modal=$('screenTown')?.querySelector('.town-modal');if(modal)modal.dataset.townView=name;
+}
+function townRumor(site){
+ const nearby=state.parties.filter(p=>p.active&&dist(site.x,site.y,p.x,p.y)<1050)
+  .sort((a,b)=>dist(site.x,site.y,a.x,a.y)-dist(site.x,site.y,b.x,b.y))[0];
+ if(!nearby)return 'The roads around '+site.name+' are quiet for now. Local traders are watching the weather and waiting for the next caravan.';
+ const nearest=W.closestSettlement(nearby.x,nearby.y)?.name||'the nearby roads';
+ if(nearby.kind==='bandit')return 'Travelers warn that Outlaw Bandits were seen near '+nearest+'. Keep a watch on the road.';
+ if(nearby.kind==='patrol')return (F[nearby.faction]?.name||'A local')+' patrol is moving near '+nearest+'.';
+ return 'Merchants say a '+partyName(nearby).toLowerCase()+' passed near '+nearest+' recently.';
+}
 function refreshInspector(){
  if(!state||!selected){selected={type:'land'}}
  const box=$('inspectorContent');let html='';
@@ -1145,9 +1173,19 @@ button('modalCharacter',showCharacter);
 $('factionGrid').addEventListener('click',e=>{const b=e.target.closest('[data-faction]');if(b)showFactionDetails(Number(b.dataset.faction))});
 $('partyModalContent').addEventListener('click',e=>{const b=e.target.closest('[data-upgrade]');if(b){upgradeRoster(Number(b.dataset.upgrade));showParty()}});
 $('characterModalContent').addEventListener('click',e=>{const equip=e.target.closest('[data-equip]'),stat=e.target.closest('[data-stat]'),perk=e.target.closest('[data-perk]');if(equip)equipItem(equip.dataset.equip);else if(stat)improveStat(stat.dataset.stat);else if(perk)learnPerk(perk.dataset.perk)});
-$('townServices').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(b)performSettlementAction(b.dataset.act,Number(b.dataset.id))});
-$('townShop').addEventListener('click',e=>{const b=e.target.closest('[data-buy-item]');if(b)buyItem(b.dataset.buyItem)});
-$('townContracts').addEventListener('click',e=>{const b=e.target.closest('[data-contract-accept]');if(b)acceptContract(b.dataset.contractAccept,state.currentTownId)});
+$('screenTown').addEventListener('click',e=>{
+ const destination=e.target.closest('[data-town-view]');
+ if(destination){setTownView(destination.dataset.townView);return}
+ const action=e.target.closest('[data-act]');if(action){performSettlementAction(action.dataset.act,Number(action.dataset.id));return}
+ const item=e.target.closest('[data-buy-item]');if(item){buyItem(item.dataset.buyItem);return}
+ const contract=e.target.closest('[data-contract-accept]');if(contract)acceptContract(contract.dataset.contractAccept,state.currentTownId);
+});
+document.querySelector('.town-nav').addEventListener('keydown',e=>{
+ const current=e.target.closest('[data-town-view]');if(!current)return;
+ const tabs=[...document.querySelectorAll('.town-nav [data-town-view]')],index=tabs.indexOf(current);let next=index;
+ if(e.key==='ArrowRight')next=(index+1)%tabs.length;else if(e.key==='ArrowLeft')next=(index-1+tabs.length)%tabs.length;else if(e.key==='Home')next=0;else if(e.key==='End')next=tabs.length-1;else return;
+ e.preventDefault();setTownView(tabs[next].dataset.townView,true);
+});
 $('inspectorContent').addEventListener('click',e=>{
  const b=e.target.closest('[data-act]');if(!b||!state)return;
  const id=Number(b.dataset.id),act=b.dataset.act;
