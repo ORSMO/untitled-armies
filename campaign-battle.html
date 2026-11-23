@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — Battle · V4.10.3</title>
+<title>Untitled Armies — Battle · V4.10.4</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -2158,6 +2158,52 @@ function campaignFormationSlots(troops,shape,center){
  for(const slot of slots)slot.x-=meanX;
  return slots;
 }
+function formationHeading(center,enemy,fallback=0){
+ if(!enemy)return fallback;
+ const dx=enemy.x-center.x,dy=enemy.y-center.y;
+ return Math.hypot(dx,dy)>12?Math.atan2(dy,dx):fallback;
+}
+function formationEnemies(){
+ const soldiers=foes.filter(marchReadyTroop);
+ if(soldiers.length)return soldiers;
+ return commanders.foe&&marchReadyTroop(commanders.foe)?[commanders.foe]:[];
+}
+function rotateFormationSlots(slots,angle){
+ const cos=Math.cos(angle),sin=Math.sin(angle);
+ return slots.map(({unit,x,y})=>({unit,x:x*cos-y*sin,y:x*sin+y*cos}));
+}
+function assignNearbyFormationSlots(slots,center,shape){
+ const groups=new Map();
+ for(const slot of slots){
+  const unit=slot.unit;
+  const key=unit.unitRole+':'+(isWall(shape)&&hasWallEquipment(unit,shape));
+  if(!groups.has(key))groups.set(key,[]);
+  groups.get(key).push(slot);
+ }
+ // Keep the roles in their intended rows, but avoid crossing the line just
+ // to swap two soldiers with the same role and equipment.
+ for(const row of groups.values()){
+  const available=new Set(row);
+  const pairs=row.flatMap(({unit})=>row.map(slot=>({
+   unit,slot,distance:Math.hypot(unit.x-center.x-slot.x,unit.y-center.y-slot.y)
+  }))).sort((a,b)=>a.distance-b.distance);
+  const assigned=new Set();
+  for(const {unit,slot} of pairs){
+   if(!available.has(slot)||assigned.has(unit))continue;
+   slot.unit=unit;
+   available.delete(slot);assigned.add(unit);
+  }
+ }
+}
+function formationBounds(slots){
+ const margin=16;
+ return {
+  minX:margin-Math.min(...slots.map(slot=>slot.x)),
+  minY:margin-Math.min(...slots.map(slot=>slot.y)),
+  maxX:W-margin-Math.max(...slots.map(slot=>slot.x)),
+  maxY:H-margin-Math.max(...slots.map(slot=>slot.y))
+ };
+}
 function beginCampaignMarch(order,destination,group=selectedGroup){
  const troops=friends.filter(unit=>marchReadyTroop(unit)&&(group==='all'||(group==='reserve'?unit.squadReserve:unit.unitRole===group)));
  if(!troops.length||!battleNavigation)return false;
@@ -2167,18 +2213,15 @@ function beginCampaignMarch(order,destination,group=selectedGroup){
   showBattleMessage(shape==='shieldwall'?'Select at least two infantry with shields.':'Select at least two infantry with spears or pikes.',4000);
   return false;
  }
- const slots=campaignFormationSlots(troops,shape,from);
- const margin=16;
- const bounds={
-  minX:margin-Math.min(...slots.map(slot=>slot.x)),
-  minY:margin-Math.min(...slots.map(slot=>slot.y)),
-  maxX:W-margin-Math.max(...slots.map(slot=>slot.x)),
-  maxY:H-margin-Math.max(...slots.map(slot=>slot.y))
- };
+ const previous=campaignMarches.get(group)?.heading??0;
+ const enemies=formationEnemies();
+ const heading=formationHeading(from,enemies.length?troopCenter(enemies,home('foe')):null,previous);
+ const slots=rotateFormationSlots(campaignFormationSlots(troops,shape,from),heading-(shape==='current'?previous:0));
+ const bounds=formationBounds(slots);
  // Leave enough clearance for every slot as the group follows the route.
- const radius=Math.max(...slots.map(slot=>Math.hypot(slot.x,slot.y)))+margin;
+ const radius=Math.max(...slots.map(slot=>Math.hypot(slot.x,slot.y)));
  const obstacles=battleRocks.map(rock=>{
-  const scale=1+radius/Math.min(rock.rx,rock.ry);
+  const scale=1+(radius+16)/Math.min(rock.rx,rock.ry);
   return {x:rock.x,y:rock.y,rx:rock.rx*scale,ry:rock.ry*scale};
  });
  const anchor=battleNavigation.projectPoint(from,obstacles,bounds);
@@ -2187,23 +2230,41 @@ function beginCampaignMarch(order,destination,group=selectedGroup){
   showBattleMessage('No room for this formation. Try a narrower shape.',3500);
   return false;
  }
+ if(shape!=='current')assignNearbyFormationSlots(slots,anchor,shape);
  if(group==='all'){
   campaignMarches.clear();
   generalOrders={all:order,infantry:null,archer:null,cavalry:null,horseArcher:null,reserve:null};
  }else generalOrders[group]=order;
- campaignMarches.set(group,{order,anchor,path,index:0,slots});
+ campaignMarches.set(group,{order,anchor,path,index:0,slots,heading,radius});
  nextEngagementPlan=0;
  const end=path[path.length-1];
  if(destination)marker={x:end.x,y:end.y,when:t};
  return true;
 }
+function turnCampaignMarch(march,slots,enemy,budget){
+ const desired=formationHeading(march.anchor,enemy,march.heading);
+ const difference=Math.atan2(Math.sin(desired-march.heading),Math.cos(desired-march.heading));
+ if(Math.abs(difference)<.035||budget<=0)return {slots,budget};
+ const limit=budget*.45/Math.max(10,march.radius);
+ const turn=clamp(difference,-limit,limit);
+ const rotated=rotateFormationSlots(slots,turn),bounds=formationBounds(rotated);
+ const fits=point=>point.x>=bounds.minX&&point.x<=bounds.maxX&&point.y>=bounds.minY&&point.y<=bounds.maxY;
+ // The route already clears a circle around every slot. Check the remaining
+ // anchors against the new map-edge limits before allowing the turn.
+ if(!fits(march.anchor)||!march.path.slice(march.index).every(fits))return {slots,budget};
+ march.heading+=turn;
+ march.slots=rotateFormationSlots(march.slots,turn);
+ return {slots:rotated,budget:budget-Math.abs(turn)*march.radius};
+}
 function advanceCampaignMarches(dt){
  const targets=new Map();
  if(!campaignMarches.size)return targets;
  const enemies=members('foe').filter(marchReadyTroop);
+ const mainForce=formationEnemies();
+ const target=mainForce.length?troopCenter(mainForce,home('foe')):null;
  for(const [group,march] of campaignMarches){
   if(generalOrders[group]!==march.order){campaignMarches.delete(group);continue}
-  const slots=march.slots.filter(({unit})=>marchReadyTroop(unit)&&marchingGroup(unit)===group);
+  let slots=march.slots.filter(({unit})=>marchReadyTroop(unit)&&marchingGroup(unit)===group);
   if(!slots.length){campaignMarches.delete(group);continue}
   if(march.order==='attack'&&(march.index>=march.path.length||
      slots.some(({unit})=>enemies.some(enemy=>Math.hypot(enemy.x-unit.x,enemy.y-unit.y)<75)))){
@@ -2211,14 +2272,15 @@ function advanceCampaignMarches(dt){
   }
   const ready=slots.every(({unit,x,y})=>unit.stagger<=0&&Math.hypot(unit.x-march.anchor.x-x,unit.y-march.anchor.y-y)<=4);
   const speed=troopMarchSpeed*Math.min(...slots.map(({unit})=>terrainSpeed(unit)));
+  let travel=speed*dt;
+  if(ready)({slots,budget:travel}=turnCampaignMarch(march,slots,target,travel));
   const point=march.path[march.index];
   if(ready&&point){
    const dx=point.x-march.anchor.x,dy=point.y-march.anchor.y,distance=Math.hypot(dx,dy);
-   const travel=speed*dt;
    if(distance<=travel){march.anchor={x:point.x,y:point.y};march.index++}
    else{march.anchor.x+=dx/distance*travel;march.anchor.y+=dy/distance*travel}
   }
-  for(const {unit,x,y} of slots)targets.set(unit,{x:march.anchor.x+x,y:march.anchor.y+y,speed});
+  for(const {unit,x,y} of slots)targets.set(unit,{x:march.anchor.x+x,y:march.anchor.y+y,speed,heading:march.heading});
  }
  return targets;
 }
@@ -2305,9 +2367,9 @@ function avoidCombatCrowd(s,goal,target){
   const skillTurn=maxTurnRate*(.80+(s.skill||45)*.003);
   s.faceAngle+=clamp(delta,-skillTurn*dt,skillTurn*dt);
  }
- function updateFacing(s,target,dist,dt){
+ function updateFacing(s,target,dist,dt,formationAngle){
   // Maintain the army's forward direction until an enemy gets close enough.
-  const forward=s.team==='friend'?0:Math.PI;
+  const forward=formationAngle??(s.team==='friend'?0:Math.PI);
   let angle=forward;
   if(target&&dist<=facingNoticeRange){
    angle=Math.atan2(target.y-s.y,target.x-s.x);
@@ -4204,7 +4266,7 @@ function step(dt){
     s.recoveryDelay=Math.max(s.recoveryDelay,.32);
    }
   }
-  updateFacing(s,target,target?Math.hypot(target.x-s.x,target.y-s.y):Infinity,dt*(s.stagger>0?.38:1));
+  updateFacing(s,target,target?Math.hypot(target.x-s.x,target.y-s.y):Infinity,dt*(s.stagger>0?.38:1),march?.heading);
   if(command==='attack'&&target&&hasRangedAmmo(s)&&dist>meleeThreatRange(s))
    turnToward(s,Math.atan2(target.y-s.y,target.x-s.x),dt);
   if(command==='stop'||command==='retreat'){
@@ -4696,6 +4758,10 @@ function issueCampaignOrder(order){
  }
  else if(order==='retreat'){
   if(beginCampaignMarch('retreat',home('friend')))mode='retreat';
+ }
+ else if(order==='defend'){
+  if(beginCampaignMarch('defend'))mode='defend';
+  else setMode('defend');
  }
  else if(order==='auto')returnToCommander(selectedGroup);
  else setMode(order);
