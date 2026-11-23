@@ -7,6 +7,9 @@ const KEY='ua-campaign-v1',VERSION=1,MAXPARTY=75,MAX_ACTIVE_WORLD_WARS=2;
 const clamp=W.clamp,dist=(a,b,x,y)=>Math.hypot(a-x,b-y),esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const canvas=$('worldCanvas'),ctx=canvas.getContext('2d'),mini=$('minimap'),mctx=mini.getContext('2d');
 let state=null,selected=null,selectedFaction=6,modalStack=[],focus=true,camera={x:3870,y:5320,zoom:.47},keys=new Set(),drag=null,last=0,lastHud=0,lastMini=0,lastSave=0,toastUntil=0,menuOpen=true,miniBase=null,view={w:900,h:600},inspectorDirty=true;
+const mapPointers=new Map();
+let mapPinch=null;
+const TOWN_ENTRY_RANGE=155,LANDMARK_RANGE=145;
 const screens=['screenMenu','screenCreate','screenFactions','screenAtlas','screenOptions','screenPause','screenParty','screenCharacter','screenTown','screenEncounter','screenAftermath'];
 const settingsDefault={borders:true,labels:true,roads:true,minimap:true,follow:true};
 const ITEMS={
@@ -34,6 +37,7 @@ function log(message){if(!state)return;state.messages.unshift({day:state.day,tex
 function showScreen(id){
  for(const s of screens)$(s).classList.toggle('hidden',s!==id);
  menuOpen=!!id;
+ if(menuOpen){keys.clear();resetMapGesture()}
  if(state)state.paused=menuOpen||state.pausedManual;
 }
 function openModal(id){
@@ -88,7 +92,7 @@ function saveGame(silent){
  try{
   const data={version:VERSION,player:state.player,day:state.day,hour:state.hour,
    parties:state.parties.map(p=>({id:p.id,x:p.x,y:p.y,tx:p.tx,ty:p.ty,strength:p.strength,active:p.active,kind:p.kind,faction:p.faction,targetPartyId:p.targetPartyId??null,cargo:p.cargo??null,tradeTargetId:p.tradeTargetId??null})),
-   options:state.options,speed:state.speed,zoom:camera.zoom,visitedLandmarks:state.visitedLandmarks||[],pendingBattleId:state.pendingBattleId||null,
+   options:state.options,speed:state.speed,zoom:camera.zoom,visitedLandmarks:state.visitedLandmarks||[],pendingBattleId:state.pendingBattleId||null,lastEncounter:state.lastEncounter,
    marketStocks:state.marketStocks||{},completedContracts:state.completedContracts||[],diplomacy:state.diplomacy,settlementProjects:state.settlementProjects||{},settlementState:S.map(site=>({prosperity:site.prosperity,garrison:site.garrison}))};
   const serialized=JSON.stringify(data),previous=localStorage.getItem(KEY);
   if(previous&&previous!==serialized){try{const older=localStorage.getItem(KEY+'-backup-1');if(older)localStorage.setItem(KEY+'-backup-2',older);localStorage.setItem(KEY+'-backup-1',previous)}catch(e){}}
@@ -153,7 +157,7 @@ function loadGame(){
    paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,
    followPartyId:null,followRepath:0,visitedLandmarks:Array.isArray(raw.visitedLandmarks)?raw.visitedLandmarks:[],pendingBattleId:raw.pendingBattleId||null,
    parties:[],options:{...settingsDefault,...raw.options},
-   messages:[],lastEncounter:-100,marketStocks:raw.marketStocks&&typeof raw.marketStocks==='object'?raw.marketStocks:{},completedContracts:Array.isArray(raw.completedContracts)?raw.completedContracts:[],diplomacy:normalizeDiplomacy(raw.diplomacy),settlementProjects:raw.settlementProjects&&typeof raw.settlementProjects==='object'?raw.settlementProjects:{}};
+   messages:[],lastEncounter:Number.isFinite(raw.lastEncounter)?raw.lastEncounter:-100,marketStocks:raw.marketStocks&&typeof raw.marketStocks==='object'?raw.marketStocks:{},completedContracts:Array.isArray(raw.completedContracts)?raw.completedContracts:[],diplomacy:normalizeDiplomacy(raw.diplomacy,raw.day||1),settlementProjects:raw.settlementProjects&&typeof raw.settlementProjects==='object'?raw.settlementProjects:{}};
   restoreSettlementState(raw.settlementState);state.parties=generateParties();initializeMarkets();
   if(Array.isArray(raw.parties))for(const saved of raw.parties){let a=state.parties.find(v=>v.id===saved.id);
     if(!a&&Number.isInteger(saved.id)&&saved.id>=68&&['bandit','patrol','caravan'].includes(saved.kind)&&
@@ -163,6 +167,11 @@ function loadGame(){
     }
     if(a&&Number.isFinite(saved.x)&&Number.isFinite(saved.y)){
      Object.assign(a,saved);a.path=[];a.pathIndex=0;
+     if(a.kind==='caravan'&&a.cargo){
+      const cargo=a.cargo;
+      if(!S[a.tradeTargetId]||!S[cargo.from]||!['food',...TRADE_RESOURCES].includes(cargo.resource)||
+         !Number.isInteger(cargo.quantity)||cargo.quantity<1)a.cargo=null;
+     }
      if(!W.tileAt(a.x,a.y).walk){
       const land=W.nearestWalk(Math.floor(a.x/W.TILE),Math.floor(a.y/W.TILE));
       if(land){a.x=(land.x+.5)*W.TILE;a.y=(land.y+.5)*W.TILE}
@@ -198,13 +207,15 @@ function zoomAt(mult,sx=view.w/2,sy=view.h/2){
  camera.x=clamp(camera.x,0,W.WIDTH);camera.y=clamp(camera.y,0,W.HEIGHT);focus=false;lastMini=0;
 }
 function travelTo(x,y,targetId){
- if(!state||state.paused)return;
+ if(!state||menuOpen)return;
+ if(targetId!=null&&dist(state.player.x,state.player.y,x,y)<=TOWN_ENTRY_RANGE){arriveSettlement(targetId);return}
  const route=W.findPath(state.player.x,state.player.y,x,y);
  if(!route.length){notify('No traversable route found.');return}
  state.path=route;state.pathIndex=0;state.targetSettlement=targetId==null?null:targetId;
  state.followPartyId=null;
- state.pausedManual=false;state.paused=false;focus=state.options.follow;
- if(targetId!=null)notify('Traveling to '+S[targetId].name+'.');
+ focus=state.options.follow;
+ if(state.pausedManual)notify('Route set. Resume time to travel.');
+ else if(targetId!=null)notify('Traveling to '+S[targetId].name+'.');
  else notify('Travel route set · '+Math.round(route.length*W.TILE/100)/10+' leagues approximately.');
  refreshUI();
 }
@@ -214,14 +225,14 @@ function partyName(p){
   (F[p.faction]?.name||'Wandering')+' '+(p.kind==='patrol'?'Patrol':'Caravan');
 }
 function followParty(id){
- if(!state||state.paused)return;
+ if(!state||menuOpen)return;
  const party=state.parties.find(p=>p.id===id&&p.active);
  if(!party){notify('That party is no longer on the roads.');return}
  state.followPartyId=id;
- state.followRepath=0;state.targetSettlement=null;
+ state.followRepath=0;state.targetSettlement=null;state.path=[];state.pathIndex=0;
  selected={type:'party',id};focus=true;inspectorDirty=true;
  updateFollow(0);
- if(!state.paused)notify('Following '+partyName(party)+'. Your route adjusts as they move.');
+ if(state.followPartyId===id)notify(state.pausedManual?'Resume time to follow '+partyName(party)+'.':'Following '+partyName(party)+'.');
  refreshUI();
 }
 function updateFollow(dt){
@@ -236,8 +247,13 @@ function updateFollow(dt){
  // the player travels. Reroute periodically instead of only once.
  const lead=party.path.length?
   party.path[Math.min(party.path.length-1,party.pathIndex+3)]:party;
- const route=W.findPath(state.player.x,state.player.y,lead.x,lead.y);
+ let route=W.findPath(state.player.x,state.player.y,lead.x,lead.y);
+ if(!route.length&&lead!==party)route=W.findPath(state.player.x,state.player.y,party.x,party.y);
  if(route.length){state.path=route;state.pathIndex=0}
+ else if(state.pathIndex>=state.path.length){
+  state.followPartyId=null;state.path=[];state.pathIndex=0;inspectorDirty=true;
+  notify('No traversable route to '+partyName(party)+'.');
+ }
  state.followRepath=1.25;
 }
 function walkPlayer(dx,dy,dt){
@@ -246,8 +262,6 @@ function walkPlayer(dx,dy,dt){
  const x=clamp(p.x+dx/mag*spd,15,W.WIDTH-15),y=clamp(p.y+dy/mag*spd,15,W.HEIGHT-15);
  if(!W.tileAt(x,y).walk)return false;
  const d=dist(p.x,p.y,x,y);p.x=x;p.y=y;advanceTime(d);
- if(state.targetSettlement!=null&&dist(p.x,p.y,S[state.targetSettlement].x,S[state.targetSettlement].y)<130)
-  arriveSettlement(state.targetSettlement);
  return true;
 }
 function advanceTime(distance){
@@ -263,7 +277,7 @@ function createDiplomacy(){
  }
  return {relations,tension,wars:[],alliances:[],history:[],truceUntil:{},lastIncidentByPair:{},nextIncidentDay:8};
 }
-function normalizeDiplomacy(raw){
+function normalizeDiplomacy(raw,day){
  const base=createDiplomacy();
  if(!raw||!Array.isArray(raw.relations))return base;
  for(let a=0;a<F.length;a++)for(let b=a+1;b<F.length;b++){
@@ -272,7 +286,7 @@ function normalizeDiplomacy(raw){
   if(Number.isFinite(heat))base.tension[a][b]=base.tension[b][a]=clamp(heat,0,100);
  }
  const validPairs=list=>(Array.isArray(list)?list:[]).filter(x=>x&&Number.isInteger(x.a)&&Number.isInteger(x.b)&&x.a>=0&&x.b>=0&&x.a<F.length&&x.b<F.length&&x.a!==x.b).map(x=>({...x,a:Math.min(x.a,x.b),b:Math.max(x.a,x.b)}));
- base.wars=validPairs(raw.wars).map(w=>({...w,startDay:Number.isFinite(w.startDay)?Math.max(1,w.startDay):Math.max(1,state?.day||1),score:Number.isFinite(w.score)?w.score:0}));base.alliances=validPairs(raw.alliances);
+ base.wars=validPairs(raw.wars).map(w=>({...w,startDay:clamp(Number.isFinite(w.startDay)?w.startDay:day,1,day),score:Number.isFinite(w.score)?w.score:0}));base.alliances=validPairs(raw.alliances);
  base.history=Array.isArray(raw.history)?raw.history.filter(x=>x&&Number.isFinite(x.day)&&typeof x.text==='string').slice(0,12):[];
  base.truceUntil=raw.truceUntil&&typeof raw.truceUntil==='object'?raw.truceUntil:{};
  base.lastIncidentByPair=raw.lastIncidentByPair&&typeof raw.lastIncidentByPair==='object'?raw.lastIncidentByPair:{};
@@ -298,16 +312,37 @@ function declareWar(a,b){
  d.wars.push({a:Math.min(a,b),b:Math.max(a,b),attacker:a,defender:b,startDay:state.day,score:0});
  setFactionRelation(a,b,-40);
  recordDiplomacy(F[a].name+' and '+F[b].name+' have declared war.');
- const pact=d.alliances.find(x=>x.a===b||x.b===b),ally=pact?(pact.a===b?pact.b:pact.a):-1;
- if(ally>=0&&d.wars.length<MAX_ACTIVE_WORLD_WARS&&!factionsAtWar(ally,a)&&!factionsAllied(ally,a)&&factionRelation(ally,a)<38&&activeFor(ally)<2){
+ const allies=d.alliances.filter(pact=>pact.a===b||pact.b===b).map(pact=>pact.a===b?pact.b:pact.a);
+ const ally=allies.find(id=>id!==a&&!factionsAtWar(id,a)&&!factionsAllied(id,a)&&
+  (d.truceUntil[pairKey(id,a)]||0)<=state.day&&factionRelation(id,a)<38&&activeFor(id)<2);
+ if(ally!==undefined&&d.wars.length<MAX_ACTIVE_WORLD_WARS&&activeFor(a)<2){
   d.wars.push({a:Math.min(ally,a),b:Math.max(ally,a),attacker:a,defender:ally,startDay:state.day,score:0,defensive:true});
   setFactionRelation(ally,a,-32);
   recordDiplomacy(F[ally].name+' honored its defensive pact and joined the war.');
  }
 }
 function pairKey(a,b){return Math.min(a,b)+':'+Math.max(a,b)}
+const crossBorderRoads=new Set(W.roadLinks.map(([a,b])=>pairKey(S[a].faction,S[b].faction)));
+function chooseDiplomaticIncident(d){
+ let best=null,bestScore=-Infinity;
+ for(let a=0;a<F.length;a++)for(let b=a+1;b<F.length;b++){
+  const key=pairKey(a,b),last=Number(d.lastIncidentByPair[key])||0;
+  if(pairHas(d.wars,a,b)||pairHas(d.alliances,a,b)||last>state.day-6||(d.truceUntil[key]||0)>state.day)continue;
+  const sharedRoad=crossBorderRoads.has(key),heat=factionTension(a,b);
+  const affinity=W.hash(a+61,b+271);
+  const score=W.hash(state.day+21*a,41*b+713)+(sharedRoad?.7:0)+heat*.016+
+   (affinity>.68?(factionRelation(a,b)-25)*.023:0);
+  if(score>bestScore){bestScore=score;best={a,b,key,affinity}}
+ }
+ return best;
+}
 function diplomacyDay(){
  const d=state.diplomacy;
+ for(const pact of [...d.alliances]){
+  if(factionRelation(pact.a,pact.b)>20&&factionTension(pact.a,pact.b)<45)continue;
+  d.alliances=d.alliances.filter(entry=>entry!==pact);
+  recordDiplomacy(F[pact.a].name+' and '+F[pact.b].name+' ended their alliance.');
+ }
  for(const war of [...d.wars]){
   const age=state.day-war.startDay;
   if(age>=8){setFactionRelation(war.a,war.b,factionRelation(war.a,war.b)+2);setFactionTension(war.a,war.b,factionTension(war.a,war.b)-1)}
@@ -319,21 +354,17 @@ function diplomacyDay(){
   }
  }
  if(state.day>=d.nextIncidentDay){
-  const pairs=[];
-  for(let a=0;a<F.length;a++)for(let b=a+1;b<F.length;b++){
-   const key=pairKey(a,b),last=Number(d.lastIncidentByPair[key])||0;
-   if(!pairHas(d.wars,a,b)&&!pairHas(d.alliances,a,b)&&last<=state.day-6&&(d.truceUntil[key]||0)<=state.day)pairs.push([a,b]);
-  }
-  if(pairs.length){
-   const index=Math.floor(W.hash(state.day,713)*pairs.length),[a,b]=pairs[index],key=pairKey(a,b);
+  const incident=chooseDiplomaticIncident(d);
+  if(incident){
+   const {a,b,key,affinity}=incident;
    const relation=factionRelation(a,b),heat=factionTension(a,b),shortage=Math.min(factionResourceTotal(a,'grain'),factionResourceTotal(b,'grain'))<30;
-   const goodwill=W.hash(state.day,911)>.76;
+   const goodwill=W.hash(state.day,911)+affinity*.8>(shortage?1.2:.97);
    if(goodwill){
-    setFactionRelation(a,b,relation+10);setFactionTension(a,b,heat-12);
+    setFactionRelation(a,b,relation+13);setFactionTension(a,b,heat-12);
     recordDiplomacy(F[a].name+' and '+F[b].name+' opened a shared trade compact.');
    }else{
-    const strain=7+Math.floor(W.hash(state.day,127)*5)+(shortage?4:0);
-    setFactionRelation(a,b,relation-strain);setFactionTension(a,b,heat+9+(shortage?8:0));
+    const strain=10+Math.floor(W.hash(state.day,127)*5)+(shortage?4:0);
+    setFactionRelation(a,b,relation-strain);setFactionTension(a,b,heat+12+(shortage?8:0));
     recordDiplomacy((shortage?'Grain shortages worsened ':'A border dispute strained ')+F[a].name+' and '+F[b].name+' relations.');
    }
    d.lastIncidentByPair[key]=state.day;
@@ -342,7 +373,7 @@ function diplomacyDay(){
     d.alliances.push({a,b,formedDay:state.day});recordDiplomacy(F[a].name+' and '+F[b].name+' formed a defensive alliance.');
    }else if(nextRelation<=-18&&nextHeat>=42&&!factionsAtWar(a,b)&&state.day>=35)declareWar(a,b);
   }
-  d.nextIncidentDay=state.day+4+Math.floor(W.hash(state.day,581)*4);
+  d.nextIncidentDay=state.day+2+Math.floor(W.hash(state.day,581)*2);
  }
 }
 function resourceProduction(site){
@@ -406,14 +437,19 @@ function advanceEconomy(){
   if(underWar&&['capital','castle'].includes(site.type)&&state.day%3===0&&stock.iron>0)stock.iron=Math.max(0,stock.iron-1);
   for(const id of TRADE_RESOURCES){
    if(id==='tools'){
-    if(['town','capital','castle'].includes(site.type)&&stock.iron>=2&&stock.timber>=2){stock.iron--;stock.timber--;stock.tools=Math.min(resourceCapacity(id,site),stock.tools+1)}
+    if(rates.tools&&stock.tools<resourceCapacity(id,site)&&stock.iron>0&&stock.timber>0){
+     stock.iron--;stock.timber--;stock.tools++;
+    }
     continue;
    }
    stock[id]=clamp(stock[id]+rates[id],0,resourceCapacity(id,site));
   }
   if(stock.grain>=grainUse){
    stock.grain-=grainUse;
-   stock.food=Math.min(market.capacity.food||defaultMarketCapacity('food',site),stock.food+(granary?2:1));
+   const normalOutput=granary?2:1;
+   const saltPreservesExtra=stock.salt>0&&stock.food+normalOutput<market.capacity.food&&state.day%3===0;
+   if(saltPreservesExtra)stock.salt--;
+   stock.food=Math.min(market.capacity.food,stock.food+normalOutput+(saltPreservesExtra?1:0));
    site.prosperity=clamp(site.prosperity+.04,0,100);
   }else{
    stock.grain=0;site.prosperity=clamp(site.prosperity-.22,0,100);
@@ -487,21 +523,22 @@ function stepTravel(dt){
  if(traversed)advanceTime(traversed);
  if(state.targetSettlement!=null){
   const site=S[state.targetSettlement];
-  if(dist(p.x,p.y,site.x,site.y)<135)arriveSettlement(site.id);
+  if(dist(p.x,p.y,site.x,site.y)<=TOWN_ENTRY_RANGE){arriveSettlement(site.id);return}
  }
  if(state.pathIndex>=state.path.length&&state.path.length){
   state.path=[];state.pathIndex=0;state.targetSettlement=null;inspectorDirty=true;
  }
 }
 function arriveSettlement(id){
- state.path=[];state.pathIndex=0;state.targetSettlement=null;selected={type:'settlement',id};
+ state.path=[];state.pathIndex=0;state.targetSettlement=null;state.followPartyId=null;selected={type:'settlement',id};
  const site=S[id];log('Arrived at '+site.name+', '+F[site.faction].name+'.');
  if(state.player.quest?.id===1&&site.type==='capital'&&site.faction!==state.player.origin)completeQuest(1);
  for(const c of [...state.player.activeContracts])if(c.type==='courier'&&c.destinationId===id)completeContract(c.id);
- focus=true;inspectorDirty=true;notify('Arrived at '+site.name+'. Visit, recruit or resupply.');
+ focus=true;inspectorDirty=true;showTown(id);refreshUI();saveGame(true);
 }
 function chooseCaravanTrade(p){
- const source=W.closestSettlement(p.x,p.y);if(!source)return null;
+ const source=W.closestSettlement(p.x,p.y);
+ if(!source||dist(p.x,p.y,source.x,source.y)>=135)return null;
  const sourceMarket=ensureMarket(source),candidates=[];
  for(const target of S){
   if(target.id===source.id||dist(source.x,source.y,target.x,target.y)>6200||factionsAtWar(source.faction,target.faction))continue;
@@ -510,13 +547,18 @@ function chooseCaravanTrade(p){
    const cap=resource==='food'?(sourceMarket.capacity.food||defaultMarketCapacity('food',source)):resourceCapacity(resource,source),targetCap=resource==='food'?(targetMarket.capacity.food||defaultMarketCapacity('food',target)):resourceCapacity(resource,target);
    const surplus=(sourceMarket.stock[resource]||0)-cap*.66;
    const shortage=targetCap*.42-(targetMarket.stock[resource]||0);
-   if(surplus<4||shortage<3)continue;
+   if(surplus<(resource==='food'?1:4)||shortage<(resource==='food'?1:3))continue;
    const distance=dist(source.x,source.y,target.x,target.y),score=Math.min(surplus,shortage)*2-distance/1600;
    candidates.push({source,target,resource,quantity:Math.min(resource==='grain'?10:6,Math.floor(surplus),Math.ceil(shortage)),score,distance});
   }
  }
  candidates.sort((a,b)=>b.score-a.score||a.distance-b.distance);
  const trade=candidates[0];if(!trade||trade.quantity<1)return null;
+ const path=W.findPath(p.x,p.y,trade.target.x,trade.target.y);
+ const end=path[path.length-1];
+ if(!end||dist(end.x,end.y,trade.target.x,trade.target.y)>=135)return null;
+ trade.path=path;
+ trade.unitPrice=marketPrice(source,trade.resource);
  sourceMarket.stock[trade.resource]-=trade.quantity;
  return trade;
 }function deliverCaravan(p){
@@ -547,10 +589,33 @@ function chooseCaravanTrade(p){
   if(quarry){dest=quarry;p.targetPartyId=quarry.id}
   else{p.targetPartyId=null;const options=S.filter(s=>s.faction===p.faction);dest=options[(p.id*19+Math.floor(state.day*1.3)+p.strength)%options.length]}
  }else if(p.kind==='caravan'){
-  const trade=chooseCaravanTrade(p);
-  if(trade){p.cargo={resource:trade.resource,quantity:trade.quantity,from:trade.source.id,unitPrice:marketPrice(trade.source,trade.resource)};p.tradeTargetId=trade.target.id;dest=trade.target}
-  else{const source=W.closestSettlement(p.x,p.y),options=S.filter(s=>s.id!==source?.id);dest=options[(p.id*19+Math.floor(state.day*1.3)+p.strength)%options.length];p.cargo=null;p.tradeTargetId=dest.id}
   p.targetPartyId=null;
+  const savedDestination=S[p.tradeTargetId];
+  if(savedDestination&&dist(p.x,p.y,savedDestination.x,savedDestination.y)>=135){
+   const route=W.findPath(p.x,p.y,savedDestination.x,savedDestination.y);
+   const end=route[route.length-1];
+   if(end&&dist(end.x,end.y,savedDestination.x,savedDestination.y)<135){
+    p.path=route;p.pathIndex=0;return;
+   }
+   const origin=S[p.cargo?.from];
+   if(origin){
+    const market=ensureMarket(origin),{resource,quantity}=p.cargo;
+    if(market.capacity[resource])market.stock[resource]=Math.min(market.capacity[resource],market.stock[resource]+quantity);
+   }
+   p.cargo=null;
+  }
+  deliverCaravan(p);
+  const trade=chooseCaravanTrade(p);
+  if(trade){
+   p.cargo={resource:trade.resource,quantity:trade.quantity,from:trade.source.id,unitPrice:trade.unitPrice};
+   p.tradeTargetId=trade.target.id;p.path=trade.path;p.pathIndex=0;
+   return;
+  }
+  const source=W.closestSettlement(p.x,p.y);
+  const options=S.filter(s=>s.id!==source.id&&!factionsAtWar(s.faction,source.faction));
+  if(dist(p.x,p.y,source.x,source.y)>=135)dest=source;
+  else dest=options[(p.id*19+state.day+p.strength)%options.length];
+  p.tradeTargetId=dest.id;
  }else{const options=S.filter(s=>s.faction===p.faction);dest=options[(p.id*19+Math.floor(state.day*1.3)+p.strength)%options.length];p.targetPartyId=null}
  p.path=W.findPath(p.x,p.y,dest.x,dest.y);p.pathIndex=0;
 }
@@ -579,9 +644,10 @@ function resolveWorldClashes(){
    }else if(raider.kind==='bandit'&&target.kind==='caravan'){
     const raidersWin=raider.strength>=target.strength*.48;
     if(raidersWin){raider.strength=Math.min(28,raider.strength+Math.ceil(target.strength*.12));target.active=false;
-     const destination=state.marketStocks[W.closestSettlement(target.x,target.y)?.id];
-     if(destination)destination.stock.grain=Math.max(0,(destination.stock.grain||0)-5);
-     reportWorldEvent(target.x,target.y,'Bandits raided a '+F[target.faction].name+' caravan; nearby grain supplies were lost.')}
+     const cargo=target.cargo;
+     target.cargo=null;target.tradeTargetId=null;
+     reportWorldEvent(target.x,target.y,'Bandits raided a '+F[target.faction].name+' caravan'+
+      (cargo?' and stole '+cargo.quantity+' '+ITEMS[cargo.resource].name.toLowerCase():'')+'.')}
     else{target.strength=Math.max(4,target.strength-Math.ceil(raider.strength*.12));raider.active=false;
      reportWorldEvent(target.x,target.y,'A caravan guard detail repelled bandits on the road.')}
    }
@@ -636,7 +702,7 @@ function completeQuest(id){
 function performSettlementAction(action,id){
  const site=S[id],p=state.player;
  if(!site)return;
- if(dist(p.x,p.y,site.x,site.y)>155){notify('Travel closer to enter '+site.name+'.');return}
+ if(dist(p.x,p.y,site.x,site.y)>TOWN_ENTRY_RANGE){notify('Travel closer to enter '+site.name+'.');return}
  if(action==='recruit'){
   const terms=recruitmentTerms(site),number=terms.count,cost=number*terms.unit;
   if(!terms.access){notify('The local authorities will not enlist you while your standing is outlawed.');return}
@@ -662,17 +728,23 @@ function performSettlementAction(action,id){
   log('Rumor in '+site.name+': '+report);
   notify('Fresh rumors heard in '+site.name+'.');
  }else if(action==='visit'){
-  log('Visited '+site.name+'. Garrison: '+site.garrison+'. Prosperity: '+site.prosperity+'.');
-   showTown(id);saveGame(true);return;
+  arriveSettlement(id);return;
  }
+ if(action!=='rumors'&&!$('screenTown').classList.contains('hidden'))showTown(id);
+ inspectorDirty=true;
  refreshUI();saveGame(true);
 }
 function showTown(id){
  const site=S[id];if(!site)return;const f=F[site.faction];
+ const alreadyInside=state.currentTownId===id&&!$('screenTown').classList.contains('hidden');
+ const content=$('screenTown').querySelector('.town-content');
+ const activePanel=content?.querySelector('[data-town-panel]:not([hidden])');
+ const shop=$('townShop'),contracts=$('townContracts');
+ const scrollPositions=alreadyInside?[activePanel,shop,contracts].map(element=>[element,element?.scrollTop||0]):[];
  state.currentTownId=id;
  $('townName').textContent=site.name;$('townFaction').textContent=site.type.toUpperCase()+' · '+f.name;
  const standing=Number(state.player.reputation[site.faction])||0;
- $('townDescription').textContent=f.culture+' · '+site.prosperity+' prosperity · Garrison '+site.garrison+'. Your standing: '+standingLabel(standing)+' ('+(standing>0?'+':'')+standing+'). Morale '+Math.round(state.player.morale)+' · Daily wages '+dailyWages()+'. The road and world stand still while you are inside.';
+ $('townDescription').textContent=f.culture+' · '+Math.round(site.prosperity)+' prosperity · Garrison '+site.garrison+'. Your standing: '+standingLabel(standing)+' ('+(standing>0?'+':'')+standing+'). Morale '+Math.round(state.player.morale)+' · Daily wages '+dailyWages()+'.';
  const destinations=[
   {view:'market',icon:'🛒',name:'Visit the market',detail:'Trade for food, arms, and armor.'},
   {view:'inn',icon:'🍺',name:'Find the inn',detail:'Rest, heal, and recover the company.'},
@@ -702,18 +774,21 @@ function showTown(id){
   return '<article class="shop-item'+(resource?' resource-item':'')+'"><span class="shop-icon">'+it.icon+'</span><span><b>'+esc(it.name)+'</b><small>'+esc(itemDetail)+' · '+stockLabel+(resource?' · local supply':'')+'</small></span><span class="shop-actions"><button class="btn small" data-buy-item="'+item.id+'" '+(buyDisabled?'disabled':'')+'>'+buyLabel+'</button>'+sell+'</span></article>'
  }).join('');
  $('townContracts').innerHTML=renderTownContracts(id);
- setTownView('overview');
- openModal('screenTown');notify('Entered '+site.name+'. Campaign time is paused.');
+ if(alreadyInside){for(const [element,position] of scrollPositions){if(element)element.scrollTop=position}}
+ else{
+  setTownView('overview');
+  for(const panel of content?.querySelectorAll('[data-town-panel]')||[])panel.scrollTop=0;
+  shop.scrollTop=0;contracts.scrollTop=0;
+  openModal('screenTown');notify('Entered '+site.name+'.');
+ }
 }
 function marketGoods(site){
  const kind=W.tileAt(site.x,site.y).kind;
  const basic=['food','sword','spear','paddedArmor','roundShield','quiver','rockPouch','arrows','stones'];
- const military=['sword','axe','spear','bow','paddedArmor','leatherArmor','mailArmor','plateArmor','roundShield','kiteShield','quiver','rockPouch','arrows','stones'];
+ const military=['food','sword','axe','spear','bow','paddedArmor','leatherArmor','mailArmor','plateArmor','roundShield','kiteShield','quiver','rockPouch','arrows','stones'];
  let available=site.type==='village'?basic:site.type==='castle'?military:SHOP_ITEMS.filter(id=>!TRADE_RESOURCES.includes(id));
- if(kind==='desert'||kind==='scrub')available=available.filter(id=>id!=='food'||site.type!=='village');
  if(site.type==='village'&&['snow','tundra'].includes(kind))available=available.filter(id=>!['rockPouch','bow'].includes(id));
- const localResources=TRADE_RESOURCES;
- return [...new Set([...available,...localResources])];
+ return [...available,...TRADE_RESOURCES];
 }
 function marketPrice(site,itemId){
  const item=ITEMS[itemId],tile=W.tileAt(site.x,site.y),market=state.marketStocks?.[site.id];
@@ -789,7 +864,7 @@ function buildGranary(id){
 }
 function renderTownContracts(townId){
  const active=state.player.activeContracts,offers=contractOffers(townId),completed=new Set(state.completedContracts||[]);
- const current=active.map(c=>'<article class="contract-card active"><div><b>📜 '+esc(c.title)+'</b><small>'+esc(c.description)+' · Reward '+c.reward+' denars</small></div><span>ACTIVE</span></article>').join('');
+ const current=active.map(c=>'<article class="contract-card active"><div><b>📜 '+esc(c.title)+'</b><small>'+esc(c.description)+' · Reward '+c.reward+' denars</small></div><button class="btn small" type="button" data-contract-cancel="'+esc(c.id)+'">Abandon</button></article>').join('');
  const board=offers.map(c=>{const claimed=completed.has(c.id),already=active.some(a=>a.id===c.id),full=active.length>=3;
   return '<article class="contract-card"><div><b>'+esc(c.title)+'</b><small>'+esc(c.description)+' · '+c.reward+' denars · '+c.xp+' XP</small></div><button class="btn small" data-contract-accept="'+esc(c.id)+'" '+(claimed||already||full?'disabled':'')+'>'+(claimed?'Claimed':already?'Accepted':full?'Party full':'Accept')+'</button></article>'
  }).join('');
@@ -800,6 +875,15 @@ function acceptContract(contractId,townId){
  const offer=contractOffers(townId).find(c=>c.id===contractId);
  if(!offer||(state.completedContracts||[]).includes(contractId)||p.activeContracts.some(c=>c.id===contractId))return;
  p.activeContracts.push(offer);log('Accepted contract: '+offer.title+'.');saveGame(true);refreshUI();showTown(townId);
+}
+function abandonContract(contractId){
+ const active=state.player.activeContracts;
+ const index=active.findIndex(contract=>contract.id===contractId);
+ if(index<0)return;
+ const [contract]=active.splice(index,1);
+ log('Abandoned contract: '+contract.title+'.');
+ showTown(state.currentTownId);refreshUI();saveGame(true);
+ notify('Contract abandoned.');
 }
 function completeContract(contractId){
  const p=state.player,index=p.activeContracts.findIndex(c=>c.id===contractId);if(index<0)return;
@@ -817,7 +901,7 @@ function equipItem(id){
 }
 function improveStat(name){
  const p=state?.player;if(!p||!p.statPoints||!Object.prototype.hasOwnProperty.call(p.stats,name))return;
- p.stats[name]++;p.statPoints--;if(name==='strength')p.maxHp=(p.maxHp||100)+2;
+ p.stats[name]++;p.statPoints--;
  log('Improved '+name+'.');saveGame(true);refreshUI();showCharacter();
 }
 function learnPerk(id){
@@ -869,12 +953,17 @@ function launchCampaignBattle(party){
    equipment:state.player.equipment,inventory:state.player.inventory,stats:state.player.stats,perks:state.player.perks,
    terrainKind:tile.kind,battleX:state.player.x,battleY:state.player.y,mapSeed:battleSeed,
   reserveCount:Math.max(0,state.player.roster.reduce((n,g)=>n+g.count-(g.wounded||0),0)-troops.length)};
+ const previousBattle=state.pendingBattleId;
+ try{localStorage.setItem('ua-campaign-battle-session-v1',JSON.stringify(session))}
+ catch(e){notify('Could not open battle. Please allow local browser storage.');return}
  state.pendingBattleId=sessionId;
  state.lastEncounter=state.day+state.hour/24;
  state.followPartyId=null;state.path=[];state.pathIndex=0;
- if(!saveGame(true)){notify('Browser storage is needed for campaign battles.');return}
- try{localStorage.setItem('ua-campaign-battle-session-v1',JSON.stringify(session))}
- catch(e){notify('Could not open battle. Please allow local browser storage.');return}
+ if(!saveGame(true)){
+  state.pendingBattleId=previousBattle;
+  try{localStorage.removeItem('ua-campaign-battle-session-v1')}catch(e){}
+  notify('Browser storage is needed for campaign battles.');return;
+ }
  window.location.href='campaign-battle.html?campaign=1';
 }
 function skirmish(id){
@@ -888,23 +977,29 @@ function consumeBattleResult(){
  let result=null;
  try{result=JSON.parse(localStorage.getItem('ua-campaign-battle-result-v1')||'null')}catch(e){}
  if(!result||result.sessionId!==state.pendingBattleId)return false;
- try{
-  localStorage.removeItem('ua-campaign-battle-result-v1');
-  localStorage.removeItem('ua-campaign-battle-session-v1');
- }catch(e){}
+ if(!['friend','foe','draw','retreat'].includes(result.winner)||!Array.isArray(result.entries)||
+    !Number.isFinite(result.heroHp)||!Number.isFinite(result.heroMaxHp)||result.heroMaxHp<=0)return false;
  state.pendingBattleId=null;state.followPartyId=null;
  const p=state.player,party=state.parties.find(a=>a.id===result.partyId);
  if(party?.kind==='patrol'){
   changeStanding(party.faction,-18);
   if(party.faction!==p.origin&&!factionsAtWar(p.origin,party.faction)){setFactionRelation(p.origin,party.faction,factionRelation(p.origin,party.faction)-8);setFactionTension(p.origin,party.faction,factionTension(p.origin,party.faction)+18);recordDiplomacy('A clash with '+F[party.faction].name+' patrols strained relations with '+F[p.origin].name+'.')}
-  const war=state.diplomacy.wars.find(w=>(w.a===p.origin||w.b===p.origin)&&(w.a===party.faction||w.b===party.faction));if(war&&result.winner==='friend')war.score=(war.score||0)+(war.attacker===p.origin?1:-1);
+  const war=p.origin!==party.faction&&state.diplomacy.wars.find(w=>pairHas([w],p.origin,party.faction));
+  if(war&&['friend','foe'].includes(result.winner)){
+   const winner=result.winner==='friend'?p.origin:party.faction;
+   war.score=(war.score||0)+(war.attacker===winner?1:-1);
+  }
   log('Attacking a realm patrol damaged your standing with '+F[party.faction].name+'.');
  }else if(party?.kind==='caravan'){
   changeStanding(party.faction,-28);log('Raiding a merchant caravan damaged your standing with '+F[party.faction].name+'.');
  }
  const casualties={killed:0,wounded:0,survivors:0};
- for(const fighter of result.entries||[]){
-  const group=p.roster[fighter.groupIndex];if(!group)continue;
+ const reportedFighters=new Set();
+ for(const fighter of result.entries){
+  if(!Number.isInteger(fighter?.groupIndex)||!Number.isInteger(fighter.slot)||fighter.slot<0)continue;
+  const id=fighter.groupIndex+':'+fighter.slot,group=p.roster[fighter.groupIndex];
+  if(!group||reportedFighters.has(id))continue;
+  reportedFighters.add(id);
   if(fighter.result==='killed'||fighter.result==='surrendered'){
    group.count=Math.max(0,group.count-1);casualties.killed++;
   }else if(fighter.result==='incapacitated'){
@@ -912,9 +1007,9 @@ function consumeBattleResult(){
   }else casualties.survivors++;
  }
  p.roster=p.roster.filter(g=>g.count>0);
- p.hp=Math.max(14,Math.round(100*Math.max(0,result.heroHp)/Math.max(1,result.heroMaxHp)));
-  p.inventory.arrows=Math.max(0,(p.inventory.arrows||0)-(result.heroAmmoSpent||0));
-  p.inventory.stones=Math.max(0,(p.inventory.stones||0)-(result.stonesSpent||0));
+ p.hp=clamp(Math.round(100*result.heroHp/result.heroMaxHp),14,100);
+ p.inventory.arrows=Math.max(0,(p.inventory.arrows||0)-Math.max(0,Number(result.heroAmmoSpent)||0));
+ p.inventory.stones=Math.max(0,(p.inventory.stones||0)-Math.max(0,Number(result.stonesSpent)||0));
  let reason;
  if(result.winner==='friend'){
    p.morale=clamp(p.morale+3-casualties.wounded*1.2-casualties.killed*3,0,100);
@@ -925,7 +1020,16 @@ function consumeBattleResult(){
   const exp=50+(party?.strength||result.enemyInitial||5)*8;
    p.gold+=loot;grantXP(exp);p.renown+=party?.kind==='bandit'?3:1;
   p.food+=party?.kind==='caravan'?5:1;
-  if(party)party.active=false;
+  if(party){
+   party.active=false;
+   if(party.cargo){
+    const {resource,quantity}=party.cargo;
+    if(resource==='food')p.food+=quantity*8;
+    else if(ITEMS[resource]?.resource)grantItem(resource,quantity);
+    log('Recovered the caravan’s '+ITEMS[resource].name.toLowerCase()+'.');
+    party.cargo=null;party.tradeTargetId=null;
+   }
+  }
    const drops=['arrows','stones','sword','leatherArmor','buckler'];
    const drop=drops[Math.abs((party?.id||0)*11+(party?.strength||5)+state.day)%drops.length];grantItem(drop,drop==='arrows'?12:drop==='stones'?6:1);
    reason='Victory. You recovered '+loot+' denars, '+exp+' experience and '+ITEMS[drop].name+'.';
@@ -940,6 +1044,11 @@ function consumeBattleResult(){
   reason='Your party was defeated and retreated. '+lost+' denars lost.';
   log(reason);
  }else{p.morale=clamp(p.morale-3,0,100);reason='You withdrew. The enemy party remains on the roads.';log(reason)}
+ if(party&&result.winner!=='friend'&&Number.isInteger(result.enemySurvivors)&&Number.isInteger(result.enemyInitial)){
+  const losses=clamp(result.enemyInitial-result.enemySurvivors,0,party.strength);
+  party.strength-=losses;
+  party.active=party.strength>0;
+ }
  selected={type:'land'};inspectorDirty=true;state.lastEncounter=state.day+state.hour/24;
  $('aftermathTitle').textContent=result.winner==='friend'?'⚔ Victory':
   result.winner==='retreat'?'↩ Withdrawn from battle':'⚑ Battle lost';
@@ -947,40 +1056,47 @@ function consumeBattleResult(){
   casualties.killed+' killed or captured · '+casualties.wounded+' incapacitated · '+
   casualties.survivors+' returned from battle. Hero health '+p.hp+'% · Company morale '+Math.round(p.morale)+
   '/100. Wounded troops recover at inns.</p>';
- saveGame(true);refreshUI();modalStack=[];showScreen('screenAftermath');
+ if(saveGame(true)){
+  try{
+   localStorage.removeItem('ua-campaign-battle-result-v1');
+   localStorage.removeItem('ua-campaign-battle-session-v1');
+  }catch(e){}
+ }else notify('Battle result kept for retry. Browser storage is full or unavailable.');
+ refreshUI();modalStack=[];showScreen('screenAftermath');
  return true;
 }
 function chooseSelection(x,y){
- const local=toScreen(x,y),allow=28;
- let site=null,sd=allow;
+ const local=toScreen(x,y);
+ let hit=null,nearest=Infinity;
+ function consider(type,entity,radius,labelOffset=0,label=''){
+  const marker=toScreen(entity.x,entity.y);
+  let distance=dist(local.x,local.y,marker.x,marker.y);
+  if(label&&labelOffset){
+   const labelY=marker.y+labelOffset*camera.zoom;
+   const halfWidth=label.length*4.5*camera.zoom;
+   const labelDistance=Math.hypot(Math.max(0,Math.abs(local.x-marker.x)-halfWidth),local.y-labelY);
+   distance=Math.min(distance,labelDistance+6);
+  }
+  if(distance<=radius&&distance<nearest){hit={type,id:entity.id};nearest=distance}
+ }
  for(const s of S){
-  const p=toScreen(s.x,s.y),d=dist(local.x,local.y,p.x,p.y);
-  if(d<sd){sd=d;site=s}
+  if(s.type==='village'&&camera.zoom<.20)continue;
+  const glyph=s.type==='capital'?22:s.type==='castle'?16:s.type==='town'?14:9;
+  const hasLabel=state.options.labels&&(camera.zoom>.17||s.type==='capital');
+  consider('settlement',s,Math.max(22,(glyph+7)*camera.zoom),glyph+21,hasLabel?s.name:'');
  }
- if(site){
-  selected={type:'settlement',id:site.id};inspectorDirty=true;
-  if(dist(state.player.x,state.player.y,site.x,site.y)>155)travelTo(site.x,site.y,site.id);
-  else showTown(site.id);
-  return;
- }
- let party=null,pd=19;
  for(const p of state.parties)if(p.active){
-  const m=toScreen(p.x,p.y),d=dist(m.x,m.y,local.x,local.y);
-  if(d<pd){pd=d;party=p}
+  const label=camera.zoom>.38?(p.kind==='bandit'?'Bandits ':p.kind==='patrol'?'Patrol ':'Caravan ')+p.strength:'';
+  consider('party',p,Math.max(21,16*camera.zoom),26,label);
  }
- if(party){selected={type:'party',id:party.id};inspectorDirty=true;followParty(party.id);return}
-  let landmark=null,ld=22;
- for(const place of W.landmarks||[]){
-  const v=toScreen(place.x,place.y),d=dist(local.x,local.y,v.x,v.y);
-  if(d<ld){ld=d;landmark=place}
+ if(camera.zoom>.23)for(const place of W.landmarks||[]){
+  consider('landmark',place,Math.max(21,18*camera.zoom),31,camera.zoom>.51?place.name:'');
  }
- if(landmark){
-  selected={type:'landmark',id:landmark.id};inspectorDirty=true;
-  if(dist(state.player.x,state.player.y,landmark.x,landmark.y)>145){travelTo(landmark.x,landmark.y,null);notify('Traveling to '+landmark.name+'.');}
-  else exploreLandmark(landmark.id);
-  return;
- }
- selected={type:'land',x,y};inspectorDirty=true;travelTo(x,y,null);
+ selected=hit||{type:'land',x,y};inspectorDirty=true;
+ if(hit?.type==='settlement'){const site=S[hit.id];travelTo(site.x,site.y,site.id)}
+ else if(hit?.type==='party')followParty(hit.id);
+ else if(hit?.type==='landmark')exploreLandmark(hit.id);
+ else travelTo(x,y,null);
 }
 function colorAlpha(hex,alpha){
  if(!/^#[0-9a-fA-F]{6}$/.test(hex))return'rgba(190,215,159,'+alpha+')';
@@ -1125,15 +1241,15 @@ function refreshUI(){
   'Near '+near.name+' · '+region.name:region.name+' · '+Math.floor(p.x)+', '+Math.floor(p.y);
  $('travelText').textContent=state.followPartyId!=null?
   'Following '+partyName(state.parties.find(p=>p.id===state.followPartyId))+' · updating route':
-  state.path.length?'Traveling · '+Math.max(0,state.path.length-state.pathIndex)+' route steps remaining':
-  'Click to travel · WASD to walk · Drag to pan · Scroll to zoom';
+  state.path.length?(state.pausedManual?'Route ready · resume to travel':'Traveling · '+Math.max(0,state.path.length-state.pathIndex)+' route steps remaining'):
+  'Tap to travel · Drag to pan · Pinch to zoom';
  $('minimapHolder').classList.toggle('hidden',!state.options.minimap);
  if(selected?.type==='party'&&state.followPartyId!=null)inspectorDirty=true;
  if(inspectorDirty)refreshInspector();
 }
 function exploreLandmark(id){
  const place=W.landmarks.find(v=>v.id===id);if(!place||!state)return;
- if(dist(state.player.x,state.player.y,place.x,place.y)>145){
+ if(dist(state.player.x,state.player.y,place.x,place.y)>LANDMARK_RANGE){
   travelTo(place.x,place.y,null);return;
  }
  if(state.visitedLandmarks.includes(id)){notify('Already explored this landmark.');return}
@@ -1151,9 +1267,8 @@ function renderActions(items){return items.map(a=>'<button class="btn'+(a.primar
 function setTownView(name,focusTab=false){
  const tabs=[...document.querySelectorAll('.town-nav [data-town-view]')],panels=[...document.querySelectorAll('[data-town-panel]')];
  if(!tabs.some(tab=>tab.dataset.townView===name))name='overview';
- for(const tab of tabs){const active=tab.dataset.townView===name;tab.setAttribute('aria-selected',active?'true':'false');tab.tabIndex=active?0:-1;if(active&&focusTab)tab.focus()}
+ for(const tab of tabs){const active=tab.dataset.townView===name;tab.setAttribute('aria-selected',active?'true':'false');tab.classList.toggle('is-active',active);tab.tabIndex=active?0:-1;if(active&&focusTab)tab.focus()}
  for(const panel of panels)panel.hidden=panel.dataset.townPanel!==name;
- const modal=$('screenTown')?.querySelector('.town-modal');if(modal)modal.dataset.townView=name;
 }
 function townRumor(site){
  const nearby=state.parties.filter(p=>p.active&&dist(site.x,site.y,p.x,p.y)<1050)
@@ -1169,9 +1284,9 @@ function refreshInspector(){
  const box=$('inspectorContent');let html='';
  if(selected.type==='settlement'){
   const site=S[selected.id],f=F[site.faction],distance=Math.round(dist(state.player.x,state.player.y,site.x,site.y));
-  const close=distance<=155;
+  const close=dist(state.player.x,state.player.y,site.x,site.y)<=TOWN_ENTRY_RANGE;
   html='<div class="smallcaps">'+site.type.toUpperCase()+' · '+esc(f.name)+'</div><h2>'+esc(site.name)+'</h2><div class="banner-strip" style="background:'+f.color+'"></div>';
-  html+='<p>'+esc(f.culture)+'. Population '+(site.prosperity*120).toLocaleString()+' · garrison '+site.garrison+'.</p>';
+ html+='<p>'+esc(f.culture)+'. Population '+Math.round(site.prosperity*120).toLocaleString()+' · garrison '+site.garrison+'.</p>';
   html+='<div class="eventbox"><b>'+esc(f.symbol)+' '+esc(f.motto)+'</b><p>'+esc(f.trait)+'.</p></div>';
   html+='<div class="smallcaps">'+(close?'YOU ARE AT THE GATES':'DISTANCE: '+distance+' MAP UNITS')+'</div>';
   if(close){const terms=recruitmentTerms(site);html+=renderActions([{act:'visit',id:site.id,label:'🏰 Enter settlement',primary:true},{act:'recruit',id:site.id,label:terms.access?'⚔ Recruit up to '+terms.count+' · '+terms.unit+' denars each':'⚔ Recruitment denied · outlawed',disabled:!terms.access||terms.count<1},{act:'food',id:site.id,label:'🍞 Buy provisions at local market'},{act:'rest',id:site.id,label:'🛌 Rest at an inn · 20 denars'},{act:'rumors',id:site.id,label:'📜 Ask for local rumors'}])}
@@ -1203,9 +1318,10 @@ function refreshInspector(){
    '<div class="eventbox"><b>'+(visited?'Already explored':'Unexplored destination')+
    '</b><p>'+(visited?'Your company remembers the discoveries made here.':
    'Travel here to explore this location, gather supplies or recover something valuable.')+'</p></div>';
-  html+=renderActions([{act:d<=145?'exploreLandmark':'travelLandmark',id:place.id,
-   label:d<=145?'⚑ Explore this location':'➤ Travel to '+place.name,
-   primary:true,disabled:d<=145&&visited}]);
+  const close=dist(state.player.x,state.player.y,place.x,place.y)<=LANDMARK_RANGE;
+  html+=renderActions([{act:close?'exploreLandmark':'travelLandmark',id:place.id,
+   label:close?'⚑ Explore this location':'➤ Travel to '+place.name,
+   primary:true,disabled:close&&visited}]);
  }else{
   const p=state.player,land=W.tileAt(p.x,p.y),region=currentRegion();
   html='<div class="smallcaps">EXPLORING ASTERRA</div><h2>'+esc(region.name)+'</h2><div class="banner-strip" style="background:'+region.color+'"></div>';
@@ -1344,17 +1460,42 @@ function validateSave(raw){
  return !!raw&&raw.version===VERSION&&raw.player&&typeof raw.player.name==='string'&&
   Number.isFinite(raw.player.x)&&Number.isFinite(raw.player.y)&&Number.isFinite(raw.player.gold)&&
   Number.isInteger(raw.player.origin)&&raw.player.origin>=0&&raw.player.origin<F.length&&
-  Array.isArray(raw.player.roster)&&raw.player.roster.every(g=>Number.isInteger(g.faction)&&g.faction>=0&&g.faction<F.length&&
+  Array.isArray(raw.player.roster)&&raw.player.roster.every(g=>g&&Number.isInteger(g.faction)&&g.faction>=0&&g.faction<F.length&&
    Number.isInteger(g.tier)&&g.tier>=0&&g.tier<=2&&Number.isFinite(g.count)&&g.count>=0);
 }
 function applySaveImport(raw,label){
  if(!validateSave(raw)){notify('That file is not a valid Untitled Armies campaign save.');return false}
+ const previousState=state,previousSelection=selected,previousCamera={...camera},previousFocus=focus;
+ const previousScreen=screens.find(id=>!$(id).classList.contains('hidden'))||null;
+ const previousStack=modalStack;
+ const wasGameHidden=$('game').classList.contains('hidden');
+ const previousSettlements=S.map(site=>({prosperity:site.prosperity,garrison:site.garrison}));
+ let previousSave,previousBackup;
  try{
-  const previous=localStorage.getItem(KEY);if(previous){localStorage.setItem(KEY+'-backup-2',localStorage.getItem(KEY+'-backup-1')||previous);localStorage.setItem(KEY+'-backup-1',previous)}
+  previousSave=localStorage.getItem(KEY);
+  previousBackup=localStorage.getItem(KEY+'-backup-1');
   localStorage.setItem(KEY,JSON.stringify(raw));
-  if(!loadGame())return false;
-  refreshContinue();notify(label+' loaded.');return true;
  }catch(e){notify('Could not import the save. Check available device storage.');return false}
+ if(!loadGame()){
+  try{
+   if(previousSave===null)localStorage.removeItem(KEY);
+   else localStorage.setItem(KEY,previousSave);
+  }catch(e){notify('Could not restore the saved file. Check available device storage.')}
+  state=previousState;selected=previousSelection;camera=previousCamera;focus=previousFocus;
+  modalStack=previousStack;restoreSettlementState(previousSettlements);
+  $('game').classList.toggle('hidden',wasGameHidden);
+  showScreen(previousScreen);resize();inspectorDirty=true;
+  if(state)refreshUI();
+  refreshContinue();
+  return false;
+ }
+ if(previousSave){
+  try{
+   localStorage.setItem(KEY+'-backup-2',previousBackup||previousSave);
+   localStorage.setItem(KEY+'-backup-1',previousSave);
+  }catch(e){}
+ }
+ refreshContinue();notify(label+' loaded.');return true;
 }
 function exportSave(){
  if(state)saveGame(true);
@@ -1399,10 +1540,11 @@ button('encounterTrade',()=>{
  }else $('encounterDialogue').textContent='The captain shares news of bandits on the road.';
 });
 button('encounterFight',()=>{if(selected?.id!=null)skirmish(selected.id)});
-button('encounterLeave',()=>{
+function leaveEncounter(){
  state.lastEncounter=state.day+state.hour/24;state.followPartyId=null;
  state.path=[];state.pathIndex=0;closeModal();notify('You leave the party behind.');
-});
+}
+button('encounterLeave',leaveEncounter);
 button('aftermathContinue',()=>{showScreen(null);refreshUI()});
 button('menuNew',()=>{lockLandscape();selectNew()});button('menuContinue',()=>{lockLandscape();loadGame()});
 button('menuFactions',openFactions);button('menuAtlas',openAtlas);button('menuOptions',showOptions);
@@ -1422,8 +1564,15 @@ button('pauseMenu',showMenu);
 button('btnMenu',()=>showScreen('screenPause'));
 button('btnSave',()=>saveGame(false));
 button('btnParty',showParty);button('btnCharacter',showCharacter);button('btnFactions',openFactions);
-button('btnSidebar',()=>$('sidebar').classList.toggle('mobile-hide'));
-button('btnInspect',()=>$('inspector').classList.toggle('mobile-hide'));
+function toggleMapPanel(id){
+ const phone=window.matchMedia('(max-width: 770px), (orientation: landscape) and (max-width: 1024px)').matches;
+ if(phone){
+  const opening=!$(id).classList.toggle('mobile-hide');
+  if(opening)$(id==='sidebar'?'inspector':'sidebar').classList.add('mobile-hide');
+ }else $(id).classList.toggle('desktop-hide');
+}
+button('btnSidebar',()=>toggleMapPanel('sidebar'));
+button('btnInspect',()=>toggleMapPanel('inspector'));
 button('partyClose',closeModal);
 button('characterClose',closeModal);
 button('townLeave',closeModal);
@@ -1449,12 +1598,13 @@ $('factionGrid').addEventListener('click',e=>{const b=e.target.closest('[data-fa
 $('partyModalContent').addEventListener('click',e=>{const b=e.target.closest('[data-upgrade]');if(b){upgradeRoster(Number(b.dataset.upgrade));showParty()}});
 $('characterModalContent').addEventListener('click',e=>{const equip=e.target.closest('[data-equip]'),stat=e.target.closest('[data-stat]'),perk=e.target.closest('[data-perk]');if(equip)equipItem(equip.dataset.equip);else if(stat)improveStat(stat.dataset.stat);else if(perk)learnPerk(perk.dataset.perk)});
 $('screenTown').addEventListener('click',e=>{
- const destination=e.target.closest('[data-town-view]');
+ const destination=e.target.closest('button[data-town-view]');
  if(destination){setTownView(destination.dataset.townView);return}
  const action=e.target.closest('[data-act]');if(action){performSettlementAction(action.dataset.act,Number(action.dataset.id));return}
  const item=e.target.closest('[data-buy-item]');if(item){buyItem(item.dataset.buyItem);return}
  const sold=e.target.closest('[data-sell-resource]');if(sold){sellResource(sold.dataset.sellResource);return}
  if(e.target.closest('[data-sell-food]')){sellFood();return}
+ const abandoned=e.target.closest('[data-contract-cancel]');if(abandoned){abandonContract(abandoned.dataset.contractCancel);return}
  const contract=e.target.closest('[data-contract-accept]');if(contract)acceptContract(contract.dataset.contractAccept,state.currentTownId);
 });
 document.querySelector('.town-nav').addEventListener('keydown',e=>{
@@ -1476,42 +1626,94 @@ $('inspectorContent').addEventListener('click',e=>{
  else if(act==='partyPanel')showParty();else if(act==='factions')openFactions();
  inspectorDirty=true;refreshUI();
 });
-canvas.addEventListener('pointerdown',e=>{
- if(!state||state.paused)return;
- canvas.setPointerCapture(e.pointerId);
- drag={x:e.clientX,y:e.clientY,cx:camera.x,cy:camera.y,moved:false};
+function resetMapGesture(){
+ mapPointers.clear();drag=null;mapPinch=null;
+}
+function mapPoint(event){
+ const bounds=canvas.getBoundingClientRect();
+ return {x:event.clientX-bounds.left,y:event.clientY-bounds.top};
+}
+function mapPinchBounds(){
+ const [a,b]=mapPointers.values();
+ return {x:(a.x+b.x)/2,y:(a.y+b.y)/2,distance:Math.max(1,dist(a.x,a.y,b.x,b.y))};
+}
+function startMapDrag(point,moved){
+ drag={...point,cx:camera.x,cy:camera.y,moved};
+}
+canvas.addEventListener('pointerdown',event=>{
+ if(!state||menuOpen||event.button!==0||mapPointers.size>=2)return;
+ const point=mapPoint(event);
+ canvas.setPointerCapture(event.pointerId);
+ mapPointers.set(event.pointerId,point);
+ if(mapPointers.size===1){startMapDrag(point,false);return}
+ const bounds=mapPinchBounds();
+ mapPinch={distance:bounds.distance,zoom:camera.zoom,anchor:toWorld(bounds.x,bounds.y)};
+ drag=null;focus=false;
 });
-canvas.addEventListener('pointermove',e=>{
- if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
+canvas.addEventListener('pointermove',event=>{
+ if(!mapPointers.has(event.pointerId))return;
+ const point=mapPoint(event);
+ mapPointers.set(event.pointerId,point);
+ if(mapPinch){
+  const bounds=mapPinchBounds();
+  camera.zoom=clamp(mapPinch.zoom*bounds.distance/mapPinch.distance,.115,1.9);
+  camera.x=clamp(mapPinch.anchor.x-(bounds.x-view.w/2)/camera.zoom,0,W.WIDTH);
+  camera.y=clamp(mapPinch.anchor.y-(bounds.y-view.h/2)/camera.zoom,0,W.HEIGHT);
+  lastMini=0;return;
+ }
+ if(!drag)return;
+ const dx=point.x-drag.x,dy=point.y-drag.y;
  if(Math.hypot(dx,dy)>7)drag.moved=true;
- if(drag.moved){camera.x=clamp(drag.cx-dx/camera.zoom,0,W.WIDTH);camera.y=clamp(drag.cy-dy/camera.zoom,0,W.HEIGHT);focus=false}
+ if(drag.moved){
+  camera.x=clamp(drag.cx-dx/camera.zoom,0,W.WIDTH);
+  camera.y=clamp(drag.cy-dy/camera.zoom,0,W.HEIGHT);
+  focus=false;lastMini=0;
+ }
 });
-canvas.addEventListener('pointerup',e=>{
- if(!drag||!state||state.paused){drag=null;return}
- const moved=drag.moved;drag=null;
- if(!moved){const r=canvas.getBoundingClientRect();const p=toWorld(e.clientX-r.left,e.clientY-r.top);chooseSelection(clamp(p.x,0,W.WIDTH),clamp(p.y,0,W.HEIGHT));refreshUI()}
-});
-canvas.addEventListener('pointercancel',()=>drag=null);
+function finishMapPointer(event){
+ if(!mapPointers.delete(event.pointerId))return;
+ if(mapPinch){
+  mapPinch=null;
+  startMapDrag(mapPointers.values().next().value,true);
+  return;
+ }
+ const start=drag;
+ drag=null;
+ if(event.type!=='pointerup'||!start||start.moved||!state||menuOpen)return;
+ const point=mapPoint(event);
+ if(dist(point.x,point.y,start.x,start.y)>7)return;
+ const position=toWorld(point.x,point.y);
+ chooseSelection(clamp(position.x,0,W.WIDTH),clamp(position.y,0,W.HEIGHT));
+ refreshUI();
+}
+canvas.addEventListener('pointerup',finishMapPointer);
+canvas.addEventListener('pointercancel',finishMapPointer);
+canvas.addEventListener('lostpointercapture',finishMapPointer);
 canvas.addEventListener('wheel',e=>{if(!state)return;e.preventDefault();const r=canvas.getBoundingClientRect();zoomAt(e.deltaY<0?1.18:1/1.18,e.clientX-r.left,e.clientY-r.top)},{passive:false});
 mini.addEventListener('click',e=>{if(!state)return;const r=mini.getBoundingClientRect();camera.x=clamp((e.clientX-r.left)/r.width*W.WIDTH,0,W.WIDTH);camera.y=clamp((e.clientY-r.top)/r.height*W.HEIGHT,0,W.HEIGHT);focus=false});
 window.addEventListener('keydown',e=>{
  if(e.key==='Escape'){
-  if($('screenCreate').classList.contains('hidden')===false)showScreen('screenMenu');
+  if(!$('screenMenu').classList.contains('hidden'))return;
+  if(!$('screenCreate').classList.contains('hidden'))showScreen('screenMenu');
+  else if(!$('screenPause').classList.contains('hidden'))showScreen(null);
+  else if(!$('screenEncounter').classList.contains('hidden'))leaveEncounter();
+  else if(!$('screenAftermath').classList.contains('hidden'))showScreen(null);
   else if(menuOpen)closeModal();
   else if(state)showScreen('screenPause');
   return;
  }
  if(!state||menuOpen||['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;
  const k=e.key.length===1?e.key.toLowerCase():e.key;
+ if(k===' '&&['BUTTON','A'].includes(document.activeElement?.tagName))return;
  if(['ArrowRight','ArrowLeft','ArrowUp','ArrowDown',' ','w','a','s','d'].includes(k))e.preventDefault();
  keys.add(k);
- if(k===' '){state.pausedManual=!state.pausedManual;state.paused=state.pausedManual;refreshUI()}
+ if(k===' '&&!e.repeat)togglePause();
  if(k==='p')showParty();if(k==='c')showCharacter();
  if(k==='f')openFactions();
  if(k==='+'||k==='=')zoomAt(1.3);if(k==='-')zoomAt(1/1.3);
 });
 window.addEventListener('keyup',e=>keys.delete(e.key.length===1?e.key.toLowerCase():e.key));
-window.addEventListener('blur',()=>keys.clear());
+window.addEventListener('blur',()=>{keys.clear();resetMapGesture()});
 window.addEventListener('beforeunload',()=>{if(state)saveGame(true)});
 window.addEventListener('resize',()=>{
  resize();if(!$('screenAtlas').classList.contains('hidden'))drawAtlas();
@@ -1525,7 +1727,7 @@ function frame(now){
    stepTravel(dt);
    const moved=dist(beforeX,beforeY,state.player.x,state.player.y),normal=148*W.walkingSpeed(beforeX,beforeY)*dt*state.speed;
    if(!state.paused&&moved>0)stepParties(dt*clamp(moved/Math.max(1,normal),0,1));
-   if((focus&&state.options.follow)||state.followPartyId!=null){const t=Math.min(1,dt*5);camera.x+=(state.player.x-camera.x)*t;camera.y+=(state.player.y-camera.y)*t}
+   if(focus&&(state.options.follow||state.followPartyId!=null)){const t=Math.min(1,dt*5);camera.x+=(state.player.x-camera.x)*t;camera.y+=(state.player.y-camera.y)*t}
   }
   drawWorld(now);
   if(now-lastHud>350){refreshUI();lastHud=now}
