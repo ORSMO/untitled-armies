@@ -120,6 +120,7 @@ function reportWorldEvent(x,y,message){
 }
 function restoreSettlementState(saved){for(let i=0;i<S.length;i++){const base=BASE_SETTLEMENTS[i],item=Array.isArray(saved)?saved[i]:null;S[i].prosperity=clamp(Number.isFinite(item?.prosperity)?item.prosperity:base.prosperity,0,100);S[i].garrison=Math.max(0,Math.round(Number.isFinite(item?.garrison)?item.garrison:base.garrison))}}
 function preparePlayer(p){
+ p.hp=Number.isFinite(p.hp)?clamp(Math.round(p.hp),5,100):100;
  p.stats={strength:5,agility:5,tactics:5,leadership:5,...(p.stats||{})};
  p.statPoints=Math.max(0,Number(p.statPoints)||0);
  p.perkPoints=Math.max(0,Number(p.perkPoints)||0);p.perks=Array.isArray(p.perks)?p.perks.filter(id=>PERKS[id]):[];
@@ -1002,8 +1003,9 @@ function openEncounter(party){
   kind==='caravan'?'A merchant caravan slows. Its guards watch your approach.':
   'A column of soldiers halts beneath its banners. Their captain awaits you.';
  $('encounterOwnCount').textContent=rosterCount()+' troops · '+state.player.name;
- $('encounterOwnDetail').textContent='Health '+state.player.hp+'% · '+Math.min(50,state.player.roster.reduce((n,g)=>n+g.count-(g.wounded||0),0))+
-  ' available combatants (maximum 50 deployed)';
+ const healthyTroops=Math.min(50,state.player.roster.reduce((n,g)=>n+g.count-(g.wounded||0),0));
+ $('encounterOwnDetail').textContent='Health '+state.player.hp+'% · '+healthyTroops+' ready to fight'+
+  (state.player.hp<=35?' · Wounded. Rest at an inn before fighting.':healthyTroops===0?' · The hero would fight alone.':'');
  $('encounterEnemyCount').textContent=party.strength+' '+(kind==='bandit'?'outlaws':kind==='caravan'?'travelers':'soldiers');
  $('encounterEnemyDetail').textContent=kind==='bandit'?'Hostile raiders':
   F[party.faction].name+' · '+(kind==='patrol'?'Guarding the realm':'Trading goods');
@@ -1039,7 +1041,7 @@ function launchCampaignBattle(party){
   try{localStorage.removeItem('ua-campaign-battle-session-v1')}catch(e){}
   notify('Browser storage is needed for campaign battles.');return;
  }
- window.location.href='campaign-battle.html?campaign=1&v=4.10';
+ window.location.href='campaign-battle.html?campaign=1&v=4.10.1';
 }
 function skirmish(id){
  const party=state?.parties.find(p=>p.id===id&&p.active);
@@ -1131,6 +1133,9 @@ function consumeBattleResult(){
   casualties.killed+' killed or captured · '+casualties.wounded+' incapacitated · '+
   casualties.survivors+' returned from battle. Hero health '+p.hp+'% · Company morale '+Math.round(p.morale)+
   '/100. Wounded troops recover at inns.</p>';
+ const nearbyInn=aftermathInnSite();
+ $('aftermathInn').classList.toggle('hidden',!nearbyInn);
+ if(nearbyInn)$('aftermathInn').textContent='Visit the inn at '+nearbyInn.name;
  if(saveGame(true)){
   try{
    localStorage.removeItem('ua-campaign-battle-result-v1');
@@ -1710,6 +1715,40 @@ function readImportFile(file){
 }
 function button(id,action){$(id).addEventListener('click',action)}
 function lockLandscape(){try{if(screen.orientation?.lock)screen.orientation.lock('landscape').catch(()=>{})}catch(e){}}
+function fullscreenActive(){return !!(document.fullscreenElement||document.webkitFullscreenElement)}
+function syncFullscreen(){
+ const active=fullscreenActive(),label=active?'Exit fullscreen':'Enter fullscreen';
+ $('menuFullscreen').textContent=active?'↙ Exit fullscreen':'⛶ Fullscreen';
+ $('mapFullscreen').textContent=active?'↙':'⛶';
+ for(const id of ['menuFullscreen','mapFullscreen']){
+  const control=$(id);
+  control.setAttribute('aria-pressed',String(active));
+  control.setAttribute('aria-label',label);
+  control.title=label;
+ }
+}
+async function toggleFullscreen(){
+ try{
+  if(fullscreenActive()){
+   const stop=document.exitFullscreen||document.webkitExitFullscreen;
+   if(!stop)throw Error('Fullscreen exit unavailable');
+   await stop.call(document);
+  }else{
+   const root=document.documentElement;
+   const start=root?.requestFullscreen||root?.webkitRequestFullscreen;
+   if(!start)throw Error('Fullscreen unavailable');
+   await start.call(root);
+   if(fullscreenActive())lockLandscape();
+  }
+  syncFullscreen();
+ }catch(e){notify('Fullscreen is unavailable here. Try opening the game in your browser.')}
+}
+function aftermathInnSite(){
+ const player=state?.player;
+ if(!player||player.hp>35)return null;
+ const town=W.closestSettlement(player.x,player.y);
+ return town&&dist(player.x,player.y,town.x,town.y)<=TOWN_ENTRY_RANGE?town:null;
+}
 function setSpeed(value){if(!state)return;state.speed=[1,2,4].includes(value)?value:1;state.pausedManual=false;state.paused=menuOpen;refreshUI();saveGame(true)}
 function togglePause(){if(!state)return;state.pausedManual=!state.pausedManual;state.paused=menuOpen||state.pausedManual;refreshUI()}
 button('encounterTalk',()=>{
@@ -1739,6 +1778,15 @@ function leaveEncounter(){
 }
 button('encounterLeave',leaveEncounter);
 button('aftermathContinue',()=>{showScreen(null);refreshUI()});
+button('aftermathInn',()=>{
+ const town=aftermathInnSite();
+ if(!town)return;
+ showScreen(null);showTown(town.id);setTownView('inn');
+});
+button('menuFullscreen',toggleFullscreen);
+button('mapFullscreen',toggleFullscreen);
+document.addEventListener('fullscreenchange',syncFullscreen);
+document.addEventListener('webkitfullscreenchange',syncFullscreen);
 button('menuNew',()=>{lockLandscape();selectNew()});button('menuContinue',()=>{lockLandscape();loadGame()});
 button('menuFactions',openFactions);button('menuAtlas',openAtlas);button('menuOptions',showOptions);
 button('createStart',()=>{lockLandscape();startCampaign()});button('createCancel',()=>showScreen('screenMenu'));
