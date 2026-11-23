@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — Campaign Battle · V4.10</title>
+<title>Untitled Armies — Campaign Battle · V4.10.1</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -218,7 +218,7 @@ body.campaign-battle.battle-finished #campaignArmyOrders{display:none!important}
 #campaignTouchControls{display:none;position:absolute;z-index:3;bottom:8px;left:8px;right:8px;pointer-events:none;justify-content:space-between;align-items:end}
 #campaignTouchControls button{pointer-events:auto;touch-action:none;user-select:none;background:#1a3529e8;color:#f8e3b2;border:1px solid #b6a572;border-radius:11px;padding:7px;font-size:14px;font-weight:800;min-height:44px;min-width:44px}
 #campaignTouchControls button:active,#campaignTouchControls button.is-held{background:#a88a52}
-.campaignDpad{display:grid;gap:3px;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(2,44px)}
+.campaignDpad{display:grid;gap:3px;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(2,48px);touch-action:none}
 .campaignDpad .north{grid-area:1/2}.campaignDpad .west{grid-area:2/1}.campaignDpad .south{grid-area:2/2}.campaignDpad .east{grid-area:2/3}
 .campaignActions{display:flex;gap:6px;align-items:end}
 #campaignBattleReturn{display:none}
@@ -588,7 +588,7 @@ const orderButtons=['attack','defend','stop','retreat'].map(id=>document.getElem
    updateFullscreenButton();
    resize();
   }catch(err){
-   const message='Fullscreen is unavailable in this browser.';
+   const message='Fullscreen is unavailable here. Try opening the game in your browser.';
    if(campaignMode)showBattleMessage(message);
    else ui.hint.textContent=message;
   }
@@ -644,6 +644,7 @@ let campaignStonesRemaining=Math.max(0,Number(campaignSession.inventory?.stones)
 let battleMessageTimer;
 const heroKeys=new Set();
 const heroTouches=new Map();
+let heroMoveTap=null;
 const portrait=window.matchMedia('(orientation: portrait)');
 let campaignOrdersOpen=false;
 document.body.classList.add('campaign-battle');
@@ -652,6 +653,7 @@ function clearHeroInput(){
  heroKeys.clear();
  for(const input of heroTouches.values())input.button?.classList.remove('is-held');
  heroTouches.clear();
+ heroMoveTap=null;
  heroPointer=null;
 }
 function heroInputHeld(key){
@@ -747,6 +749,8 @@ function setCampaignControlMode(mode){
   commanders.friend.rangedAim=0;
   commanders.friend.rangedTargetId=null;
   commanders.friend.guardActive=false;
+  commanders.friend.campaignStance=next==='manual'?'':'Screened';
+  commanders.friend.campaignIsolatedAt=null;
  }
  campaignControlMode=next;
  const manual=next==='manual';
@@ -771,17 +775,20 @@ function refreshHeroControls(){
  attack.textContent=hasRangedAmmo(hero)?'🏹 Attack':'⚔ Attack';
  guard.disabled=!hero.shield;
 }
+const heroDirectionKeys=new Set(['w','a','s','d']);
 function updateHeroControl(s,dt){
  s.guardBreak=Math.max(0,(s.guardBreak||0)-dt);
- const mx=Number(heroInputHeld('d'))-Number(heroInputHeld('a'));
- const my=Number(heroInputHeld('s'))-Number(heroInputHeld('w')),mag=Math.hypot(mx,my);
+ const held=key=>heroInputHeld(key)||heroMoveTap===key;
+ const mx=Number(held('d'))-Number(held('a'));
+ const my=Number(held('s'))-Number(held('w')),mag=Math.hypot(mx,my);
+ heroMoveTap=null;
  const guarding=heroInputHeld('shift'),attacking=heroInputHeld('attack')||heroInputHeld(' ');
  if(mag&&s.stagger<=0){
   const guardPace=guarding&&s.shield ? .68 : 1;
   const oldX=s.x,oldY=s.y,speed=(s.speed||76)*guardPace*terrainSpeed(s);
   s.x=clamp(oldX+mx/mag*speed*dt,14,W-14);
   s.y=clamp(oldY+my/mag*speed*dt,14,H-14);
-  terrainResolve(s,oldX,oldY);
+  terrainResolve(s,oldX,oldY,true);
   s.vx=(s.x-oldX)/Math.max(dt,.001);
   s.vy=(s.y-oldY)/Math.max(dt,.001);
  }else{s.vx=0;s.vy=0}
@@ -803,6 +810,62 @@ function updateHeroControl(s,dt){
    else advanceRangedAim(s,target,dt);
   }else beginAttack(s,target);
  }
+}
+function nearestHeroThreat(hero){
+ let target=null,dist=Infinity;
+ for(const enemy of opponents(hero)){
+  if(enemy.dead||enemy.routed||enemy.broken||enemy.surrendered)continue;
+  const gap=Math.hypot(enemy.x-hero.x,enemy.y-hero.y);
+  if(gap<dist){target=enemy;dist=gap}
+ }
+ return {target,dist};
+}
+function planAutoHero(hero,target,dist){
+ const allies=friends.filter(unit=>!unit.dead&&!unit.routed&&!unit.broken&&!unit.surrendered);
+ const wounded=hero.hp/hero.maxHp<=.35;
+ if(allies.length===0){
+  hero.campaignIsolatedAt??=t;
+  const rearCamp=home('friend');
+  const exitX=clamp(rearCamp.x-215,24,W-24);
+  const isolatedFor=t-hero.campaignIsolatedAt;
+  const reachedSafety=hero.x<=exitX+10&&dist>150;
+  const movedClear=isolatedFor>=14&&hero.x<=rearCamp.x-105&&dist>270;
+  if(target&&isolatedFor>=2&&(reachedSafety||movedClear)){
+   hero.campaignWithdrew=true;
+   hero.campaignStance='Falling back';
+   hero.routed=true;
+   return {command:'defend'};
+  }
+  const cornered=hero.x<=exitX+10&&dist<=150;
+  if(target&&!cornered){
+   hero.campaignStance='Falling back';
+   const y=target.x<hero.x?
+    clamp(hero.y+(target.y<hero.y?105:-105),24,H-24):hero.y;
+   return {command:'defend',x:Math.min(hero.x,exitX),y,disengage:true};
+  }
+  // Defend the exit if cornered. Do not run back into the enemy line.
+  hero.campaignStance='Last stand';
+  return {command:'defend',x:hero.x,y:hero.y};
+ }
+
+ hero.campaignIsolatedAt=null;
+ const healthy=allies.filter(unit=>unit.hp>=unit.maxHp*.45);
+ const infantry=healthy.filter(unit=>unit.unitRole==='infantry');
+ const frontInfantry=infantry.filter(unit=>!unit.squadReserve);
+ const footTroops=healthy.filter(unit=>!isCavalry(unit));
+ const screen=frontInfantry.length?frontInfantry:infantry.length?infantry:footTroops.length?footTroops:healthy.length?healthy:allies;
+ const line=troopCenter(screen,home('friend'));
+ const flanked=target&&dist<125&&target.x<line.x-25;
+ const fallingBack=wounded||flanked;
+ hero.campaignStance=fallingBack?'Falling back':'Screened';
+ const x=clamp(line.x-(fallingBack?160:72),22,W-22);
+ let y=clamp(line.y,24,H-24);
+ if(fallingBack&&target&&dist<180){
+  const side=target.y<line.y?1:-1;
+  y=clamp(line.y+side*90,24,H-24);
+ }
+ // A low-health hero already behind the rear line never moves forward to it under threat.
+ return {command:'defend',x:fallingBack&&dist<180?Math.min(x,hero.x):x,y,disengage:fallingBack};
 }
 function throwCampaignRock(){
  if(!canControlHero()||campaignSession.equipment?.quiver!=='rockPouch'||campaignStonesRemaining<1)return;
@@ -1387,7 +1450,7 @@ function focusArmy(){
    document.querySelector('#campaignBattleReturn').focus({preventScroll:true});
   }
   document.querySelector('#battleOutcomeTitle').textContent=battleOutcome.winner==='friend'?
-   '🟢 Victory':battleOutcome.winner==='foe'?'🔴 Defeat':'⚖ Draw';
+   '🟢 Victory':battleOutcome.winner==='foe'?'🔴 Defeat':battleOutcome.winner==='retreat'?'↶ Withdrew':'⚖ Draw';
   document.querySelector('#battleOutcomeReason').textContent=battleOutcome.reason+
    ' · '+battleOutcome.seconds.toFixed(1)+' seconds';
   document.querySelector('#battleOutcomeFriend').textContent=tallyLabel(battleOutcome.friend)+
@@ -1415,10 +1478,12 @@ function determineBattleOutcome(){
   if(t-battleCollapseSince[side]<4.5)waitingForRally=true;
  }
  if(waitingForRally)return null;
- const winner=friendFighting&&foeFighting===0?'friend':
+ const heroWithdrew=campaignMode&&commanders.friend?.campaignWithdrew&&foeFighting>0;
+ const winner=heroWithdrew?'retreat':friendFighting&&foeFighting===0?'friend':
   foeFighting&&friendFighting===0?'foe':'draw';
  const wiped=winner==='friend'?foe:friend;
- const reason=winner==='draw'?'Both armies became unable to fight':
+ const reason=winner==='retreat'?'Your hero reached safety after the company broke':
+  winner==='draw'?'Both armies became unable to fight':
   wiped.surrendered>0||wiped.escaped>0||wiped.shaken>0?
   (winner==='friend'?'Enemy':'Friendly')+' cohesion collapsed through casualties, routs and surrender':
   'All opposing combatants were incapacitated';
@@ -1457,6 +1522,7 @@ function populate(){
    commanders.friend.hp=commanders.friend.maxHp*clamp(health/100,.01,1);
     commanders.friend.speed=(56+(stats.agility||5)*4)*(campaignSession.perks?.includes('outrider')?1.12:1);
    commanders.friend.isPlayerHero=true;
+   commanders.friend.campaignStance='Screened';
     commanders.friend.weapon=({sword:'sword',axe:'axe',spear:'spear',bow:'sword'})[eq.weapon]||'sword';
     commanders.friend.ranged=eq.weapon==='bow'&&eq.quiver==='quiver'?'bow':null;
     commanders.friend.unitRole=commanders.friend.ranged?'archer':'infantry';
@@ -3122,7 +3188,7 @@ function terrainSteer(s,x,y){
  }
  return {x,y};
 }
-function terrainResolve(s,oldX,oldY){
+function terrainResolve(s,oldX,oldY,slide=false){
  for(const z of terrainZones){
   if(z.kind!=='rock')continue;
   const rx=z.rx+(isCavalry(s)?12:8),ry=z.ry+(isCavalry(s)?12:8);
@@ -3131,8 +3197,9 @@ function terrainResolve(s,oldX,oldY){
   if(d<1){
    // A solid outcrop cannot be crossed by a soldier or a horse.
    const ox=(oldX-z.x)/rx,oy=(oldY-z.y)/ry,od=Math.hypot(ox,oy);
-   const nx=od>.001?ox/od:d>.001?dx/d:s.team==='friend'?-1:1;
-   const ny=od>.001?oy/od:d>.001?dy/d:0;
+   const canSlide=slide&&d>.001&&dx*ox+dy*oy>0;
+   const nx=canSlide?dx/d:od>.001?ox/od:d>.001?dx/d:s.team==='friend'?-1:1;
+   const ny=canSlide?dy/d:od>.001?oy/od:d>.001?dy/d:0;
    s.x=clamp(z.x+nx*rx*1.012,11,W-11);
    s.y=clamp(z.y+ny*ry*1.012,11,H-11);
    if(isCavalry(s))s.mountSpeed=Math.min(s.mountSpeed||0,18);
@@ -3643,7 +3710,8 @@ function step(dt){
    if(s.ranged==='bow'&&s.ammo<=0)s.unitRole='infantry';
    if(campaignControlMode==='manual'){updateHeroControl(s,dt);continue;}
   }
-  const {target,dist}=chooseTarget(s);
+  const autoHero=campaignMode&&s.isPlayerHero;
+  const {target,dist}=autoHero?nearestHeroThreat(s):chooseTarget(s);
   const ranged=activeRangedProfile(s);
   // Campaign ranged units fall back to their sidearm when their ammunition runs out.
   s.meleeReady=!!(ranged&&target&&dist<=meleeThreatRange(s))||(campaignMode&&isArcher(s)&&!ranged);
@@ -3659,7 +3727,9 @@ function step(dt){
    const breakingPoint=stressBalance.breakingBase+s.disc*stressBalance.disciplineResistance+rnd(s.id+23)*5;
    if(s.stress>breakingPoint){panic(s);continue;}
   }else{s.stress=0;}
-  const player=s.team==='friend',command=resolveCombatCommand(s);
+  const heroPlan=autoHero?planAutoHero(s,target,dist):null;
+  if(autoHero&&s.routed)continue;
+  const player=s.team==='friend',command=heroPlan?.command||resolveCombatCommand(s);
   updatePolearmBrace(s,dt,command);
   if(s.decision<=0){s.decision=1.7+rnd(s.id+Math.floor(t*.8))*1.6;
    const steadiness=s.disc/100,unease=s.stress/100;
@@ -3755,6 +3825,10 @@ function step(dt){
   }
   const tactical=squadMovement(s,command,target,dist,moveX,moveY,pace);
   moveX=tactical.x;moveY=tactical.y;pace=tactical.pace;
+  if(heroPlan?.x!==undefined){
+   moveX=heroPlan.x;moveY=heroPlan.y;
+   pace=heroPlan.disengage?1.22:1;
+  }
   const disciplineControl=.42+s.disc/160;
   const fatiguePace=.76+.24*(s.stamina/s.maxStamina);
   const equipment=weaponProfiles[s.weapon].weight+(shieldProfiles[s.shield]?.weight||0)+(activeRangedProfile(s)?rangedProfiles[s.ranged].weight:0);
@@ -3867,6 +3941,10 @@ function step(dt){
    // Guard timers continue while staggered, but only recovered soldiers
    // can actively defend or begin a new swing.
    updateShieldGuard(s,dt);
+   if(heroPlan?.disengage){
+    s.attack=null;s.rangedAim=0;s.rangedTargetId=null;
+    continue;
+   }
    if(s.stagger>0){s.guardActive=false;s.rangedAim=0;}
    else if(s.attack)advanceAttack(s,dt);
    else if(s.rangedAim>0)advanceRangedAim(s,target,dt);
@@ -4218,8 +4296,11 @@ function frame(ts){
    const canAct=heroCanAct(),toggle=document.querySelector('#campaignControlToggle');
    toggle.disabled=!canAct;
    if(!canAct&&campaignControlMode==='manual')setCampaignControlMode('auto');
-   document.querySelector('#campaignBattleHeroHealth').textContent=hero.dead?'Hero down':
-    !canAct?'Hero routing':'Hero '+Math.round(Math.max(0,hero.hp)/Math.max(1,hero.maxHp)*100)+'%';
+   const health=document.querySelector('#campaignBattleHeroHealth');
+   const shortStatus=hero.campaignWithdrew?'Withdrew':hero.dead?'Hero down':!canAct?'Hero routing':
+    'Hero '+Math.round(Math.max(0,hero.hp)/Math.max(1,hero.maxHp)*100)+'%'+
+     (campaignControlMode==='auto'&&hero.campaignStance?' · '+hero.campaignStance:'');
+   if(health.textContent!==shortStatus)health.textContent=shortStatus;
   }
   camera.x=clamp(camera.x,0,Math.max(0,W-VW));
   camera.y=clamp(camera.y,0,Math.max(0,H-VH));
@@ -4308,6 +4389,7 @@ function beginHeroPointer(e,key,button){
  e.preventDefault();
  e.currentTarget.setPointerCapture?.(e.pointerId);
  heroTouches.set(e.pointerId,{key,button});
+ if(heroDirectionKeys.has(key))heroMoveTap=key;
  button?.classList.add('is-held');
 }
 function endHeroPointer(e){
@@ -4317,6 +4399,17 @@ function endHeroPointer(e){
  if(input.button&&!Array.from(heroTouches.values()).some(value=>value.button===input.button)){
   input.button.classList.remove('is-held');
  }
+}
+function slideHeroPointer(e){
+ const input=heroTouches.get(e.pointerId);
+ if(!input||!heroDirectionKeys.has(input.key))return;
+ const next=document.elementFromPoint(e.clientX,e.clientY)?.closest('.campaignDpad [data-hero-key]');
+ if(!next||next===input.button)return;
+ endHeroPointer(e);
+ const key=next.dataset.heroKey;
+ heroTouches.set(e.pointerId,{key,button:next});
+ heroMoveTap=key;
+ next.classList.add('is-held');
 }
 canvas.addEventListener('pointermove',trackHeroAim);
 canvas.addEventListener('pointerleave',()=>{heroPointer=null});
@@ -4330,6 +4423,7 @@ window.addEventListener('pointercancel',endHeroPointer);
 for(const button of document.querySelectorAll('[data-hero-key]')){
  const key=button.dataset.heroKey;
  button.addEventListener('pointerdown',e=>beginHeroPointer(e,key,button));
+ if(heroDirectionKeys.has(key))button.addEventListener('pointermove',slideHeroPointer);
  button.addEventListener('lostpointercapture',endHeroPointer);
  button.addEventListener('keydown',e=>{
   if(canControlHero()&&(e.key===' '||e.key==='Enter')){
