@@ -1,5 +1,12 @@
 # Untitled Armies
 
+## V4.9.1 — Campaign and battle fixes
+
+- Town actions respond to taps, keep the active tab in view and refresh the displayed resources. Overworld gestures distinguish travel taps from map panning and pinch zoom.
+- Every settlement market can sell provisions. Caravans keep their cargo after reloading, and raids remove the cargo actually carried.
+- Border disputes and trade compacts now build on earlier events. The peaceful opening, war limit and truces still govern how the kingdoms react.
+- Battle results are kept until the campaign confirms a save. Older saves continue to load.
+
 ## V4.9 — A living economy and changing alliances
 
 - **Settlements make and use resources.** Grain, timber, iron, tools and salt reflect each site's terrain and role. Town and castle workshops turn timber and iron into tools; households use grain to supply provisions, and war strains grain and iron reserves.
