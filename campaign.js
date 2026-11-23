@@ -1041,7 +1041,7 @@ function launchCampaignBattle(party){
   try{localStorage.removeItem('ua-campaign-battle-session-v1')}catch(e){}
   notify('Browser storage is needed for campaign battles.');return;
  }
- window.location.href='campaign-battle.html?campaign=1&v=4.10.2';
+ window.location.href='campaign-battle.html?campaign=1&v=4.10.3';
 }
 function skirmish(id){
  const party=state?.parties.find(p=>p.id===id&&p.active);
