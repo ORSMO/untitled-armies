@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#091512">
 <meta name="description" content="Untitled Armies: a medieval campaign sandbox. Explore the vast continent of Asterra, meet ten factions, recruit and upgrade faction troops, and build your legend.">
-<title>Untitled Armies — Asterra Campaign · V4.9.1</title>
-<link rel="stylesheet" href="campaign.css?v=4.9.1">
+<title>Untitled Armies — Asterra Campaign · V4.10</title>
+<link rel="stylesheet" href="campaign.css?v=4.10">
 </head>
 <body>
 <div id="rotateNotice" role="status" aria-live="polite">
@@ -16,7 +16,7 @@
 </div>
 <div id="game" class="hidden">
  <header class="topbar">
-   <div class="brand"><span class="crest">⚔</span><div><strong>UNTITLED ARMIES</strong><small>ASTERRA CAMPAIGN · V4.9.1</small></div></div>
+   <div class="brand"><span class="crest">⚔</span><div><strong>UNTITLED ARMIES</strong><small>ASTERRA CAMPAIGN · V4.10</small></div></div>
   <div class="top-center">
    <div class="chip">📜 <b id="hudDay">Day 1 · 08:00</b></div>
    <div class="chip">⚑ <b id="hudRegion">Valdorian Kingdom</b></div>
@@ -90,7 +90,7 @@
    <p class="subtle">Click roaming parties to pursue them as they move. At close range, you can talk, trade or enter battle. Ruins, shrines and camps reward exploration.</p>
   </aside>
  </div>
- <div class="footer-hint">KINGDOM STANDING · LIVING ROADS · COMMAND ARMIES · PHONE LANDSCAPE · ASTERRA CAMPAIGN V4.9.1 · <a href="classic.html">Classic Combat</a> · <a href="lab.html">Battle Lab</a></div>
+ <div class="footer-hint">KINGDOM STANDING · LIVING ROADS · COMMAND ARMIES · PHONE LANDSCAPE · ASTERRA CAMPAIGN V4.10 · <a href="classic.html">Classic Combat</a> · <a href="lab.html">Battle Lab</a></div>
 </div>
 <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 <section id="screenMenu" class="overlay" aria-label="Main menu">
@@ -119,7 +119,7 @@
    <a href="classic.html" class="btn" style="text-decoration:none;display:block;text-align:center;margin:7px 0">⚔ Classic 50v50 Battle Test</a>
    <a href="lab.html" class="btn" style="text-decoration:none;display:block;text-align:center;margin:7px 0">⚗ Six-Arena Battle Lab</a>
    <button id="menuImport" class="btn">📥 Import Campaign Save</button>
-   <div class="menu-foot">V4.9.1 · Designed for phone play in landscape. Build trust and lead your company across Asterra.</div>
+   <div class="menu-foot">V4.10 · Designed for phone play in landscape.</div>
   </div>
  </div>
 </section>
@@ -226,7 +226,28 @@
   <div class="smallcaps">YOUR COMPANIONS IN ARMS</div>
   <h2>Manage Party</h2>
   <div id="partyModalContent"></div>
-  <div class="modal-actions"><button class="btn" id="modalCharacter">♙ Character</button></div>
+  <div class="modal-actions"><button class="btn" id="modalCharacter">♙ Character</button><button class="btn" id="modalArmory">⚒ Weapon designer</button></div>
+ </div>
+</section>
+<section id="screenArmory" class="overlay hidden" aria-label="Weapon designer">
+ <div class="modal armory-modal" role="dialog" aria-modal="true" aria-labelledby="armoryHeading">
+  <button class="close" id="armoryClose" type="button" aria-label="Close weapon designer">×</button>
+  <h2 id="armoryHeading">Weapon designer</h2>
+  <div class="armory-layout">
+   <div class="armory-fields">
+    <label>Realm<select id="armoryFaction"></select></label>
+    <label>Troop type<select id="armoryTier"></select></label>
+    <label>Weapon<select id="armoryWeapon"></select></label>
+    <label>Style<select id="armoryStyle"></select></label>
+    <label class="armory-name">Name<input id="armoryName" maxlength="32" autocomplete="off" placeholder="Use the weapon name"></label>
+   </div>
+   <div class="armory-preview" id="armoryPreview" aria-live="polite"></div>
+  </div>
+  <div class="modal-actions">
+   <button class="btn" id="armoryGenerate" type="button">Generate</button>
+   <button class="btn" id="armoryReset" type="button">Restore standard</button>
+   <button class="btn primary" id="armorySave" type="button">Assign weapon</button>
+  </div>
  </div>
 </section>
 <section id="screenCharacter" class="overlay hidden" aria-label="Character information">
@@ -291,9 +312,10 @@
  <button id="mobilePause" aria-label="Pause or resume">Ⅱ</button><button class="speed-choice" data-speed="1">1×</button><button class="speed-choice" data-speed="2">2×</button><button class="speed-choice" data-speed="4">4×</button>
 </div>
 <input id="importSaveFile" type="file" accept="application/json,.json" hidden>
-<script src="world-data.js"></script>
-<script src="map-painter.js"></script>
-<script src="campaign.js?v=4.9.1"></script>
+<script src="world-data.js?v=4.10"></script>
+<script src="map-painter.js?v=4.10"></script>
+<script src="campaign-armory.js?v=4.10"></script>
+<script src="campaign.js?v=4.10"></script>
 </body>
 </html>
 

@@ -444,6 +444,85 @@ for(let i=0;i<capitals.length;i++)for(let j=i+1;j<capitals.length;j++){
 }
 candidate.sort((a,b)=>a.d-b.d);
 for(const v of candidate.slice(0,2))connect(v.a,v.b,'trunk');
+
+// Keep the historical settlement and road positions. Give existing sites
+// distinct trade roles based on their hinterland and trunk road access.
+const marketCenters=settlements.filter(site=>site.type==='capital'||site.type==='town');
+const villages=settlements.filter(site=>site.type==='village');
+const trunkAccess=new Map();
+for(const {a,b,kind} of roadSegments){
+ if(kind!=='trunk')continue;
+ for(const site of [a,b])trunkAccess.set(site.id,(trunkAccess.get(site.id)||0)+1);
+}
+const marketRank=marketCenters.map(site=>{
+ const catchment=villages.reduce((sum,village)=>{
+  const distance=Math.hypot(site.x-village.x,site.y-village.y);
+  return sum+Math.max(0,1-distance/1500);
+ },0);
+ return {site,score:catchment+(trunkAccess.get(site.id)||0)*.85+site.prosperity/125};
+}).sort((a,b)=>b.score-a.score||a.site.id-b.site.id);
+const marketHubs=[];
+for(const {site} of marketRank){
+ if(marketHubs.length===5)break;
+ if(marketHubs.some(hub=>hub.faction===site.faction||Math.hypot(site.x-hub.x,site.y-hub.y)<1650))continue;
+ marketHubs.push(site);
+}
+const hubIds=new Set(marketHubs.map(hub=>hub.id));
+for(const site of settlements){
+ site.marketTier=hubIds.has(site.id)?'hub':site.type==='castle'?null:site.type==='village'?'local':'regional';
+ site.specialty=site.type==='village'||site.type==='castle'?null:'tools';
+ site.villageClusterId=null;
+}
+
+const resourceStyles={
+ grain:{name:'Grain',icon:'🌾',color:'#e1c170'},
+ timber:{name:'Timber',icon:'🪵',color:'#a6c58a'},
+ iron:{name:'Iron',icon:'⛏',color:'#c5cbd5'},
+ tools:{name:'Tools',icon:'⚒',color:'#d7a782'},
+ salt:{name:'Salt',icon:'◈',color:'#c1e4e5'}
+};
+const villageClusters=[];
+const fieldResources=['grain','timber','iron','salt'];
+function villageResourceProfile(sites){
+ const profile={grain:0,timber:0,iron:0,salt:0};
+ for(const site of sites){
+  const tx=Math.floor(site.x/TILE),ty=Math.floor(site.y/TILE);
+  for(let dy=-10;dy<=10;dy+=2)for(let dx=-10;dx<=10;dx+=2){
+   const tileId=atGrid(tx+dx,ty+dy),distance=Math.hypot(dx,dy);
+   if(tileId<0||distance>10||!tiles[tileId].walk)continue;
+   const tile=tiles[tileId],weight=1.25-distance/12;
+   const isField=['grass','steppe'].includes(tile.kind);
+   const isForest=['forest','taiga','rainforest'].includes(tile.kind);
+   const isMine=['hills','mountain'].includes(tile.kind);
+   const isSaltFlat=['marsh','scrub','desert'].includes(tile.kind);
+   if(isField)profile.grain+=weight*2.3;
+   if(isForest)profile.timber+=weight*5;
+   if(isMine)profile.iron+=weight*(tile.kind==='mountain'?9:6);
+   if(isSaltFlat)profile.salt+=weight*5;
+   if(wetSea[tileId]<6)profile.salt+=weight*(6-wetSea[tileId]);
+  }
+ }
+ return profile;
+}
+for(const faction of factions){
+ const [a,b,c,d]=villages.filter(site=>site.faction===faction.id);
+ const pairings=[[[a,b],[c,d]],[[a,c],[b,d]],[[a,d],[b,c]]];
+ const span=pairing=>pairing.reduce((sum,[first,second])=>sum+Math.hypot(first.x-second.x,first.y-second.y),0);
+ const pairs=pairings.sort((left,right)=>span(left)-span(right))[0];
+ const used=new Set();
+ for(const sites of pairs){
+  const profile=villageResourceProfile(sites);
+  const specialty=fieldResources.reduce((best,resource)=>{
+   const score=profile[resource]*(used.has(resource)?.71:1);
+   return score>best.score?{resource,score}:best;
+  },{resource:'grain',score:-1}).resource;
+  used.add(specialty);
+  const id=villageClusters.length;
+  villageClusters.push({id,faction:faction.id,specialty,villageIds:sites.map(site=>site.id)});
+  for(const site of sites){site.specialty=specialty;site.villageClusterId=id}
+ }
+}
+
 // Small wooden/stone crossings are visible where established roads
 // meet the naturally generated drainage network.
 const bridgePoints=[];
@@ -609,7 +688,7 @@ function closestSettlement(x,y,factionId){
  }
  return best;
 }
-window.UAWorld={WIDTH,HEIGHT,TILE,COLS,ROWS,factions,wars,settlements,
+window.UAWorld={WIDTH,HEIGHT,TILE,COLS,ROWS,factions,wars,settlements,marketHubs,villageClusters,resourceStyles,
  roadSegments,roadLinks,roadTier,roads,bridgePoints,riverPaths,borderPaths,coastPaths,landmarks,flow,downhill,
  tiles,palette,biomeCost,tileAt,tileIndex,factionAt,findPath,walkingSpeed,
  closestSettlement,getSettlement,nearestWalk,clamp,hash,noise,fractal};
