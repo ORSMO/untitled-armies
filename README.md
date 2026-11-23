@@ -1,5 +1,9 @@
 # Untitled Armies
 
+## V4.10.4 — Formations face the enemy
+
+- Formations turn toward the enemy before moving and adjust their heading during a march or while defending. Turns preserve spacing and wait for room near battlefield edges.
+
 ## V4.10.3 — Shared campaign and practice battles
 
 - Classic 50v50 opens a practice setup for the campaign battle engine. Configure both forces or start with 50 troops per side, choose terrain and a map, and replay the scenario.
