@@ -268,3 +268,29 @@
  #screenFactions .diplomacy-board{padding:6px;margin-top:5px}
  #screenFactions .diplomacy-chip{font-size:8px;padding:3px 5px}
 }
+
+.house-list,.party-kit-actions{display:flex;gap:8px;flex-wrap:wrap}
+.house-list{margin:6px 0 14px}
+.house-card{flex:1 1 140px;padding:8px 10px;border:1px solid #647557;border-radius:8px;background:#1e3328}
+.house-card small,.trooptree small{display:block;margin-top:3px;line-height:1.35}
+.armory-modal{width:min(720px,100%);max-height:calc(100dvh - 24px);overflow:auto}
+.armory-layout{display:grid;grid-template-columns:3fr 2fr;gap:12px;align-items:start}
+.armory-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.armory-fields label{display:grid;gap:4px;font-weight:700;color:#e4d8b2;min-width:0}
+.armory-fields select,.armory-fields input{
+ width:100%;min-width:0;min-height:44px;padding:7px 8px;font-size:16px;
+ border:1px solid #647557;border-radius:7px;background:#12261e;color:#f1efd9
+}
+.armory-name{grid-column:1/-1}
+.armory-preview{padding:10px 12px;border:1px solid #87734c;border-radius:9px;background:#243426}
+.armory-preview h3,.armory-preview p{margin:4px 0;overflow-wrap:anywhere}
+.armory-preview dl{display:grid;grid-template-columns:1fr auto;gap:4px;margin:10px 0 0}
+.armory-preview dd{margin:0;color:#f0db9f;font-weight:bold}
+.armory-modal .modal-actions .btn,.party-kit-actions .btn{min-height:44px}
+@media(orientation:landscape) and (max-height:430px){
+ .armory-modal{padding:10px 12px}
+ .armory-modal h2{margin:0 42px 8px 0}
+ .armory-layout,.armory-fields{gap:6px}
+ .armory-fields label{font-size:11px}
+ .armory-preview{padding:7px 9px}
+}
