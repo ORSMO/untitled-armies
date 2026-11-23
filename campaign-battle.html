@@ -191,12 +191,18 @@ body{height:100dvh;align-items:stretch;padding:clamp(4px,1vw,12px)}
 </style>
 
 <style>
-/* Campaign battles use the same simulation, but present as an automatic campaign battle. */
-#campaignBattleBanner{position:fixed;z-index:160;top:10px;left:50%;transform:translateX(-50%);background:#0b1d17f2;border:1px solid #c4a76d;border-radius:11px;padding:9px 15px;display:flex;align-items:center;gap:12px;box-shadow:0 5px 26px #0009;color:#f3dfaa;font:12px system-ui;max-width:92vw;flex-wrap:wrap;justify-content:center;pointer-events:auto}
-#campaignBattleBanner{width:max-content;max-width:calc(100vw - 20px);flex-wrap:nowrap;white-space:nowrap}
-#campaignBattleBanner strong{font:700 15px Georgia,serif;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#campaignBattleBanner .campaign-hint{color:#d3e2cf;font-size:11px}
-#campaignBattleBanner button,.campaignReturn{background:#8e7348;color:#fff6dc;border:1px solid #ecd399;border-radius:7px;padding:7px 10px;font:bold 12px system-ui;cursor:pointer}
+/* Campaign controls occupy the header. Battlefield panels stay inside the board. */
+#campaignBattleBanner{display:none}
+body.campaign-battle #campaignBattleBanner{
+ flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap
+}
+#campaignBattleBanner strong{
+ color:#f3dfaa;font:700 15px Georgia,serif;min-width:0;overflow:hidden;text-overflow:ellipsis
+}
+#campaignBattleBanner button,.campaignReturn{
+ background:#8e7348;color:#fff6dc;border:1px solid #ecd399;border-radius:7px;
+ min-height:44px;padding:6px 10px;font:bold 12px system-ui;cursor:pointer;touch-action:manipulation
+}
 #campaignBattleBanner button:hover,.campaignReturn:hover{background:#af8f57}
 #campaignBattleExit{background:#3a493c!important}
 body.campaign-battle .training-only,body.campaign-battle .info .tip,
@@ -209,44 +215,60 @@ body.campaign-battle #battleOutcomeRestart{display:none}
 body.campaign-battle #campaignBattleReturn{display:inline-block!important}
 body.campaign-battle.battle-finished #campaignBattleBanner,
 body.campaign-battle.battle-finished #campaignArmyOrders{display:none!important}
-#campaignTouchControls{display:none;position:fixed;z-index:145;bottom:72px;left:14px;right:14px;pointer-events:none;justify-content:space-between;align-items:end}
-#campaignTouchControls button{pointer-events:auto;touch-action:none;user-select:none;background:#1a3529e8;color:#f8e3b2;border:1px solid #b6a572;border-radius:11px;padding:12px;font-size:16px;font-weight:800}
-#campaignTouchControls button:active{background:#a88a52}
-.campaignDpad{width:142px;height:114px;display:grid;gap:4px;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr)}
+#campaignTouchControls{display:none;position:absolute;z-index:3;bottom:8px;left:8px;right:8px;pointer-events:none;justify-content:space-between;align-items:end}
+#campaignTouchControls button{pointer-events:auto;touch-action:none;user-select:none;background:#1a3529e8;color:#f8e3b2;border:1px solid #b6a572;border-radius:11px;padding:7px;font-size:14px;font-weight:800;min-height:44px;min-width:44px}
+#campaignTouchControls button:active,#campaignTouchControls button.is-held{background:#a88a52}
+.campaignDpad{display:grid;gap:3px;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(2,44px)}
 .campaignDpad .north{grid-area:1/2}.campaignDpad .west{grid-area:2/1}.campaignDpad .south{grid-area:2/2}.campaignDpad .east{grid-area:2/3}
-.campaignActions{display:flex;gap:8px;align-items:end}.campaignActions button{min-height:57px}
-@media(max-width:650px){#campaignTouchControls{bottom:58px;left:4px;right:4px}.campaignDpad{width:130px}.campaignActions button{padding:12px 8px}}
+.campaignActions{display:flex;gap:6px;align-items:end}
 #campaignBattleReturn{display:none}
-@media(max-width:660px){#campaignBattleBanner{top:5px;padding:7px;gap:7px;font-size:10px}#campaignBattleBanner .campaign-hint{font-size:10px}}
-body.campaign-battle .app{width:min(1450px,100%);gap:0}
-body.campaign-battle .top{padding:8px 12px}
+body.campaign-battle{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+body.campaign-battle .app{width:min(1450px,100%);gap:0;height:100%;min-height:0}
+body.campaign-battle .app:fullscreen{width:100%}
+body.campaign-battle .top{height:auto;min-height:0;padding:3px 8px;flex:none}
 body.campaign-battle .brand p{color:#d8c89c}
 body.campaign-battle .build{display:none}
-body.campaign-battle .info{justify-content:center;gap:22px;padding:8px 12px;color:#f0e5c5;font-size:13px}
+body.campaign-battle .info{justify-content:center;gap:8px;padding:3px 8px;color:#f0e5c5;font-size:12px;flex:none}
 body.campaign-battle .info .campaign-counts{display:flex;align-items:center;gap:9px}
 body:not(.campaign-battle) .campaign-counts{display:none}
-body.campaign-battle .info .campaign-counts strong{font-size:15px;color:#f7e5b9}
-body.campaign-battle #campaignBattleBanner{top:9px}
-body.campaign-battle #campaignBattleBanner .campaign-hint{display:none}
-body.campaign-battle #campaignBattleHeroHealth{font-weight:750;color:#d9f0d4}
-body.campaign-battle .board{border-radius:12px}
+body.campaign-battle .info .campaign-counts strong{color:#f7e5b9}
+#campaignBattleMessage:empty{display:none}
+#campaignBattleMessage{color:#ffd996;text-align:center}
+body.campaign-battle #campaignBattleHeroHealth{font-weight:750;color:#d9f0d4;min-width:66px;text-align:center}
+body.campaign-battle .fullscreen-button{min-height:44px;min-width:44px}
+body.campaign-battle .board{border-radius:12px;min-height:0}
 body.campaign-battle .campaign-manual-button[aria-pressed="true"]{background:#315e49;border-color:#b9e7a4}
 body.campaign-battle #campaignArmyOrdersToggle[aria-expanded="true"]{background:#315e49;border-color:#b9e7a4}
-body.campaign-battle .campaign-army-orders{position:fixed;z-index:155;top:72px;left:50%;transform:translateX(-50%);width:min(560px,94vw);padding:11px;border:1px solid #b6a572;border-radius:12px;background:#0d201af5;box-shadow:0 8px 30px #000a}
-body.campaign-battle .campaign-army-orders[hidden]{display:none}
+body.campaign-battle .campaign-army-orders{position:absolute;z-index:4;top:6px;left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 12px));max-height:calc(100% - 12px);overflow:auto;overscroll-behavior:contain;padding:8px;border:1px solid #b6a572;border-radius:12px;background:#0d201af5;box-shadow:0 8px 30px #000a}
+body.campaign-battle .campaign-army-orders[hidden],body:not(.campaign-battle) .campaign-army-orders{display:none}
 body.campaign-battle .campaign-order-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:7px 0}
-body.campaign-battle .campaign-order-row button{min-height:40px;border:1px solid #627d68;border-radius:8px;padding:7px 10px;background:#20392c;color:#edf5db;font-weight:750;touch-action:manipulation}
+body.campaign-battle .campaign-order-row button{min-height:44px;border:1px solid #627d68;border-radius:8px;padding:6px 9px;background:#20392c;color:#edf5db;font-weight:750;touch-action:manipulation}
 body.campaign-battle .campaign-order-row button[aria-pressed="true"]{border-color:#e7cb86;background:#665334;color:#fff1ca}
 body.campaign-battle .campaign-order-status{text-align:center;color:#bacbb7;font-size:11px;margin:5px}
-body.campaign-battle #campaignTouchControls{display:none!important}
-body.campaign-battle.campaign-manual #campaignTouchControls{display:flex!important}
-#campaignThrowRock{display:none}
-body.campaign-battle.campaign-manual #campaignThrowRock{display:none}
-@media(min-width:900px) and (pointer:fine){body.campaign-battle.campaign-manual #campaignTouchControls{display:none}}
-@media(max-width:650px){body.campaign-battle .top{padding:7px 9px}body.campaign-battle .board{border-radius:0}body.campaign-battle .info{gap:12px;padding:7px;font-size:11px}body.campaign-battle #campaignBattleBanner{top:5px}}
-@media(max-width:650px){body.campaign-battle .campaign-army-orders{top:105px;max-height:calc(100dvh - 120px);overflow:auto;padding:8px}body.campaign-battle .campaign-order-row button{min-height:42px;padding:7px 8px;font-size:11px}}
-@media(orientation:landscape) and (max-width:1024px){body{padding:0}.app{width:100%;height:100dvh;gap:0}.top{height:42px;min-height:42px;padding:3px 7px;gap:5px}.emblem{width:30px;height:30px;font-size:17px}.brand{gap:6px}.brand h1{font-size:12px}.brand p{font-size:8px}.board{flex:1;min-height:0;height:auto;border-radius:0;border-left:0;border-right:0}.info{min-height:30px;padding:3px 8px;font-size:9px;gap:5px}.info .tip{font-size:8px}.rail{width:62px;padding:3px;gap:3px}.right{width:68px}.orders{gap:3px}.dot{width:44px;height:44px;font-size:18px}.control{min-width:48px;font-size:8px;gap:1px}.overlay-top{top:4px;max-width:calc(100% - 128px);gap:4px}.pill{font-size:8px;padding:4px 6px}.bottom-note{display:none}#minimap{left:68px;bottom:5px;width:105px;height:59px}.map-guide{display:none}.formation-menu{transform:translateY(-50%) scale(.82);transform-origin:left center}.campaign-army-orders{top:46px!important;max-height:calc(100dvh - 52px);overflow:auto}}
-@media(orientation:landscape) and (max-width:1024px){body.campaign-battle #campaignBattleBanner{gap:6px;padding:6px 8px;max-width:calc(100vw - 12px)}body.campaign-battle #campaignBattleBanner strong{font-size:12px;max-width:min(36vw,260px)}body.campaign-battle #campaignBattleBanner button{padding:6px 7px;font-size:10px}}
+#campaignBattleBanner button:disabled,#campaignTouchControls button:disabled,.campaign-order-row button:disabled{opacity:.45;cursor:default}
+body.campaign-battle.campaign-manual:not(.battle-finished):not(.campaign-orders-open) #campaignTouchControls{display:flex}
+body.campaign-battle .battle-outcome{position:absolute;max-height:calc(100% - 12px);overflow:auto;overscroll-behavior:contain}
+body.campaign-battle .battle-outcome button{flex:none;min-height:44px}
+body.campaign-battle .battle-outcome .tally{overflow-wrap:anywhere}
+#rotateNotice{z-index:1000}
+@media(orientation:landscape) and (max-width:1024px){body{padding:0}.app{width:100%;height:100dvh;gap:0}.top{height:42px;min-height:42px;padding:3px 7px;gap:5px}.emblem{width:30px;height:30px;font-size:17px}.brand{gap:6px}.brand h1{font-size:12px}.brand p{font-size:8px}.board{flex:1;min-height:0;height:auto;border-radius:0;border-left:0;border-right:0}.info{min-height:30px;padding:3px 8px;font-size:9px;gap:5px}.info .tip{font-size:8px}.rail{width:62px;padding:3px;gap:3px}.right{width:68px}.orders{gap:3px}.dot{width:44px;height:44px;font-size:18px}.control{min-width:48px;font-size:8px;gap:1px}.overlay-top{top:4px;max-width:calc(100% - 128px);gap:4px}.pill{font-size:8px;padding:4px 6px}.bottom-note{display:none}#minimap{left:68px;bottom:5px;width:105px;height:59px}.map-guide{display:none}.formation-menu{transform:translateY(-50%) scale(.82);transform-origin:left center}}
+@media(max-width:820px){
+ body.campaign-battle .top .brand{display:none}
+ body.campaign-battle #campaignBattleBanner{gap:5px;justify-content:flex-start}
+ body.campaign-battle #campaignBattleBanner strong{font-size:13px;margin-right:auto}
+ #campaignBattleBanner button{padding:6px 7px}
+ body.campaign-battle .board{border-radius:0}
+}
+@media(max-width:540px){
+ body.campaign-battle #campaignBattleBanner{flex-wrap:wrap}
+ #campaignBattleBanner strong{flex-basis:100%}
+}
+@media(max-height:390px){
+ body.campaign-battle .battle-outcome{padding:10px;gap:8px}
+ body.campaign-battle .battle-outcome h2{font-size:1.2rem}
+ body.campaign-battle .battle-outcome .tally{gap:8px;font-size:.78rem}
+ body.campaign-battle .battle-outcome .tally>div{padding:7px}
+}
 @media(orientation:landscape) and (max-height:390px){.top{height:38px;min-height:38px}.brand p{display:none}.dot{width:40px;height:40px}.info{min-height:26px}.formation-menu{transform:translateY(-50%) scale(.74)}}
 </style>
 </head>
@@ -254,6 +276,13 @@ body.campaign-battle.campaign-manual #campaignThrowRock{display:none}
 <div class="app">
   <header class="top">
     <div class="brand"><div class="emblem" aria-hidden="true">✥</div><div><h1>UNTITLED ARMIES</h1><p id="battleSubtitle">Armor · Shields · Physical combat</p></div></div>
+    <div id="campaignBattleBanner" aria-label="Campaign battle">
+      <strong id="campaignBattleTitle">⚔ Your Battle</strong>
+      <span id="campaignBattleHeroHealth">Hero 100%</span>
+      <button type="button" id="campaignArmyOrdersToggle" aria-expanded="false" aria-controls="campaignArmyOrders">Orders</button>
+      <button type="button" id="campaignControlToggle" class="campaign-manual-button" aria-label="Manual hero control" aria-pressed="false">Auto</button>
+      <button type="button" id="campaignBattleExit">Withdraw</button>
+    </div>
     <div class="top-actions">
       <button id="fullscreenBtn" class="fullscreen-button" type="button" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen"><span id="fullscreenIcon" aria-hidden="true">⛶</span><span id="fullscreenLabel">Fullscreen</span></button>
       <div class="build" aria-label="Version 3.6">V3.6</div>
@@ -489,20 +518,12 @@ body.campaign-battle.campaign-manual #campaignThrowRock{display:none}
   </div>
  </section>
 </div>
-  </main>
 <div id="campaignTouchControls" aria-label="Manual hero controls">
- <div class="campaignDpad"><button data-hero-key="w" class="north" aria-label="Move up">▲</button><button data-hero-key="a" class="west" aria-label="Move left">◀</button><button data-hero-key="s" class="south" aria-label="Move down">▼</button><button data-hero-key="d" class="east" aria-label="Move right">▶</button></div>
- <div class="campaignActions"><button data-hero-key="shift" aria-label="Raise shield">🛡 Guard</button><button data-hero-key="attack" aria-label="Swing weapon">⚔ Attack</button><button id="campaignThrowRock" type="button">🪨 Throw rock</button></div>
-</div>
-<div id="campaignBattleBanner" aria-label="Campaign battle">
- <strong id="campaignBattleTitle">⚔ Your Battle</strong>
- <span id="campaignBattleHeroHealth">Hero: 100%</span>
- <button type="button" id="campaignArmyOrdersToggle" aria-expanded="false">🧭 Army orders</button>
- <button type="button" id="campaignControlToggle" class="campaign-manual-button" aria-pressed="false">✋ Manual</button>
- <button type="button" id="campaignBattleExit">Leave battle</button>
+ <div class="campaignDpad"><button type="button" data-hero-key="w" class="north" aria-label="Move up">▲</button><button type="button" data-hero-key="a" class="west" aria-label="Move left">◀</button><button type="button" data-hero-key="s" class="south" aria-label="Move down">▼</button><button type="button" data-hero-key="d" class="east" aria-label="Move right">▶</button></div>
+ <div class="campaignActions"><button type="button" data-hero-key="shift" aria-label="Raise shield">🛡 Guard</button><button type="button" data-hero-key="attack">⚔ Attack</button><button id="campaignThrowRock" type="button" hidden>🪨 Throw</button></div>
 </div>
 <section class="campaign-army-orders" id="campaignArmyOrders" hidden aria-label="Campaign army orders">
- <strong>Command your company</strong><div class="campaign-order-status" id="campaignOrderStatus">Your commander is managing the troops.</div>
+ <div class="campaign-order-status" id="campaignOrderStatus" role="status">Troops follow commander AI.</div>
  <div class="campaign-order-row" aria-label="Choose commanded troops">
   <button data-campaign-group="all" aria-pressed="true">Whole army</button><button data-campaign-group="infantry">Infantry</button><button data-campaign-group="archer">Archers</button><button data-campaign-group="cavalry">Cavalry</button><button data-campaign-group="horseArcher">Horse archers</button><button data-campaign-group="reserve">Reserve</button>
  </div>
@@ -517,7 +538,8 @@ body.campaign-battle.campaign-manual #campaignThrowRock{display:none}
   <button type="button" id="battleOutcomeRestart">↻ Fight another battle</button>
   <button type="button" id="campaignBattleReturn" class="campaignReturn">⮐ Return to Campaign</button>
  </section>
-  <footer class="info"><span class="campaign-counts"><strong id="friendlyCount">50 / 50</strong><span>friendly soldiers</span><span class="divider">·</span><span>Enemies</span><strong id="enemyCount">50 / 50</strong></span><span class="training-only"><span id="stressCaption">Enemy stress</span> <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="commanderButton" class="small-btn" aria-expanded="false" aria-controls="commanderPanel">👑 Commanders</button> <button type="button" id="enemyButton" class="small-btn" aria-expanded="false" aria-controls="enemyPanel">🔴 Enemy orders</button>
+  </main>
+  <footer class="info"><span class="campaign-counts"><strong id="friendlyCount">50 / 50</strong><span>allies</span><span class="divider">·</span><strong id="enemyCount">50 / 50</strong><span>enemies</span><span class="divider">·</span><span id="campaignBattleTerrain"></span></span><span id="campaignBattleMessage" role="status"></span><span class="training-only"><span id="stressCaption">Enemy stress</span> <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="commanderButton" class="small-btn" aria-expanded="false" aria-controls="commanderPanel">👑 Commanders</button> <button type="button" id="enemyButton" class="small-btn" aria-expanded="false" aria-controls="enemyPanel">🔴 Enemy orders</button>
     <button type="button" id="infiniteAmmoButton" class="small-btn" aria-pressed="false" title="Unlimited arrows, bolts and javelins for both armies">∞ Ammo: OFF</button>
     <button type="button" id="equipmentButton" class="small-btn" aria-expanded="false" aria-controls="equipmentPanel">⚙ Test gear</button> <button type="button" id="armorButton" class="small-btn" aria-expanded="false" aria-controls="armorPanel">⚔ Gear</button> <button type="button" id="stressTest" class="small-btn">⚡ Stress test</button>
  <select id="terrainPreset" class="small-btn" aria-label="Battlefield terrain" title="Choose the battlefield terrain; changing terrain restarts this combat test">
@@ -529,11 +551,11 @@ body.campaign-battle.campaign-manual #campaignThrowRock{display:none}
  <option value="rocks">🪨 Rock outcrop</option>
  <option value="mixed">🗺️ Mixed terrain</option>
  </select> <button type="button" id="battleRules" class="small-btn" aria-pressed="false" title="Training: immortal friendlies and enemy reinforcements. Real battle: vulnerable troops, no respawns, morale, surrender and victory. Switching resets the test.">🛡 Training mode</button> <button type="button" id="reset" class="small-btn">↺ Reset</button></span></footer>
-</div>
 <div id="rotateNotice" role="status" aria-live="polite">
  <div class="rotate-icon" aria-hidden="true">↻</div>
  <strong>UNTITLED ARMIES · LANDSCAPE MODE</strong>
  <p>Rotate your phone sideways to play on the wider battlefield.</p>
+</div>
 </div>
 <script>
 (()=>{
@@ -565,7 +587,9 @@ const orderButtons=['attack','defend','stop','retreat'].map(id=>document.getElem
    updateFullscreenButton();
    resize();
   }catch(err){
-   ui.hint.textContent='Fullscreen is blocked here. Open the game in Safari or Chrome to try again.';
+   const message='Fullscreen is unavailable in this browser.';
+   if(campaignMode)showBattleMessage(message);
+   else ui.hint.textContent=message;
   }
  });
  document.addEventListener('fullscreenchange',()=>{updateFullscreenButton();resize()});
@@ -595,22 +619,57 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  // Realistic battle rules opt into casualties, morale and terminal outcomes.
  // Campaign battles load an exact party snapshot from browser storage.
 // The standalone Classic test has a separate HTML file and is unchanged.
+const battleSessionKey='ua-campaign-battle-session-v1',battleResultKey='ua-campaign-battle-result-v1';
 const campaignSession=(()=>{
  try{
-  if(!window.location.search.includes('campaign=1'))return null;
-  const raw=JSON.parse(localStorage.getItem('ua-campaign-battle-session-v1')||'null');
-  return raw&&raw.status==='active'&&Array.isArray(raw.troops)&&raw.partyId>=0?raw:null;
+  if(new URLSearchParams(window.location.search).get('campaign')!=='1')return null;
+  const raw=JSON.parse(localStorage.getItem(battleSessionKey)||'null');
+  const campaign=JSON.parse(localStorage.getItem('ua-campaign-v1')||'null');
+  if(raw?.status!=='active'||!Array.isArray(raw.troops)||!Number.isInteger(raw.partyId)||raw.partyId<0||
+     !raw.sessionId||raw.sessionId!==campaign?.pendingBattleId)return null;
+  return raw;
  }catch(e){return null}
 })();
 const campaignMode=!!campaignSession;
-let campaignReported=false,campaignControlMode='auto',heroAttackHeld=false,
- heroPointer={x:null,y:null},campaignStonesRemaining=campaignSession?.inventory?.stones||0;
+if(!campaignMode){window.location.replace('index.html');return}
+try{
+ const result=JSON.parse(localStorage.getItem(battleResultKey)||'null');
+ if(result?.sessionId===campaignSession.sessionId){
+  window.location.replace('index.html?battleReturn=1');return;
+ }
+}catch(e){}
+let campaignReported=false,campaignControlMode='auto',heroPointer=null;
+let campaignStonesRemaining=Math.max(0,Number(campaignSession.inventory?.stones)||0);
+let battleMessageTimer;
 const heroKeys=new Set();
-if(campaignMode){
- document.body.classList.add('campaign-battle');
- document.querySelector('#battleSubtitle').textContent='Campaign battle';
+const heroTouches=new Map();
+const portrait=window.matchMedia('(orientation: portrait)');
+let campaignOrdersOpen=false;
+document.body.classList.add('campaign-battle');
+document.querySelector('#battleSubtitle').textContent='Campaign battle';
+function clearHeroInput(){
+ heroKeys.clear();
+ for(const input of heroTouches.values())input.button?.classList.remove('is-held');
+ heroTouches.clear();
+ heroPointer=null;
 }
-else window.addEventListener('load',()=>{window.location.replace('index.html')},{once:true});
+function heroInputHeld(key){
+ return heroKeys.has(key)||Array.from(heroTouches.values()).some(input=>input.key===key);
+}
+function heroCanAct(){
+ const hero=commanders.friend;
+ return hero&&!hero.dead&&!hero.routed&&!hero.broken&&!hero.surrendered;
+}
+function canControlHero(){
+ return campaignControlMode==='manual'&&heroCanAct()&&!campaignOrdersOpen&&!battleOutcome&&
+  !portrait.matches&&!document.hidden;
+}
+function showBattleMessage(message,duration=0){
+ const status=document.querySelector('#campaignBattleMessage');
+ clearTimeout(battleMessageTimer);
+ status.textContent=message;
+ if(duration)battleMessageTimer=setTimeout(()=>{status.textContent=''},duration);
+}
 function campaignEquipment(faction,tier,enemyKind){
  tier=Math.max(0,Math.min(2,tier||0));
  const heavy=tier>=2,trained=tier>=1;
@@ -642,42 +701,78 @@ function campaignEquipment(faction,tier,enemyKind){
  }
 }
 function setCampaignControlMode(mode){
- if(!campaignMode)return;campaignControlMode=mode==='manual'?'manual':'auto';
- document.body.classList.toggle('campaign-manual',campaignControlMode==='manual');
+ const next=mode==='manual'&&heroCanAct()?'manual':'auto';
+ if(next!==campaignControlMode){
+  clearHeroInput();
+  commanders.friend.rangedAim=0;
+  commanders.friend.rangedTargetId=null;
+  commanders.friend.guardActive=false;
+ }
+ campaignControlMode=next;
+ const manual=next==='manual';
+ document.body.classList.toggle('campaign-manual',manual);
  const button=document.querySelector('#campaignControlToggle');
- button.textContent=campaignControlMode==='manual'?'🤖 Auto':'✋ Manual';
- button.setAttribute('aria-pressed',campaignControlMode==='manual'?'true':'false');
- button.title=campaignControlMode==='manual'?'Switch back to your commander’s automatic combat AI':'Take direct control of your character';
- document.querySelector('#campaignThrowRock').disabled=campaignStonesRemaining<1;
- document.querySelector('#campaignThrowRock').style.display=campaignControlMode==='manual'&&campaignSession.equipment?.quiver==='rockPouch'?'inline-block':'none';
+ button.textContent=manual?'Hero Manual':'Hero Auto';
+ button.setAttribute('aria-pressed',String(manual));
+ button.title=manual?'Switch to automatic hero control':'Take manual control of your hero';
+ refreshHeroControls();
+}
+function refreshHeroControls(){
+ const controls=document.querySelector('#campaignTouchControls'),hero=commanders.friend;
+ const throwButton=document.querySelector('#campaignThrowRock');
+ const attack=controls.querySelector('[data-hero-key="attack"]');
+ const guard=controls.querySelector('[data-hero-key="shift"]');
+ const stones='Throw rock ('+campaignStonesRemaining+' left)';
+ throwButton.hidden=campaignSession.equipment?.quiver!=='rockPouch';
+ throwButton.disabled=campaignStonesRemaining<1;
+ throwButton.textContent='🪨 Throw · '+campaignStonesRemaining;
+ throwButton.setAttribute('aria-label',stones);
+ throwButton.title=stones;
+ attack.textContent=hasRangedAmmo(hero)?'🏹 Attack':'⚔ Attack';
+ guard.disabled=!hero.shield;
 }
 function updateHeroControl(s,dt){
  s.guardBreak=Math.max(0,(s.guardBreak||0)-dt);
- const mx=(heroKeys.has('d')?1:0)-(heroKeys.has('a')?1:0);
- const my=(heroKeys.has('s')?1:0)-(heroKeys.has('w')?1:0),mag=Math.hypot(mx,my);
+ const mx=Number(heroInputHeld('d'))-Number(heroInputHeld('a'));
+ const my=Number(heroInputHeld('s'))-Number(heroInputHeld('w')),mag=Math.hypot(mx,my);
+ const guarding=heroInputHeld('shift'),attacking=heroInputHeld('attack')||heroInputHeld(' ');
  if(mag&&s.stagger<=0){
-  const speed=(s.speed||76)*(heroKeys.has('shift')?.68:1)*terrainSpeed(s),nx=clamp(s.x+mx/mag*speed*dt,14,W-14),ny=clamp(s.y+my/mag*speed*dt,14,H-14),point=terrainSteer(s,nx,ny);
+  const guardPace=guarding&&s.shield ? .68 : 1;
+  const speed=(s.speed||76)*guardPace*terrainSpeed(s),nx=clamp(s.x+mx/mag*speed*dt,14,W-14),ny=clamp(s.y+my/mag*speed*dt,14,H-14),point=terrainSteer(s,nx,ny);
   s.vx=(point.x-s.x)/Math.max(dt,.001);s.vy=(point.y-s.y)/Math.max(dt,.001);s.x=point.x;s.y=point.y;
  }else{s.vx=0;s.vy=0}
  const {target,dist}=chooseTarget(s);
- if(heroPointer.x!==null)s.faceAngle=Math.atan2(heroPointer.y-s.y,heroPointer.x-s.x);
+ if(heroPointer)s.faceAngle=Math.atan2(camera.y+heroPointer.y-s.y,camera.x+heroPointer.x-s.x);
  else if(target)s.faceAngle=Math.atan2(target.y-s.y,target.x-s.x);
- s.guardActive=heroKeys.has('shift')&&!s.attack&&s.stagger<=0&&s.stamina>3;s.meleeReady=true;
+ else if(mag)s.faceAngle=Math.atan2(my,mx);
+ s.guardActive=!!s.shield&&guarding&&!s.attack&&s.guardBreak<=0&&s.stagger<=0&&s.stamina>3;
+ const canShoot=hasRangedAmmo(s)&&dist>meleeThreatRange(s);
+ s.meleeReady=!canShoot;
  if(s.guardActive){s.stamina=Math.max(0,s.stamina-dt*2.3);s.guardHold=0}
+ if(!attacking||s.guardActive||s.stagger>0||!canShoot){
+  s.rangedAim=0;s.rangedTargetId=null;
+ }
  if(s.attack)advanceAttack(s,dt);
- else if(target&&!s.guardActive&&s.stagger<=0){
-  if(s.ranged&&dist>meleeThreatRange(s)){if(!s.rangedAim)beginRangedAim(s,target,dist);else advanceRangedAim(s,target,dt)}
-  else if((heroAttackHeld||heroKeys.has(' '))&&dist<=weaponProfiles[s.weapon].reach+42)beginAttack(s,target);
+ else if(attacking&&target&&!s.guardActive&&s.stagger<=0){
+  if(canShoot){
+   if(!s.rangedAim)beginRangedAim(s,target,dist);
+   else advanceRangedAim(s,target,dt);
+  }else beginAttack(s,target);
  }
 }
 function throwCampaignRock(){
- if(!campaignMode||campaignControlMode!=='manual'||campaignStonesRemaining<1)return;
- const s=commanders.friend;if(!s||s.dead||s.broken||s.rangedCooldown>0)return;
- const {target,dist}=chooseTarget(s);if(!target||dist>470)return;
- const angle=heroPointer.x===null?Math.atan2(target.y-s.y,target.x-s.x):Math.atan2(heroPointer.y-s.y,heroPointer.x-s.x),speed=410;
+ if(!canControlHero()||campaignSession.equipment?.quiver!=='rockPouch'||campaignStonesRemaining<1)return;
+ const s=commanders.friend;
+ if(s.rangedCooldown>0||s.stagger>0||s.attack||s.stamina<4||s.guardActive)return;
+ const {target,dist}=chooseTarget(s);
+ if(!target||dist>470){showBattleMessage('Move closer to throw a rock.',2200);return}
+ const angle=heroPointer?
+  Math.atan2(camera.y+heroPointer.y-s.y,camera.x+heroPointer.x-s.x):
+  Math.atan2(target.y-s.y,target.x-s.x);
+ const speed=410;
  projectiles.push({id:-(900000+Math.floor(t*1000)),shooter:s,shooterId:s.id,team:s.team,kind:'rock',damage:.33+(campaignSession.stats?.strength||5)*.012,momentum:45,
   x:s.x+Math.cos(angle)*12,y:s.y+Math.sin(angle)*12,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,speed,range:465,traveled:0,loft:6,arcDistance:Math.min(465,dist)});
- campaignStonesRemaining--;s.rangedCooldown=.72;s.stamina=Math.max(0,s.stamina-4);setCampaignControlMode('manual');
+ campaignStonesRemaining--;s.rangedCooldown=.72;s.stamina=Math.max(0,s.stamina-4);refreshHeroControls();
 }
 function campaignFormation(team,n){
  const h=home(team),columns=Math.max(2,Math.min(9,Math.ceil(Math.sqrt(n*1.9)))),
@@ -713,16 +808,21 @@ function campaignRecord(outcome){
   hp:Math.max(0,s.hp),maxHp:s.maxHp
  }));
  const hero=commanders.friend;
- const enemy=foes.filter(s=>!s.dead&&!s.routed&&!s.surrendered).length;
+ const enemyRemaining=foes.filter(s=>!s.dead&&!s.routed&&!s.surrendered).length;
+ const enemySurvivors=foes.filter(s=>!s.surrendered&&(!s.dead||s.woundedOut)).length;
  const data={sessionId:campaignSession.sessionId,partyId:campaignSession.partyId,
   kind:campaignSession.kind,faction:campaignSession.faction,
   winner,seconds:t,entries,heroHp:hero?Math.max(0,hero.hp):0,
-  heroMaxHp:hero?.maxHp||5,enemyRemaining:enemy,
+  heroMaxHp:hero?.maxHp||5,enemyRemaining,enemySurvivors,
    heroAmmoSpent:hero?.ranged==='bow'?Math.max(0,Math.min(rangedProfiles.bow.ammo,campaignSession.inventory?.arrows||0)-(hero.ammo||0)):0,
    stonesSpent:Math.max(0,(campaignSession.inventory?.stones||0)-campaignStonesRemaining),
   enemyInitial:campaignSession.enemyCount,originalTroops:campaignSession.troops.length};
- try{localStorage.setItem('ua-campaign-battle-result-v1',JSON.stringify(data));campaignReported=true}
- catch(e){ui.hint.textContent='Unable to save battle result. Enable browser storage.'}
+ try{
+  let previous=null;
+  try{previous=JSON.parse(localStorage.getItem(battleResultKey)||'null')}catch(e){}
+  if(previous?.sessionId!==campaignSession.sessionId)localStorage.setItem(battleResultKey,JSON.stringify(data));
+  campaignReported=true;
+ }catch(e){showBattleMessage('Could not save battle results. Check browser storage and try again.')}
 }
 function campaignReturn(){
  if(!campaignMode)return;
@@ -1186,10 +1286,11 @@ function focusArmy(){
  document.querySelector('#battleOutcome').classList.toggle('is-hidden',!battleOutcome);
  document.body.classList.toggle('battle-finished',!!battleOutcome);
  if(battleOutcome){
-  const armyPanel=document.querySelector('#campaignArmyOrders'),armyToggle=document.querySelector('#campaignArmyOrdersToggle');
-  armyPanel.hidden=true;armyToggle.setAttribute('aria-expanded','false');
- }
- if(battleOutcome){
+  if(campaignMode){
+   setCampaignOrdersOpen(false);
+   clearHeroInput();
+   document.querySelector('#campaignBattleReturn').focus({preventScroll:true});
+  }
   document.querySelector('#battleOutcomeTitle').textContent=battleOutcome.winner==='friend'?
    '🟢 Victory':battleOutcome.winner==='foe'?'🔴 Defeat':'⚖ Draw';
   document.querySelector('#battleOutcomeReason').textContent=battleOutcome.reason+
@@ -1203,25 +1304,24 @@ function focusArmy(){
 function determineBattleOutcome(){
  if(!realisticBattle||battleOutcome)return battleOutcome;
  const friend=battleTally('friend'),foe=battleTally('foe');
- if(campaignMode){
-  if(commanders.friend&&!commanders.friend.dead&&!commanders.friend.routed&&!commanders.friend.broken)friend.standing++;
-  if(commanders.foe&&!commanders.foe.dead&&!commanders.foe.routed&&!commanders.foe.broken)foe.standing++;
- }
- if(friend.standing>0&&foe.standing>0){
+ const friendFighting=friend.standing+(campaignMode&&heroCanAct()?1:0);
+ const foeLeader=commanders.foe;
+ const foeFighting=foe.standing+(campaignMode&&foeLeader&&!foeLeader.dead&&!foeLeader.routed&&!foeLeader.broken?1:0);
+ if(friendFighting>0&&foeFighting>0){
   battleCollapseSince.friend=null;battleCollapseSince.foe=null;return null;
  }
  // A momentary complete rout is not necessarily a victory: disciplined
  // broken soldiers may rally if their commander is still nearby. Give them
  // a brief chance before declaring the battle terminal.
  let waitingForRally=false;
- for(const [side,report] of [['friend',friend],['foe',foe]]){
-  if(report.standing>0||report.shaken===0){battleCollapseSince[side]=null;continue;}
+ for(const [side,report,fighting] of [['friend',friend,friendFighting],['foe',foe,foeFighting]]){
+  if(fighting>0||report.shaken===0){battleCollapseSince[side]=null;continue;}
   if(battleCollapseSince[side]===null)battleCollapseSince[side]=t;
   if(t-battleCollapseSince[side]<4.5)waitingForRally=true;
  }
  if(waitingForRally)return null;
- const winner=friend.standing&&foe.standing===0?'friend':
-  foe.standing&&friend.standing===0?'foe':'draw';
+ const winner=friendFighting&&foeFighting===0?'friend':
+  foeFighting&&friendFighting===0?'foe':'draw';
  const wiped=winner==='friend'?foe:friend;
  const reason=winner==='draw'?'Both armies became unable to fight':
   wiped.surrendered>0||wiped.escaped>0||wiped.shaken>0?
@@ -1265,8 +1365,10 @@ function populate(){
   commanders.friend=createCommander('friend');commanders.foe=createCommander('foe');
   if(campaignMode){
     const eq=campaignSession.equipment||{},stats=campaignSession.stats||{};
-   commanders.friend.maxHp=6;
-   commanders.friend.hp=Math.max(.8,6*clamp((campaignSession.heroHealth||100)/100,0,1));
+   const strength=clamp(Number(stats.strength)||5,1,40);
+   commanders.friend.maxHp=6+(strength-5)*.18;
+   const health=campaignSession.heroHealth??100;
+   commanders.friend.hp=commanders.friend.maxHp*clamp(health/100,.01,1);
     commanders.friend.speed=(56+(stats.agility||5)*4)*(campaignSession.perks?.includes('outrider')?1.12:1);
    commanders.friend.isPlayerHero=true;
     commanders.friend.weapon=({sword:'sword',axe:'axe',spear:'spear',bow:'sword'})[eq.weapon]||'sword';
@@ -1288,9 +1390,11 @@ function populate(){
      });
    document.querySelector('#campaignBattleTitle').textContent='⚔ '+campaignSession.playerName+
     ' vs '+(campaignSession.kind==='bandit'?'Outlaws':campaignSession.kind==='patrol'?'Patrol':'Caravan');
-   document.querySelector('#campaignBattleHeroHealth').textContent='Hero: 100%';
-    setCampaignControlMode('auto');
-    document.querySelector('#campaignBattleTitle').textContent+=' · '+terrainLabels[terrainPreset]+' · Map '+(Math.abs(campaignSession.mapSeed||0)%50+1)+'/50';
+   const title=document.querySelector('#campaignBattleTitle');
+   title.title=title.textContent;
+   document.querySelector('#campaignBattleHeroHealth').textContent='Hero '+Math.round(health)+'%';
+   setCampaignControlMode('auto');
+   document.querySelector('#campaignBattleTerrain').textContent=terrainLabels[terrainPreset]+' · Map '+(Math.abs(campaignSession.mapSeed||0)%50+1)+'/50';
   }
   commanderBrains.friend=newBrain(commanderBrains.friend.personality,commanderBrains.friend.intent,commanderBrains.friend.lineStyle);
   commanderBrains.foe=newBrain(commanderBrains.foe.personality,commanderBrains.foe.intent,commanderBrains.foe.lineStyle);
@@ -1750,7 +1854,7 @@ function resolveCombatCommand(s){
  if(s.team==='foe'&&enemyCommand!=='auto')return enemyCommand;
  if(s.team==='friend'){
   const manual=(s.squadReserve&&generalOrders.reserve)||generalOrders[role]||generalOrders.all;
-  if(manual)return manual; // The General's authority is immediate.
+  if(manual&&manual!=='ai')return manual; // The General's authority is immediate.
  }
  const brain=commanderBrains[s.team],leader=commanders[s.team];
  const intended=brain?.orders[role]||'attack';
@@ -1778,6 +1882,7 @@ function selectedTroops(){
 }
 function returnToCommander(group){
  if(group==='all')generalOrders={all:null,infantry:null,archer:null,cavalry:null,horseArcher:null,reserve:null};
+ else if(campaignMode&&(generalOrders.all||(group==='reserve'&&generalOrders.infantry)))generalOrders[group]='ai';
  else generalOrders[group]=null;
  mode='idle';selected=false;updateUI();updateCommanderUI();
 }
@@ -2147,6 +2252,7 @@ ui.select.addEventListener('click',()=>{
 orderButtons.forEach(b=>b.addEventListener('click',()=>setMode(b.id)));
 // Tap orders soldiers to a world position; swipe pans the camera instead.
  canvas.addEventListener('pointerdown',e=>{
+  if(campaignMode)return;
   if(e.button!==undefined&&e.button!==0)return;
   setFormationMenu(false);
   fieldPointer={id:e.pointerId,x:e.clientX,y:e.clientY,cx:camera.x,cy:camera.y,moved:false};
@@ -2193,6 +2299,7 @@ orderButtons.forEach(b=>b.addEventListener('click',()=>setMode(b.id)));
  });
  canvas.addEventListener('pointercancel',()=>{fieldPointer=null});
  canvas.addEventListener('wheel',e=>{
+  if(campaignMode)return;
   e.preventDefault();
   camera.x=clamp(camera.x+e.deltaX+e.deltaY*.55,0,Math.max(0,W-VW));
   camera.y=clamp(camera.y+e.deltaY*.45,0,Math.max(0,H-VH));
@@ -3443,7 +3550,10 @@ function step(dt){
   s.recoveryDelay=Math.max(0,s.recoveryDelay-dt);
   if(s.recoveryDelay===0)s.stamina=clamp(s.stamina+dt*(6.7+(s.skill||45)*.012),0,s.maxStamina);
   if(s.broken){handleBrokenSoldier(s,dt);continue;}
-  if(campaignMode&&s.isPlayerHero&&campaignControlMode==='manual'){updateHeroControl(s,dt);continue;}
+  if(campaignMode&&s.isPlayerHero){
+   if(s.ranged==='bow'&&s.ammo<=0)s.unitRole='infantry';
+   if(campaignControlMode==='manual'){updateHeroControl(s,dt);continue;}
+  }
   const {target,dist}=chooseTarget(s);
   // Ranged units keep their bow in hand until a genuine melee threat.
   s.meleeReady=!!(isArcher(s)&&target&&dist<=meleeThreatRange(s));
@@ -3949,7 +4059,7 @@ function draw(){
    ctx.restore();
   }
   ctx.restore();
-  drawMinimap();
+  if(!campaignMode)drawMinimap();
 }
 function drawMinimap(){
   if(!W)return;
@@ -4005,7 +4115,8 @@ function frame(ts){
   if(!last)last=ts;
   const dt=Math.min((ts-last)/1000,.040);
   last=ts;
-  if(!equipmentOpen&&!battleOutcome)t+=dt;
+  const simulating=!equipmentOpen&&!battleOutcome&&!portrait.matches&&!document.hidden;
+  if(simulating)t+=dt;
   const panSpeed=600*dt;
   if(!campaignMode){
    if(cameraKeys.has('arrowleft')||cameraKeys.has('a'))camera.x-=panSpeed;
@@ -4016,58 +4127,134 @@ function frame(ts){
    camera.x=commanders.friend.x-VW*.5;
    camera.y=commanders.friend.y-VH*.5;
    const hero=commanders.friend;
-   document.querySelector('#campaignBattleHeroHealth').textContent=
-    'Hero: '+Math.round(Math.max(0,hero.hp)/Math.max(1,hero.maxHp)*100)+'%';
+   const canAct=heroCanAct(),toggle=document.querySelector('#campaignControlToggle');
+   toggle.disabled=!canAct;
+   if(!canAct&&campaignControlMode==='manual')setCampaignControlMode('auto');
+   document.querySelector('#campaignBattleHeroHealth').textContent=hero.dead?'Hero down':
+    !canAct?'Hero routing':'Hero '+Math.round(Math.max(0,hero.hp)/Math.max(1,hero.maxHp)*100)+'%';
   }
   camera.x=clamp(camera.x,0,Math.max(0,W-VW));
   camera.y=clamp(camera.y,0,Math.max(0,H-VH));
-  if(!equipmentOpen&&!battleOutcome)step(dt);
+  if(simulating)step(dt);
   draw();
-  if(!equipmentOpen&&Math.floor(t*4)!==Math.floor((t-dt)*4))updateUI();
+  if(simulating&&Math.floor(t*4)!==Math.floor((t-dt)*4)){
+   updateUI();
+   if(campaignControlMode==='manual')refreshHeroControls();
+   if(campaignOrdersOpen)updateCampaignArmyOrders();
+  }
   requestAnimationFrame(frame);
  }
-// Campaign controls are limited to leaving or returning from the battle.
-if(campaignMode){
- document.querySelector('#campaignControlToggle').addEventListener('click',()=>setCampaignControlMode(campaignControlMode==='auto'?'manual':'auto'));
- const armyPanel=document.querySelector('#campaignArmyOrders'),armyToggle=document.querySelector('#campaignArmyOrdersToggle');
- const armyOrderName={attack:'Advance',defend:'Hold the line',stop:'Stand ground',retreat:'Retreat'};
- const updateCampaignArmyOrders=()=>{
-  document.querySelectorAll('[data-campaign-group]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.campaignGroup===selectedGroup?'true':'false'));
-  const overrides=Object.entries(generalOrders).filter(([,v])=>!!v);
-  document.querySelector('#campaignOrderStatus').textContent=overrides.length?
-   'Standing order: '+overrides.map(([group,order])=>(group==='all'?'Whole army':group)+' · '+(armyOrderName[order]||order)).join(' · '):
-   'Your commander is managing the troops.';
- };
- armyToggle.addEventListener('click',()=>{armyPanel.hidden=!armyPanel.hidden;armyToggle.setAttribute('aria-expanded',armyPanel.hidden?'false':'true');updateCampaignArmyOrders()});
- document.querySelectorAll('[data-campaign-group]').forEach(b=>b.addEventListener('click',()=>{selectedGroup=b.dataset.campaignGroup;updateCampaignArmyOrders()}));
- document.querySelectorAll('[data-campaign-order]').forEach(b=>b.addEventListener('click',()=>{
-  const order=b.dataset.campaignOrder;
-  if(order==='auto'){returnToCommander(selectedGroup);updateCampaignArmyOrders();return}
-  selected=true;setMode(order);updateCampaignArmyOrders();
-  ui.hint.textContent=(selectedGroup==='all'?'WHOLE ARMY':selectedGroup.toUpperCase())+' · '+(armyOrderName[order]||order);
- }));
- document.querySelector('#campaignThrowRock').addEventListener('click',throwCampaignRock);
- window.addEventListener('keydown',e=>{
-  const key=e.key.toLowerCase();
-  if(campaignControlMode==='manual'&&['w','a','s','d',' ','shift'].includes(key)){heroKeys.add(key);e.preventDefault()}
-  if(campaignControlMode==='manual'&&key==='g'){throwCampaignRock();e.preventDefault()}
- });
- window.addEventListener('keyup',e=>heroKeys.delete(e.key.toLowerCase()));
- window.addEventListener('blur',()=>{heroKeys.clear();heroAttackHeld=false});
- canvas.addEventListener('pointermove',e=>{const rect=canvas.getBoundingClientRect();heroPointer={x:camera.x+e.clientX-rect.left,y:camera.y+e.clientY-rect.top}});
- canvas.addEventListener('pointerdown',e=>{if(campaignControlMode==='manual'&&e.button===0){heroAttackHeld=true;e.preventDefault()}});
- window.addEventListener('pointerup',()=>heroAttackHeld=false);
- document.querySelectorAll('[data-hero-key]').forEach(button=>{
-  const key=button.dataset.heroKey;
-  const down=e=>{if(campaignControlMode!=='manual')return;e.preventDefault();e.stopPropagation();if(key==='attack')heroAttackHeld=true;else heroKeys.add(key)};
-  const up=e=>{e.preventDefault();e.stopPropagation();if(key==='attack')heroAttackHeld=false;else heroKeys.delete(key)};
-  button.addEventListener('pointerdown',down);button.addEventListener('pointerup',up);button.addEventListener('pointercancel',up);button.addEventListener('lostpointercapture',up);
- });
- document.querySelector('#campaignBattleExit').addEventListener('click',campaignReturn);
- document.querySelector('#campaignBattleReturn').addEventListener('click',campaignReturn);
-}else{
- document.querySelector('#campaignBattleBanner').style.display='none';
+const armyPanel=document.querySelector('#campaignArmyOrders'),armyToggle=document.querySelector('#campaignArmyOrdersToggle');
+const armyGroupButtons=[...armyPanel.querySelectorAll('[data-campaign-group]')];
+const armyOrderButtons=[...armyPanel.querySelectorAll('[data-campaign-order]')];
+const armyOrderName={attack:'Advance',defend:'Hold the line',stop:'Stand ground',retreat:'Retreat',ai:'Commander AI'};
+function updateCampaignArmyOrders(){
+ const active=friends.filter(s=>!s.dead&&!s.routed&&!s.surrendered);
+ for(const button of armyGroupButtons){
+  const group=button.dataset.campaignGroup;
+  button.disabled=!active.some(s=>group==='all'||(group==='reserve'?s.squadReserve:s.unitRole===group));
+  button.setAttribute('aria-pressed',String(group===selectedGroup));
+ }
+ const selectedButton=armyGroupButtons.find(button=>button.dataset.campaignGroup===selectedGroup);
+ const orders=Object.entries(generalOrders).filter(([,v])=>v);
+ for(const button of armyOrderButtons)button.disabled=selectedButton.disabled;
+ const message=selectedButton.disabled?'This group has no troops in the fight.':
+  orders.length?orders.map(([group,order])=>{
+   const label=armyGroupButtons.find(button=>button.dataset.campaignGroup===group).textContent;
+   return label+' · '+armyOrderName[order];
+  }).join(' / '):'Troops follow commander AI.';
+ const status=document.querySelector('#campaignOrderStatus');
+ if(status.textContent!==message)status.textContent=message;
 }
+function setCampaignOrdersOpen(open){
+ campaignOrdersOpen=open&&!battleOutcome;
+ if(campaignOrdersOpen)clearHeroInput();
+ armyPanel.hidden=!campaignOrdersOpen;
+ document.body.classList.toggle('campaign-orders-open',campaignOrdersOpen);
+ armyToggle.setAttribute('aria-expanded',String(campaignOrdersOpen));
+ if(campaignOrdersOpen)updateCampaignArmyOrders();
+}
+armyToggle.addEventListener('click',()=>setCampaignOrdersOpen(!campaignOrdersOpen));
+for(const button of armyGroupButtons)button.addEventListener('click',()=>{
+ selectedGroup=button.dataset.campaignGroup;
+ updateCampaignArmyOrders();
+});
+for(const button of armyOrderButtons)button.addEventListener('click',()=>{
+ if(!campaignOrdersOpen||battleOutcome)return;
+ const order=button.dataset.campaignOrder;
+ if(order==='auto')returnToCommander(selectedGroup);
+ else{selected=true;setMode(order)}
+ updateCampaignArmyOrders();
+});
+document.querySelector('#campaignControlToggle').addEventListener('click',()=>{
+ setCampaignOrdersOpen(false);
+ setCampaignControlMode(campaignControlMode==='auto'?'manual':'auto');
+});
+document.querySelector('#campaignThrowRock').addEventListener('click',throwCampaignRock);
+const movementKeys={arrowup:'w',arrowleft:'a',arrowdown:'s',arrowright:'d'};
+window.addEventListener('keydown',e=>{
+ if(e.key==='Escape'&&campaignOrdersOpen){
+  setCampaignOrdersOpen(false);armyToggle.focus();return;
+ }
+ if(!canControlHero())return;
+ const input=e.key.toLowerCase(),key=movementKeys[input]||input;
+ if(key===' '&&e.target instanceof HTMLButtonElement)return;
+ if(['w','a','s','d',' ','shift'].includes(key)){heroKeys.add(key);e.preventDefault()}
+ if(key==='g'&&!e.repeat){throwCampaignRock();e.preventDefault()}
+});
+window.addEventListener('keyup',e=>{
+ const key=e.key.toLowerCase();
+ heroKeys.delete(movementKeys[key]||key);
+});
+window.addEventListener('blur',clearHeroInput);
+document.addEventListener('visibilitychange',clearHeroInput);
+if(portrait.addEventListener)portrait.addEventListener('change',clearHeroInput);
+else portrait.addListener?.(clearHeroInput);
+function trackHeroAim(e){
+ if(!canControlHero()||e.pointerType==='touch')return;
+ const rect=canvas.getBoundingClientRect();
+ heroPointer={x:e.clientX-rect.left,y:e.clientY-rect.top};
+}
+function beginHeroPointer(e,key,button){
+ if(!canControlHero()||e.button!==0)return;
+ e.preventDefault();
+ e.currentTarget.setPointerCapture?.(e.pointerId);
+ heroTouches.set(e.pointerId,{key,button});
+ button?.classList.add('is-held');
+}
+function endHeroPointer(e){
+ const input=heroTouches.get(e.pointerId);
+ if(!input)return;
+ heroTouches.delete(e.pointerId);
+ if(input.button&&!Array.from(heroTouches.values()).some(value=>value.button===input.button)){
+  input.button.classList.remove('is-held');
+ }
+}
+canvas.addEventListener('pointermove',trackHeroAim);
+canvas.addEventListener('pointerleave',()=>{heroPointer=null});
+canvas.addEventListener('pointerdown',e=>{
+ trackHeroAim(e);
+ beginHeroPointer(e,'attack');
+});
+canvas.addEventListener('lostpointercapture',endHeroPointer);
+window.addEventListener('pointerup',endHeroPointer);
+window.addEventListener('pointercancel',endHeroPointer);
+for(const button of document.querySelectorAll('[data-hero-key]')){
+ const key=button.dataset.heroKey;
+ button.addEventListener('pointerdown',e=>beginHeroPointer(e,key,button));
+ button.addEventListener('lostpointercapture',endHeroPointer);
+ button.addEventListener('keydown',e=>{
+  if(canControlHero()&&(e.key===' '||e.key==='Enter')){
+   heroKeys.add(key);e.preventDefault();
+  }
+ });
+ button.addEventListener('keyup',e=>{
+  if(e.key===' '||e.key==='Enter')heroKeys.delete(key);
+ });
+ button.addEventListener('blur',()=>heroKeys.delete(key));
+}
+document.querySelector('#campaignBattleExit').addEventListener('click',campaignReturn);
+document.querySelector('#campaignBattleReturn').addEventListener('click',campaignReturn);
 window.addEventListener('resize',resize,{passive:true});if('ResizeObserver' in window)new ResizeObserver(resize).observe(board);resize();requestAnimationFrame(frame);
 })();
 </script>
