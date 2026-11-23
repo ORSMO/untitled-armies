@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — Campaign Battle · V4.7</title>
+<title>Untitled Armies — Campaign Battle · V4.10</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -557,6 +557,7 @@ body.campaign-battle .battle-outcome .tally{overflow-wrap:anywhere}
  <p>Rotate your phone sideways to play on the wider battlefield.</p>
 </div>
 </div>
+<script src="campaign-armory.js?v=4.10"></script>
 <script>
 (()=>{
 'use strict';
@@ -670,15 +671,12 @@ function showBattleMessage(message,duration=0){
  status.textContent=message;
  if(duration)battleMessageTimer=setTimeout(()=>{status.textContent=''},duration);
 }
-function campaignEquipment(faction,tier,enemyKind){
+function legacyCampaignEquipment(faction,tier){
  tier=Math.max(0,Math.min(2,tier||0));
  const heavy=tier>=2,trained=tier>=1;
  const defaults={weapon:trained?'sword':'spear',shield:'round',
   armor:heavy?'plate':trained?'mail':'padded',ranged:null,
   unitRole:'infantry',horseArmor:'none'};
- if(enemyKind==='bandit')return {...defaults,weapon:tier?'axe':'shortsword',
-  shield:tier?'round':null,armor:tier?'leather':'padded'};
- if(enemyKind==='caravan')return {...defaults,weapon:'shortsword',armor:'leather',shield:'round'};
  switch(faction){
   case 0:if(heavy)return{...defaults,unitRole:'archer',weapon:'shortsword',ranged:'bow',shield:null};
     return {...defaults,weapon:trained?'sword':'spear'};
@@ -699,6 +697,48 @@ function campaignEquipment(faction,tier,enemyKind){
     weapon:trained?'shortsword':'lance',ranged:trained?'horsebow':null,horseArmor:'leather'};
   default:return defaults;
  }
+}
+function armoryBattleKit(loadout){
+ if(!loadout)return null;
+ const weapon=loadout.weapon;
+ if(!weaponOrder.includes(weapon)||!unitRoles.includes(loadout.role))return null;
+ const role=loadout.role;
+ const usesRanged=role==='archer'||role==='horseArcher';
+ if(usesRanged&&!rangedOrder.includes(loadout.ranged))return null;
+ const usesJavelins=role==='infantry'&&loadout.ranged==='javelin';
+ const ranged=usesRanged||usesJavelins?loadout.ranged:null;
+ const armor=loadout.armor==='none'?'naked':loadout.armor;
+ const mounted=role==='cavalry'||role==='horseArcher';
+ return {
+  weapon,ranged,unitRole:role,
+  armor:armorOrder.includes(armor)?armor:'padded',
+  shield:!weaponProfiles[weapon].twoHand&&!rangedProfiles[ranged]?.twoHand&&shieldOrder.includes(loadout.shield)?
+   loadout.shield:null,
+  horseArmor:mounted&&horseArmorProfiles[loadout.horseArmor]?.label?loadout.horseArmor:'none',
+  stats:loadout.stats
+ };
+}
+function campaignEquipment(slot,team){
+ const snapshot=armoryBattleKit(slot.loadout);
+ if(snapshot)return snapshot;
+ if(team==='foe'){
+  const variant=slot.slot%6;
+  if(campaignSession.kind==='bandit'){
+   const kit={weapon:'shortsword',shield:null,armor:'padded',ranged:null,unitRole:'infantry',horseArmor:'none'};
+   if(variant===3)return {...kit,weapon:'axe',armor:'leather'};
+   if(variant===4)return {...kit,ranged:'bow',unitRole:'archer'};
+   if(variant===1)return {...kit,shield:'buckler'};
+   return kit;
+  }
+  if(campaignSession.kind==='caravan'){
+   const kit={weapon:'shortsword',shield:'round',armor:'leather',ranged:null,unitRole:'infantry',horseArmor:'none'};
+   if(variant===4)return {...kit,shield:null,ranged:'crossbow',unitRole:'archer'};
+   if(variant===3)return {...kit,weapon:'spear'};
+   return kit;
+  }
+ }
+ const loadout=window.UAArmory?.getLoadout?.(slot.faction,slot.tier);
+ return armoryBattleKit(loadout)||legacyCampaignEquipment(slot.faction,slot.tier);
 }
 function setCampaignControlMode(mode){
  const next=mode==='manual'&&heroCanAct()?'manual':'auto';
@@ -738,8 +778,12 @@ function updateHeroControl(s,dt){
  const guarding=heroInputHeld('shift'),attacking=heroInputHeld('attack')||heroInputHeld(' ');
  if(mag&&s.stagger<=0){
   const guardPace=guarding&&s.shield ? .68 : 1;
-  const speed=(s.speed||76)*guardPace*terrainSpeed(s),nx=clamp(s.x+mx/mag*speed*dt,14,W-14),ny=clamp(s.y+my/mag*speed*dt,14,H-14),point=terrainSteer(s,nx,ny);
-  s.vx=(point.x-s.x)/Math.max(dt,.001);s.vy=(point.y-s.y)/Math.max(dt,.001);s.x=point.x;s.y=point.y;
+  const oldX=s.x,oldY=s.y,speed=(s.speed||76)*guardPace*terrainSpeed(s);
+  s.x=clamp(oldX+mx/mag*speed*dt,14,W-14);
+  s.y=clamp(oldY+my/mag*speed*dt,14,H-14);
+  terrainResolve(s,oldX,oldY);
+  s.vx=(s.x-oldX)/Math.max(dt,.001);
+  s.vy=(s.y-oldY)/Math.max(dt,.001);
  }else{s.vx=0;s.vy=0}
  const {target,dist}=chooseTarget(s);
  if(heroPointer)s.faceAngle=Math.atan2(camera.y+heroPointer.y-s.y,camera.x+heroPointer.x-s.x);
@@ -774,28 +818,75 @@ function throwCampaignRock(){
   x:s.x+Math.cos(angle)*12,y:s.y+Math.sin(angle)*12,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,speed,range:465,traveled:0,loft:6,arcDistance:Math.min(465,dist)});
  campaignStonesRemaining--;s.rangedCooldown=.72;s.stamina=Math.max(0,s.stamina-4);refreshHeroControls();
 }
-function campaignFormation(team,n){
- const h=home(team),columns=Math.max(2,Math.min(9,Math.ceil(Math.sqrt(n*1.9)))),
-  rows=Math.ceil(n/columns),spacing=29;
- const frontline=team==='friend'?1:-1;
- return Array.from({length:n},(_,i)=>({x:h.x+frontline*(Math.floor(i/columns)-(rows-1)*.5)*spacing,
-  y:h.y+(i%columns-(columns-1)*.5)*spacing}));
+function campaignFormation(team,kits){
+ const h=home(team),front=team==='friend'?1:-1,positions=[];
+ const infantryPresent=kits.some(kit=>kit.unitRole==='infantry');
+ const footPresent=kits.some(kit=>kit.unitRole==='infantry'||kit.unitRole==='archer');
+ const splitWings=kits.some(kit=>kit.unitRole==='cavalry')&&kits.some(kit=>kit.unitRole==='horseArcher');
+ for(const role of unitRoles){
+  const indices=[];
+  kits.forEach((kit,index)=>{if(kit.unitRole===role)indices.push(index)});
+  if(indices.length===0)continue;
+  const mounted=role==='cavalry'||role==='horseArcher';
+  const spacing=mounted?43:29;
+  const columns=Math.min(mounted?5:9,Math.ceil(Math.sqrt(indices.length*1.9)));
+  const rows=Math.ceil(indices.length/columns);
+  const rear=role==='archer'&&infantryPresent?150:mounted&&footPresent?50:0;
+  const wing=mounted&&(footPresent||splitWings)?(role==='cavalry'?1:-1)*(footPresent?225:120):0;
+  indices.forEach((index,i)=>{
+   const row=Math.floor(i/columns),rowCount=Math.min(columns,indices.length-row*columns);
+   positions[index]={
+    x:h.x+front*((row-(rows-1)*.5)*spacing-rear),
+    y:h.y+wing+(i%columns-(rowCount-1)*.5)*spacing
+   };
+  });
+ }
+ return positions;
 }
-function campaignDeploy(s,slot,team){
- const kit=campaignEquipment(slot.faction,slot.tier,team==='foe'?campaignSession.kind:null);
- Object.assign(s,kit);
+function campaignStat(value,fallback,min,max){
+ return Number.isFinite(value)?clamp(value,min,max):fallback;
+}
+function campaignDeploy(s,slot,team,kit){
+ const {stats,...equipment}=kit;
+ Object.assign(s,equipment);
  s.campaignSource=slot.groupIndex;
  s.campaignSlot=slot.slot;
  s.battleStartingRole=kit.unitRole;
  setFighterTraining(s,team,slot.slot,slot.tier===2?'veteran':slot.tier===1?'trained':'recruit',
    slot.tier===2?'expert':slot.tier===1?'practiced':'novice');
+ s.hp=s.maxHp=campaignStat(stats?.hp,s.maxHp,1.5,5);
+ s.skill=campaignStat(stats?.skill,s.skill,10,98);
+ s.disc=campaignStat(stats?.discipline,s.disc,15,98);
+ s.speed=campaignStat(stats?.speed,s.speed,32,78);
+ s.stamina=s.maxStamina=campaignStat(stats?.stamina,100,70,120);
+ s.weaponDamage=campaignStat(stats?.weaponDamage,1,.85,1.15);
+ s.weaponSpeed=campaignStat(stats?.weaponSpeed,1,.85,1.15);
  if(team==='friend'){
   const morale=campaignSession.playerMorale??65;
   s.disc=clamp(s.disc+(morale-65)*.24,8,100);
   s.stress=clamp(s.stress+(65-morale)*.30,0,100);
  }
  initializeRangedEquipment(s);initMount(s);
- s.stamina=s.maxStamina=100;
+}
+function deployCampaignArmy(team,roster){
+ const kits=roster.map(slot=>campaignEquipment(slot,team));
+ const positions=campaignFormation(team,kits);
+ return roster.map((slot,index)=>{
+  const unit=create(team,index,positions[index]);
+  campaignDeploy(unit,slot,team,kits[index]);
+  return unit;
+ });
+}
+function campaignEnemyRoster(){
+ const count=clamp(Math.floor(campaignSession.enemyCount)||1,1,50);
+ return Array.from({length:count},(_,slot)=>{
+  let tier=0;
+  if(campaignSession.kind==='patrol'){
+   const rank=slot%10;
+   tier=rank===4||rank===9?2:rank>=2&&rank<=6?1:0;
+  }else if(slot%6===3||slot%6===4)tier=1;
+  return {faction:campaignSession.faction,tier,groupIndex:-1,slot};
+ });
 }
 function campaignRecord(outcome){
  if(!campaignMode||campaignReported)return;
@@ -928,7 +1019,7 @@ let realisticBattle=false,battleOutcome=null;
   lance:{label:'Cavalry lance',weight:2.5,reach:56,power:1.23,momentum:142,speed:1.24,twoHand:false,moves:['thrust','slashRight'],cleave:1}
  };
  const weaponOrder=['shortsword','sword','greatsword','axe','spear','pike','lance'];
- function isPolearm(s){return !isCavalry(s)&&(s.weapon==='spear'||s.weapon==='pike')&&(!isArcher(s)||s.meleeReady||!s.ranged);}
+ function isPolearm(s){return !isCavalry(s)&&(s.weapon==='spear'||s.weapon==='pike')&&(!activeRangedProfile(s)||s.meleeReady);}
  function polearmMinRange(s){return s.weapon==='pike'?40:25;}
  // Secondary weapons have limited shots, physical flight and melee fallback.
  const rangedProfiles={
@@ -950,7 +1041,11 @@ let realisticBattle=false,battleOutcome=null;
  function soldierRole(s){return ['archer','cavalry','horseArcher'].includes(s.unitRole)?s.unitRole:'infantry';}
  function isCavalry(s){return ['cavalry','horseArcher'].includes(s.unitRole)&&s.mounted!==false;}
  function isArcher(s){return ['archer','horseArcher'].includes(s.unitRole);}
- function activeRangedProfile(s){return isArcher(s)?rangedProfiles[s.ranged]||null:null;}
+ function activeRangedProfile(s){
+  const skirmisher=campaignMode&&s.unitRole==='infantry'&&s.ranged==='javelin';
+  if((!isArcher(s)&&!skirmisher)||(campaignMode&&s.ammo<=0))return null;
+  return rangedProfiles[s.ranged]||null;
+ }
  function assignedRole(config,index){
   if(['archer','cavalry','horseArcher'].includes(config.unitRole))return config.unitRole;
   if(config.unitRole==='grandArmy')return index<20?'infantry':index<35?'archer':index<45?'cavalry':'horseArcher';
@@ -1344,17 +1439,8 @@ function populate(){
   nextId=0;nextSwingId=1;nextEngagementPlan=0;formationType='block';enemyFormationType='block';enemyCommand='auto';enemyMovePending=false;setFormationMenu(false);
   const a=home('friend'),b=home('foe');
   if(campaignMode){
-   const count=Math.min(50,campaignSession.troops.length),enemyCount=Math.max(1,Math.min(50,campaignSession.enemyCount));
-   friends=campaignFormation('friend',count).map((pos,i)=>{
-    const s=create('friend',i,pos);
-    campaignDeploy(s,campaignSession.troops[i],'friend');return s;
-   });
-   foes=campaignFormation('foe',enemyCount).map((pos,i)=>{
-    const s=create('foe',i,pos);
-    campaignDeploy(s,{faction:campaignSession.faction,tier:campaignSession.kind==='bandit'?0:
-      campaignSession.kind==='patrol'?1:0,groupIndex:-1,slot:i},'foe');
-    return s;
-   });
+   friends=deployCampaignArmy('friend',campaignSession.troops.slice(0,50));
+   foes=deployCampaignArmy('foe',campaignEnemyRoster());
   }else{
    friends=formation('friend',a.x,a.y).map((p,i)=>create('friend',i,p));
    foes=formation('foe',b.x,b.y).map((p,i)=>create('foe',i,p));
@@ -2572,7 +2658,7 @@ function beginAttack(s,target){
  const fluency=clamp((familiarity-80)/17,0,1);
  const rate=weapon.speed*(1.10-mastery*.0015-familiarity*.0008)*
    (1-fluency*.04)*(s.stamina<24?1.16:1)*(counter?.82:1)*
-   (isCavalry(s)&&s.gallop<.24?1.24:1);
+   (isCavalry(s)&&s.gallop<.24?1.24:1)/(s.weaponSpeed??1);
  const wind=move.wind*rate,active=move.active*rate,recover=move.recover*rate;
  // Precision is geometrical: poorer fighters visibly swing off-target.
  const imprecision=(100-mastery)*.0031+(100-familiarity)*.0015;
@@ -2584,7 +2670,7 @@ function beginAttack(s,target){
   // Momentum gets spent on armor and shields, NOT on dealing damage.
   // Thus several naked targets can each take the complete base damage.
   momentum:weapon.momentum*move.momentum*(move.style==='heavy'?1.12:1),
-  baseDamage:style.damage*weapon.power*move.mult,
+  baseDamage:style.damage*weapon.power*move.mult*(s.weaponDamage??1),
   reach:weapon.reach*(move.short?.62:1)
  };
  s.cooldown=wind+active+recover+.08;
@@ -2965,10 +3051,13 @@ function campaignMapLayout(seed,preset){
  else{scatter('hill',1+seed%2,.12,.12);scatter('forest',1,.08,.11);if(seed%3===0)scatter('rock',1,.02,.04)}
  return zones;
 }
-const generatedCampaignBattleMaps=Array.from({length:50},(_,seed)=>Object.fromEntries(terrainModes.map(mode=>[mode,campaignMapLayout(seed,mode)])));
 function setTerrain(preset){
  terrainPreset=terrainModes.includes(preset)?preset:'plain';
-  if(campaignMode){terrainZones=generatedCampaignBattleMaps[Math.abs(campaignSession.mapSeed||0)%50][terrainPreset];return}
+ if(campaignMode){
+  const seed=Math.abs(Math.floor(campaignSession.mapSeed)||0)%50;
+  terrainZones=campaignMapLayout(seed,terrainPreset);
+  return;
+ }
  const z=(kind,cx,cy,rx,ry)=>({kind,x:W*cx,y:H*cy,rx:Math.max(12,W*rx),ry:Math.max(12,H*ry)});
  const river=z('water',.51,.51,.080,.73);
  terrainZones=terrainPreset==='ridge'?[z('hill',.31,.52,.25,.46)]:
@@ -3264,7 +3353,7 @@ function launchProjectile(s,target){
  const ox=s.x+Math.cos(angle)*12,oy=s.y+Math.sin(angle)*12;
  const projectile={
   id:-(s.id*64+s.shotCount+1),shooter:s,shooterId:s.id,team:s.team,
-  kind:s.ranged,damage:profile.damage*groundAim.damage,momentum:profile.momentum,
+  kind:s.ranged,damage:profile.damage*groundAim.damage*(s.weaponDamage??1),momentum:profile.momentum,
   x:ox,y:oy,vx:Math.cos(angle)*profile.speed,vy:Math.sin(angle)*profile.speed,
   speed:profile.speed,range:profile.range,traveled:0,
   loft:profile.loft,arcDistance:Math.max(1,Math.hypot(predictedX-ox,predictedY-oy))
@@ -3274,7 +3363,7 @@ function launchProjectile(s,target){
  s.shotCount++;s.fired++;
  s.stamina=clamp(s.stamina-profile.stamina*rangedTimeFactor(s),0,s.maxStamina);
  s.recoveryDelay=Math.max(s.recoveryDelay,.28);
- s.rangedCooldown=profile.reload*rangedTimeFactor(s);
+ s.rangedCooldown=profile.reload*rangedTimeFactor(s)/(s.weaponSpeed??1);
  s.rangedAim=0;s.rangedRelease=.22;
  const stats=combatLabStats(s.team);if(stats)stats.shots++;
  return true;
@@ -3284,7 +3373,7 @@ function beginRangedAim(s,target,dist){
  if(!profile||!hasRangedAmmo(s)||s.rangedCooldown>0||s.attack||s.stagger>0)return false;
  if(!target||dist>profile.range-12||dist<=meleeThreatRange(s))return false;
  if(s.stamina<profile.stamina+2)return false;
- s.rangedAim=profile.draw*rangedTimeFactor(s);
+ s.rangedAim=profile.draw*rangedTimeFactor(s)/(s.weaponSpeed??1);
  s.rangedTargetId=target.id;
  s.guardActive=false;s.guardHold=0;
  return true;
@@ -3555,8 +3644,9 @@ function step(dt){
    if(campaignControlMode==='manual'){updateHeroControl(s,dt);continue;}
   }
   const {target,dist}=chooseTarget(s);
-  // Ranged units keep their bow in hand until a genuine melee threat.
-  s.meleeReady=!!(isArcher(s)&&target&&dist<=meleeThreatRange(s));
+  const ranged=activeRangedProfile(s);
+  // Campaign ranged units fall back to their sidearm when their ammunition runs out.
+  s.meleeReady=!!(ranged&&target&&dist<=meleeThreatRange(s))||(campaignMode&&isArcher(s)&&!ranged);
   if(realismActive()){
    combatMoraleTick(s,dt,dist);
    const breakingPoint=stressBalance.breakingBase+s.disc*stressBalance.disciplineResistance+
@@ -3585,7 +3675,6 @@ function step(dt){
   else if(command==='retreat'){moveX=s.anchorX;moveY=s.anchorY;pace=1.45;}
   else if(command==='attack'){
     if(target){
-      const ranged=activeRangedProfile(s);
       if(isCavalry(s)&&s.regroupUntil>t){
        moveX=s.regroupX;moveY=s.regroupY;pace=1.36;
       }else if(ranged&&dist>meleeThreatRange(s)){
@@ -3610,7 +3699,7 @@ function step(dt){
       }else if(isCavalry(s)){
        // Mounted bowmen retreat from close threats to reopen a shooting
        // lane, but can still draw their sword if trapped alongside an enemy.
-       if(s.unitRole==='horseArcher'&&dist<125){
+       if(s.unitRole==='horseArcher'&&(!campaignMode||ranged)&&dist<125){
         const dx=(s.x-target.x)/Math.max(1,dist),dy=(s.y-target.y)/Math.max(1,dist);
         const side=s.id%2===0?1:-1;
         moveX=clamp(s.x+dx*145-dy*58*side,25,W-25);
@@ -3781,11 +3870,10 @@ function step(dt){
    if(s.stagger>0){s.guardActive=false;s.rangedAim=0;}
    else if(s.attack)advanceAttack(s,dt);
    else if(s.rangedAim>0)advanceRangedAim(s,target,dt);
-   else if(isArcher(s)&&target&&hasRangedAmmo(s)&&dist>meleeThreatRange(s))
+   else if(target&&hasRangedAmmo(s)&&dist>meleeThreatRange(s))
     beginRangedAim(s,target,dist);
-   // Archers never chase distant enemies with swords, including when
-   // out of ammunition. Melee is exclusively an emergency close threat.
-   else if(target&&(!isArcher(s)||dist<=meleeThreatRange(s))&&s.cooldown<=0)
+   // Archers use a sidearm under close threat, or when out of ammo in campaign battles.
+   else if(target&&(!isArcher(s)||dist<=meleeThreatRange(s)||campaignMode&&!ranged)&&s.cooldown<=0)
     beginAttack(s,target);
   }
  }
@@ -3940,7 +4028,7 @@ function drawUnit(s){if(s.routed)return;
   ctx.restore();
  }
  // Weapons physically move throughout wind-up, active and recovery phases.
- if(isArcher(s)&&s.ranged&&!s.attack&&!s.meleeReady){
+ if(activeRangedProfile(s)&&!s.attack&&!s.meleeReady){
   const rp=rangedProfiles[s.ranged];
   ctx.save();ctx.translate(x,y);ctx.rotate(s.faceAngle);
   ctx.strokeStyle=rp.color;ctx.lineWidth=2.5;ctx.beginPath();
