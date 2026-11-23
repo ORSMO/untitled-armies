@@ -1,5 +1,11 @@
 # Untitled Armies
 
+## V4.10.2 — Battle speed, rock routing and formation movement
+
+- Use the 1×, 2× or 3× buttons in the battle header. Every campaign battle starts at 1×.
+- Troops find routes around solid rocks and use a common movement speed on the same terrain.
+- In **Orders**, choose a formation, then **Move here** and tap the battlefield. The group forms up, follows a shared route, and holds its shape at the destination. **Advance** keeps the formation until the troops enter combat.
+
 ## V4.10.1 — Hero survival and fullscreen
 
 - In Auto, the hero follows behind the company, falls back when wounded, and can withdraw if the company breaks. Manual movement responds to quick directional taps and sliding across the control pad.
