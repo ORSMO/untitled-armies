@@ -210,14 +210,33 @@ body.campaign-battle #campaignBattleBanner{
 #campaignBattleExit{background:#3a493c!important}
 body.campaign-battle .training-only,body.campaign-battle .info .tip,
 body.campaign-battle .map-guide,body.campaign-battle .overlay-top,
-body.campaign-battle .rail,body.campaign-battle .bottom-note,
+body.campaign-battle .bottom-note,
 body.campaign-battle #minimap,
 body.campaign-battle #commanderPanel,body.campaign-battle #enemyPanel,
 body.campaign-battle #armorPanel,body.campaign-battle #equipmentBackdrop{display:none!important}
 body.campaign-battle #battleOutcomeRestart{display:none}
 body.campaign-battle #campaignBattleReturn{display:inline-block!important}
 body.campaign-battle.battle-finished #campaignBattleBanner,
+body.campaign-battle.battle-finished .rail,
+body.campaign-battle.campaign-orders-open .rail,
 body.campaign-battle.battle-finished #campaignArmyOrders{display:none!important}
+body.campaign-battle .rail{
+ top:5px;bottom:auto;width:auto;flex-direction:row;justify-content:flex-start;gap:6px;padding:0 5px;
+ pointer-events:none
+}
+body.campaign-battle .rail .control,body.campaign-battle .rail .formation-menu{pointer-events:auto}
+body.campaign-battle .rail .control{min-width:44px;min-height:48px;font-size:9px;gap:2px}
+body.campaign-battle .rail .dot{width:38px;height:38px;font-size:17px}
+body.campaign-battle .rail .orders{flex-direction:row;gap:3px}
+body.campaign-battle .formation-menu{
+ left:0;top:calc(100% + 4px);width:max-content;height:auto;transform:none;
+ display:grid;grid-template-columns:repeat(2,minmax(74px,1fr));gap:4px;padding:6px;
+ background:#0d201af5;border:1px solid #b6a572;border-radius:8px
+}
+body.campaign-battle .formation-menu.is-hidden{display:none}
+body.campaign-battle .formation-menu .formation-option{
+ position:static;height:auto;min-height:40px;border-radius:6px
+}
 #campaignTouchControls{display:none;position:absolute;z-index:3;bottom:8px;left:8px;right:8px;pointer-events:none;justify-content:space-between;align-items:end}
 #campaignTouchControls button{pointer-events:auto;touch-action:none;user-select:none;background:#1a3529e8;color:#f8e3b2;border:1px solid #b6a572;border-radius:11px;padding:7px;font-size:14px;font-weight:800;min-height:44px;min-width:44px}
 #campaignTouchControls button:active,#campaignTouchControls button.is-held{background:#a88a52}
@@ -2330,13 +2349,18 @@ function setFormation(cx,cy){
   }});
  }
  function setFormationMenu(open){
-  const visible=!!open&&selected;
+  const visible=!!open&&(selected||campaignMode)&&!battleOutcome;
   ui.formationMenu.classList.toggle('is-hidden',!visible);
   ui.formationBtn.setAttribute('aria-expanded',visible?'true':'false');
   if(!visible)ui.formationMenu.querySelectorAll('.formation-option').forEach(b=>b.classList.remove('hover'));
  }
  function chooseFormation(type){
-  if(!selected||!['block','line','column','wedge','spearwall','shieldwall'].includes(type))return;
+  if((!selected&&!campaignMode)||!['block','line','column','wedge','spearwall','shieldwall'].includes(type))return;
+  if(campaignMode){
+   setFormationMenu(false);
+   chooseCampaignFormation(type==='block'?'square':type);
+   return;
+  }
   formationType=type;setFormationMenu(false);
   const cx=friends.reduce((a,s)=>a+s.anchorX,0)/friends.length;
   const cy=friends.reduce((a,s)=>a+s.anchorY,0)/friends.length;
@@ -2349,7 +2373,7 @@ function setFormation(cx,cy){
  const formOptions=[...ui.formationMenu.querySelectorAll('.formation-option')];
  formOptions.forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();chooseFormation(b.dataset.form)}));
  ui.formationBtn.addEventListener('pointerdown',e=>{
-  if(!selected)return;e.preventDefault();e.stopPropagation();
+  if(campaignMode||!selected)return;e.preventDefault();e.stopPropagation();
   const wasOpen=!ui.formationMenu.classList.contains('is-hidden');
   setFormationMenu(!wasOpen);formationDragging=!wasOpen;
   if(formationDragging)ui.formationBtn.setPointerCapture?.(e.pointerId);
@@ -2367,10 +2391,10 @@ function setFormation(cx,cy){
  ui.formationBtn.addEventListener('pointercancel',()=>{formationDragging=false;setFormationMenu(false)});
  // A keyboard or accessibility click also opens the radial choices.
  ui.formationBtn.addEventListener('click',e=>{
-  if(e.detail===0&&selected)setFormationMenu(ui.formationMenu.classList.contains('is-hidden'));
+  if(campaignMode||e.detail===0&&selected)setFormationMenu(ui.formationMenu.classList.contains('is-hidden'));
  });
 function setMode(m){
- if(!selected)return;
+ if(!selected&&!campaignMode)return;
  if(campaignMode){
   if(selectedGroup==='all')campaignMarches.clear();
   else campaignMarches.delete(selectedGroup);
@@ -2561,24 +2585,30 @@ window.addEventListener('keydown',e=>{
 });
 function avgStress(){const live=foes.filter(s=>!s.dead&&!s.routed);return live.length?Math.round(live.reduce((a,s)=>a+s.stress,0)/live.length):0;}
  function avgStamina(){const active=friends.filter(s=>!s.dead&&!s.routed);return active.length?Math.round(active.reduce((a,s)=>a+s.stamina,0)/active.length):0;}
-function updateUI(){ui.select.setAttribute('aria-pressed',selected?'true':'false');ui.label.textContent=selected?'Deselect':'Select';ui.orders.classList.toggle('is-hidden',!selected);ui.status.textContent=battleOutcome?(battleOutcome.winner==='friend'?'VICTORY':battleOutcome.winner==='foe'?'DEFEAT':'DRAW'):(Object.values(generalOrders).some(Boolean)?'GENERAL':('AI '+commanderBrains.friend.phase.toUpperCase()));orderButtons.forEach(b=>b.classList.toggle('active',selected&&b.id===mode));const alive=friends.filter(s=>!s.dead&&!s.routed).length,broken=friends.filter(s=>s.broken&&!s.routed).length;
+function updateUI(){ui.select.setAttribute('aria-pressed',selected?'true':'false');ui.label.textContent=selected?'Deselect':'Select';ui.orders.classList.toggle('is-hidden',!selected&&!campaignMode);ui.status.textContent=battleOutcome?(battleOutcome.winner==='friend'?'VICTORY':battleOutcome.winner==='foe'?'DEFEAT':'DRAW'):(Object.values(generalOrders).some(Boolean)?'GENERAL':('AI '+commanderBrains.friend.phase.toUpperCase()));orderButtons.forEach(b=>b.classList.toggle('active',(selected||campaignMode)&&b.id===mode));const alive=friends.filter(s=>!s.dead&&!s.routed).length,broken=friends.filter(s=>s.broken&&!s.routed).length;
  ui.count.textContent=alive+' SOLDIERS';ui.remaining.textContent=alive+' / '+(campaignMode?friends.length:50);ui.enemyCount.textContent=foes.filter(s=>!s.dead&&!s.routed).length+' / '+(campaignMode?foes.length:50);ui.stress.textContent=realisticBattle?Math.round(friends.reduce((n,u)=>n+u.stress,0)/Math.max(1,friends.length))+'%':avgStress()+'%';ui.stamina.textContent=avgStamina()+'%';
  let status=({idle:'Drag to explore · select troops to give orders',attack:'Attacking with varied weapon reach and timed strikes',defend:'Holding formation and fighting nearby enemies',stop:'Standing still (your troops cannot panic)',retreat:'Ordered retreat toward your side',move:'Marching to your chosen position',form:'Reforming into '+formationType+' formation'}[mode]||'');
  if(broken)status=broken+' soldier'+(broken>1?'s are':' is')+' panicking and fleeing!';
  ui.hint.textContent=enemyMovePending?'🔴 TAP BATTLEFIELD TO MOVE ENEMY ARMY':
    Object.values(generalOrders).some(Boolean)?'General overriding '+selectedGroup+' · '+status:
    'Commander: '+commanderBrains.friend.news;ui.mode.textContent=({idle:'Idle',attack:'Attack',defend:'Defend',stop:'Stop',retreat:'Retreat',move:'Move',form:'Formation'}[mode]||'Idle');
-  ui.formationAnchor.classList.toggle('is-hidden',!selected);
-  if(!selected)setFormationMenu(false);
-  formOptions.forEach(b=>b.classList.toggle('chosen',b.dataset.form===formationType));
+  ui.formationAnchor.classList.toggle('is-hidden',!selected&&!campaignMode);
+  if(!selected&&!campaignMode)setFormationMenu(false);
+  const activeShape=campaignMode?(campaignFormations.get(selectedGroup)||'current'):formationType;
+  formOptions.forEach(b=>b.classList.toggle('chosen',b.dataset.form===(activeShape==='square'?'block':activeShape)));
 }
 ui.select.addEventListener('click',()=>{
+ if(campaignMode){
+  if(formationDestination)cancelFormationPlacement();
+  else armFormationPlacement(true);
+  return;
+ }
  selected=!selected;
  // Merely selecting troops does not override an autonomous commander.
  if(!selected)mode='idle';
  updateUI();updateCommanderUI();
 });
-orderButtons.forEach(b=>b.addEventListener('click',()=>setMode(b.id)));
+orderButtons.forEach(b=>b.addEventListener('click',()=>campaignMode?issueCampaignOrder(b.id):setMode(b.id)));
 // Tap orders soldiers to a world position; swipe pans the camera instead.
  canvas.addEventListener('pointerdown',e=>{
   if(campaignMode)return;
@@ -4616,6 +4646,7 @@ function setCampaignOrdersOpen(open){
  campaignOrdersOpen=open&&!battleOutcome;
  if(campaignOrdersOpen){
   if(formationDestination)cancelFormationPlacement();
+  setFormationMenu(false);
   clearHeroInput();
   formationSelect.value=campaignFormations.get(selectedGroup)||'current';
   for(const setting of commanderTactics)setting.control.value=commanderBrains.friend[setting.key];
@@ -4633,31 +4664,46 @@ for(const button of armyGroupButtons)button.addEventListener('click',()=>{
 });
 formationSelect.addEventListener('change',()=>{
  if(!campaignOrdersOpen||battleOutcome)return;
- const previous=campaignFormations.get(selectedGroup)||'current';
- campaignFormations.set(selectedGroup,formationSelect.value);
- if(formationSelect.value!=='current'&&!beginCampaignMarch('form')){
-  campaignFormations.set(selectedGroup,previous);
-  formationSelect.value=previous;
- }
- updateCampaignArmyOrders();
+ chooseCampaignFormation(formationSelect.value);
 });
-for(const button of armyOrderButtons)button.addEventListener('click',()=>{
- if(!campaignOrdersOpen||battleOutcome)return;
- const order=button.dataset.campaignOrder;
- if(order==='move'){
-  setCampaignOrdersOpen(false);clearHeroInput();
-  formationDestination={group:selectedGroup};
-  showBattleMessage('Tap the battlefield to place the formation.');
-  return;
- }
+function chooseCampaignFormation(shape){
+ if(battleOutcome)return;
+ const previous=campaignFormations.get(selectedGroup)||'current';
+ campaignFormations.set(selectedGroup,shape);
+ if(shape!=='current'&&!beginCampaignMarch('form')){
+  campaignFormations.set(selectedGroup,previous);
+ }else if(shape!=='current')mode='form';
+ formationSelect.value=campaignFormations.get(selectedGroup)||'current';
+ updateUI();
+ if(campaignOrdersOpen)updateCampaignArmyOrders();
+}
+function armFormationPlacement(quick=false){
+ if(battleOutcome||!selectedTroops().some(marchReadyTroop))return;
+ setCampaignOrdersOpen(false);setFormationMenu(false);clearHeroInput();
+ formationDestination={group:selectedGroup,quick};
+ if(quick)selected=true;
+ showBattleMessage('Tap the battlefield to place the formation.');
+ updateUI();
+}
+function issueCampaignOrder(order){
+ if(battleOutcome||!selectedTroops().some(marchReadyTroop))return;
+ if(order==='move'){armFormationPlacement();return}
+ if(formationDestination)cancelFormationPlacement();
+ setFormationMenu(false);
  if(order==='attack'){
   const enemies=members('foe').filter(marchReadyTroop);
-  beginCampaignMarch('attack',troopCenter(enemies,home('foe')));
+  if(beginCampaignMarch('attack',troopCenter(enemies,home('foe'))))mode='attack';
  }
- else if(order==='retreat')beginCampaignMarch('retreat',home('friend'));
+ else if(order==='retreat'){
+  if(beginCampaignMarch('retreat',home('friend')))mode='retreat';
+ }
  else if(order==='auto')returnToCommander(selectedGroup);
- else{selected=true;setMode(order)}
- updateCampaignArmyOrders();
+ else setMode(order);
+ updateUI();
+ if(campaignOrdersOpen)updateCampaignArmyOrders();
+}
+for(const button of armyOrderButtons)button.addEventListener('click',()=>{
+ if(campaignOrdersOpen)issueCampaignOrder(button.dataset.campaignOrder);
 });
 document.querySelector('#campaignControlToggle').addEventListener('click',()=>{
  setCampaignOrdersOpen(false);
@@ -4667,6 +4713,7 @@ document.querySelector('#campaignThrowRock').addEventListener('click',throwCampa
 const movementKeys={arrowup:'w',arrowleft:'a',arrowdown:'s',arrowright:'d'};
 window.addEventListener('keydown',e=>{
  if(e.key==='Escape'&&formationDestination){cancelFormationPlacement();return}
+ if(e.key==='Escape'&&!ui.formationMenu.classList.contains('is-hidden')){setFormationMenu(false);return}
  if(e.key==='Escape'&&campaignOrdersOpen){
   setCampaignOrdersOpen(false);armyToggle.focus();return;
  }
@@ -4690,8 +4737,10 @@ function trackHeroAim(e){
  heroPointer={x:e.clientX-rect.left,y:e.clientY-rect.top};
 }
 function cancelFormationPlacement(){
+ const quick=formationDestination?.quick;
  formationDestination=null;
  showBattleMessage('');
+ if(quick){selected=false;updateUI()}
 }
 canvas.addEventListener('pointerdown',e=>{
  if(!formationDestination||battleOutcome||formationDestination.pointerId!==undefined||e.button!==0)return;
@@ -4705,7 +4754,9 @@ canvas.addEventListener('pointerup',e=>{
  cancelFormationPlacement();
  if(battleOutcome||Math.hypot(e.clientX-placement.x,e.clientY-placement.y)>22)return;
  const area=canvas.getBoundingClientRect();
- beginCampaignMarch('move',{x:camera.x+e.clientX-area.left,y:camera.y+e.clientY-area.top},placement.group);
+ if(beginCampaignMarch('move',{x:camera.x+e.clientX-area.left,y:camera.y+e.clientY-area.top},placement.group)){
+  mode='move';updateUI();
+ }
 });
 canvas.addEventListener('pointercancel',e=>{
  if(formationDestination?.pointerId===e.pointerId)cancelFormationPlacement();
