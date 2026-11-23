@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+ <meta name="theme-color" content="#091512">
+ <title>Practice Battle · Untitled Armies</title>
+ <style>
+  :root{color-scheme:dark;font:16px system-ui,sans-serif;color:#edf0e2;background:#091512;--gold:#e4cb91;--line:#536b57;--muted:#b8c8b5}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 20% 0%,#293e2e 0%,#132720 36%,#091512 82%)}
+  .practice{width:min(100%,900px);min-height:100vh;min-height:100dvh;margin:auto;display:grid;grid-template-rows:auto minmax(0,1fr) auto;padding:0 max(12px,env(safe-area-inset-right)) 0 max(12px,env(safe-area-inset-left))}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:max(12px,env(safe-area-inset-top)) 0 12px}
+  nav{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:5px}
+  h1{margin:0;color:var(--gold);font:700 clamp(22px,4vw,36px)/1.1 Georgia,serif}
+  main{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-content:start}
+  fieldset{min-width:0;margin:0;padding:10px 12px 12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px;border:1px solid var(--line);border-radius:10px;background:#152a22}
+  legend{padding:0 6px;color:var(--gold);font:700 16px Georgia,serif}
+  label{min-width:0;display:grid;gap:3px;color:var(--muted);font-size:12px;line-height:1.25}
+  label[hidden]{display:none}
+  .wide{grid-column:1/-1}
+  .field{grid-template-columns:2fr 1fr 1fr 1.5fr}
+  select,input,button,a{font:inherit}
+  select,input{width:100%;min-width:0;min-height:44px;border:1px solid var(--line);border-radius:7px;background:#0d2019;color:#edf0e2;padding:6px;font-size:16px}
+  button,a{display:inline-grid;place-items:center;min-height:44px;padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:#213a2d;color:#edf0e2;text-decoration:none;font-size:14px;font-weight:700}
+  button{min-width:140px;cursor:pointer;background:#d9b878;color:#10221a;border-color:#f1d49a}
+  :focus-visible{outline:2px solid #efd394;outline-offset:2px}
+  footer{position:sticky;bottom:0;display:flex;justify-content:flex-end;align-items:center;gap:10px;padding:10px 0 max(10px,env(safe-area-inset-bottom));background:#10221a}
+  @media (max-width:520px){main{grid-template-columns:1fr}.field{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media (orientation:landscape) and (max-height:430px){header{padding-top:max(5px,env(safe-area-inset-top));padding-bottom:5px}main{gap:5px}fieldset{padding:4px 8px 7px;gap:5px 7px}legend{font-size:14px}footer{padding-top:5px;padding-bottom:max(5px,env(safe-area-inset-bottom))}}
+ </style>
+</head>
+<body>
+<form class="practice" id="practiceSetup" action="campaign-battle.html" method="get">
+ <input type="hidden" name="practice" value="1">
+ <input type="hidden" name="v" value="4.10.3">
+ <header>
+  <h1>Practice battle</h1>
+  <nav aria-label="Other modes">
+   <a href="classic.html?legacy=1">Classic sandbox</a>
+   <a href="index.html">↩ Main menu</a>
+  </nav>
+ </header>
+ <main>
+  <fieldset>
+   <legend>Your company</legend>
+   <label class="wide">Faction
+    <select name="faction" id="practiceFaction">
+     <option value="0">Verdant Marches</option>
+     <option value="1">Skeldic Jarldoms</option>
+     <option value="2">Ironhold Clans</option>
+     <option value="3">Crown of Veyr</option>
+     <option value="4">Sunspire Dominion</option>
+     <option value="5">Tideborn League</option>
+     <option value="6" selected>Kingdom of Valdoria</option>
+     <option value="7">Aurelian Empire</option>
+     <option value="8">Saffron Sultanate</option>
+     <option value="9">Red Steppe Khanate</option>
+    </select>
+   </label>
+   <label>Ranks
+    <select name="mix">
+     <option value="mixed" selected>Mixed ranks</option>
+     <option value="recruits">Recruits</option>
+     <option value="veterans">Veterans</option>
+     <option value="elite">Elite</option>
+    </select>
+   </label>
+   <label>Troop count
+    <input name="count" type="number" inputmode="numeric" min="1" max="50" value="50" required>
+   </label>
+  </fieldset>
+  <fieldset>
+   <legend>Opponent</legend>
+   <label class="wide">Party type
+    <select name="kind" id="practiceOpponent">
+     <option value="bandit">Outlaws</option>
+     <option value="patrol">Realm patrol</option>
+     <option value="caravan">Merchant caravan</option>
+    </select>
+   </label>
+   <label id="practiceEnemyRealm">Realm
+    <select name="enemyFaction" id="practiceEnemyFaction">
+     <option value="2">Ironhold Clans</option>
+    </select>
+   </label>
+   <label>Enemy count
+    <input name="enemyCount" type="number" inputmode="numeric" min="1" max="50" value="50" required>
+   </label>
+  </fieldset>
+  <fieldset class="field wide">
+   <legend>Battlefield</legend>
+   <label>Biome
+    <select name="biome">
+     <option value="grass">Open plain</option>
+     <option value="forest">Forest</option>
+     <option value="hills">Hills and ridges</option>
+     <option value="marsh">Muddy ground</option>
+     <option value="river">Shallow river</option>
+     <option value="desert">Rocky outcrop</option>
+     <option value="mountain">Mountain ridge</option>
+    </select>
+   </label>
+   <label>Map seed (0–49)
+    <input name="seed" type="number" inputmode="numeric" min="0" max="49" value="0" required>
+   </label>
+   <label>Hero health (%)
+    <input name="health" type="number" inputmode="numeric" min="1" max="100" value="100" required>
+   </label>
+   <label>Hero weapon
+    <select name="weapon">
+     <option value="sword">Sword</option>
+     <option value="axe">Axe</option>
+     <option value="spear">Spear</option>
+     <option value="bow">Bow</option>
+    </select>
+   </label>
+  </fieldset>
+ </main>
+ <footer><button type="submit">⚔ Start battle</button></footer>
+</form>
+<script src="battle-practice.js?v=4.10.3" defer></script>
+</body>
+</html>
