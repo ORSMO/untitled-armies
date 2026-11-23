@@ -1,5 +1,12 @@
 # Untitled Armies
 
+## V4.10.3 — Shared campaign and practice battles
+
+- Classic 50v50 opens a practice setup for the campaign battle engine. Configure both forces or start with 50 troops per side, choose terrain and a map, and replay the scenario.
+- Both modes share the same Orders panel, including Shield Wall, Spear Wall, and the player commander's personality, directive and infantry doctrine.
+- Allied troops can stand closer in formation. Stationary allies give way to troops moving under orders. Weapon reach and hit detection use the existing combat rules.
+- Practice runs without campaign storage. The original Classic sandbox is available from the setup page and the Six-Arena Battle Lab remains available.
+
 ## V4.10.2 — Battle speed, rock routing and formation movement
 
 - Use the 1×, 2× or 3× buttons in the battle header. Every campaign battle starts at 1×.
@@ -107,7 +114,7 @@ The main site now launches into a playable campaign **main menu** and a persiste
 ### Links
 
 - [Campaign main menu](https://untitled-armies.onrender.com/)
-- [Classic 50v50 combat engine](https://untitled-armies.onrender.com/classic.html)
+- [Classic 50v50 campaign practice](https://untitled-armies.onrender.com/classic.html)
 - [Six-Arena Battle Lab](https://untitled-armies.onrender.com/lab.html)
 - [Campaign tactical battlefield (only through encounters)](https://untitled-armies.onrender.com/campaign-battle.html)
 
