@@ -1,5 +1,12 @@
 # Untitled Armies
 
+## V4.10 — Trade regions, noble houses and troop equipment
+
+- Five major markets hold more stock. Nearby villages form grain, timber, iron and salt regions, while towns turn timber and iron into tools. Map symbols distinguish markets, castles and specialists.
+- Two houses in each realm hold the capital and a castle. Contracts earn favor with their patron house. With 16 favor, you can recruit trained retainers from that house's seat.
+- All 30 realm and tier combinations have distinct troop kits. In the party screen, use **Weapon designer** to generate or name a weapon, choose a style and assign it to that company troop type.
+- Campaign battles use the assigned weapon and keep infantry, ranged troops and mounted troops in their roles. Existing saves retain their locations, recruits and inventory.
+
 ## V4.9.1 — Campaign and battle fixes
 
 - Town actions respond to taps, keep the active tab in view and refresh the displayed resources. Overworld gestures distinguish travel taps from map panning and pinch zoom.
