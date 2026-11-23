@@ -1,5 +1,9 @@
 # Untitled Armies
 
+## V4.10.5 — Wait on the campaign map
+
+- Tap Play or a speed button to pass time in place while the world moves. Tap Pause to stop waiting, or give a travel order to return to movement-driven time at normal speed. Entering a town or another menu ends waiting.
+
 ## V4.10.4 — Formations face the enemy
 
 - Formations turn toward the enemy before moving and adjust their heading during a march or while defending. Turns preserve spacing and wait for room near battlefield edges.
