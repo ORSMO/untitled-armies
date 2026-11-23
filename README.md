@@ -1,5 +1,10 @@
 # Untitled Armies
 
+## V4.10.1 — Hero survival and fullscreen
+
+- In Auto, the hero follows behind the company, falls back when wounded, and can withdraw if the company breaks. Manual movement responds to quick directional taps and sliding across the control pad.
+- The campaign menu, overworld and battle have fullscreen controls. A badly wounded hero can go straight to the inn from the aftermath screen when a settlement is within reach.
+
 ## V4.10 — Trade regions, noble houses and troop equipment
 
 - Five major markets hold more stock. Nearby villages form grain, timber, iron and salt regions, while towns turn timber and iron into tools. Map symbols distinguish markets, castles and specialists.
