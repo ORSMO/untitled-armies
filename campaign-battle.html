@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — Campaign Battle · V4.10.2</title>
+<title>Untitled Armies — Battle · V4.10.3</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -250,6 +250,11 @@ body.campaign-battle .campaign-order-row button[aria-pressed="true"]{border-colo
 body.campaign-battle .campaign-order-status{text-align:center;color:#bacbb7;font-size:11px;margin:5px}
 .campaign-formation-choice{display:flex;align-items:center;justify-content:center;gap:8px;color:#f0e5c5;font-size:12px}
 .campaign-formation-choice select{min-height:40px;background:#20392d;color:#fff1ca;border:1px solid #879a79;border-radius:7px;padding:5px 8px}
+.campaign-directives{margin-top:7px;color:#e6d8b5;font-size:12px}
+.campaign-directives summary{min-height:36px;display:flex;align-items:center;cursor:pointer}
+.campaign-directives>div{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.campaign-directives label{flex-wrap:wrap}
+.campaign-result-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
 #campaignBattleBanner button:disabled,#campaignTouchControls button:disabled,.campaign-order-row button:disabled{opacity:.45;cursor:default}
 body.campaign-battle.campaign-manual:not(.battle-finished):not(.campaign-orders-open) #campaignTouchControls{display:flex}
 body.campaign-battle .battle-outcome{position:absolute;max-height:calc(100% - 12px);overflow:auto;overscroll-behavior:contain}
@@ -538,18 +543,35 @@ body.campaign-battle .battle-outcome .tally{overflow-wrap:anywhere}
   <button data-campaign-group="all" aria-pressed="true">Whole army</button><button data-campaign-group="infantry">Infantry</button><button data-campaign-group="archer">Archers</button><button data-campaign-group="cavalry">Cavalry</button><button data-campaign-group="horseArcher">Horse archers</button><button data-campaign-group="reserve">Reserve</button>
  </div>
  <div class="campaign-order-row" aria-label="Issue army order">
-  <button data-campaign-order="move">◎ Move here</button><button data-campaign-order="attack">⚔ Advance</button><button data-campaign-order="defend">🛡 Hold</button><button data-campaign-order="stop">■ Stop</button><button data-campaign-order="retreat">↶ Retreat</button><button data-campaign-order="auto">🧠 Return to AI</button>
+  <button data-campaign-order="move">◎ Move here</button><button data-campaign-order="attack">⚔ Attack</button><button data-campaign-order="defend">🛡 Defend</button><button data-campaign-order="stop">■ Stop</button><button data-campaign-order="retreat">↶ Retreat</button><button data-campaign-order="auto">🧠 Return to AI</button>
  </div>
  <label class="campaign-formation-choice">Formation
-  <select id="campaignFormation"><option value="current">Keep current shape</option><option value="square">Square</option><option value="line">Line</option><option value="column">Column</option><option value="wedge">Wedge</option></select>
+  <select id="campaignFormation"><option value="current">Keep current shape</option><option value="square">Block (square)</option><option value="line">Line</option><option value="column">Column</option><option value="wedge">Wedge</option><option value="spearwall">Spear wall</option><option value="shieldwall">Shield wall</option></select>
  </label>
+ <details class="campaign-directives">
+  <summary>Commander AI tactics</summary>
+  <div>
+   <label class="campaign-formation-choice">Personality
+    <select id="campaignCommanderStyle"><option value="tactical">Tactical</option><option value="defensive">Defensive</option><option value="aggressive">Aggressive</option></select>
+   </label>
+   <label class="campaign-formation-choice">Battle directive
+    <select id="campaignCommanderIntent"><option value="adaptive">Adaptive</option><option value="hold">Hold defensively</option><option value="ordered">Ordered advance</option><option value="aggressive">Aggressive assault</option><option value="skirmish">Skirmish &amp; screen</option></select>
+   </label>
+   <label class="campaign-formation-choice">Infantry doctrine
+    <select id="campaignCommanderLine"><option value="auto">Auto by equipment</option><option value="shieldwall">Shield wall</option><option value="spearwall">Spear wall</option><option value="line">Open line</option><option value="loose">Loose formation</option></select>
+   </label>
+  </div>
+ </details>
 </section>
 <section id="battleOutcome" class="battle-outcome is-hidden" role="dialog" aria-modal="true" aria-live="polite" aria-labelledby="battleOutcomeTitle">
   <h2 id="battleOutcomeTitle">Battle concluded</h2>
   <p id="battleOutcomeReason">Both armies have finished fighting.</p>
   <div class="tally"><div><strong>🟢 Friendly army</strong><p id="battleOutcomeFriend"></p></div><div><strong>🔴 Enemy army</strong><p id="battleOutcomeFoe"></p></div></div>
   <button type="button" id="battleOutcomeRestart">↻ Fight another battle</button>
-  <button type="button" id="campaignBattleReturn" class="campaignReturn">⮐ Return to Campaign</button>
+  <div class="campaign-result-actions">
+   <button type="button" id="campaignBattleReturn" class="campaignReturn">⮐ Return to Campaign</button>
+   <button type="button" id="practiceReplay" class="campaignReturn" hidden>↻ Replay battle</button>
+  </div>
  </section>
   </main>
   <footer class="info"><span class="campaign-counts"><strong id="friendlyCount">50 / 50</strong><span>allies</span><span class="divider">·</span><strong id="enemyCount">50 / 50</strong><span>enemies</span><span class="divider">·</span><span id="campaignBattleTerrain"></span></span><span id="campaignBattleMessage" role="status"></span><span class="training-only"><span id="stressCaption">Enemy stress</span> <strong id="stressLabel">0%</strong> <span class="divider">·</span> Stamina <strong id="staminaLabel">100%</strong> <span class="divider">·</span> <span id="mode">Free movement</span></span><span class="tip"><button type="button" id="commanderButton" class="small-btn" aria-expanded="false" aria-controls="commanderPanel">👑 Commanders</button> <button type="button" id="enemyButton" class="small-btn" aria-expanded="false" aria-controls="enemyPanel">🔴 Enemy orders</button>
@@ -632,12 +654,33 @@ const cell=12,reach=cell*3; // Exactly three battlefield grid squares (36px) fro
  const stressBalance={takenHit:10,givenHit:1,allyKilled:8,panicSpread:7,closeThreat:1.3,nearThreat:.25,recovery:5.5,breakingBase:68,disciplineResistance:.28};
  // Training keeps familiar immortal-allies / replenishing-enemies behavior.
  // Realistic battle rules opt into casualties, morale and terminal outcomes.
- // Campaign battles load an exact party snapshot from browser storage.
-// The standalone Classic test has a separate HTML file and is unchanged.
+// Both entry points use the same engine. Practice creates its own session in memory.
 const battleSessionKey='ua-campaign-battle-session-v1',battleResultKey='ua-campaign-battle-result-v1';
+const battleParams=new URLSearchParams(window.location.search);
+const practiceMode=battleParams.get('practice')==='1';
+function practiceNumber(key,fallback,min,max){
+ const value=battleParams.get(key);
+ return value!==null&&/^\d{1,3}$/.test(value)?clamp(Number(value),min,max):fallback;
+}
+function createPracticeSession(){
+ const origin=practiceNumber('faction',6,0,9),count=practiceNumber('count',50,1,50);
+ const mix=battleParams.get('mix'),biome=battleParams.get('biome'),kind=battleParams.get('kind'),weapon=battleParams.get('weapon');
+ const tiers=mix==='recruits'?[0]:mix==='veterans'?[1]:mix==='elite'?[2]:[0,0,1,1,2];
+ return {
+  playerName:'Practice commander',heroHealth:practiceNumber('health',100,1,100),
+  kind:['bandit','patrol','caravan'].includes(kind)?kind:'bandit',faction:practiceNumber('enemyFaction',2,0,9),
+  enemyCount:practiceNumber('enemyCount',50,1,50),
+  troops:Array.from({length:count},(_,slot)=>({faction:origin,tier:tiers[slot%tiers.length],groupIndex:0,slot})),
+  terrainKind:['grass','forest','hills','marsh','river','desert','mountain'].includes(biome)?biome:'grass',
+  mapSeed:practiceNumber('seed',0,0,49),playerMorale:65,level:1,
+  equipment:{weapon:['sword','axe','spear','bow'].includes(weapon)?weapon:'sword',armor:'paddedArmor',shield:'roundShield',quiver:'quiver'},
+  inventory:{arrows:24}
+ };
+}
 const campaignSession=(()=>{
+ if(practiceMode)return createPracticeSession();
  try{
-  if(new URLSearchParams(window.location.search).get('campaign')!=='1')return null;
+  if(battleParams.get('campaign')!=='1')return null;
   const raw=JSON.parse(localStorage.getItem(battleSessionKey)||'null');
   const campaign=JSON.parse(localStorage.getItem('ua-campaign-v1')||'null');
   if(raw?.status!=='active'||!Array.isArray(raw.troops)||!Number.isInteger(raw.partyId)||raw.partyId<0||
@@ -647,7 +690,7 @@ const campaignSession=(()=>{
 })();
 const campaignMode=!!campaignSession;
 if(!campaignMode){window.location.replace('index.html');return}
-try{
+if(!practiceMode)try{
  const result=JSON.parse(localStorage.getItem(battleResultKey)||'null');
  if(result?.sessionId===campaignSession.sessionId){
   window.location.replace('index.html?battleReturn=1');return;
@@ -669,7 +712,12 @@ let heroMoveTap=null;
 const portrait=window.matchMedia('(orientation: portrait)');
 let campaignOrdersOpen=false;
 document.body.classList.add('campaign-battle');
-document.querySelector('#battleSubtitle').textContent='Campaign battle';
+document.querySelector('#battleSubtitle').textContent=practiceMode?'Practice battle':'Campaign battle';
+if(practiceMode){
+ document.querySelector('#campaignBattleExit').textContent='Setup';
+ document.querySelector('#campaignBattleReturn').textContent='⮐ Return to setup';
+ document.querySelector('#practiceReplay').hidden=false;
+}
 function clearHeroInput(){
  heroKeys.clear();
  for(const input of heroTouches.values())input.button?.classList.remove('is-held');
@@ -973,7 +1021,7 @@ function campaignEnemyRoster(){
  });
 }
 function campaignRecord(outcome){
- if(!campaignMode||campaignReported)return;
+ if(!campaignMode||practiceMode||campaignReported)return;
  const winner=outcome?.winner||'retreat';
  const entries=friends.map(s=>({
   groupIndex:s.campaignSource,slot:s.campaignSlot,
@@ -1001,6 +1049,7 @@ function campaignRecord(outcome){
 }
 function campaignReturn(){
  if(!campaignMode)return;
+ if(practiceMode){window.location.href='battle-practice.html?'+battleParams.toString();return}
  campaignRecord(battleOutcome);
  if(campaignReported)window.location.href='index.html?battleReturn=1';
 }
@@ -1691,11 +1740,12 @@ function updateSquadState(team){
 // V3.6: a formation is a moving physical structure, not a static attack
 // bonus. Troops keep ranks while closing, then make room for melee contact.
 function squadLineStyle(team,infantry){
- if(infantry.length<6)return 'loose';
+ const manualWall=team==='friend'?manualInfantryWall():null;
+ if(infantry.length<(manualWall?2:6))return 'loose';
  let asked='auto';
  if(typeof commanderBrains!=='undefined'){
   const brain=commanderBrains[team];
-  if(brain?.intent==='skirmish')return 'loose';
+  if(brain?.intent==='skirmish'&&!manualWall)return 'loose';
   asked=brain?.lineStyle||'auto';
   // A rapid unrestricted assault spreads out unless the General explicitly
   // ordered a wall. An ordered advance is slower and more disciplined.
@@ -1704,10 +1754,7 @@ function squadLineStyle(team,infantry){
    typeof activeLab!=='undefined'&&activeLab){
   asked=activeLab.spec.lineStyles?.[team]||'auto';
  }
- if(team==='friend'&&typeof generalOrders!=='undefined'&&
-   ['shieldwall','spearwall'].includes(formationType)&&
-   (generalOrders.all==='attack'||generalOrders.infantry==='attack'))
-  asked=formationType;
+ if(manualWall)asked=manualWall;
  const shields=infantry.filter(s=>shieldProfiles[s.shield]).length;
  const poles=infantry.filter(s=>s.weapon==='spear'||s.weapon==='pike').length;
  if(asked==='loose')return 'loose';
@@ -1718,12 +1765,17 @@ function squadLineStyle(team,infantry){
  if(shields>=Math.max(3,Math.ceil(infantry.length*.53)))return 'shieldwall';
  return 'line';
 }
+function manualInfantryWall(){
+ const group=generalOrders.infantry?'infantry':'all',order=generalOrders[group];
+ const shape=campaignMode?campaignFormations.get(group):formationType;
+ const active=campaignMode?['attack','defend','form','move'].includes(order):order==='attack';
+ return active&&isWall(shape)?shape:null;
+}
 function isManualLineAssault(s){
  if(s.team!=='friend'||typeof generalOrders==='undefined')return false;
  const manual=(s.squadReserve&&generalOrders.reserve)||
   generalOrders[s.unitRole]||generalOrders.all;
- return manual==='attack'&&s.unitRole==='infantry'&&
-  ['shieldwall','spearwall'].includes(formationType);
+ return manual==='attack'&&s.unitRole==='infantry'&&!!manualInfantryWall();
 }
 function lineMarch(s,state,group,dist,x,y,pace){
  const style=group.lineStyle;
@@ -2062,16 +2114,25 @@ function marchingGroup(unit){
 function marchReadyTroop(unit){
  return !unit.dead&&!unit.broken&&!unit.routed&&!unit.surrendered;
 }
+function isWall(shape){return shape==='shieldwall'||shape==='spearwall'}
+function hasWallEquipment(unit,shape){
+ return unit.unitRole==='infantry'&&(shape==='shieldwall'?!!shieldProfiles[unit.shield]:['spear','pike'].includes(unit.weapon));
+}
 function campaignFormationSlots(troops,shape,center){
  if(shape==='current')return troops.map(unit=>({unit,x:unit.x-center.x,y:unit.y-center.y}));
+ const wall=isWall(shape);
+ if(wall)troops=[...troops].sort((a,b)=>Number(hasWallEquipment(b,shape))-Number(hasWallEquipment(a,shape)));
  const spacing=troops.some(isCavalry)?46:35;
  const maxLanes=Math.max(1,Math.floor((H-50)/spacing));
- const width=shape==='line'?Math.min(maxLanes,troops.length):shape==='column'?Math.min(2,troops.length):Math.ceil(Math.sqrt(troops.length));
+ const width=wall?Math.min(maxLanes,Math.ceil(troops.length/2)):
+  shape==='line'?Math.min(maxLanes,troops.length):shape==='column'?Math.min(2,troops.length):Math.ceil(Math.sqrt(troops.length));
  const slots=[];
  for(let row=0,index=0;index<troops.length;row++){
   const count=Math.min(troops.length-index,shape==='wedge'?1+2*row:width);
+  const frontWall=wall&&row===0&&troops.slice(index,index+count).every(unit=>hasWallEquipment(unit,shape));
+  const stride=frontWall?(shape==='shieldwall'?24:27):spacing;
   for(let col=0;col<count;col++,index++){
-   slots.push({unit:troops[index],x:-row*spacing,y:(col-(count-1)/2)*spacing});
+   slots.push({unit:troops[index],x:-row*spacing,y:(col-(count-1)/2)*stride});
   }
  }
  const meanX=slots.reduce((sum,slot)=>sum+slot.x,0)/slots.length;
@@ -2083,6 +2144,10 @@ function beginCampaignMarch(order,destination,group=selectedGroup){
  if(!troops.length||!battleNavigation)return false;
  const from=troopCenter(troops,home('friend'));
  const shape=campaignFormations.get(group)||'current';
+ if(isWall(shape)&&troops.filter(unit=>hasWallEquipment(unit,shape)).length<2){
+  showBattleMessage(shape==='shieldwall'?'Select at least two infantry with shields.':'Select at least two infantry with spears or pikes.',4000);
+  return false;
+ }
  const slots=campaignFormationSlots(troops,shape,from);
  const margin=16;
  const bounds={
@@ -2108,6 +2173,7 @@ function beginCampaignMarch(order,destination,group=selectedGroup){
   generalOrders={all:order,infantry:null,archer:null,cavalry:null,horseArcher:null,reserve:null};
  }else generalOrders[group]=order;
  campaignMarches.set(group,{order,anchor,path,index:0,slots});
+ nextEngagementPlan=0;
  const end=path[path.length-1];
  if(destination)marker={x:end.x,y:end.y,when:t};
  return true;
@@ -3473,10 +3539,8 @@ function moveCampaignTroop(unit,target,speed,dt){
   unit.mountDistance+=step;
  }
 }
-// Soldiers occupy physical space. Separate living soldiers after movement, even
-// if both teams or multiple soldiers try to reach exactly the same spot.
-// Giving panicking and undisciplined soldiers more yield keeps disciplined
-// formations a little steadier without allowing any bodies to overlap.
+// Keep a softer buffer between allies so they can pass and form tight ranks.
+// Combat reach and opposing troop collisions use their existing checks.
 function separateSoldiers(){
  const all=[...members('friend'),...members('foe')].filter(s=>!s.dead&&!s.routed);
  const minDistance=20.7;
@@ -3489,12 +3553,13 @@ function separateSoldiers(){
     // Archers need wider firing stances, both beside other archers and
     // beside friendly infantry. Keep old collision for melee opponents.
     const friendly=a.team===b.team;
-    const clearance=(isCavalry(a)||isCavalry(b))?
+    const baseClearance=(isCavalry(a)||isCavalry(b))?
       (isCavalry(a)&&isCavalry(b)?43:36):
       friendly&&(isArcher(a)||isArcher(b))?
       (isArcher(a)&&isArcher(b)?33:26):
       friendly&&(isPolearm(a)||isPolearm(b))?
       (isPolearm(a)&&isPolearm(b)?29:25):minDistance;
+    const clearance=baseClearance-(campaignMode&&friendly?6:0);
     if(sq>=clearance*clearance)continue;
     // A mounted unit keeps inertia while approaching, but a body-to-body
     // collision absorbs speed. Horses can't shove through tightly packed
@@ -3515,8 +3580,15 @@ function separateSoldiers(){
     const dist=Math.sqrt(sq),push=(clearance-dist+.005);
     const ya=(a.broken?2:1.05-a.disc*.003);
     const yb=(b.broken?2:1.05-b.disc*.003);
-    const wa=ya/(ya+yb),wb=yb/(ya+yb);
     const nx=dx/dist,ny=dy/dist;
+    let wa=ya/(ya+yb);
+    if(campaignMode&&friendly){
+     const aPresses=a.orderMoveX*nx+a.orderMoveY*ny>.35;
+     const bPresses=-b.orderMoveX*nx-b.orderMoveY*ny>.35;
+     if(aPresses&&b.orderMoveX===0&&b.orderMoveY===0)wa=.18;
+     else if(bPresses&&a.orderMoveX===0&&a.orderMoveY===0)wa=.82;
+    }
+    const wb=1-wa;
     a.x-=nx*push*wa;a.y-=ny*push*wa;
     b.x+=nx*push*wb;b.y+=ny*push*wb;
    }
@@ -3859,6 +3931,7 @@ function step(dt){
  }
  const marchTargets=campaignMode?advanceCampaignMarches(dt):null;
  for(const s of [...members('friend'),...members('foe')]){
+  s.orderMoveX=0;s.orderMoveY=0;
   if(s.dead||s.routed)continue;s.cooldown-=dt;s.decision-=dt;s.hitFlash=Math.max(0,s.hitFlash-dt);
   // Parry counters last only 0.72s; a waiting fighter cannot bank the bonus.
   s.counterWindow=Math.max(0,(s.counterWindow||0)-dt);
@@ -4010,6 +4083,11 @@ function step(dt){
    approach(s,moveX,moveY,dt,command==='stop'?0:
     pace*disciplineControl*fatiguePace*loadPace*fightingPace*mountPace);
   terrainResolve(s,oldX,oldY,campaignMode);
+  const manualOrder=campaignMode&&s.team==='friend'&&!s.isCommander&&generalOrders[marchingGroup(s)];
+  if(march||manualOrder==='attack'||manualOrder==='retreat'){
+   const dx=s.x-oldX,dy=s.y-oldY,distance=Math.hypot(dx,dy);
+   if(distance>.05){s.orderMoveX=dx/distance;s.orderMoveY=dy/distance}
+  }
   s.stamina=clamp(s.stamina-Math.hypot(s.x-oldX,s.y-oldY)*
    (.042+equipment*.004)*terrainFatigue(s),0,s.maxStamina);
   // Bad footing also makes holding a shield wall or recovering from an
@@ -4499,8 +4577,22 @@ for(const button of battleSpeedButtons){
 const armyPanel=document.querySelector('#campaignArmyOrders'),armyToggle=document.querySelector('#campaignArmyOrdersToggle');
 const armyGroupButtons=[...armyPanel.querySelectorAll('[data-campaign-group]')];
 const armyOrderButtons=[...armyPanel.querySelectorAll('[data-campaign-order]')];
-const armyOrderName={attack:'Advance',defend:'Hold the line',stop:'Stand ground',retreat:'Retreat',ai:'Commander AI',move:'Move',form:'Form up'};
+const armyOrderName={attack:'Attack',defend:'Defend',stop:'Stop',retreat:'Retreat',ai:'Commander AI',move:'Move',form:'Form up'};
 const formationSelect=document.querySelector('#campaignFormation');
+const commanderTactics=[
+ {id:'#campaignCommanderStyle',key:'personality',values:['tactical','defensive','aggressive']},
+ {id:'#campaignCommanderIntent',key:'intent',values:['adaptive','hold','ordered','aggressive','skirmish']},
+ {id:'#campaignCommanderLine',key:'lineStyle',values:['auto','shieldwall','spearwall','line','loose']}
+];
+for(const setting of commanderTactics){
+ setting.control=document.querySelector(setting.id);
+ setting.control.addEventListener('change',()=>{
+  if(!campaignOrdersOpen||battleOutcome||!setting.values.includes(setting.control.value))return;
+  const brain=commanderBrains.friend;
+  brain[setting.key]=setting.control.value;
+  brain.lastChange=-20;brain.next=0;nextEngagementPlan=0;
+ });
+}
 function updateCampaignArmyOrders(){
  const active=friends.filter(s=>!s.dead&&!s.routed&&!s.surrendered);
  for(const button of armyGroupButtons){
@@ -4526,6 +4618,7 @@ function setCampaignOrdersOpen(open){
   if(formationDestination)cancelFormationPlacement();
   clearHeroInput();
   formationSelect.value=campaignFormations.get(selectedGroup)||'current';
+  for(const setting of commanderTactics)setting.control.value=commanderBrains.friend[setting.key];
  }
  armyPanel.hidden=!campaignOrdersOpen;
  document.body.classList.toggle('campaign-orders-open',campaignOrdersOpen);
@@ -4540,8 +4633,12 @@ for(const button of armyGroupButtons)button.addEventListener('click',()=>{
 });
 formationSelect.addEventListener('change',()=>{
  if(!campaignOrdersOpen||battleOutcome)return;
+ const previous=campaignFormations.get(selectedGroup)||'current';
  campaignFormations.set(selectedGroup,formationSelect.value);
- if(formationSelect.value!=='current')beginCampaignMarch('form');
+ if(formationSelect.value!=='current'&&!beginCampaignMarch('form')){
+  campaignFormations.set(selectedGroup,previous);
+  formationSelect.value=previous;
+ }
  updateCampaignArmyOrders();
 });
 for(const button of armyOrderButtons)button.addEventListener('click',()=>{
@@ -4666,6 +4763,7 @@ for(const button of document.querySelectorAll('[data-hero-key]')){
 }
 document.querySelector('#campaignBattleExit').addEventListener('click',campaignReturn);
 document.querySelector('#campaignBattleReturn').addEventListener('click',campaignReturn);
+document.querySelector('#practiceReplay').addEventListener('click',()=>{if(practiceMode&&battleOutcome)window.location.reload()});
 window.addEventListener('resize',resize,{passive:true});if('ResizeObserver' in window)new ResizeObserver(resize).observe(board);resize();requestAnimationFrame(frame);
 })();
 </script>
