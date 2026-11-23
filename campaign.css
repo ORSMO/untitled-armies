@@ -287,6 +287,8 @@
 .armory-preview dl{display:grid;grid-template-columns:1fr auto;gap:4px;margin:10px 0 0}
 .armory-preview dd{margin:0;color:#f0db9f;font-weight:bold}
 .armory-modal .modal-actions .btn,.party-kit-actions .btn{min-height:44px}
+#mapFullscreen{min-width:44px;min-height:44px;font-size:16px}
+#menuFullscreen[aria-pressed="true"],#mapFullscreen[aria-pressed="true"]{border-color:#e8cc8e;color:#f7e2a6}
 @media(orientation:landscape) and (max-height:430px){
  .armory-modal{padding:10px 12px}
  .armory-modal h2{margin:0 42px 8px 0}
