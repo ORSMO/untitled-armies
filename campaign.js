@@ -66,7 +66,10 @@ function showScreen(id){
  for(const s of screens)$(s).classList.toggle('hidden',s!==id);
  menuOpen=!!id;
  if(menuOpen){keys.clear();resetMapGesture()}
- if(state)state.paused=menuOpen||state.pausedManual;
+ if(state){
+  if(menuOpen)stopWaiting();
+  state.paused=menuOpen||state.pausedManual;
+ }
 }
 function openModal(id){
  const active=screens.find(s=>!$(s).classList.contains('hidden'))||null;
@@ -147,7 +150,7 @@ function saveGame(silent){
  try{
   const data={version:VERSION,player:state.player,day:state.day,hour:state.hour,
    parties:state.parties.map(p=>({id:p.id,x:p.x,y:p.y,tx:p.tx,ty:p.ty,strength:p.strength,active:p.active,kind:p.kind,faction:p.faction,targetPartyId:p.targetPartyId??null,cargo:p.cargo??null,tradeTargetId:p.tradeTargetId??null})),
-   options:state.options,speed:state.speed,zoom:camera.zoom,visitedLandmarks:state.visitedLandmarks||[],pendingBattleId:state.pendingBattleId||null,lastEncounter:state.lastEncounter,
+   options:state.options,speed:1,zoom:camera.zoom,visitedLandmarks:state.visitedLandmarks||[],pendingBattleId:state.pendingBattleId||null,lastEncounter:state.lastEncounter,
    marketStocks:state.marketStocks||{},completedContracts:state.completedContracts||[],diplomacy:state.diplomacy,settlementProjects:state.settlementProjects||{},settlementState:S.map(site=>({prosperity:site.prosperity,garrison:site.garrison}))};
   const serialized=JSON.stringify(data),previous=localStorage.getItem(KEY);
   if(previous&&previous!==serialized){try{const older=localStorage.getItem(KEY+'-backup-1');if(older)localStorage.setItem(KEY+'-backup-2',older);localStorage.setItem(KEY+'-backup-1',previous)}catch(e){}}
@@ -186,7 +189,7 @@ function startCampaign(){
   [{faction:origin,tier:0,count:8}];
  state={version:VERSION,player:{name,origin,background,x,y,gold:money,food:background==='merchant'?28:22,hp:100,
    level:1,xp:0,renown:0,roster:firstTroops,quest:{id:0,progress:0,goal:3,done:false}},
-   day:1,hour:8,speed:1,paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,
+   day:1,hour:8,waiting:false,waitSpeed:1,paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,
    followPartyId:null,followRepath:0,visitedLandmarks:[],pendingBattleId:null,
    parties:[],options:{...settingsDefault},messages:[],unseen:[],lastEncounter:-100,marketStocks:{},completedContracts:[],diplomacy:createDiplomacy(),settlementProjects:{}};
   state.player=preparePlayer(state.player);
@@ -208,7 +211,7 @@ function loadGame(){
    const land=W.nearestWalk(Math.floor(p.x/W.TILE),Math.floor(p.y/W.TILE));
    if(land){p.x=(land.x+.5)*W.TILE;p.y=(land.y+.5)*W.TILE}
   }
-  state={version:VERSION,player:p,day:raw.day||1,hour:raw.hour||8,speed:[1,2,4].includes(raw.speed)?raw.speed:1,
+  state={version:VERSION,player:p,day:raw.day||1,hour:Number.isFinite(raw.hour)?raw.hour:8,waiting:false,waitSpeed:1,
    paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,
    followPartyId:null,followRepath:0,visitedLandmarks:Array.isArray(raw.visitedLandmarks)?raw.visitedLandmarks:[],pendingBattleId:raw.pendingBattleId||null,
    parties:[],options:{...settingsDefault,...raw.options},
@@ -266,6 +269,7 @@ function travelTo(x,y,targetId){
  if(targetId!=null&&dist(state.player.x,state.player.y,x,y)<=TOWN_ENTRY_RANGE){arriveSettlement(targetId);return}
  const route=W.findPath(state.player.x,state.player.y,x,y);
  if(!route.length){notify('No traversable route found.');return}
+ stopWaiting();
  state.path=route;state.pathIndex=0;state.targetSettlement=targetId==null?null:targetId;
  state.followPartyId=null;
  focus=state.options.follow;
@@ -283,6 +287,7 @@ function followParty(id){
  if(!state||menuOpen)return;
  const party=state.parties.find(p=>p.id===id&&p.active);
  if(!party){notify('That party is no longer on the roads.');return}
+ stopWaiting();
  state.followPartyId=id;
  state.followRepath=0;state.targetSettlement=null;state.path=[];state.pathIndex=0;
  selected={type:'party',id};focus=true;inspectorDirty=true;
@@ -296,7 +301,7 @@ function updateFollow(dt){
  if(!party){state.followPartyId=null;state.path=[];state.pathIndex=0;notify('You lost the party you were following.');return}
  const distance=dist(state.player.x,state.player.y,party.x,party.y);
  if(distance<=143){state.path=[];state.pathIndex=0;openEncounter(party);return}
- state.followRepath-=dt*state.speed;
+ state.followRepath-=dt;
  if(state.followRepath>0&&state.pathIndex<state.path.length)return;
  // Aim a few route segments ahead: the target continues moving while
  // the player travels. Reroute periodically instead of only once.
@@ -313,14 +318,17 @@ function updateFollow(dt){
 }
 function walkPlayer(dx,dy,dt){
  const p=state.player,mag=Math.hypot(dx,dy);if(mag<.0001)return false;
- const spd=147*W.walkingSpeed(p.x,p.y)*dt*state.speed*(p.perks.includes('outrider')?1.12:1);
+ const spd=147*W.walkingSpeed(p.x,p.y)*dt*(p.perks.includes('outrider')?1.12:1);
  const x=clamp(p.x+dx/mag*spd,15,W.WIDTH-15),y=clamp(p.y+dy/mag*spd,15,W.HEIGHT-15);
  if(!W.tileAt(x,y).walk)return false;
  const d=dist(p.x,p.y,x,y);p.x=x;p.y=y;advanceTime(d);
  return true;
 }
 function advanceTime(distance){
- state.hour+=distance/230;
+ advanceCampaignHours(distance/230);
+}
+function advanceCampaignHours(hours){
+ state.hour+=hours;
  while(state.hour>=24){state.hour-=24;advanceDay();if(state.player.hp<100)state.player.hp=Math.min(100,state.player.hp+3)}
 }
 function createDiplomacy(){
@@ -565,11 +573,12 @@ function stepTravel(dt){
  const p=state.player;
  const dx=(keys.has('d')||keys.has('ArrowRight')?1:0)-(keys.has('a')||keys.has('ArrowLeft')?1:0);
  const dy=(keys.has('s')||keys.has('ArrowDown')?1:0)-(keys.has('w')||keys.has('ArrowUp')?1:0);
- if(dx||dy){state.path=[];state.pathIndex=0;state.targetSettlement=null;state.followPartyId=null;walkPlayer(dx,dy,dt);focus=state.options.follow;return}
+ if(dx||dy){stopWaiting();state.path=[];state.pathIndex=0;state.targetSettlement=null;state.followPartyId=null;walkPlayer(dx,dy,dt);focus=state.options.follow;return}
+ if(state.waiting)return;
  updateFollow(dt);
  if(state.paused)return;
  if(state.pathIndex>=state.path.length)return;
- let budget=148*W.walkingSpeed(p.x,p.y)*dt*state.speed*(p.perks.includes('outrider')?1.12:1);
+ let budget=148*W.walkingSpeed(p.x,p.y)*dt*(p.perks.includes('outrider')?1.12:1);
  let traversed=0;
  while(budget>0&&state.pathIndex<state.path.length){
   const next=state.path[state.pathIndex],d=dist(p.x,p.y,next.x,next.y);
@@ -730,7 +739,7 @@ function resolveWorldClashes(){
    routingBudget--;nextPartyDestination(p);
   }
   if(!p.path.length)continue;
-  let budget=(p.kind==='patrol'?78:p.kind==='caravan'?61:53)*dt*state.speed;
+  let budget=(p.kind==='patrol'?78:p.kind==='caravan'?61:53)*dt;
   while(budget>0&&p.pathIndex<p.path.length){
    const n=p.path[p.pathIndex],d=dist(p.x,p.y,n.x,n.y);
    if(d<2){p.pathIndex++;continue}
@@ -1341,14 +1350,25 @@ function currentRegion(){return F[W.tileAt(state.player.x,state.player.y).owner]
 function refreshUI(){
  if(!state)return;
  const p=state.player,region=currentRegion(),near=W.closestSettlement(p.x,p.y);
- $('hudDay').textContent='Day '+state.day+' · '+String(Math.floor(state.hour)).padStart(2,'0')+':00';
+ const minutes=Math.floor(state.hour*60);
+ $('hudDay').textContent='Day '+state.day+' · '+String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0');
  $('hudRegion').textContent=region.name;
  $('hudParty').textContent=rosterCount()+'/'+MAXPARTY;
  $('hudGold').textContent=p.gold.toLocaleString();
  $('hudFood').textContent=String(p.food);
-  $('hudPause').textContent=state.pausedManual?'▶ Resume':'⏸ Pause';
-  $('mobilePause').textContent=state.pausedManual?'▶':'Ⅱ';
-  document.querySelectorAll('.speed-choice').forEach(b=>b.classList.toggle('selected',Number(b.dataset.speed)===state.speed));
+ const traveling=hasTravelOrder(),running=state.waiting||traveling&&!state.pausedManual;
+ const action=state.waiting?'Stop waiting':traveling?(state.pausedManual?'Resume travel':'Pause travel'):'Wait here';
+ $('hudPause').textContent=(running?'⏸ ':'▶ ')+action;
+ $('mobilePause').textContent=running?'Ⅱ':'▶';
+ for(const id of ['hudPause','mobilePause']){
+  $(id).setAttribute('aria-label',action);
+  $(id).title=action;
+ }
+ for(const button of document.querySelectorAll('.speed-choice')){
+  const active=state.waiting&&Number(button.dataset.speed)===state.waitSpeed;
+  button.classList.toggle('selected',active);
+  button.setAttribute('aria-pressed',String(active));
+ }
  $('charName').textContent=p.name;$('charCulture').textContent='Level '+p.level+' · '+F[p.origin].name;
  $('charAvatar').textContent=F[p.origin].symbol;
  $('statGold').textContent=p.gold.toLocaleString();$('statFood').textContent=p.food;
@@ -1361,7 +1381,7 @@ function refreshUI(){
  $('logList').innerHTML=state.messages.slice(0,6).map(m=>'<li><b>Day '+m.day+':</b> '+esc(m.text)+'</li>').join('');
  $('mapCoordinates').textContent=near&&dist(p.x,p.y,near.x,near.y)<300?
   'Near '+near.name+' · '+region.name:region.name+' · '+Math.floor(p.x)+', '+Math.floor(p.y);
- $('travelText').textContent=state.followPartyId!=null?
+ $('travelText').textContent=state.waiting?'Waiting here · '+state.waitSpeed+'×':state.followPartyId!=null?
   'Following '+partyName(state.parties.find(p=>p.id===state.followPartyId))+' · updating route':
   state.path.length?(state.pausedManual?'Route ready · resume to travel':'Traveling · '+Math.max(0,state.path.length-state.pathIndex)+' route steps remaining'):
   'Tap to travel · Drag to pan · Pinch to zoom';
@@ -1749,8 +1769,24 @@ function aftermathInnSite(){
  const town=W.closestSettlement(player.x,player.y);
  return town&&dist(player.x,player.y,town.x,town.y)<=TOWN_ENTRY_RANGE?town:null;
 }
-function setSpeed(value){if(!state)return;state.speed=[1,2,4].includes(value)?value:1;state.pausedManual=false;state.paused=menuOpen;refreshUI();saveGame(true)}
-function togglePause(){if(!state)return;state.pausedManual=!state.pausedManual;state.paused=menuOpen||state.pausedManual;refreshUI()}
+function hasTravelOrder(){return state.followPartyId!=null||state.pathIndex<state.path.length}
+function stopWaiting(){state.waiting=false;state.waitSpeed=1}
+function setWaitSpeed(speed){
+ if(!state||menuOpen||![1,2,4].includes(speed))return;
+ state.path=[];state.pathIndex=0;state.targetSettlement=null;state.followPartyId=null;
+ keys.clear();
+ state.waiting=true;state.waitSpeed=speed;state.pausedManual=false;state.paused=false;
+ refreshUI();
+}
+function togglePause(){
+ if(!state||menuOpen)return;
+ if(state.waiting)stopWaiting();
+ else if(hasTravelOrder()){
+  state.pausedManual=!state.pausedManual;
+  state.paused=state.pausedManual;
+ }else{setWaitSpeed(1);return}
+ refreshUI();
+}
 button('encounterTalk',()=>{
  const p=state?.parties.find(x=>x.id===selected?.id);if(!p)return;
  const line=p.kind==='bandit'?'The outlaw chief demands coin and threatens passing villagers.':
@@ -1821,7 +1857,7 @@ button('btnZoomIn',()=>zoomAt(1.32));
 button('btnZoomOut',()=>zoomAt(1/1.32));
 button('btnCenter',()=>{resetView();notify('Camera following your character.')});
 button('btnOverview',()=>{focus=false;camera.x=W.WIDTH/2;camera.y=W.HEIGHT/2;camera.zoom=.115});
-document.querySelectorAll('.speed-choice').forEach(b=>b.addEventListener('click',()=>setSpeed(Number(b.dataset.speed))));
+document.querySelectorAll('.speed-choice').forEach(b=>b.addEventListener('click',()=>setWaitSpeed(Number(b.dataset.speed))));
 button('hudPause',togglePause);button('mobilePause',togglePause);
 button('mapNearest',()=>{const s=W.closestSettlement(state.player.x,state.player.y);selected={type:'settlement',id:s.id};inspectorDirty=true;refreshInspector()});
 button('mapDiscover',()=>{
@@ -1975,14 +2011,19 @@ window.addEventListener('resize',()=>{
  resize();if(!$('screenAtlas').classList.contains('hidden'))drawAtlas();
 });
 if('ResizeObserver' in window)new ResizeObserver(resize).observe(canvas.parentElement);
+const portraitMode=window.matchMedia?.('(orientation: portrait)');
 function frame(now){
  const dt=Math.min(.075,Math.max(0,(now-last)/1000||.016));last=now;
  if(state&&!menuOpen){
-  if(!state.paused){
+  if(!state.paused&&!document.hidden&&!portraitMode?.matches){
    const beforeX=state.player.x,beforeY=state.player.y;
    stepTravel(dt);
-   const moved=dist(beforeX,beforeY,state.player.x,state.player.y),normal=148*W.walkingSpeed(beforeX,beforeY)*dt*state.speed;
-   if(!state.paused&&moved>0)stepParties(dt*clamp(moved/Math.max(1,normal),0,1));
+   const moved=dist(beforeX,beforeY,state.player.x,state.player.y),normal=148*W.walkingSpeed(beforeX,beforeY)*dt;
+   if(!state.paused&&state.waiting){
+    const elapsed=dt*state.waitSpeed;
+    advanceTime(148*elapsed);
+    stepParties(elapsed);
+   }else if(!state.paused&&moved>0)stepParties(dt*clamp(moved/Math.max(1,normal),0,1));
    if(focus&&(state.options.follow||state.followPartyId!=null)){const t=Math.min(1,dt*5);camera.x+=(state.player.x-camera.x)*t;camera.y+=(state.player.y-camera.y)*t}
   }
   drawWorld(now);
