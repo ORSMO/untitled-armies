@@ -49,7 +49,9 @@ function localHouse(site){
  return dist(site.x,site.y,keep.x,keep.y)<dist(site.x,site.y,capital.x,capital.y)?landed:ruling;
 }
 function houseFavor(house){return state?.player.houseFavor?.[house.id]||0}
-function kingdomLoadout(faction,tier){return ARMORY.getLoadout(faction,tier,state?.player.armory?.[faction+':'+tier])}
+function kingdomLoadout(faction,tier,unitId){
+ return ARMORY.getLoadout(faction,tier,state?.player.armory?.[ARMORY.designKey(faction,tier,unitId)],unitId);
+}
 const SHOP_ITEMS=['food','sword','axe','spear','bow','paddedArmor','leatherArmor','mailArmor','plateArmor','roundShield','kiteShield','quiver','rockPouch','arrows','stones',...TRADE_RESOURCES];
 const ITEM_SLOT_LABELS={weapon:'Weapon',armor:'Armor',shield:'Shield',quiver:'Pouch / quiver'};
 const PERKS={
@@ -84,11 +86,34 @@ function closeModal(){
 function savedExists(){try{return !!localStorage.getItem(KEY)}catch(e){return false}}
 function refreshContinue(){$('menuContinue').disabled=!savedExists()}
 function rosterCount(){return state?state.player.roster.reduce((n,t)=>n+t.count,0):0}
-function troopName(group){return F[group.faction]?.troops[clamp(group.tier,0,2)]||'Unknown soldier'}
+function troopName(group){
+ return ARMORY.getBranch(group.faction,group.tier,group.unitId)?.name||F[group.faction]?.troops[clamp(group.tier,0,2)]||'Unknown soldier';
+}
+const TROOP_WAGES=[2,4,7],PROMOTION_TRAINING=[2,3],PROMOTION_PRICE=[45,105];
+function partyGroupStatus(group){
+ const wounded=group.wounded,healthy=group.count-wounded,trainingNeeded=PROMOTION_TRAINING[group.tier]||0;
+ let ready=0,closestTraining=0;
+ if(trainingNeeded)for(const training of group.training.slice(0,healthy)){
+  if(training>=trainingNeeded)ready++;
+  else closestTraining=Math.max(closestTraining,training);
+ }
+ return {healthy,wounded,ready,trainingNeeded,closestTraining};
+}
+function addHealthyTroops(faction,tier,unitId,quantity){
+ const roster=state.player.roster;
+ let group=roster.find(g=>g.faction===faction&&g.tier===tier&&g.unitId===unitId);
+ if(!group){group={faction,tier,unitId,count:0,wounded:0,training:[]};roster.push(group)}
+ group.training.splice(group.count-group.wounded,0,...Array(quantity).fill(0));
+ group.count+=quantity;
+ return group;
+}
 function standingLabel(value){return value>=60?'Trusted':value>=25?'Respected':value<=-60?'Outlawed':value<=-25?'Unwelcome':'Neutral'}
 function recruitmentTerms(site){
- const standing=Number(state.player.reputation[site.faction])||0;
- return {count:Math.min(standing>=40?6:4,MAXPARTY-rosterCount()),unit:Math.max(1,Math.round(45*clamp(1-standing*.004,.72,1.4))),access:standing>-60};
+ const p=state.player,standing=Number(p.reputation[site.faction])||0,used=p.recruitment[site.id];
+ const stock=Math.max(0,(standing>=40?6:4)-(used?.day===state.day?used.count:0));
+ const access=standing>-60,available=Math.max(0,Math.min(stock,MAXPARTY-rosterCount()));
+ const unit=Math.max(1,Math.round(45*clamp(1-standing*.004,.72,1.4)));
+ return {count:available,available,max:access?Math.min(available,Math.floor(p.gold/unit)):0,unit,access,dailyWage:TROOP_WAGES[0]};
 }
 function retainerOffer(site){
  const house=seatHouse(site.id);
@@ -98,15 +123,14 @@ function retainerOffer(site){
   !recruitmentTerms(site).access?'Recruitment denied':
   state.player.retainerDays[house.id]===state.day?'Available again tomorrow':
   count===0?'Company full':state.player.gold<count*cost?'Not enough denars':'';
- return {house,count,cost,reason};
+ const unitId=site.faction===6?'val-retainer':undefined;
+ return {house,count,cost,reason,unitId,name:troopName({faction:site.faction,tier:1,unitId})};
 }
 function recruitRetainers(site){
  const offer=retainerOffer(site);
  if(!offer||offer.reason){notify(offer?.reason||'Retainers recruit at a house seat.');return false}
  const player=state.player;
- let group=player.roster.find(entry=>entry.faction===site.faction&&entry.tier===1);
- if(!group){group={faction:site.faction,tier:1,count:0};player.roster.push(group)}
- group.count+=offer.count;
+ addHealthyTroops(site.faction,1,offer.unitId,offer.count);
  player.gold-=offer.count*offer.cost;
  player.retainerDays[offer.house.id]=state.day;
  log(offer.house.name+' supplied '+offer.count+' trained retainers.');
@@ -131,6 +155,19 @@ function preparePlayer(p){
  p.morale=clamp(Number.isFinite(Number(p.morale))?Number(p.morale):65,0,100);p.reputation=Array.isArray(p.reputation)?Array.from({length:F.length},(_,i)=>clamp(Number(p.reputation[i])||0,-100,100)):Array(F.length).fill(0);
  p.activeContracts=Array.isArray(p.activeContracts)?p.activeContracts:[];
  p.armory=ARMORY.normalizeDesigns(p.armory);
+ p.roster=p.roster.filter(g=>g&&Number.isInteger(g.faction)&&F[g.faction]&&Number.isInteger(g.tier)&&g.tier>=0&&g.tier<=2&&Number.isFinite(g.count)&&g.count>=1);
+ for(const g of p.roster){
+  g.count=Math.min(MAXPARTY,Math.floor(g.count));
+  g.wounded=clamp(Math.floor(Number(g.wounded)||0),0,g.count);
+  // Stable slot order: fit troops first, wounded troops after them.
+  const training=Array.isArray(g.training)?g.training:[];
+  g.training=Array.from({length:g.count},(_,slot)=>clamp(Math.floor(Number(training[slot])||0),0,PROMOTION_TRAINING[g.tier]||0));
+  if(!ARMORY.getBranch(g.faction,g.tier,g.unitId))delete g.unitId;
+ }
+ p.recruitment=Object.fromEntries(S.flatMap(site=>{
+  const offer=p.recruitment?.[site.id];
+  return Number.isInteger(offer?.day)&&Number.isInteger(offer?.count)?[[site.id,{day:offer.day,count:clamp(offer.count,0,6)}]]:[];
+ }));
  p.houseFavor=Object.fromEntries(HOUSES.map(h=>[h.id,clamp(Math.floor(Number(p.houseFavor?.[h.id])||0),0,100)]));
  p.retainerDays=Object.fromEntries(HOUSES.filter(h=>Number.isInteger(p.retainerDays?.[h.id])).map(h=>[h.id,p.retainerDays[h.id]]));
  p.inventory={arrows:24,stones:0,food:0,grain:0,timber:0,iron:0,tools:0,salt:0,...(p.inventory||{})};
@@ -531,10 +568,14 @@ function advanceEconomy(){
   market.lastDay=state.day;
  }
 }
-function dailyWages(){
- const p=state.player,rate=[2,4,7];
- const raw=p.roster.reduce((sum,g)=>sum+g.count*rate[clamp(g.tier,0,2)],0);
+function dailyWages(rawWageAdjustment=0){
+ const p=state.player;
+ const raw=p.roster.reduce((sum,g)=>sum+g.count*TROOP_WAGES[g.tier],rawWageAdjustment);
  return Math.max(0,Math.ceil(raw*(p.perks.includes('quartermaster')?.85:1)));
+}
+function dailyProvisions(){
+ const baseNeed=Math.max(1,Math.ceil(rosterCount()/10));
+ return Math.max(1,Math.ceil(baseNeed*(state.player.perks.includes('quartermaster')?.85:1)));
 }
 function advanceDay(){state.day++;advanceEconomy();diplomacyDay();consumeFood();replenishRoadParties()}
 function replenishRoadParties(){
@@ -556,8 +597,7 @@ function replenishRoadParties(){
  }
 }
 function consumeFood(){
- const p=state.player,baseNeed=Math.max(1,Math.ceil(rosterCount()/10));
- const need=Math.max(1,Math.ceil(baseNeed*(p.perks.includes('quartermaster')?.85:1)));
+ const p=state.player,need=dailyProvisions();
  if(p.food>=need){p.food-=need;p.morale=clamp(p.morale+1,0,100)}
  else{p.food=0;p.hp=Math.max(5,p.hp-5);p.morale=clamp(p.morale-10,0,100);log('Your company ran out of food. Health and morale fell.')}
  const wage=dailyWages();
@@ -565,7 +605,14 @@ function consumeFood(){
  else{
   const paid=p.gold;p.gold=0;p.morale=clamp(p.morale-7-Math.ceil((wage-paid)/Math.max(1,wage)*5),0,100);
   log('Day '+state.day+': short on wages. Paid '+paid+' of '+wage+' denars; morale fell.');
-  if(p.morale<18&&state.day%3===0){const deserter=p.roster.find(g=>g.count>(g.wounded||0));if(deserter){deserter.count--;deserter.wounded=Math.min(deserter.wounded||0,deserter.count);p.roster=p.roster.filter(g=>g.count>0);p.morale=clamp(p.morale+4,0,100);log('A soldier deserted because morale collapsed.')}}
+  if(p.morale<18&&state.day%3===0){
+   const deserter=p.roster.find(g=>g.count>g.wounded);
+   if(deserter){
+    deserter.training.splice(deserter.count-deserter.wounded-1,1);deserter.count--;
+    p.roster=p.roster.filter(g=>g.count>0);p.morale=clamp(p.morale+4,0,100);
+    log('A soldier deserted because morale collapsed.');
+   }
+  }
  }
  if(p.morale<25&&state.day%3===0)log('Morale is critical. Pay your troops and keep the company supplied.');
 }
@@ -769,18 +816,42 @@ function completeQuest(id){
  log('Quest completed! Earned '+rewards[id]+' denars and '+exp[id]+' experience.');
  notify('Quest complete · +'+rewards[id]+' denars · +'+exp[id]+' XP');inspectorDirty=true;
 }
-function performSettlementAction(action,id){
+function innTreatmentPreview(){
+ const p=state.player,wounded=p.roster.reduce((sum,g)=>sum+g.wounded,0);
+ return {wounded,treated:Math.min(3,wounded),heroHeal:Math.min(100-p.hp,32+(p.perks.includes('fieldMedic')?16:0)),price:20,wages:dailyWages(),provisions:dailyProvisions()};
+}
+function fieldRestPreview(){
+ const p=state.player,provisions=2,hours=6,heroHeal=Math.min(100-p.hp,15+(p.perks.includes('fieldMedic')?16:0));
+ const reason=!heroHeal?'Hero already at full health':
+  p.fieldRestDay===state.day?'Camp again tomorrow':p.food<provisions?'Needs '+provisions+' provisions':'';
+ return {provisions,hours,heroHeal,reason};
+}
+function fieldRest(){
+ const preview=fieldRestPreview();
+ if(preview.reason){notify(preview.reason);return false}
+ const p=state.player;
+ stopWaiting();
+ p.food-=preview.provisions;p.hp+=preview.heroHeal;
+ advanceCampaignHours(preview.hours);p.fieldRestDay=state.day;
+ log('Camped in the field and recovered '+preview.heroHeal+' hero health.');
+ notify('Camped for '+preview.hours+' hours · +'+preview.heroHeal+' hero health.');
+ refreshUI();saveGame(true);return true;
+}
+function performSettlementAction(action,id,quantity=1){
  const site=S[id],p=state.player;
  if(!site)return;
  if(dist(p.x,p.y,site.x,site.y)>TOWN_ENTRY_RANGE){notify('Travel closer to enter '+site.name+'.');return}
  if(action==='recruit'){
-  const terms=recruitmentTerms(site),number=terms.count,cost=number*terms.unit;
+  const terms=recruitmentTerms(site),number=Number(quantity);
   if(!terms.access){notify('The local authorities will not enlist you while your standing is outlawed.');return}
-  if(number<=0){notify('Your party has reached its current limit.');return}
-  if(p.gold<cost){notify('Not enough denars to recruit volunteers.');return}
-  p.gold-=cost;let group=p.roster.find(g=>g.faction===site.faction&&g.tier===0);
-  if(!group){group={faction:site.faction,tier:0,count:0};p.roster.push(group)}
-  group.count+=number;log('Recruited '+number+' '+F[site.faction].troops[0]+' at '+site.name+'.');
+  if(!Number.isInteger(number)||number<1||number>terms.max){
+   notify(!terms.available?(rosterCount()>=MAXPARTY?'Your party is full.':'More volunteers arrive tomorrow.'):'Choose an available quantity you can afford.');return;
+  }
+  const used=p.recruitment[id];
+  p.recruitment[id]={day:state.day,count:(used?.day===state.day?used.count:0)+number};
+  p.gold-=number*terms.unit;
+  const group=addHealthyTroops(site.faction,0,undefined,number);
+  log('Recruited '+number+' '+troopName(group)+' at '+site.name+'.');
   if(p.quest?.id===0){p.quest.progress+=number;if(p.quest.progress>=p.quest.goal)completeQuest(0)}
   notify(number+' volunteers joined your party.');
  }else if(action==='food'){
@@ -788,10 +859,18 @@ function performSettlementAction(action,id){
   if(p.gold<offer.price){notify('Not enough denars for provisions.');return}
   p.gold-=offer.price;state.marketStocks[site.id].stock.food--;p.food+=8;log('Bought eight provisions in '+site.name+' for '+offer.price+' denars.');notify('Purchased eight provisions.');
  }else if(action==='rest'){
-  if(p.gold<20){notify('An inn costs 20 denars.');return}
-  p.gold-=20;p.hp=Math.min(100,p.hp+32+(p.perks.includes('fieldMedic')?16:0));p.morale=clamp(p.morale+3+(p.perks.includes('fieldMedic')?5:0),0,100);state.hour=8;advanceDay();
-  for(const group of p.roster)if(group.wounded)group.wounded=Math.max(0,group.wounded-3);
-  log('Rested at '+site.name+'.');notify('Rested, healed and started a new day.');
+  const recovery=innTreatmentPreview();
+  if(p.gold<recovery.price){notify('An inn costs '+recovery.price+' denars.');return}
+  p.gold-=recovery.price;p.hp+=recovery.heroHeal;
+  p.morale=clamp(p.morale+3+(p.perks.includes('fieldMedic')?5:0),0,100);state.hour=8;advanceDay();
+  let remaining=recovery.treated;
+  for(const group of p.roster){
+   const treated=Math.min(remaining,group.wounded);
+   group.wounded-=treated;remaining-=treated;
+   if(!remaining)break;
+  }
+  log('Rested at '+site.name+' and treated '+recovery.treated+' wounded troops.');
+  notify('Rested until morning · '+recovery.treated+' troops recovered.');
  }else if(action==='granary'){buildGranary(id);return;
  }else if(action==='retainers'){
   if(!recruitRetainers(site))return;
@@ -828,19 +907,24 @@ function showTown(id){
   {view:'news',icon:'🗞',name:'Ask around',detail:'Hear what travelers say about the roads.'}
  ];
  $('townServices').innerHTML=destinations.map(d=>'<button class="town-activity-card" type="button" data-town-view="'+d.view+'" aria-label="'+esc(d.name+'. '+d.detail)+'"><span class="town-activity-icon" aria-hidden="true">'+d.icon+'</span><span><b>'+esc(d.name)+'</b><small>'+esc(d.detail)+'</small></span><span class="town-activity-arrow" aria-hidden="true">›</span></button>').join('');
- const terms=recruitmentTerms(site),canRecruit=terms.access&&terms.count>0;
- const wounded=state.player.roster.reduce((sum,group)=>sum+(group.wounded||0),0);
- $('townInnSummary').innerHTML='<div class="town-service-stat"><b>'+state.player.hp+' / 100</b><small>Hero health</small></div><div class="town-service-stat"><b>'+Math.round(state.player.morale)+' / 100</b><small>Company morale</small></div><div class="town-service-stat"><b>'+wounded+'</b><small>Wounded soldiers</small></div><p class="town-service-note">A night at the inn costs 20 denars, restores health and morale, treats up to 3 wounded soldiers per troop group, and advances the campaign to morning. Food and wages may be due.</p>';
+ const terms=recruitmentTerms(site),rest=innTreatmentPreview();
+ $('townInnSummary').innerHTML=
+  '<div class="town-service-stat"><b>'+state.player.hp+' → '+(state.player.hp+rest.heroHeal)+' / 100</b><small>Hero health before upkeep</small></div>'+
+  '<div class="town-service-stat"><b>'+rest.treated+' of '+rest.wounded+'</b><small>Wounded ready by morning</small></div>'+
+  '<div class="town-service-stat"><b>'+rest.price+' denars</b><small>Room and treatment</small></div>'+
+  '<p class="town-service-note">Rest until morning. Daily upkeep is '+rest.wages+' denars and '+rest.provisions+' provisions.</p>';
  const granaryBuilt=!!state.settlementProjects[id]?.granary;
- $('townGarrisonSummary').innerHTML='<div class="town-service-stat"><b>'+site.garrison.toLocaleString()+'</b><small>Garrisoned defenders</small></div><div class="town-service-stat"><b>'+terms.count+'</b><small>Volunteers available</small></div><div class="town-service-stat"><b>'+rosterCount()+' / '+MAXPARTY+'</b><small>Company capacity</small></div><p class="town-service-note">Local '+esc(F[site.faction].troops[0])+' cost '+terms.unit+' denars each. Your standing here is '+esc(standingLabel(standing).toLowerCase())+'. '+(granaryBuilt?'Granary built · grain capacity +40 and extra provisions each day.':'Build a granary to add 40 grain capacity and extra provisions each day.')+'</p>';
- $('townInnAction').innerHTML=renderActions([{act:'rest',id,primary:true,label:'Rest at the inn · 20 denars'}]);
+ $('townGarrisonSummary').innerHTML='<div class="town-service-stat"><b>'+site.garrison.toLocaleString()+'</b><small>Garrisoned defenders</small></div><div class="town-service-stat"><b>'+terms.available+'</b><small>Volunteers available</small></div><div class="town-service-stat"><b>'+rosterCount()+' / '+MAXPARTY+'</b><small>Company capacity</small></div>';
+ const canRest=state.player.gold>=rest.price;
+ $('townInnAction').innerHTML=renderActions([{act:'rest',id,primary:true,label:canRest?'Rest until morning · '+rest.price+' denars':'Rest requires '+rest.price+' denars',disabled:!canRest}]);
  const retainer=retainerOffer(site);
- const actions=[{act:'recruit',id,primary:true,label:!terms.access?'Recruitment unavailable · standing outlawed':terms.count>0?'Recruit '+terms.count+' '+F[site.faction].troops[0]+' · '+(terms.count*terms.unit)+' denars':'No volunteers available',disabled:!canRecruit},{act:'granary',id,label:granaryBuilt?'Granary built · +40 grain capacity':'+ Build a granary · 8 timber, 3 iron, 4 tools, 180 denars',disabled:granaryBuilt}];
+ const actions=[{act:'granary',id,label:granaryBuilt?'Granary built · +40 grain capacity':'+ Build a granary · 8 timber, 3 iron, 4 tools, 180 denars',disabled:granaryBuilt}];
  if(retainer){
   $('townGarrisonSummary').insertAdjacentHTML('beforeend','<p class="town-service-note"><b>'+esc(house.name)+'</b> · '+esc(house.leader)+' · '+houseFavor(house)+' favor</p>');
-  actions.push({act:'retainers',id,disabled:!!retainer.reason,label:retainer.reason?'Trained retainers · '+retainer.reason:'Recruit '+retainer.count+' '+F[site.faction].troops[1]+' · '+retainer.count*retainer.cost+' denars'});
+  const wages=dailyWages(retainer.count*TROOP_WAGES[1])-dailyWages();
+  actions.push({act:'retainers',id,disabled:!!retainer.reason,label:retainer.reason?'Trained retainers · '+retainer.reason:'Recruit '+retainer.count+' × '+retainer.name+' · '+retainer.count*retainer.cost+' denars · +'+wages+'/day'});
  }
- $('townGarrisonAction').innerHTML=renderActions(actions);
+ $('townGarrisonAction').innerHTML=renderQuantityAction('recruit',id)+renderActions(actions);
  $('townNewsText').textContent=townRumor(site);
  $('townNewsAction').innerHTML=renderActions([{act:'rumors',id,primary:true,label:'Ask for fresh news'}]);
  const market=townMarket(id);
@@ -994,12 +1078,35 @@ function learnPerk(id){
  p.perkPoints--;p.perks.push(id);log('Learned the '+PERKS[id].name+' perk.');
  notify('Perk learned · '+PERKS[id].name);saveGame(true);refreshUI();showCharacter();
 }
-function upgradeRoster(index){
- const p=state.player,g=p.roster[index];if(!g||g.count<1||g.tier>=2)return;
- const cost=g.count*(g.tier===0?75:135);
- if(p.gold<cost){notify('Training and equipment cost '+cost+' denars.');return}
- p.gold-=cost;g.tier++;p.renown++;log('Promoted '+g.count+' troops into '+troopName(g)+'.');
- notify('Troops upgraded along their faction template.');refreshUI();saveGame(true);
+function promotionOptions(index){
+ const p=state.player,g=p.roster[index];
+ if(!g||g.tier>=2)return [];
+ const {ready,trainingNeeded}=partyGroupStatus(g),tier=g.tier+1,unitCost=PROMOTION_PRICE[g.tier];
+ const max=Math.min(ready,Math.floor(p.gold/unitCost)),wageChange=TROOP_WAGES[tier]-TROOP_WAGES[g.tier];
+ const reason=!ready?'Needs healthy troops with '+trainingNeeded+' training':!max?'Not enough denars':'';
+ return ARMORY.promotionPaths(g.faction,g.tier,g.unitId).map(id=>{
+  const loadout=kingdomLoadout(g.faction,tier,id);
+  return {id,name:loadout.name,role:loadout.role,loadout,unitCost,wageChange,ready,max,trainingNeeded,reason};
+ });
+}
+function upgradeRoster(index,quantity=1,optionId){
+ const p=state.player,g=p.roster[index],options=promotionOptions(index);
+ const option=options.find(o=>o.id===(optionId??options[0]?.id));
+ const number=Number(quantity);
+ if(!option||!Number.isInteger(number)||number<1||number>option.max){
+  notify(option?.reason||'Choose an available promotion quantity.');return false;
+ }
+ const healthy=g.count-g.wounded;
+ for(let slot=healthy-1,left=number;slot>=0&&left;slot--){
+  if(g.training[slot]<option.trainingNeeded)continue;
+  g.training.splice(slot,1);left--;
+ }
+ g.count-=number;
+ addHealthyTroops(g.faction,g.tier+1,option.id==='standard'?undefined:option.id,number);
+ p.roster=p.roster.filter(group=>group.count>0);
+ p.gold-=number*option.unitCost;
+ log('Promoted '+number+' troops into '+option.name+'.');
+ notify('Promoted '+number+' · '+option.name);refreshUI();saveGame(true);return true;
 }
 function openEncounter(party){
  if(!state||!party?.active||menuOpen)return;
@@ -1029,7 +1136,7 @@ function launchCampaignBattle(party){
  for(let groupIndex=0;groupIndex<state.player.roster.length;groupIndex++){
   const g=state.player.roster[groupIndex],n=Math.max(0,g.count-(g.wounded||0));
   for(let slot=0;slot<n&&troops.length<50;slot++)
-   troops.push({groupIndex,slot,faction:g.faction,tier:g.tier,loadout:kingdomLoadout(g.faction,g.tier)});
+   troops.push({groupIndex,slot,faction:g.faction,tier:g.tier,unitId:g.unitId,loadout:kingdomLoadout(g.faction,g.tier,g.unitId)});
  }
  const sessionId='battle-'+Date.now().toString(36)+'-'+Math.floor(Math.random()*1e7).toString(36);
   const tile=W.tileAt(state.player.x,state.player.y),battleSeed=Math.abs((party.id*31+Math.floor(state.player.x/90)*17+Math.floor(state.player.y/90)*13+state.day*7)%50);
@@ -1050,7 +1157,7 @@ function launchCampaignBattle(party){
   try{localStorage.removeItem('ua-campaign-battle-session-v1')}catch(e){}
   notify('Browser storage is needed for campaign battles.');return;
  }
- window.location.href='campaign-battle.html?campaign=1&v=4.10.4';
+ window.location.href='campaign-battle.html?campaign=1&v=4.11';
 }
 function skirmish(id){
  const party=state?.parties.find(p=>p.id===id&&p.active);
@@ -1058,10 +1165,52 @@ function skirmish(id){
  if(dist(state.player.x,state.player.y,party.x,party.y)>155){followParty(id);return}
  launchCampaignBattle(party);
 }
+function applyTroopBattleResult(result,session){
+ const roster=state.player.roster,reported=new Map();
+ // A legacy result can be matched to the same healthy slots used at launch.
+ const deployed=new Map();
+ let remaining=50;
+ for(const [groupIndex,group] of roster.entries()){
+  const count=Math.min(remaining,group.count-group.wounded);
+  for(let slot=0;slot<count;slot++)deployed.set(groupIndex+':'+slot,group);
+  remaining-=count;
+ }
+ if(session&&session.sessionId===result.sessionId&&Array.isArray(session.troops)){
+  const launched=new Set(session.troops.map(t=>t.groupIndex+':'+t.slot));
+  for(const key of deployed.keys())if(!launched.has(key))deployed.delete(key);
+ }
+ for(const fighter of result.entries){
+  if(!Number.isInteger(fighter?.groupIndex)||!Number.isInteger(fighter.slot)||fighter.slot<0)continue;
+  const key=fighter.groupIndex+':'+fighter.slot,group=deployed.get(key);
+  if(!group||reported.has(key)||!['standing','escaped','incapacitated','killed','surrendered'].includes(fighter.result))continue;
+  if((fighter.faction!=null&&fighter.faction!==group.faction)||(fighter.tier!=null&&fighter.tier!==group.tier))continue;
+  reported.set(key,fighter);
+ }
+ const casualties={killed:0,wounded:0,survivors:0,trained:0};
+ for(const [groupIndex,group] of roster.entries()){
+  const healthy=[],wounded=[],fitCount=group.count-group.wounded,threshold=PROMOTION_TRAINING[group.tier]||0;
+  for(let slot=0;slot<fitCount;slot++){
+   const fighter=reported.get(groupIndex+':'+slot),old=group.training[slot];
+   if(!fighter){healthy.push(old);continue}
+   if(fighter.result==='killed'||fighter.result==='surrendered'){casualties.killed++;continue}
+   const engaged=fighter.engaged===true||(fighter.engaged==null&&result.winner==='friend');
+   const earned=!engaged||result.winner==='retreat'?0:result.winner==='friend'&&fighter.result!=='escaped'?2:1;
+   const training=Math.min(threshold,old+earned);
+   if(training>old)casualties.trained++;
+   if(fighter.result==='incapacitated'){wounded.push(training);casualties.wounded++}
+   else{healthy.push(training);casualties.survivors++}
+  }
+  wounded.push(...group.training.slice(fitCount));
+  group.training=healthy.concat(wounded);group.count=group.training.length;group.wounded=wounded.length;
+ }
+ state.player.roster=roster.filter(g=>g.count>0);
+ return casualties;
+}
 function consumeBattleResult(){
  if(!state?.pendingBattleId)return false;
- let result=null;
+ let result=null,session=null;
  try{result=JSON.parse(localStorage.getItem('ua-campaign-battle-result-v1')||'null')}catch(e){}
+ try{session=JSON.parse(localStorage.getItem('ua-campaign-battle-session-v1')||'null')}catch(e){}
  if(!result||result.sessionId!==state.pendingBattleId)return false;
  if(!['friend','foe','draw','retreat'].includes(result.winner)||!Array.isArray(result.entries)||
     !Number.isFinite(result.heroHp)||!Number.isFinite(result.heroMaxHp)||result.heroMaxHp<=0)return false;
@@ -1079,20 +1228,7 @@ function consumeBattleResult(){
  }else if(party?.kind==='caravan'){
   changeStanding(party.faction,-28);log('Raiding a merchant caravan damaged your standing with '+F[party.faction].name+'.');
  }
- const casualties={killed:0,wounded:0,survivors:0};
- const reportedFighters=new Set();
- for(const fighter of result.entries){
-  if(!Number.isInteger(fighter?.groupIndex)||!Number.isInteger(fighter.slot)||fighter.slot<0)continue;
-  const id=fighter.groupIndex+':'+fighter.slot,group=p.roster[fighter.groupIndex];
-  if(!group||reportedFighters.has(id))continue;
-  reportedFighters.add(id);
-  if(fighter.result==='killed'||fighter.result==='surrendered'){
-   group.count=Math.max(0,group.count-1);casualties.killed++;
-  }else if(fighter.result==='incapacitated'){
-   group.wounded=Math.min(group.count,(group.wounded||0)+1);casualties.wounded++;
-  }else casualties.survivors++;
- }
- p.roster=p.roster.filter(g=>g.count>0);
+ const casualties=applyTroopBattleResult(result,session);
  p.hp=clamp(Math.round(100*result.heroHp/result.heroMaxHp),14,100);
  p.inventory.arrows=Math.max(0,(p.inventory.arrows||0)-Math.max(0,Number(result.heroAmmoSpent)||0));
  p.inventory.stones=Math.max(0,(p.inventory.stones||0)-Math.max(0,Number(result.stonesSpent)||0));
@@ -1140,7 +1276,7 @@ function consumeBattleResult(){
   result.winner==='retreat'?'↩ Withdrawn from battle':'⚑ Battle lost';
  $('aftermathDetails').innerHTML='<b>'+esc(reason)+'</b><p>'+
   casualties.killed+' killed or captured · '+casualties.wounded+' incapacitated · '+
-  casualties.survivors+' returned from battle. Hero health '+p.hp+'% · Company morale '+Math.round(p.morale)+
+  casualties.survivors+' returned fit · '+casualties.trained+' gained training.</p><p>Hero health '+p.hp+'% · Company morale '+Math.round(p.morale)+
   '/100. Wounded troops recover at inns.</p>';
  const nearbyInn=aftermathInnSite();
  $('aftermathInn').classList.toggle('hidden',!nearbyInn);
@@ -1567,9 +1703,15 @@ function showFactionDetails(id){
  const houses=HOUSES.filter(h=>h.faction===id).map(h=>'<article class="house-card"><b>'+esc(h.name)+'</b><small>'+esc(h.leader)+' · '+esc(S[h.seatId].name)+'</small>'+
   (state?'<small>'+houseFavor(h)+' / 16 favor to recruit retainers</small>':'')+'</article>').join('');
  const troops=f.troops.map((name,tier)=>'<div><small>Tier '+(tier+1)+'</small><b>'+esc(name)+'</b><small>'+esc(loadoutDescription(kingdomLoadout(id,tier)))+'</small></div>').join('');
+ const branches=ARMORY.branchSlots(id).filter(slot=>slot.tier===1);
+ const paths=branches.length?'<div class="smallcaps">VALDORIAN PROMOTION PATHS</div><div class="trooptree">'+
+  branches.map(({name,tier,unitId})=>{
+   const branch=ARMORY.getBranch(id,tier,unitId),veteran=ARMORY.getBranch(id,2,branch.next);
+   return '<div><small>'+esc(unitId==='val-retainer'?'House recruitment':f.troops[0])+'</small><b>'+esc(name)+'</b><small>→ '+esc(veteran.name)+'</small></div>';
+  }).join('')+'</div>':'';
  $('factionDetail').innerHTML='<h3><span style="color:'+f.color+'">'+esc(f.symbol)+'</span> '+esc(f.name)+'</h3>'+
   '<p>'+esc(f.culture)+'. '+esc(f.trait)+'.</p><div class="smallcaps">NOBLE HOUSES</div><div class="house-list">'+houses+'</div>'+
-  '<div class="smallcaps">TROOP LOADOUTS</div><div class="trooptree">'+troops+'</div>'+
+  '<div class="smallcaps">STANDARD TROOP LOADOUTS</div><div class="trooptree">'+troops+'</div>'+paths+
   '<div class="diplomacy-board"><b>Foreign affairs · '+esc(current)+'</b><div class="diplomacy-relations">'+relationList+
   '</div><details><summary>Recent world news</summary><ul>'+news+'</ul></details></div>'+
   '<p><b>Your standing:</b> '+standingLabel(standing)+' ('+(standing>0?'+':'')+standing+')</p>';
@@ -1578,40 +1720,125 @@ function openFactions(){
  $('factionGrid').innerHTML=F.map(f=>'<button class="faction-card" data-faction="'+f.id+'"><span class="faction-flag" style="background:'+f.color+'">'+esc(f.symbol)+'</span><span><strong>'+esc(f.name)+'</strong><small>'+esc(f.culture)+'</small><small>'+esc(f.trait)+'</small><small class="faction-peace">'+esc(factionDiplomacyLabel(f.id))+'</small></span></button>').join('');
  openModal('screenFactions');showFactionDetails(selectedFaction);
 }
+function quantityChoices(kind,id){
+ if(kind==='promote')return promotionOptions(id).map(option=>({
+  ...option,detail:loadoutDescription(option.loadout)||ARMORY.roles[option.role]?.label||option.role||''
+ }));
+ const site=S[id],terms=recruitmentTerms(site);
+ const reason=!terms.access?'Recruitment denied while outlawed.':
+  !terms.available?(rosterCount()>=MAXPARTY?'Your company is full.':'No volunteers are available.'):'You cannot afford a recruit.';
+ return [{id:'volunteers',name:F[site.faction].troops[0],max:terms.max,unitCost:terms.unit,wageChange:terms.dailyWage,
+  detail:loadoutDescription(kingdomLoadout(site.faction,0)),reason}];
+}
+function quantityQuote(choice,amount,action){
+ const valid=Number.isInteger(amount)&&amount>=1&&amount<=choice.max;
+ const total=valid?choice.unitCost*amount:0;
+ const currentWages=dailyWages(),newWages=dailyWages(valid?choice.wageChange*amount:0);
+ const wageDelta=newWages-currentWages;
+ const detail=!choice.max?(choice.reason||'No troops are eligible.'):
+  !valid?'Choose a whole number from 1 to '+choice.max+'.':
+  'Wages '+(wageDelta>=0?'+':'')+wageDelta+' per day · '+newWages+' total';
+ return {valid,detail,label:valid?action+' '+amount+' · '+total+' denars':action};
+}
+function renderQuantityAction(kind,id){
+ const choices=quantityChoices(kind,id);
+ if(!choices.length)return'';
+ const choice=choices.find(option=>option.max>0)||choices[0];
+ const count=choice.max>0?1:0,action=kind==='recruit'?'Recruit':'Promote';
+ const quote=quantityQuote(choice,count,action);
+ const key=kind+'-qty-'+id;
+ const destSelect=choices.length>1?'<label for="'+key+'-path">Promotion destination<select id="'+key+'-path" data-quantity-choice>'+
+  choices.map(option=>'<option value="'+esc(option.id)+'"'+(option.id===choice.id?' selected':'')+'>'+esc(option.name)+'</option>').join('')+'</select></label>':
+  '<b class="quantity-title">'+(kind==='promote'?'Promote to ':'')+esc(choice.name)+'</b>';
+ return '<div class="quantity-action" data-quantity-kind="'+kind+'" data-quantity-id="'+id+'" data-default-choice="'+esc(choice.id)+'">'+
+  '<div>'+destSelect+'<small class="quantity-meta" data-quantity-details>'+esc(choice.detail)+'</small></div>'+
+  '<div><label for="'+key+'">Quantity</label><div class="quantity-controls">'+
+  '<button type="button" class="btn" data-quantity-step="-1" aria-label="Decrease quantity" disabled>−</button>'+
+  '<input class="quantity-value" id="'+key+'" data-quantity-input type="number" inputmode="numeric" step="1" min="1" max="'+Math.max(1,choice.max)+'" value="'+count+'"'+(!choice.max?' disabled':'')+'>'+
+  '<button type="button" class="btn" data-quantity-step="1" aria-label="Increase quantity"'+(choice.max<=1?' disabled':'')+'>+</button></div></div>'+
+  '<output class="quantity-quote" data-quantity-quote aria-live="polite">'+esc(quote.detail)+'</output>'+
+  '<button type="button" class="btn primary quantity-confirm" data-quantity-confirm'+(!quote.valid?' disabled':'')+'>'+esc(quote.label)+'</button></div>';
+}
+function quantityControls(panel){
+ const {quantityKind:kind,quantityId,defaultChoice}=panel.dataset,id=Number(quantityId);
+ const dropdown=panel.querySelector('[data-quantity-choice]');
+ const choices=quantityChoices(kind,id);
+ const choice=choices.find(option=>option.id===(dropdown?.value??defaultChoice))||choices[0];
+ return {kind,id,choice,input:panel.querySelector('[data-quantity-input]'),action:kind==='recruit'?'Recruit':'Promote'};
+}
+function updateQuantityAction(panel,resetAmount=false){
+ const {input,choice,action}=quantityControls(panel);
+ if(!choice)return;
+ const max=choice.max;
+ input.max=String(Math.max(1,max));
+ input.disabled=max<1;
+ if(resetAmount)input.value=String(max>0?clamp(Math.floor(Number(input.value)||1),1,max):0);
+ const amount=Number(input.value);
+ const quote=quantityQuote(choice,amount,action);
+ const confirm=panel.querySelector('[data-quantity-confirm]');
+ confirm.disabled=!quote.valid;confirm.textContent=quote.label;
+ panel.querySelector('[data-quantity-step="-1"]').disabled=max<1||amount<=1;
+ panel.querySelector('[data-quantity-step="1"]').disabled=max<1||amount>=max;
+ panel.querySelector('[data-quantity-details]').textContent=choice.detail;
+ panel.querySelector('[data-quantity-quote]').textContent=quote.detail;
+}
+function companyStat(value,label){
+ return '<div class="company-stat"><b>'+esc(value)+'</b><small>'+esc(label)+'</small></div>';
+}
 function showParty(){
  if(!state)return;
- const p=state.player;
- $('partyModalContent').innerHTML='<p>'+rosterCount()+' / '+MAXPARTY+' company spaces</p>'+p.roster.map((g,i)=>{
-  const upgrade=g.tier<2?' · Upgrade cost '+(g.count*(g.tier===0?75:135))+' denars':' · Elite tier';
-  const loadout=kingdomLoadout(g.faction,g.tier);
-  return '<div class="eventbox"><b>'+g.count+' × '+esc(troopName(g))+'</b><p>'+esc(loadoutDescription(loadout))+upgrade+'</p>'+
-   '<div class="party-kit-actions">'+(g.tier<2?'<button class="btn" data-upgrade="'+i+'">⬆ Promote to '+esc(F[g.faction].troops[g.tier+1])+'</button>':'')+
-   '<button type="button" class="btn" data-edit-kit="'+i+'">⚒ Design weapon</button></div></div>';
+ const p=state.player,groups=p.roster.map(partyGroupStatus),recovery=fieldRestPreview();
+ const healthy=groups.reduce((total,group)=>total+group.healthy,0);
+ const wounded=groups.reduce((total,group)=>total+group.wounded,0);
+ const readiness='<div class="company-summary">'+
+  companyStat(healthy,'Battle ready')+companyStat(wounded,'Wounded')+
+  companyStat(rosterCount()+' / '+MAXPARTY,'Company spaces')+companyStat(dailyWages()+' denars','Daily wages')+'</div>';
+ const rest='<div class="quantity-action"><div><b class="quantity-title">Field rest</b><small class="quantity-meta">'+
+  (recovery.reason?esc(recovery.reason):'Recover '+recovery.heroHeal+' hero health · '+recovery.hours+' hours · '+recovery.provisions+' provisions')+
+  '</small></div><button type="button" class="btn quantity-confirm" data-field-rest'+(recovery.reason?' disabled':'')+'>Rest in the field</button></div>';
+ const cards=p.roster.map((group,index)=>{
+  const {healthy,wounded,ready,trainingNeeded,closestTraining}=groups[index];
+  const pendingTraining=healthy>ready?' · Best progress '+closestTraining+' / '+trainingNeeded:'';
+  const training=group.tier>=2?'Elite rank':ready+' ready to promote'+pendingTraining;
+  const loadout=kingdomLoadout(group.faction,group.tier,group.unitId);
+  return '<article class="eventbox company-roster-card" data-company-group="'+index+'"><header>'+
+   '<b tabindex="-1" data-company-group-heading>'+group.count+' × '+esc(troopName(group))+'</b>'+
+   '<small class="quantity-meta">'+healthy+' fit · '+wounded+' wounded</small></header>'+
+   '<p>'+esc(loadoutDescription(loadout))+'</p><p>'+esc(training)+'</p>'+
+   renderQuantityAction('promote',index)+
+   '<div class="party-kit-actions"><button type="button" class="btn" data-edit-kit="'+index+'">⚒ Design weapon</button></div></article>';
  }).join('');
+ $('partyModalContent').innerHTML=readiness+rest+(cards||'<p>No troops in your company.</p>');
  openModal('screenParty');
 }
 function loadoutDescription(loadout){
  if(!loadout)return '';
  return [ARMORY.roles[loadout.role].label,loadout.weaponName,loadout.armor+' armor',loadout.shield?loadout.shield+' shield':''].filter(Boolean).join(' · ');
 }
-function selectedArmorySlot(){return {faction:Number($('armoryFaction').value),tier:Number($('armoryTier').value)}}
+function selectedArmorySlot(){
+ const [tier,unitId]=$('armoryTier').value.split(':');
+ return {faction:Number($('armoryFaction').value),tier:Number(tier),unitId};
+}
 function armoryDraft(){
  return {weaponId:$('armoryWeapon').value,style:$('armoryStyle').value,name:$('armoryName').value};
 }
 function previewArmory(){
- const {faction,tier}=selectedArmorySlot(),loadout=ARMORY.getLoadout(faction,tier,armoryDraft());
+ const {faction,tier,unitId}=selectedArmorySlot(),loadout=ARMORY.getLoadout(faction,tier,armoryDraft(),unitId);
  if(!loadout)return;
  const stats=loadout.stats;
  $('armoryPreview').innerHTML='<small>'+esc(loadout.name)+'</small><h3>'+esc(loadout.weaponName)+'</h3>'+
   '<p>'+esc(loadoutDescription(loadout))+'</p><dl><dt>Damage</dt><dd>'+Math.round(stats.weaponDamage*100)+
   '%</dd><dt>Attack speed</dt><dd>'+Math.round(stats.weaponSpeed*100)+'%</dd></dl>';
 }
-function loadArmorySlot(tier=Number($('armoryTier').value)||0){
+function loadArmorySlot(selection=$('armoryTier').value){
  const faction=Number($('armoryFaction').value);
- $('armoryTier').innerHTML=F[faction].troops.map((name,index)=>'<option value="'+index+'">'+esc(name)+'</option>').join('');
- $('armoryTier').value=String(tier);
- const standard=ARMORY.getLoadout(faction,tier),saved=state.player.armory[faction+':'+tier];
- $('armoryWeapon').innerHTML=ARMORY.roles[standard.role].weapons.map(id=>'<option value="'+id+'">'+esc(ARMORY.weapons[id].label)+'</option>').join('');
+ const slots=F[faction].troops.map((name,tier)=>({name,tier})).concat(ARMORY.branchSlots(faction));
+ const value=({tier,unitId})=>String(tier)+(unitId?':'+unitId:'');
+ $('armoryTier').innerHTML=slots.map(slot=>'<option value="'+value(slot)+'">'+esc(slot.name)+'</option>').join('');
+ $('armoryTier').value=slots.some(slot=>value(slot)===String(selection))?String(selection):'0';
+ const {tier,unitId}=selectedArmorySlot(),standard=ARMORY.getLoadout(faction,tier,null,unitId);
+ const saved=state.player.armory[ARMORY.designKey(faction,tier,unitId)];
+ $('armoryWeapon').innerHTML=ARMORY.allowedWeapons(faction,tier,unitId).map(id=>'<option value="'+id+'">'+esc(ARMORY.weapons[id].label)+'</option>').join('');
  $('armoryWeapon').value=saved?.weaponId||standard.weaponId;
  $('armoryStyle').value=saved?.style||'balanced';
  $('armoryName').value=saved?.name||'';
@@ -1623,12 +1850,12 @@ function openArmory(group=state?.player.roster[0]){
  $('armoryFaction').innerHTML=F.map(f=>'<option value="'+f.id+'">'+esc(f.name)+'</option>').join('');
  $('armoryFaction').value=String(group?.faction??state.player.origin);
  $('armoryStyle').innerHTML=Object.entries(ARMORY.styles).map(([id,style])=>'<option value="'+id+'">'+style.label+'</option>').join('');
- loadArmorySlot(group?.tier||0);
+ loadArmorySlot(group?.unitId?group.tier+':'+group.unitId:String(group?.tier||0));
  openModal('screenArmory');
 }
 function generateWeapon(){
- const {faction,tier}=selectedArmorySlot(),role=ARMORY.getLoadout(faction,tier).role;
- const options=ARMORY.roles[role].weapons,styles=Object.keys(ARMORY.styles);
+ const {faction,tier,unitId}=selectedArmorySlot();
+ const options=ARMORY.allowedWeapons(faction,tier,unitId),styles=Object.keys(ARMORY.styles);
  const pick=list=>list[Math.floor(Math.random()*list.length)];
  const weapon=pick(options);
  $('armoryWeapon').value=weapon;
@@ -1637,8 +1864,8 @@ function generateWeapon(){
  previewArmory();
 }
 function assignWeapon(reset=false){
- const {faction,tier}=selectedArmorySlot(),key=faction+':'+tier,player=state.player;
- const previous=player.armory[key],design=ARMORY.normalizeDesign(faction,tier,armoryDraft());
+ const {faction,tier,unitId}=selectedArmorySlot(),key=ARMORY.designKey(faction,tier,unitId),player=state.player;
+ const previous=player.armory[key],design=ARMORY.normalizeDesign(faction,tier,armoryDraft(),unitId);
  if(reset)delete player.armory[key];
  else if(design)player.armory[key]=design;
  else return;
@@ -1647,8 +1874,8 @@ function assignWeapon(reset=false){
   else delete player.armory[key];
   notify('Could not save the troop weapon.');return;
  }
- loadArmorySlot(tier);
- notify(reset?'Standard weapon restored.':'Assigned '+design.name+' to '+F[faction].troops[tier]+'.');
+ loadArmorySlot();
+ notify(reset?'Standard weapon restored.':'Assigned '+design.name+' to '+troopName({faction,tier,unitId})+'.');
 }
 function showCharacter(){
  if(!state)return;const p=state.player,f=F[p.origin];
@@ -1765,7 +1992,7 @@ async function toggleFullscreen(){
 }
 function aftermathInnSite(){
  const player=state?.player;
- if(!player||player.hp>35)return null;
+ if(!player||(player.hp>35&&!player.roster.some(group=>group.wounded)))return null;
  const town=W.closestSettlement(player.x,player.y);
  return town&&dist(player.x,player.y,town.x,town.y)<=TOWN_ENTRY_RANGE?town:null;
 }
@@ -1882,14 +2109,57 @@ $('armoryWeapon').addEventListener('change',previewArmory);
 $('armoryStyle').addEventListener('change',previewArmory);
 $('armoryName').addEventListener('input',previewArmory);
 $('factionGrid').addEventListener('click',e=>{const b=e.target.closest('[data-faction]');if(b)showFactionDetails(Number(b.dataset.faction))});
+function handleQuantityClick(event){
+ const button=event.target.closest('[data-quantity-step],[data-quantity-confirm]');
+ if(!button)return false;
+ const panel=button.closest('[data-quantity-kind]');
+ if(!panel||button.disabled)return true;
+ const {kind,id,choice,input}=quantityControls(panel);
+ if(!choice||choice.max<1)return true;
+ if(button.hasAttribute('data-quantity-step')){
+  const next=(Math.floor(Number(input.value))||1)+Number(button.dataset.quantityStep);
+  input.value=String(clamp(next,1,choice.max));
+  updateQuantityAction(panel);
+  return true;
+ }
+ const amount=Number(input.value);
+ if(!Number.isInteger(amount)||amount<1||amount>choice.max){
+  updateQuantityAction(panel);return true;
+ }
+ if(kind==='recruit')performSettlementAction('recruit',id,amount);
+ else{
+  const source=state.player.roster[id];
+  if(upgradeRoster(id,amount,choice.id)){
+   const roster=state.player.roster;
+   const remaining=roster.indexOf(source);
+   const promoted=remaining>=0?remaining:roster.findIndex(group=>
+    group.faction===source.faction&&group.tier===source.tier+1&&(group.unitId||'standard')===choice.id
+   );
+   showParty();
+   $('partyModalContent').querySelector('[data-company-group="'+promoted+'"] [data-company-group-heading]')?.focus();
+  }
+ }
+ return true;
+}
+for(const root of [$('partyModalContent'),$('screenTown')]){
+ root.addEventListener('input',event=>{
+  if(!event.target.matches('[data-quantity-input]'))return;
+  updateQuantityAction(event.target.closest('[data-quantity-kind]'));
+ });
+ root.addEventListener('change',event=>{
+  if(!event.target.matches('[data-quantity-choice]'))return;
+  updateQuantityAction(event.target.closest('[data-quantity-kind]'),true);
+ });
+}
 $('partyModalContent').addEventListener('click',e=>{
+ if(handleQuantityClick(e))return;
+ if(e.target.closest('[data-field-rest]')){if(fieldRest())showParty();return}
  const edit=e.target.closest('[data-edit-kit]');
- if(edit){openArmory(state.player.roster[Number(edit.dataset.editKit)]);return}
- const upgrade=e.target.closest('[data-upgrade]');
- if(upgrade){upgradeRoster(Number(upgrade.dataset.upgrade));showParty()}
+ if(edit)openArmory(state.player.roster[Number(edit.dataset.editKit)]);
 });
 $('characterModalContent').addEventListener('click',e=>{const equip=e.target.closest('[data-equip]'),stat=e.target.closest('[data-stat]'),perk=e.target.closest('[data-perk]');if(equip)equipItem(equip.dataset.equip);else if(stat)improveStat(stat.dataset.stat);else if(perk)learnPerk(perk.dataset.perk)});
 $('screenTown').addEventListener('click',e=>{
+ if(handleQuantityClick(e))return;
  const destination=e.target.closest('button[data-town-view]');
  if(destination){setTownView(destination.dataset.townView);return}
  const action=e.target.closest('[data-act]');if(action){performSettlementAction(action.dataset.act,Number(action.dataset.id));return}
@@ -1908,7 +2178,11 @@ document.querySelector('.town-nav').addEventListener('keydown',e=>{
 $('inspectorContent').addEventListener('click',e=>{
  const b=e.target.closest('[data-act]');if(!b||!state)return;
  const id=Number(b.dataset.id),act=b.dataset.act;
- if(['recruit','food','rest','rumors','visit','granary'].includes(act))performSettlementAction(act,id);
+ if(act==='recruit'||act==='rest'){
+  performSettlementAction('visit',id);
+  if(state.currentTownId===id&&!$('screenTown').classList.contains('hidden'))setTownView(act==='recruit'?'garrison':'inn');
+ }
+ else if(['food','rumors','visit','granary'].includes(act))performSettlementAction(act,id);
  else if(act==='travelSettlement')travelTo(S[id].x,S[id].y,id);
  else if(act==='travelParty')followParty(id);
  else if(act==='meetParty'){const p=state.parties.find(v=>v.id===id);if(p)openEncounter(p)}

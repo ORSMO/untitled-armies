@@ -1,5 +1,11 @@
 # Untitled Armies
 
+[Party, troop trees, deployment and equipment](ROADMAP.md)
+
+## V4.11 — Party & Promotions
+
+Recruit by quantity, train troops in tactical battles, and promote fit survivors individually. Valdorian recruits can train as shield infantry, pikemen, or archers. Valdorian house retainers can become Household Lancers. The party shows daily wages, field rest restores the hero, and inns treat up to three wounded troops per stay.
+
 ## V4.10.5 — Wait on the campaign map
 
 - Tap Play or a speed button to pass time in place while the world moves. Tap Pause to stop waiting, or give a travel order to return to movement-driven time at normal speed. Entering a town or another menu ends waiting.

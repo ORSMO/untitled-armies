@@ -40,27 +40,55 @@ const kits=[
  [['javelin','padded','buckler','infantry'],['bow','mail',null,'archer'],['lance','mail','round','cavalry','leather']],
  [['spear','padded','buckler','cavalry'],['horsebow','leather',null,'horseArcher'],['horsebow','mail',null,'horseArcher','leather']]
 ];
+const VALDORIA=6;
+const branches={
+ 'val-shield':{tier:1,name:'Valdorian Shield Guard',kit:['sword','leather','kite','infantry'],weapons:['sword','shortsword'],next:'val-shield-vet'},
+ 'val-spear':{tier:1,name:'Valdorian Pike Guard',kit:['pike','leather',null,'infantry'],weapons:['pike'],next:'val-spear-vet'},
+ 'val-bow':{tier:1,name:'Valdorian Bow Scout',kit:['bow','padded',null,'archer'],weapons:['bow'],next:'val-bow-vet'},
+ 'val-shield-vet':{tier:2,name:'Valdorian Banner Guard',kit:['sword','plate','kite','infantry'],weapons:['sword','shortsword']},
+ 'val-spear-vet':{tier:2,name:'Valdorian Long Pike',kit:['pike','mail',null,'infantry'],weapons:['pike']},
+ 'val-bow-vet':{tier:2,name:'Valdorian Longbow',kit:['bow','leather',null,'archer'],weapons:['bow']},
+ 'val-retainer':{tier:1,name:'Valdorian House Retainer',kit:['spear','mail','round','infantry'],weapons:['spear','sword'],next:'val-mounted'},
+ 'val-mounted':{tier:2,name:'Valdorian Household Lancer',kit:['lance','mail','kite','cavalry','mail'],weapons:['lance']}
+};
+function getBranch(faction,tier,unitId){
+ if(faction!==VALDORIA||!Object.hasOwn(branches,unitId))return null;
+ const branch=branches[unitId];
+ return branch.tier===tier?branch:null;
+}
+function branchSlots(faction){
+ return faction===VALDORIA?Object.entries(branches).map(([unitId,branch])=>({unitId,tier:branch.tier,name:branch.name})):[];
+}
+function promotionPaths(faction,tier,unitId){
+ if(faction===VALDORIA&&tier===0)return ['val-shield','val-spear','val-bow'];
+ const next=getBranch(faction,tier,unitId)?.next;
+ return tier<2?[next||'standard']:[];
+}
 
 function validSlot(faction,tier){
  return Number.isInteger(faction)&&Number.isInteger(tier)&&!!kits[faction]?.[tier];
 }
-function normalizeDesign(faction,tier,input){
+function allowedWeapons(faction,tier,unitId){
+ return getBranch(faction,tier,unitId)?.weapons||roles[kits[faction][tier][3]].weapons;
+}
+function designKey(faction,tier,unitId){return faction+':'+tier+(getBranch(faction,tier,unitId)?':'+unitId:'')}
+function normalizeDesign(faction,tier,input,unitId){
  if(!validSlot(faction,tier)||!input||typeof input!=='object')return null;
- const role=kits[faction][tier][3];
- if(!roles[role].weapons.includes(input.weaponId))return null;
+ if(!allowedWeapons(faction,tier,unitId).includes(input.weaponId))return null;
  const style=Object.hasOwn(styles,input.style)?input.style:'balanced';
  const name=typeof input.name==='string'?input.name.trim().slice(0,32):'';
  return {weaponId:input.weaponId,style,name:name||weapons[input.weaponId].label};
 }
-function getLoadout(faction,tier,input){
+function getLoadout(faction,tier,input,unitId){
  if(!validSlot(faction,tier))return null;
- const [baseWeapon,armor,shield,role,horseArmor='none']=kits[faction][tier];
- const design=normalizeDesign(faction,tier,input);
+ const branch=getBranch(faction,tier,unitId);
+ const [baseWeapon,armor,shield,role,horseArmor='none']=branch?.kit||kits[faction][tier];
+ const design=normalizeDesign(faction,tier,input,unitId);
  const weaponId=design?.weaponId||baseWeapon,profile=weapons[weaponId];
  const style=styles[design?.style||'balanced'];
  const usesTwoHands=['axe','greatsword','pike'].includes(profile.weapon)||role==='archer'||role==='horseArcher';
  return {
-  name:window.UAWorld?.factions[faction]?.troops[tier]||roles[role].label,
+  name:branch?.name||window.UAWorld?.factions[faction]?.troops[tier]||roles[role].label,
   weaponId,weaponName:design?.name||profile.label,weapon:profile.weapon,ranged:profile.ranged||null,
   armor,shield:usesTwoHands?null:shield,role,horseArmor,
   stats:{weaponDamage:style.weaponDamage,weaponSpeed:style.weaponSpeed}
@@ -72,8 +100,12 @@ function normalizeDesigns(input){
   const key=faction+':'+tier,design=normalizeDesign(faction,tier,input?.[key]);
   if(design)saved[key]=design;
  }
+ for(const {tier,unitId} of branchSlots(VALDORIA)){
+  const key=designKey(VALDORIA,tier,unitId),design=normalizeDesign(VALDORIA,tier,input?.[key],unitId);
+  if(design)saved[key]=design;
+ }
  return saved;
 }
 
-window.UAArmory={weapons,roles,styles,getLoadout,normalizeDesign,normalizeDesigns};
+window.UAArmory={weapons,roles,styles,getLoadout,getBranch,branchSlots,promotionPaths,allowedWeapons,designKey,normalizeDesign,normalizeDesigns};
 })();
