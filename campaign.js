@@ -3,7 +3,7 @@
 'use strict';
 const W=window.UAWorld;if(!W)throw Error('World data is missing');
 const $=id=>document.getElementById(id),F=W.factions,S=W.settlements,ARMORY=window.UAArmory,BASE_SETTLEMENTS=S.map(site=>({prosperity:site.prosperity,garrison:site.garrison}));
-const KEY='ua-campaign-v1',VERSION=1,MAXPARTY=75,MAX_ACTIVE_WORLD_WARS=2;
+const KEY='ua-campaign-v1',VERSION=1,MAXPARTY=75,MAX_DEPLOYED=50,MAX_ACTIVE_WORLD_WARS=2;
 const clamp=W.clamp,dist=(a,b,x,y)=>Math.hypot(a-x,b-y),esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const canvas=$('worldCanvas'),ctx=canvas.getContext('2d'),mini=$('minimap'),mctx=mini.getContext('2d');
 let state=null,selected=null,selectedFaction=6,modalStack=[],focus=true,camera={x:3870,y:5320,zoom:.47},keys=new Set(),drag=null,last=0,lastHud=0,lastMini=0,lastSave=0,toastUntil=0,menuOpen=true,miniBase=null,view={w:900,h:600},inspectorDirty=true;
@@ -1119,9 +1119,10 @@ function openEncounter(party){
   kind==='caravan'?'A merchant caravan slows. Its guards watch your approach.':
   'A column of soldiers halts beneath its banners. Their captain awaits you.';
  $('encounterOwnCount').textContent=rosterCount()+' troops · '+state.player.name;
- const healthyTroops=Math.min(50,state.player.roster.reduce((n,g)=>n+g.count-(g.wounded||0),0));
- $('encounterOwnDetail').textContent='Health '+state.player.hp+'% · '+healthyTroops+' ready to fight'+
-  (state.player.hp<=35?' · Wounded. Rest at an inn before fighting.':healthyTroops===0?' · The hero would fight alone.':'');
+ const healthyTroops=state.player.roster.reduce((n,g)=>n+g.count-g.wounded,0);
+ $('encounterOwnDetail').textContent='Hero '+state.player.hp+'% · '+healthyTroops+' fit'+
+  (healthyTroops>MAX_DEPLOYED?' · '+MAX_DEPLOYED+' field places':!healthyTroops?' · Hero only':'')+
+  (state.player.hp<=35?' · Rest at an inn to heal.':'');
  $('encounterEnemyCount').textContent=party.strength+' '+(kind==='bandit'?'outlaws':kind==='caravan'?'travelers':'soldiers');
  $('encounterEnemyDetail').textContent=kind==='bandit'?'Hostile raiders':
   F[party.faction].name+' · '+(kind==='patrol'?'Guarding the realm':'Trading goods');
@@ -1130,22 +1131,23 @@ function openEncounter(party){
  $('encounterTrade').textContent=kind==='caravan'?'🪙 Buy caravan provisions':'📜 Ask for news';
  openModal('screenEncounter');
 }
-function launchCampaignBattle(party){
+function launchCampaignBattle(party,deploymentPlanner=false){
  if(!party?.active||!state)return;
  const troops=[];
  for(let groupIndex=0;groupIndex<state.player.roster.length;groupIndex++){
   const g=state.player.roster[groupIndex],n=Math.max(0,g.count-(g.wounded||0));
-  for(let slot=0;slot<n&&troops.length<50;slot++)
-   troops.push({groupIndex,slot,faction:g.faction,tier:g.tier,unitId:g.unitId,loadout:kingdomLoadout(g.faction,g.tier,g.unitId)});
+  const loadout=kingdomLoadout(g.faction,g.tier,g.unitId);
+  for(let slot=0;slot<n&&troops.length<MAXPARTY;slot++)
+   troops.push({groupIndex,slot,faction:g.faction,tier:g.tier,unitId:g.unitId,loadout});
  }
  const sessionId='battle-'+Date.now().toString(36)+'-'+Math.floor(Math.random()*1e7).toString(36);
   const tile=W.tileAt(state.player.x,state.player.y),battleSeed=Math.abs((party.id*31+Math.floor(state.player.x/90)*17+Math.floor(state.player.y/90)*13+state.day*7)%50);
   const session={status:'active',sessionId,partyId:party.id,kind:party.kind,
-  faction:party.faction,enemyCount:Math.min(50,party.strength),
+  faction:party.faction,enemyCount:Math.min(MAX_DEPLOYED,party.strength),
    playerName:state.player.name,heroHealth:state.player.hp,playerMorale:state.player.morale,level:state.player.level,troops,
    equipment:state.player.equipment,inventory:state.player.inventory,stats:state.player.stats,perks:state.player.perks,
    terrainKind:tile.kind,battleX:state.player.x,battleY:state.player.y,mapSeed:battleSeed,
-  reserveCount:Math.max(0,state.player.roster.reduce((n,g)=>n+g.count-(g.wounded||0),0)-troops.length)};
+   deploymentPool:true,deploymentPlanner};
  const previousBattle=state.pendingBattleId;
  try{localStorage.setItem('ua-campaign-battle-session-v1',JSON.stringify(session))}
  catch(e){notify('Could not open battle. Please allow local browser storage.');return}
@@ -1157,33 +1159,37 @@ function launchCampaignBattle(party){
   try{localStorage.removeItem('ua-campaign-battle-session-v1')}catch(e){}
   notify('Browser storage is needed for campaign battles.');return;
  }
- window.location.href='campaign-battle.html?campaign=1&v=4.11';
+ window.location.href='campaign-battle.html?campaign=1&v=4.12'+(deploymentPlanner?'&deploy=1':'');
 }
-function skirmish(id){
+function skirmish(id,deploymentPlanner=false){
  const party=state?.parties.find(p=>p.id===id&&p.active);
  if(!party)return;
  if(dist(state.player.x,state.player.y,party.x,party.y)>155){followParty(id);return}
- launchCampaignBattle(party);
+ launchCampaignBattle(party,deploymentPlanner);
 }
 function applyTroopBattleResult(result,session){
  const roster=state.player.roster,reported=new Map();
- // A legacy result can be matched to the same healthy slots used at launch.
- const deployed=new Map();
- let remaining=50;
+ const snapshot=session?.sessionId===result.sessionId&&Array.isArray(session?.troops)?session.troops:null;
+ const eligible=new Map(),launched=snapshot&&new Map(snapshot.filter(Boolean).map(t=>[t.groupIndex+':'+t.slot,t]));
+ // Without a matching legacy snapshot, the original launch order was limited to 50 fit slots.
+ let remaining=launched?MAXPARTY:MAX_DEPLOYED;
  for(const [groupIndex,group] of roster.entries()){
   const count=Math.min(remaining,group.count-group.wounded);
-  for(let slot=0;slot<count;slot++)deployed.set(groupIndex+':'+slot,group);
+  for(let slot=0;slot<count;slot++){
+   const key=groupIndex+':'+slot;
+   const source=launched?.get(key);
+   if(!launched||(source&&source.faction===group.faction&&source.tier===group.tier&&source.unitId===group.unitId))
+    eligible.set(key,group);
+  }
   remaining-=count;
  }
- if(session&&session.sessionId===result.sessionId&&Array.isArray(session.troops)){
-  const launched=new Set(session.troops.map(t=>t.groupIndex+':'+t.slot));
-  for(const key of deployed.keys())if(!launched.has(key))deployed.delete(key);
- }
  for(const fighter of result.entries){
+  if(reported.size>=MAX_DEPLOYED)break;
   if(!Number.isInteger(fighter?.groupIndex)||!Number.isInteger(fighter.slot)||fighter.slot<0)continue;
-  const key=fighter.groupIndex+':'+fighter.slot,group=deployed.get(key);
+  const key=fighter.groupIndex+':'+fighter.slot,group=eligible.get(key);
   if(!group||reported.has(key)||!['standing','escaped','incapacitated','killed','surrendered'].includes(fighter.result))continue;
-  if((fighter.faction!=null&&fighter.faction!==group.faction)||(fighter.tier!=null&&fighter.tier!==group.tier))continue;
+  if((fighter.faction!=null&&fighter.faction!==group.faction)||(fighter.tier!=null&&fighter.tier!==group.tier)||
+     (fighter.unitId!=null&&fighter.unitId!==group.unitId))continue;
   reported.set(key,fighter);
  }
  const casualties={killed:0,wounded:0,survivors:0,trained:0};
@@ -1206,12 +1212,29 @@ function applyTroopBattleResult(result,session){
  state.player.roster=roster.filter(g=>g.count>0);
  return casualties;
 }
+function clearBattleRecords(){
+ try{
+  localStorage.removeItem('ua-campaign-battle-result-v1');
+  localStorage.removeItem('ua-campaign-battle-session-v1');
+ }catch(e){}
+}
 function consumeBattleResult(){
  if(!state?.pendingBattleId)return false;
  let result=null,session=null;
  try{result=JSON.parse(localStorage.getItem('ua-campaign-battle-result-v1')||'null')}catch(e){}
  try{session=JSON.parse(localStorage.getItem('ua-campaign-battle-session-v1')||'null')}catch(e){}
  if(!result||result.sessionId!==state.pendingBattleId)return false;
+ if(result.cancelled===true&&session?.sessionId===result.sessionId&&session.deploymentPlanner===true){
+  state.pendingBattleId=null;
+  if(!saveGame(true)){
+   state.pendingBattleId=result.sessionId;notify('Could not close deployment. Reload to retry.');return true;
+  }
+  clearBattleRecords();
+  const party=state.parties.find(p=>p.id===session.partyId&&p.active);
+  if(party&&dist(state.player.x,state.player.y,party.x,party.y)<=155)openEncounter(party);
+  else notify('Deployment cancelled.');
+  return true;
+ }
  if(!['friend','foe','draw','retreat'].includes(result.winner)||!Array.isArray(result.entries)||
     !Number.isFinite(result.heroHp)||!Number.isFinite(result.heroMaxHp)||result.heroMaxHp<=0)return false;
  state.pendingBattleId=null;state.followPartyId=null;
@@ -1281,12 +1304,8 @@ function consumeBattleResult(){
  const nearbyInn=aftermathInnSite();
  $('aftermathInn').classList.toggle('hidden',!nearbyInn);
  if(nearbyInn)$('aftermathInn').textContent='Visit the inn at '+nearbyInn.name;
- if(saveGame(true)){
-  try{
-   localStorage.removeItem('ua-campaign-battle-result-v1');
-   localStorage.removeItem('ua-campaign-battle-session-v1');
-  }catch(e){}
- }else notify('Battle result kept for retry. Browser storage is full or unavailable.');
+ if(saveGame(true))clearBattleRecords();
+ else notify('Battle result kept for retry. Browser storage is full or unavailable.');
  refreshUI();modalStack=[];showScreen('screenAftermath');
  return true;
 }
@@ -2035,6 +2054,7 @@ button('encounterTrade',()=>{
  }else $('encounterDialogue').textContent='The captain shares news of bandits on the road.';
 });
 button('encounterFight',()=>{if(selected?.id!=null)skirmish(selected.id)});
+button('encounterDeploy',()=>{if(selected?.id!=null)skirmish(selected.id,true)});
 function leaveEncounter(){
  state.lastEncounter=state.day+state.hour/24;state.followPartyId=null;
  state.path=[];state.pathIndex=0;closeModal();notify('You leave the party behind.');
