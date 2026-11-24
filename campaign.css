@@ -289,6 +289,37 @@
 .armory-modal .modal-actions .btn,.party-kit-actions .btn{min-height:44px}
 #mapFullscreen{min-width:44px;min-height:44px;font-size:16px}
 #menuFullscreen[aria-pressed="true"],#mapFullscreen[aria-pressed="true"]{border-color:#e8cc8e;color:#f7e2a6}
+
+.company-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:8px 0}
+.company-stat{display:grid;gap:2px;padding:7px 8px;border:1px solid #52684b;border-radius:8px;background:#203326}
+.company-stat b{color:#f0dda9}
+.company-stat small,.quantity-meta,.quantity-quote{color:#c1d0b9;line-height:1.4}
+.company-roster-card{padding:9px 10px}
+.company-roster-card header{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:4px 8px}
+.company-roster-card .party-kit-actions{margin-top:7px}
+.quantity-action{
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(140px,auto);gap:6px 10px;align-items:center;
+ padding:8px 10px;border:1px solid #627657;border-radius:8px;background:#172e23
+}
+.quantity-meta{margin:0;font-size:11px}
+.quantity-action .quantity-title{display:block;color:#f2dfaf;font-size:12px;margin-bottom:2px}
+.quantity-action label{margin:0;font-size:10px;color:#d9e4cc}
+.quantity-action select{display:block;min-height:44px;margin:3px 0 4px;padding:5px 7px;font-size:16px}
+.quantity-controls{display:grid;grid-template-columns:44px minmax(46px,1fr) 44px;gap:4px;min-width:0;margin-top:3px}
+.quantity-controls .btn,#screenTown .town-panel-actions .quantity-controls .btn{min-width:44px;min-height:44px;padding:6px;text-align:center;font-size:16px}
+.quantity-controls .quantity-value{
+ min-width:0;width:100%;min-height:44px;padding:4px;border:1px solid #60755d;border-radius:7px;background:#10241b;
+ color:#f3e3bc;font-size:16px;font-weight:700;text-align:center;appearance:textfield
+}
+.quantity-value::-webkit-inner-spin-button,.quantity-value::-webkit-outer-spin-button{appearance:none;margin:0}
+.quantity-quote{margin:0;font-size:11px}
+.quantity-confirm,#screenTown .town-panel-actions .quantity-confirm{min-height:44px;padding:6px;font-size:11px;text-align:center}
+.quantity-action .quantity-value:focus-visible,.quantity-action button:focus-visible{outline:2px solid #efd394;outline-offset:2px}
+@media(max-width:470px){
+ .quantity-action{grid-template-columns:1fr}
+ .quantity-controls{grid-template-columns:44px minmax(46px,74px) 44px}
+ .quantity-action .quantity-confirm{width:100%}
+}
 @media(orientation:landscape) and (max-height:430px){
  .armory-modal{padding:10px 12px}
  .armory-modal h2{margin:0 42px 8px 0}
