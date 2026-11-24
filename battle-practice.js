@@ -37,6 +37,7 @@ form.addEventListener('submit',event=>{
  event.preventDefault();
  if(!form.reportValidity())return;
  const settings=new URLSearchParams(new FormData(form));
+ if(event.submitter?.name==='deploy')settings.set('deploy','1');
  window.location.assign('campaign-battle.html?'+settings.toString());
 });
 })();
