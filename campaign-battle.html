@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — Battle · V4.10.4</title>
+<title>Untitled Armies — Battle · V4.11</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -611,7 +611,7 @@ body.campaign-battle .battle-outcome .tally{overflow-wrap:anywhere}
  <p>Rotate your phone sideways to play on the wider battlefield.</p>
 </div>
 </div>
-<script src="campaign-armory.js?v=4.10"></script>
+<script src="campaign-armory.js?v=4.11"></script>
 <script src="battle-navigation.js?v=4.10.2"></script>
 <script>
 (()=>{
@@ -1002,6 +1002,8 @@ function campaignDeploy(s,slot,team,kit){
  Object.assign(s,equipment);
  s.campaignSource=slot.groupIndex;
  s.campaignSlot=slot.slot;
+ s.campaignFaction=slot.faction;
+ s.campaignTier=slot.tier;
  s.battleStartingRole=kit.unitRole;
  setFighterTraining(s,team,slot.slot,slot.tier===2?'veteran':slot.tier===1?'trained':'recruit',
    slot.tier===2?'expert':slot.tier===1?'practiced':'novice');
@@ -1042,8 +1044,12 @@ function campaignEnemyRoster(){
 function campaignRecord(outcome){
  if(!campaignMode||practiceMode||campaignReported)return;
  const winner=outcome?.winner||'retreat';
+ // Only fighters created on the field count here. Campaign reserves and
+ // troops already wounded before the battle never enter the friends list.
  const entries=friends.map(s=>({
   groupIndex:s.campaignSource,slot:s.campaignSlot,
+  faction:s.campaignFaction,tier:s.campaignTier,
+  engaged:!!(s.campaignContact||s.attackCount||s.fired||s.chargeHits||s.braceStops),
   result:s.surrendered?'surrendered':s.routed?'escaped':
    s.dead?(s.woundedOut?'incapacitated':'killed'):
    s.broken?'escaped':'standing',
@@ -1058,7 +1064,7 @@ function campaignRecord(outcome){
   heroMaxHp:hero?.maxHp||5,enemyRemaining,enemySurvivors,
    heroAmmoSpent:hero?.ranged==='bow'?Math.max(0,Math.min(rangedProfiles.bow.ammo,campaignSession.inventory?.arrows||0)-(hero.ammo||0)):0,
    stonesSpent:Math.max(0,(campaignSession.inventory?.stones||0)-campaignStonesRemaining),
-  enemyInitial:campaignSession.enemyCount,originalTroops:campaignSession.troops.length};
+  enemyInitial:campaignSession.enemyCount,originalTroops:entries.length};
  try{
   let previous=null;
   try{previous=JSON.parse(localStorage.getItem(battleResultKey)||'null')}catch(e){}
@@ -1133,10 +1139,16 @@ let realisticBattle=false,battleOutcome=null;
     s.broken?'shaken':'standing'
   }));
  }
- function tallyLabel(t){return t.standing+' standing · '+t.killed+' killed · '+
-  t.wounded+' incapacitated · '+t.escaped+' escaped · '+
-  t.surrendered+' surrendered · '+t.shaken+' still routing · '+
-  t.woundedStanding+' injured survivors · '+t.horsesLost+' horses lost';}
+ function tallyLabel(t){
+  const details=[t.original+' deployed',t.standing+' standing'];
+  if(t.woundedStanding)details[1]+=' ('+t.woundedStanding+' injured)';
+  if(t.killed)details.push(t.killed+' killed');
+  if(t.wounded)details.push(t.wounded+' incapacitated');
+  if(t.surrendered)details.push(t.surrendered+' surrendered');
+  if(t.escaped+t.shaken)details.push((t.escaped+t.shaken)+' fled');
+  if(t.horsesLost)details.push(t.horsesLost+' horses lost');
+  return details.join(' · ');
+ }
  // Two attack styles share the same three-cell range. Heavy hits cost more
  // stamina, deal two damage, and have longer recovery than quick light hits.
  const attackStyles={
@@ -1542,8 +1554,12 @@ function focusArmy(){
    '🟢 Victory':battleOutcome.winner==='foe'?'🔴 Defeat':battleOutcome.winner==='retreat'?'↶ Withdrew':'⚖ Draw';
   document.querySelector('#battleOutcomeReason').textContent=battleOutcome.reason+
    ' · '+battleOutcome.seconds.toFixed(1)+' seconds';
+  const reserve=campaignSession.reserveCount;
+  const reserveLabel=Number.isInteger(reserve)&&reserve>0?' · '+reserve+' stayed in reserve':'';
+  const hero=commanders.friend;
+  const heroStatus=hero?.dead?'fallen':hero?.routed||hero?.broken?'withdrew':'alive';
   document.querySelector('#battleOutcomeFriend').textContent=tallyLabel(battleOutcome.friend)+
-   ' · Commander '+(commanders.friend?.dead?'fallen':'alive');
+   reserveLabel+' · Hero '+heroStatus;
   document.querySelector('#battleOutcomeFoe').textContent=tallyLabel(battleOutcome.foe)+
    ' · Commander '+(commanders.foe?.dead?'fallen':'alive');
  }
@@ -3097,6 +3113,10 @@ function shieldImpact(attacker,defender,a){
 function applyWeaponImpact(attacker,target,a){
  if(target.dead||target.routed||target.broken||target.team===attacker.team||a.hitIds.has(target.id))return false;
  a.hitIds.add(target.id);
+ if(campaignMode&&!practiceMode){
+  if(attacker.team==='friend'&&!attacker.isCommander)attacker.campaignContact=true;
+  if(target.team==='friend'&&!target.isCommander)target.campaignContact=true;
+ }
  // A real horse presents a separate target. Projectiles and melee sweeps
  // sometimes strike its body rather than the rider (regardless of team).
  if(isCavalry(target)&&!a.horseImpact){
