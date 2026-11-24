@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#091512">
 <meta name="description" content="Untitled Armies: a medieval campaign sandbox. Explore the vast continent of Asterra, meet ten factions, recruit and upgrade faction troops, and build your legend.">
-<title>Untitled Armies — Asterra Campaign · V4.11</title>
-<link rel="stylesheet" href="campaign.css?v=4.11">
+<title>Untitled Armies — Asterra Campaign · V4.12</title>
+<link rel="stylesheet" href="campaign.css?v=4.12">
 </head>
 <body>
 <div id="rotateNotice" role="status" aria-live="polite">
@@ -16,7 +16,7 @@
 </div>
 <div id="game" class="hidden">
  <header class="topbar">
-   <div class="brand"><span class="crest">⚔</span><div><strong>UNTITLED ARMIES</strong><small>ASTERRA CAMPAIGN · V4.11</small></div></div>
+   <div class="brand"><span class="crest">⚔</span><div><strong>UNTITLED ARMIES</strong><small>ASTERRA CAMPAIGN · V4.12</small></div></div>
   <div class="top-center">
    <div class="chip">📜 <b id="hudDay">Day 1 · 08:00</b></div>
    <div class="chip">⚑ <b id="hudRegion">Valdorian Kingdom</b></div>
@@ -91,7 +91,7 @@
    <p class="subtle">Click roaming parties to pursue them as they move. At close range, you can talk, trade or enter battle. Ruins, shrines and camps reward exploration.</p>
   </aside>
  </div>
- <div class="footer-hint">KINGDOM STANDING · LIVING ROADS · COMMAND ARMIES · PHONE LANDSCAPE · ASTERRA CAMPAIGN V4.11 · <a href="classic.html?v=4.11">Classic Combat</a> · <a href="lab.html">Battle Lab</a></div>
+ <div class="footer-hint">KINGDOM STANDING · LIVING ROADS · COMMAND ARMIES · PHONE LANDSCAPE · ASTERRA CAMPAIGN V4.12 · <a href="classic.html?v=4.12">Classic Combat</a> · <a href="lab.html">Battle Lab</a></div>
 </div>
 <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 <section id="screenMenu" class="overlay" aria-label="Main menu">
@@ -118,10 +118,10 @@
    <button id="menuOptions" class="btn">⚙ Map & Game Settings</button>
    <button id="menuFullscreen" class="btn" type="button" aria-pressed="false">⛶ Fullscreen</button>
    <div class="section-caption">COMBAT TRAINING</div>
-   <a href="classic.html?v=4.11" class="btn" style="text-decoration:none;display:block;text-align:center;margin:7px 0">⚔ Classic 50v50 Battle Test</a>
+   <a href="classic.html?v=4.12" class="btn" style="text-decoration:none;display:block;text-align:center;margin:7px 0">⚔ Classic 50v50 Battle Test</a>
    <a href="lab.html" class="btn" style="text-decoration:none;display:block;text-align:center;margin:7px 0">⚗ Six-Arena Battle Lab</a>
    <button id="menuImport" class="btn">📥 Import Campaign Save</button>
-   <div class="menu-foot">V4.11 · Designed for phone play in landscape.</div>
+   <div class="menu-foot">V4.12 · Designed for phone play in landscape.</div>
   </div>
  </div>
 </section>
@@ -156,12 +156,12 @@
   </div>
   <div id="encounterDialogue" class="eventbox"><b>They await your decision.</b><p>Speak with them, fight, or leave.</p></div>
   <div class="encounter-actions">
-   <button class="btn primary" id="encounterTalk">💬 Speak to their leader</button>
+   <button class="btn primary" id="encounterDeploy">◇ Plan deployment</button>
+   <button class="btn danger" id="encounterFight">⚔ Quick Start</button>
+   <button class="btn" id="encounterTalk">💬 Speak to their leader</button>
    <button class="btn" id="encounterTrade">🪙 Offer to trade</button>
-   <button class="btn danger" id="encounterFight">⚔ Lead your troops into battle</button>
    <button class="btn" id="encounterLeave">↩ Leave peacefully</button>
   </div>
-   <p class="subtle">Battles begin under your commander’s automatic tactics. Switch to Manual during battle to move and fight yourself; touch controls appear on phones.</p>
  </div>
 </section>
 <section id="screenAftermath" class="overlay hidden" aria-label="Battle aftermath">
@@ -222,7 +222,7 @@
   <div class="modal-actions"><button class="btn" id="exportSave">📤 Export Save</button><button class="btn" id="importSave">📥 Import Save</button></div>
   <div class="modal-actions"><button class="btn" id="restoreBackup">↶ Restore Previous Save</button><button class="btn" id="restoreOlderBackup">↶ Restore Older Backup</button></div>
   <div class="modal-actions"><button class="btn" id="pauseOptions">⚙ Map Settings</button><button class="btn" id="pauseMenu">🏰 Main Menu</button></div>
-  <div class="eventbox"><b>Combat training</b><p>Practice with the same battle rules as your campaign.</p><a href="classic.html?v=4.11">Classic 50v50</a> · <a href="lab.html">Six-Arena Lab</a></div>
+  <div class="eventbox"><b>Combat training</b><p>Practice with the same battle rules as your campaign.</p><a href="classic.html?v=4.12">Classic 50v50</a> · <a href="lab.html">Six-Arena Lab</a></div>
  </div>
 </section>
 <section id="screenParty" class="overlay hidden" aria-label="Your party">
@@ -319,8 +319,8 @@
 <input id="importSaveFile" type="file" accept="application/json,.json" hidden>
 <script src="world-data.js?v=4.10"></script>
 <script src="map-painter.js?v=4.10"></script>
-<script src="campaign-armory.js?v=4.11"></script>
-<script src="campaign.js?v=4.11"></script>
+<script src="campaign-armory.js?v=4.12"></script>
+<script src="campaign.js?v=4.12"></script>
 </body>
 </html>
 

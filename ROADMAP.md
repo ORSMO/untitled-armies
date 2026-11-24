@@ -20,6 +20,7 @@ The immediate priority is the campaign loop: recruit, fight, recover, and improv
 - Offer an optional deployment phase and keep Quick Start.
 - Choose which ready troops deploy, which wait in reserve, and where formations start on the player's side.
 - Test the same setup and commands in Classic practice and campaign. Keep practice isolated from campaign saves.
+- Reserves remain available for future encounters. Mid-battle reinforcements are a separate mechanic.
 
 ## 4. Weapons, armor, and loot
 

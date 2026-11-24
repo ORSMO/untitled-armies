@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — Battle · V4.11</title>
+<title>Untitled Armies — Battle · V4.12</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -299,6 +299,57 @@ body.campaign-battle .battle-outcome .tally{overflow-wrap:anywhere}
  body.campaign-battle .battle-outcome .tally>div{padding:7px}
 }
 @media(orientation:landscape) and (max-height:390px){.top{height:38px;min-height:38px}.brand p{display:none}.dot{width:40px;height:40px}.info{min-height:26px}.formation-menu{transform:translateY(-50%) scale(.74)}}
+
+body.deployment-active .campaign-battle-speed,
+body.deployment-active #campaignArmyOrdersToggle,
+body.deployment-active #campaignControlToggle,
+body.deployment-active #campaignBattleExit,
+body.deployment-active #campaignArmyOrders,
+body.deployment-active #campaignTouchControls,
+body.deployment-active .rail{display:none!important}
+.deployment-panel,.deployment-placement{
+ position:absolute;z-index:5;right:6px;top:6px;border:1px solid #a28d5e;border-radius:10px;
+ background:#10251ff5;color:#edf1dc;box-shadow:0 8px 28px #0008
+}
+.deployment-panel[hidden],.deployment-placement[hidden],.deployment-edit[hidden]{display:none}
+.deployment-panel{
+ bottom:6px;width:min(396px,64%);display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:5px;padding:7px
+}
+.deployment-header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:3px 8px}
+.deployment-header h2{margin:0;color:#f5dfad;font:700 19px/1.1 Georgia,serif}
+.deployment-totals{display:flex;flex-wrap:wrap;gap:4px;text-align:right}
+.deployment-totals span{border:1px solid #4d6856;border-radius:5px;background:#1d362a;padding:3px 5px;color:#e9ecdb;font-size:10px;font-weight:700;white-space:nowrap}
+.deployment-content{min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.deployment-edit{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:end;gap:4px 6px}
+.deployment-panel button,.deployment-panel input,.deployment-panel select,.deployment-placement button{
+ min-height:44px;padding:5px 6px;font:700 12px/1.2 system-ui;border:1px solid #63816a;border-radius:7px;
+ background:#203b30;color:#f0efdb;touch-action:manipulation
+}
+.deployment-panel button,.deployment-placement button{cursor:pointer}
+.deployment-panel button:disabled{cursor:default;opacity:.5}
+.deployment-panel button:focus-visible,.deployment-panel input:focus-visible,.deployment-panel select:focus-visible,.deployment-placement button:focus-visible{
+ outline:2px solid #f4d499;outline-offset:-3px
+}
+.deployment-field{display:grid;gap:2px;color:#c6d7c1;font:700 10px/1.2 system-ui;min-width:0}
+.deployment-field>select,.deployment-field>input{width:100%;min-width:0;text-overflow:ellipsis;font-size:16px}
+.deployment-number{display:grid;grid-template-columns:44px minmax(32px,1fr) 44px;gap:3px}
+.deployment-number input{width:100%;min-width:0;padding:2px;background:#11291f;text-align:center;font-size:16px;appearance:textfield}
+.deployment-number input::-webkit-inner-spin-button,.deployment-number input::-webkit-outer-spin-button{appearance:none;margin:0}
+.deployment-number button{padding:2px;font-size:17px}
+.deployment-status{color:#ffdfa0;font-size:11px;margin:3px 0 0}
+.deployment-status:empty{display:none}
+.deployment-footer{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.2fr);gap:4px}
+.deployment-footer .deployment-start{background:#b9985d;border-color:#f2d499;color:#172b20}
+.deployment-placement{display:flex;align-items:center;gap:8px;width:max-content;max-width:calc(100% - 12px);padding:5px}
+.deployment-placement p{max-width:34ch;margin:0;font-size:11px;line-height:1.35;color:#f3e5c6}
+.deployment-placement button{flex:none}
+@media(max-width:650px){
+ .deployment-panel{width:min(390px,76%)}
+ .deployment-header h2{font-size:16px}
+}
+@media(max-width:450px){
+ .deployment-panel{width:min(390px,calc(100% - 12px))}
+}
 </style>
 </head>
 <body>
@@ -324,6 +375,48 @@ body.campaign-battle .battle-outcome .tally{overflow-wrap:anywhere}
   </header>
   <main class="board" id="board" aria-label="Scrollable battlefield with fifty soldiers on each team">
     <canvas id="field"></canvas>
+    <section class="deployment-panel" id="deploymentPanel" aria-labelledby="deploymentTitle" hidden>
+      <header class="deployment-header">
+        <h2 id="deploymentTitle" tabindex="-1">Deploy army</h2>
+        <div class="deployment-totals" aria-live="polite">
+          <span id="deploymentReady"></span><span id="deploymentReserve"></span>
+        </div>
+      </header>
+      <div class="deployment-content">
+        <div class="deployment-edit" id="deploymentEdit">
+          <label class="deployment-field" for="deploymentGroup">Troop group
+            <select id="deploymentGroup"></select>
+          </label>
+          <button id="deploymentPlace" type="button">Place on field</button>
+          <div class="deployment-field">
+            <label for="deploymentCount">Troops to field</label>
+            <div class="deployment-number">
+              <button id="deploymentFewer" type="button" aria-label="Field one fewer troop">−</button>
+              <input type="number" id="deploymentCount" min="0" max="50" step="1" inputmode="numeric">
+              <button id="deploymentMore" type="button" aria-label="Field one more troop">+</button>
+            </div>
+          </div>
+          <label class="deployment-field" for="deploymentFormation">Formation
+            <select id="deploymentFormation">
+              <option value="current">Default ranks</option><option value="line">Line</option>
+              <option value="square">Block</option><option value="column">Column</option>
+              <option value="wedge">Wedge</option><option value="shieldwall">Shield wall</option>
+              <option value="spearwall">Spear wall</option>
+            </select>
+          </label>
+        </div>
+        <p class="deployment-status" id="deploymentStatus" role="status"></p>
+      </div>
+      <footer class="deployment-footer">
+        <button id="deploymentBack" type="button">Back</button>
+        <button id="deploymentQuick" type="button">Quick start</button>
+        <button id="deploymentBegin" class="deployment-start" type="button">Start battle</button>
+      </footer>
+    </section>
+    <div class="deployment-placement" id="deploymentPlacement" hidden>
+      <p id="deploymentPlacementHint" role="status"></p>
+      <button id="deploymentCancelPlace" type="button">Cancel placement</button>
+    </div>
     <canvas id="minimap" width="180" height="102" aria-label="Battlefield minimap: touch or click to pan"></canvas>
     <div class="map-guide">3× LARGER WORLD · DRAG TO PAN · MINIMAP TO TRAVEL</div>
     <div class="overlay-top" aria-live="polite"><span class="pill"><span class="light"></span><span id="count">50 SOLDIERS</span></span><span class="pill dim" id="status">IDLE</span><span class="pill dim" id="rangeBadge">⚔ WEAPON REACH</span><span class="pill dim" id="commandHeadline">👑 Commander AI</span></div>
@@ -611,8 +704,9 @@ body.campaign-battle .battle-outcome .tally{overflow-wrap:anywhere}
  <p>Rotate your phone sideways to play on the wider battlefield.</p>
 </div>
 </div>
-<script src="campaign-armory.js?v=4.11"></script>
+<script src="campaign-armory.js?v=4.12"></script>
 <script src="battle-navigation.js?v=4.10.2"></script>
+<script src="battle-deployment-ui.js?v=4.12" defer></script>
 <script>
 (()=>{
 'use strict';
@@ -682,14 +776,19 @@ function practiceNumber(key,fallback,min,max){
  return value!==null&&/^\d{1,3}$/.test(value)?clamp(Number(value),min,max):fallback;
 }
 function createPracticeSession(){
- const origin=practiceNumber('faction',6,0,9),count=practiceNumber('count',50,1,50);
+ const origin=practiceNumber('faction',6,0,9),count=practiceNumber('count',50,1,75);
  const mix=battleParams.get('mix'),biome=battleParams.get('biome'),kind=battleParams.get('kind'),weapon=battleParams.get('weapon');
  const tiers=mix==='recruits'?[0]:mix==='veterans'?[1]:mix==='elite'?[2]:[0,0,1,1,2];
+ const slotsByTier=[0,0,0];
  return {
   playerName:'Practice commander',heroHealth:practiceNumber('health',100,1,100),
   kind:['bandit','patrol','caravan'].includes(kind)?kind:'bandit',faction:practiceNumber('enemyFaction',2,0,9),
   enemyCount:practiceNumber('enemyCount',50,1,50),
-  troops:Array.from({length:count},(_,slot)=>({faction:origin,tier:tiers[slot%tiers.length],groupIndex:0,slot})),
+  deploymentPool:true,
+  troops:Array.from({length:count},(_,index)=>{
+   const tier=tiers[index%tiers.length];
+   return {faction:origin,tier,groupIndex:tier,slot:slotsByTier[tier]++};
+  }),
   terrainKind:['grass','forest','hills','marsh','river','desert','mountain'].includes(biome)?biome:'grass',
   mapSeed:practiceNumber('seed',0,0,49),playerMorale:65,level:1,
   equipment:{weapon:['sword','axe','spear','bow'].includes(weapon)?weapon:'sword',armor:'paddedArmor',shield:'roundShield',quiver:'quiver'},
@@ -712,13 +811,34 @@ if(!campaignMode){window.location.replace('index.html');return}
 if(!practiceMode)try{
  const result=JSON.parse(localStorage.getItem(battleResultKey)||'null');
  if(result?.sessionId===campaignSession.sessionId){
-  window.location.replace('index.html?battleReturn=1');return;
+  window.location.replace('index.html?battleReturn=1&v=4.12');return;
  }
 }catch(e){}
 let campaignReported=false,campaignControlMode='auto',heroPointer=null;
 let battleSpeed=1;
 const troopMarchSpeed=62;
 const battleNavigation=window.UABattleNavigation;
+const deploymentLimit=50;
+const deploymentShapes=['current','line','square','column','wedge','shieldwall','spearwall'];
+const deploymentKey=slot=>slot.groupIndex+':'+slot.slot;
+const deploymentRoster=[];
+const deploymentIds=new Set();
+for(const slot of campaignSession.troops.slice(0,75)){
+ if(!Number.isInteger(slot?.groupIndex)||slot.groupIndex<0||!Number.isInteger(slot.slot)||slot.slot<0)continue;
+ const key=deploymentKey(slot);
+ if(deploymentIds.has(key))continue;
+ deploymentIds.add(key);
+ deploymentRoster.push(slot);
+}
+const deployment={
+ active:battleParams.get('deploy')==='1'&&(practiceMode||campaignSession.deploymentPlanner===true),
+ selected:new Set(deploymentRoster.slice(0,deploymentLimit).map(deploymentKey)),
+ groups:new Map(),
+ placing:null,
+ pointer:null,
+ layoutValid:true,
+ message:''
+};
 const troopRoutes=new WeakMap();
 const campaignMarches=new Map();
 const campaignFormations=new Map();
@@ -753,7 +873,7 @@ function heroCanAct(){
 }
 function canControlHero(){
  return campaignControlMode==='manual'&&heroCanAct()&&!campaignOrdersOpen&&!formationDestination&&!battleOutcome&&
-  !portrait.matches&&!document.hidden;
+  !portrait.matches&&!document.hidden&&!deployment.active;
 }
 function showBattleMessage(message,duration=0){
  const status=document.querySelector('#campaignBattleMessage');
@@ -1042,7 +1162,7 @@ function campaignEnemyRoster(){
  });
 }
 function campaignRecord(outcome){
- if(!campaignMode||practiceMode||campaignReported)return;
+ if(!campaignMode||practiceMode||campaignReported||deployment.active)return;
  const winner=outcome?.winner||'retreat';
  // Only fighters created on the field count here. Campaign reserves and
  // troops already wounded before the battle never enter the friends list.
@@ -1074,9 +1194,10 @@ function campaignRecord(outcome){
 }
 function campaignReturn(){
  if(!campaignMode)return;
+ if(deployment.active){cancelDeployment();return}
  if(practiceMode){window.location.href='battle-practice.html?'+battleParams.toString();return}
  campaignRecord(battleOutcome);
- if(campaignReported)window.location.href='index.html?battleReturn=1';
+ if(campaignReported)window.location.href='index.html?battleReturn=1&v=4.12';
 }
 let realisticBattle=false,battleOutcome=null;
  let battleCollapseSince={friend:null,foe:null};
@@ -1554,7 +1675,9 @@ function focusArmy(){
    '🟢 Victory':battleOutcome.winner==='foe'?'🔴 Defeat':battleOutcome.winner==='retreat'?'↶ Withdrew':'⚖ Draw';
   document.querySelector('#battleOutcomeReason').textContent=battleOutcome.reason+
    ' · '+battleOutcome.seconds.toFixed(1)+' seconds';
-  const reserve=campaignSession.reserveCount;
+  const legacyPool=!campaignSession.deploymentPool&&deploymentRoster.length<=deploymentLimit;
+  const reserve=deploymentRoster.length-friends.length+
+   (legacyPool?Math.max(0,Number(campaignSession.reserveCount)||0):0);
   const reserveLabel=Number.isInteger(reserve)&&reserve>0?' · '+reserve+' stayed in reserve':'';
   const hero=commanders.friend;
   const heroStatus=hero?.dead?'fallen':hero?.routed||hero?.broken?'withdrew':'alive';
@@ -1610,7 +1733,8 @@ function populate(){
   nextId=0;nextSwingId=1;nextEngagementPlan=0;formationType='block';enemyFormationType='block';enemyCommand='auto';enemyMovePending=false;setFormationMenu(false);
   const a=home('friend'),b=home('foe');
   if(campaignMode){
-   friends=deployCampaignArmy('friend',campaignSession.troops.slice(0,50));
+   const selected=deploymentRoster.filter(slot=>deployment.selected.has(deploymentKey(slot)));
+   friends=deployCampaignArmy('friend',selected);
    foes=deployCampaignArmy('foe',campaignEnemyRoster());
   }else{
    friends=formation('friend',a.x,a.y).map((p,i)=>create('friend',i,p));
@@ -1657,6 +1781,7 @@ function populate(){
   commanderBrains.friend=newBrain(commanderBrains.friend.personality,commanderBrains.friend.intent,commanderBrains.friend.lineStyle);
   commanderBrains.foe=newBrain(commanderBrains.foe.personality,commanderBrains.foe.intent,commanderBrains.foe.lineStyle);
   generalOrders={all:null,infantry:null,archer:null,cavalry:null,horseArcher:null,reserve:null};selectedGroup='all';
+  if(deployment.active)layoutDeployment();
   slashes=[];projectiles=[];groundedShots=[];selected=false;mode='idle';marker=null;focusArmy();updateUI();updateEnemyUI();updateCommanderUI();
  }
 // Enemy reinforcements enter at the right edge in the least crowded lane.
@@ -2187,6 +2312,262 @@ function formationEnemies(){
 function rotateFormationSlots(slots,angle){
  const cos=Math.cos(angle),sin=Math.sin(angle);
  return slots.map(({unit,x,y})=>({unit,x:x*cos-y*sin,y:x*sin+y*cos}));
+}
+function deploymentZone(){
+ return {minX:24,minY:24,maxX:W*.42,maxY:H-24};
+}
+function deploymentUnits(id){
+ return friends.filter(unit=>String(unit.campaignSource)===id);
+}
+function deploymentSummary(){
+ const groups=Array.from(deployment.groups.values(),group=>({
+  id:group.id,groupIndex:group.groupIndex,name:group.name,role:group.role,
+  count:group.keys.length,selected:group.keys.filter(key=>deployment.selected.has(key)).length,
+  slotIds:group.keys.slice(),selectedSlotIds:group.keys.filter(key=>deployment.selected.has(key)),
+  formation:group.formation,placing:deployment.placing===group.id,
+  placement:group.placement&&{...group.placement},
+  positions:deploymentUnits(group.id).map(unit=>({
+   slotId:unit.campaignSource+':'+unit.campaignSlot,x:unit.x,y:unit.y
+  }))
+ }));
+ return {
+  active:deployment.active,practiceMode,limit:deploymentLimit,
+  selectedCount:deployment.selected.size,availableCount:deploymentRoster.length,
+  enemyCount:foes.length,groups,message:deployment.message
+ };
+}
+function updateDeploymentNotice(message=''){
+ deployment.message=message;
+ if(deployment.active)draw();
+ window.dispatchEvent(new Event('ua:deployment-change'));
+}
+function setupDeployment(){
+ document.body.classList.toggle('deployment-active',deployment.active);
+ if(!deployment.active)return;
+ for(const slot of deploymentRoster){
+  const id=String(slot.groupIndex);
+  if(!deployment.groups.has(id)){
+   const kit=campaignEquipment(slot,'friend');
+   const rank=['Recruit','Trained','Veteran'][slot.tier]||'Troop';
+   const roleNames={infantry:'Infantry',archer:'Archers',cavalry:'Cavalry',horseArcher:'Horse Archers'};
+   deployment.groups.set(id,{
+    id,groupIndex:slot.groupIndex,role:kit.unitRole,
+    name:slot.loadout?.name||rank+' '+roleNames[kit.unitRole],
+    keys:[],formation:'current',placement:null
+   });
+  }
+  deployment.groups.get(id).keys.push(deploymentKey(slot));
+ }
+}
+function findDeploymentPositions(troops,shape,point,occupied){
+ if(troops.length===0)return [];
+ const center=troopCenter(troops,home('friend')),zone=deploymentZone();
+ const enemy=troopCenter(formationEnemies(),home('foe'));
+ const heading=formationHeading(point,enemy);
+ let slots=campaignFormationSlots(troops,shape,center);
+ if(shape!=='current')slots=rotateFormationSlots(slots,heading);
+ const margin=15;
+ const minX=zone.minX+margin-Math.min(...slots.map(slot=>slot.x));
+ const maxX=zone.maxX-margin-Math.max(...slots.map(slot=>slot.x));
+ const minY=zone.minY+margin-Math.min(...slots.map(slot=>slot.y));
+ const maxY=zone.maxY-margin-Math.max(...slots.map(slot=>slot.y));
+ if(minX>maxX||minY>maxY)return null;
+
+ const tried=new Set();
+ function tryAnchor(x,y){
+  x=clamp(x,minX,maxX);y=clamp(y,minY,maxY);
+  const key=Math.round(x*10)+':'+Math.round(y*10);
+  if(tried.has(key))return null;
+  tried.add(key);
+  const positions=[];
+  for(const slot of slots){
+   const position={unit:slot.unit,x:x+slot.x,y:y+slot.y,heading};
+   const mounted=isCavalry(slot.unit);
+   if(battleNavigation&&!battleNavigation.segmentClear(position,position,battleRocks,mounted?15:11))return null;
+   if(occupied.some(other=>{
+    const spacing=mounted||isCavalry(other.unit||other)?32:20;
+    return Math.hypot(position.x-other.x,position.y-other.y)<spacing;
+   }))return null;
+   positions.push(position);
+  }
+  return positions;
+ }
+ const nearby=tryAnchor(point.x,point.y);
+ if(nearby)return nearby;
+ const startX=clamp(point.x,minX,maxX),startY=clamp(point.y,minY,maxY);
+ for(let radius=20;radius<=300;radius+=20){
+  for(let direction=0;direction<12;direction++){
+   const angle=direction*Math.PI/6;
+   const candidate=tryAnchor(startX+Math.cos(angle)*radius,startY+Math.sin(angle)*radius);
+   if(candidate)return candidate;
+  }
+ }
+ return null;
+}
+function applyDeploymentPositions(positions){
+ for(const {unit,x,y,heading} of positions){
+  unit.x=unit.anchorX=unit.tx=x;
+  unit.y=unit.anchorY=unit.ty=y;
+  unit.faceAngle=heading;
+  unit.facing=Math.cos(heading)>=0?1:-1;
+  if(isCavalry(unit))unit.mountHeading=heading;
+ }
+}
+function layoutDeployment(){
+ deployment.layoutValid=true;
+ const hero=commanders.friend;
+ const heroSpot=battleNavigation?.projectPoint(hero,battleRocks,deploymentZone(),11);
+ if(heroSpot)applyDeploymentPositions([{unit:hero,...heroSpot,heading:0}]);
+ const occupied=[hero];
+ const groups=Array.from(deployment.groups.values()).sort((a,b)=>Number(!!b.placement)-Number(!!a.placement));
+ for(const group of groups){
+  const troops=deploymentUnits(group.id);
+  if(troops.length===0)continue;
+  const point=group.placement||troopCenter(troops,home('friend'));
+  const positions=findDeploymentPositions(troops,group.formation,point,occupied);
+  if(!positions){deployment.layoutValid=false;break}
+  applyDeploymentPositions(positions);
+  occupied.push(...positions);
+ }
+}
+function commitDeploymentSelection(selection){
+ const before=deployment.selected,view={...camera};
+ const priorFormations=new Map();
+ for(const group of deployment.groups.values()){
+  if(isWall(group.formation)&&group.keys.filter(key=>selection.has(key)).length<2){
+   priorFormations.set(group,group.formation);
+   group.formation='current';
+  }
+ }
+ deployment.selected=selection;
+ populate();
+ if(!deployment.layoutValid){
+  deployment.selected=before;
+  for(const [group,shape] of priorFormations)group.formation=shape;
+  populate();
+  camera.x=view.x;camera.y=view.y;
+  updateDeploymentNotice('That group needs more room. Choose a narrower formation or fewer troops.');
+  return false;
+ }
+ camera.x=view.x;camera.y=view.y;
+ updateDeploymentNotice();
+ return true;
+}
+function selectDeploymentCount(id,count){
+ const group=deployment.groups.get(String(id));
+ if(!deployment.active||!group||!Number.isInteger(count)||count<0||count>group.keys.length)return false;
+ const retained=group.keys.filter(key=>deployment.selected.has(key));
+ const available=group.keys.filter(key=>!deployment.selected.has(key));
+ const selection=new Set(deployment.selected);
+ for(const key of group.keys)selection.delete(key);
+ if(selection.size+count>deploymentLimit){
+  updateDeploymentNotice('Choose up to 50 troops. Remove troops from another group first.');
+  return false;
+ }
+ for(const key of retained.concat(available).slice(0,count))selection.add(key);
+ if(count===retained.length)return true;
+ return commitDeploymentSelection(selection);
+}
+function selectDeploymentSlot(id,include){
+ if(!deployment.active||!deploymentIds.has(id)||typeof include!=='boolean')return false;
+ if(deployment.selected.has(id)===include)return true;
+ const selection=new Set(deployment.selected);
+ if(include){
+  if(selection.size>=deploymentLimit){
+   updateDeploymentNotice('Choose up to 50 troops. Remove troops from another group first.');
+   return false;
+  }
+  selection.add(id);
+ }else selection.delete(id);
+ return commitDeploymentSelection(selection);
+}
+function moveDeploymentGroup(id,shape,point=null){
+ const group=deployment.groups.get(String(id));
+ if(!deployment.active||!group||!deploymentShapes.includes(shape))return false;
+ const units=deploymentUnits(group.id);
+ if(!units.length)return false;
+ if(isWall(shape)&&units.filter(unit=>hasWallEquipment(unit,shape)).length<2){
+  updateDeploymentNotice(shape==='shieldwall'?'Choose at least two shield infantry.':'Choose at least two troops with spears or pikes.');
+  return false;
+ }
+ const destination=point||group.placement||troopCenter(units,home('friend'));
+ const occupied=friends.filter(unit=>String(unit.campaignSource)!==group.id).concat(commanders.friend);
+ const positions=findDeploymentPositions(units,shape,destination,occupied);
+ if(!positions){updateDeploymentNotice('No room here. Try open ground or a narrower formation.');return false}
+ applyDeploymentPositions(positions);
+ group.formation=shape;
+ group.placement=troopCenter(units,destination);
+ deployment.placing=null;
+ updateDeploymentNotice();
+ return true;
+}
+function chooseDeploymentPosition(id){
+ const group=deployment.groups.get(String(id));
+ if(!deployment.active||!group||!deploymentUnits(group.id).length)return false;
+ deployment.placing=group.id;
+ updateDeploymentNotice('Tap a position in the highlighted starting area.');
+ return true;
+}
+function placeDeploymentGroup(id,point){
+ const group=deployment.groups.get(String(id));
+ if(!deployment.active||!group||!Number.isFinite(point?.x)||!Number.isFinite(point?.y))return false;
+ const zone=deploymentZone();
+ if(point.x<zone.minX||point.x>zone.maxX||point.y<zone.minY||point.y>zone.maxY){
+  updateDeploymentNotice('Place troops inside the highlighted starting area.');
+  return false;
+ }
+ return moveDeploymentGroup(group.id,group.formation,point);
+}
+function cancelDeploymentPosition(){
+ if(!deployment.active||deployment.placing===null)return false;
+ deployment.placing=null;
+ deployment.pointer=null;
+ updateDeploymentNotice();
+ return true;
+}
+function beginDeployment(quick=false){
+ if(!deployment.active)return false;
+ if(!quick&&deploymentRoster.length&&!deployment.selected.size){
+  updateDeploymentNotice('Select at least one troop, or choose Quick Start.');
+  return false;
+ }
+ if(!quick&&!deployment.layoutValid){
+  updateDeploymentNotice('Choose a formation that fits the starting area, or use Quick Start.');
+  return false;
+ }
+ deployment.active=false;
+ deployment.placing=null;
+ deployment.pointer=null;
+ document.body.classList.remove('deployment-active');
+ if(quick){
+  deployment.selected=new Set(deploymentRoster.slice(0,deploymentLimit).map(deploymentKey));
+  populate();
+ }else{
+  clearHeroInput();
+  updateUI();
+ }
+ updateDeploymentNotice();
+ return true;
+}
+function cancelDeployment(){
+ if(!deployment.active)return false;
+ if(practiceMode){
+  window.location.href='battle-practice.html?'+battleParams.toString();
+  return true;
+ }
+ if(campaignSession.deploymentPlanner!==true)return false;
+ try{
+  let previous=null;
+  try{previous=JSON.parse(localStorage.getItem(battleResultKey)||'null')}catch(e){}
+  if(previous?.sessionId!==campaignSession.sessionId){
+   localStorage.setItem(battleResultKey,JSON.stringify({sessionId:campaignSession.sessionId,cancelled:true}));
+  }
+ }catch(e){
+  updateDeploymentNotice('Could not return to the encounter. Check browser storage and try again.');
+  return false;
+ }
+ window.location.href='index.html?battleReturn=1&v=4.12';
+ return true;
 }
 function assignNearbyFormationSlots(slots,center,shape){
  const groups=new Map();
@@ -4555,6 +4936,15 @@ function draw(){
  ctx.clearRect(0,0,VW,VH);
  ctx.save();ctx.translate(-camera.x,-camera.y);
  background();drawCommanderTerrainPlans();if(marker){const age=t-marker.when;if(age<1.3){ctx.beginPath();ctx.arc(marker.x,marker.y,14+age*11,0,2*Math.PI);ctx.strokeStyle='rgba(211,255,218,'+(1-age/1.3)*.6+')';ctx.lineWidth=2;ctx.stroke();}else marker=null;}
+ if(deployment.active){
+  const zone=deploymentZone(),width=zone.maxX-zone.minX,height=zone.maxY-zone.minY;
+  ctx.save();
+  ctx.fillStyle=deployment.placing===null?'#95dca118':'#9aebac28';
+  ctx.fillRect(zone.minX,zone.minY,width,height);
+  ctx.strokeStyle='#9bdfabbe';ctx.lineWidth=2;
+  ctx.setLineDash([10,7]);ctx.strokeRect(zone.minX,zone.minY,width,height);
+  ctx.restore();
+ }
  // Selection means selected soldiers are highlighted, but never hides their stats or swords.
  for(const s of foes)drawUnit(s);for(const s of friends)drawUnit(s);
  for(const team of ['foe','friend'])if(commanders[team])drawUnit(commanders[team]);
@@ -4636,6 +5026,7 @@ function frame(ts){
   if(!last)last=ts;
   const dt=Math.min((ts-last)/1000,.040);
   last=ts;
+  if(deployment.active){requestAnimationFrame(frame);return}
   const simulating=!equipmentOpen&&!battleOutcome&&!portrait.matches&&!document.hidden;
   const prevTime=t;
   if(simulating){
@@ -4725,7 +5116,7 @@ function updateCampaignArmyOrders(){
  if(status.textContent!==message)status.textContent=message;
 }
 function setCampaignOrdersOpen(open){
- campaignOrdersOpen=open&&!battleOutcome;
+ campaignOrdersOpen=open&&!battleOutcome&&!deployment.active;
  if(campaignOrdersOpen){
   if(formationDestination)cancelFormationPlacement();
   setFormationMenu(false);
@@ -4768,7 +5159,7 @@ function armFormationPlacement(quick=false){
  updateUI();
 }
 function issueCampaignOrder(order){
- if(battleOutcome||!selectedTroops().some(marchReadyTroop))return;
+ if(deployment.active||battleOutcome||!selectedTroops().some(marchReadyTroop))return;
  if(order==='move'){armFormationPlacement();return}
  if(formationDestination)cancelFormationPlacement();
  setFormationMenu(false);
@@ -4847,6 +5238,34 @@ canvas.addEventListener('pointerup',e=>{
 canvas.addEventListener('pointercancel',e=>{
  if(formationDestination?.pointerId===e.pointerId)cancelFormationPlacement();
 });
+canvas.addEventListener('pointerdown',e=>{
+ if(!deployment.active||deployment.pointer||e.button!==0)return;
+ deployment.pointer={id:e.pointerId,x:e.clientX,y:e.clientY,cx:camera.x,cy:camera.y,dragged:false};
+ canvas.setPointerCapture?.(e.pointerId);
+});
+canvas.addEventListener('pointermove',e=>{
+ const pointer=deployment.pointer;
+ if(!pointer||pointer.id!==e.pointerId)return;
+ const dx=e.clientX-pointer.x,dy=e.clientY-pointer.y;
+ if(Math.hypot(dx,dy)>8)pointer.dragged=true;
+ if(!pointer.dragged)return;
+ camera.x=clamp(pointer.cx-dx,0,Math.max(0,W-VW));
+ camera.y=clamp(pointer.cy-dy,0,Math.max(0,H-VH));
+ draw();
+});
+canvas.addEventListener('pointerup',e=>{
+ const pointer=deployment.pointer;
+ if(!pointer||pointer.id!==e.pointerId)return;
+ deployment.pointer=null;
+ if(pointer.dragged||deployment.placing===null)return;
+ const area=canvas.getBoundingClientRect();
+ placeDeploymentGroup(deployment.placing,{x:camera.x+e.clientX-area.left,y:camera.y+e.clientY-area.top});
+});
+function clearDeploymentPointer(e){
+ if(deployment.pointer?.id===e.pointerId)deployment.pointer=null;
+}
+canvas.addEventListener('pointercancel',clearDeploymentPointer);
+canvas.addEventListener('lostpointercapture',clearDeploymentPointer);
 function beginHeroPointer(e,key,button){
  if(!canControlHero()||e.button!==0)return;
  e.preventDefault();
@@ -4901,7 +5320,18 @@ for(const button of document.querySelectorAll('[data-hero-key]')){
 document.querySelector('#campaignBattleExit').addEventListener('click',campaignReturn);
 document.querySelector('#campaignBattleReturn').addEventListener('click',campaignReturn);
 document.querySelector('#practiceReplay').addEventListener('click',()=>{if(practiceMode&&battleOutcome)window.location.reload()});
-window.addEventListener('resize',resize,{passive:true});if('ResizeObserver' in window)new ResizeObserver(resize).observe(board);resize();requestAnimationFrame(frame);
+window.UADeployment={
+ getState:deploymentSummary,setCount:selectDeploymentCount,setSlot:selectDeploymentSlot,
+ setFormation:moveDeploymentGroup,choosePosition:chooseDeploymentPosition,
+ placeGroup:placeDeploymentGroup,cancelPosition:cancelDeploymentPosition,
+ begin:()=>beginDeployment(),quickStart:()=>beginDeployment(true),cancel:cancelDeployment
+};
+setupDeployment();
+window.addEventListener('resize',resize,{passive:true});
+if('ResizeObserver' in window)new ResizeObserver(resize).observe(board);
+resize();
+if(deployment.active)updateDeploymentNotice();
+requestAnimationFrame(frame);
 })();
 </script>
 </body>

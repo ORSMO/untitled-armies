@@ -2,6 +2,10 @@
 
 [Party, troop trees, deployment and equipment](ROADMAP.md)
 
+## V4.12 — Deployment & Reserves
+
+Choose **Plan deployment** before a campaign or Classic practice battle. Pick who starts, hold fit troops back in reserve, and place formations on your side of the battlefield. A company of up to 75 can field 50 troops at once. Reserves stay off the field for that battle and keep their campaign health and training. **Quick Start** uses the default lineup and starts immediately.
+
 ## V4.11 — Party & Promotions
 
 Recruit by quantity, train troops in tactical battles, and promote fit survivors individually. Valdorian recruits can train as shield infantry, pikemen, or archers. Valdorian house retainers can become Household Lancers. The party shows daily wages, field rest restores the hero, and inns treat up to three wounded troops per stay.

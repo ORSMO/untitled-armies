@@ -52,6 +52,7 @@
 .encounter-modal #encounterDialogue{min-height:90px}
 .encounter-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .encounter-actions .btn{width:100%;text-align:left;padding:13px 12px}
+.encounter-actions #encounterLeave{grid-column:1/-1;text-align:center}
 .encounter-actions .btn.danger{background:#6c302a;border-color:#bc7965;color:#f9d6bd}
 .encounter-actions .btn.danger:hover{background:#8e4035}
 .world-landmark-label{color:#f7dbb3}
