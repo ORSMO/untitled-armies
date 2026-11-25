@@ -4,9 +4,9 @@
 const escapeHTML=value=>String(value??'').replace(/[&<>"']/g,char=>({
  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
 })[char]);
-const labels={sword:'Sword',spear:'Spear',blade:'Blade',head:'Spearhead',guard:'Guard',grip:'Grip',
- pommel:'Pommel',shaft:'Shaft',butt:'Butt',iron:'Iron',timber:'Timber',tools:'Tools'};
-const title=value=>labels[value]||value.charAt(0).toUpperCase()+value.slice(1);
+const partLabels={spear:{head:'Spearhead'},axe:{head:'Axe head'},bow:{string:'Bowstring'}};
+const labels={draw:'Draw time'};
+const title=value=>labels[value]||(value.charAt(0).toUpperCase()+value.slice(1)).replace(/([a-z])([A-Z])/g,'$1 $2');
 const statNumber=value=>Number.isFinite(value)?String(Math.round(value*100)/100):'—';
 
 function option(id,name,selected){
@@ -15,10 +15,13 @@ function option(id,name,selected){
 function stats(weapon,baseline){
  const profile=weapon?.profile;
  if(!profile)return'';
- return '<div class="smithy-stats">'+['reach','damage','handling','weight'].map(id=>{
-  const value=profile[id],change=baseline?Math.round((value-baseline[id])*100)/100:0;
-  const difference=change?'<small class="smithy-delta">'+(change>0?'+':'')+statNumber(change)+'</small>':'';
-  return '<span class="smithy-stat"><b>'+statNumber(value)+difference+'</b><small>'+title(id)+'</small></span>';
+ const statsKeys=weapon.category==='bow'?['range','damage','draw','weight']:['reach','damage','handling','weight'];
+ return '<div class="smithy-stats">'+statsKeys.map(id=>{
+  const value=profile[id],unit=id==='draw'?'s':'';
+  const change=baseline?Math.round((value-baseline[id])*100)/100:0;
+  const difference=change?'<small class="smithy-delta">'+(change>0?'+':'')+statNumber(change)+unit+'</small>':'';
+  const hint=id==='draw'?' title="Seconds to draw an arrow"':'';
+  return '<span class="smithy-stat"'+hint+'><b>'+statNumber(value)+unit+difference+'</b><small>'+title(id)+'</small></span>';
  }).join('')+'</div>';
 }
 function weaponName(weapon){
@@ -39,7 +42,9 @@ function create(callbacks){
  const character=document.getElementById('characterForgedWeapons');
  let siteId=null,mode='forge',pending=null,updatedMessage='';
  const drafts=new Map();
- let category='sword';
+ const categories=forge.categories;
+ const categoryName=id=>forge.catalog[id].name||title(id);
+ let category=categories[0];
 
  function draft(){
   if(!drafts.has(category))drafts.set(category,forge.defaultBuild(category));
@@ -57,7 +62,7 @@ function create(callbacks){
    escapeHTML(title(id))+' '+(pack[id]||0)+'/'+quantity+'</span>').join('');
   const baseline=forge.resolve(forge.defaultBuild(category))?.profile;
   preview.innerHTML='<h3>'+escapeHTML(weaponName(quote.weapon))+'</h3>'+stats(quote.weapon,baseline)+
-   '<small class="smithy-meta smithy-baseline">Compared with a standard '+title(category).toLowerCase()+'</small>'+
+   '<small class="smithy-meta smithy-baseline">Compared with a standard '+escapeHTML(categoryName(category).toLowerCase())+'</small>'+
    '<div class="smithy-costs" aria-label="Owned and required materials">'+tokens+'</div>'+
    '<div class="smithy-actions"><button class="btn primary" type="button" data-smithy-craft="materials" aria-label="Forge with materials and '+
     quote.gold+' denars"'+(quote.canMaterials?'':' disabled')+'>Forge · '+quote.gold+'</button>'+
@@ -69,11 +74,12 @@ function create(callbacks){
   const parts=forge.catalog[category].parts;
   const fields=Object.entries(parts).map(([key,list])=>{
    const options=list.map(part=>option(part.id,part.name,build[key])).join('');
-   return '<label>'+escapeHTML(title(key))+'<select data-smithy-part="'+escapeHTML(key)+'">'+options+'</select></label>';
+   const label=partLabels[category]?.[key]||title(key);
+   return '<label>'+escapeHTML(label)+'<select data-smithy-part="'+escapeHTML(key)+'">'+options+'</select></label>';
   }).join('');
   const finishes=forge.catalog.finishes.map(finish=>option(finish.id,finish.name,build.finish)).join('');
   return '<div class="smithy-layout"><div class="smithy-fields">'+
-   '<label>Weapon type<select data-smithy-family>'+['sword','spear'].map(id=>option(id,title(id),category)).join('')+'</select></label>'+
+   '<label>Weapon type<select data-smithy-family>'+categories.map(id=>option(id,categoryName(id),category)).join('')+'</select></label>'+
    '<label class="smithy-name">Weapon name<input type="text" data-smithy-name maxlength="32" autocomplete="off" value="'+escapeHTML(build.name)+'"></label>'+
    fields+'<label>Finish<select data-smithy-finish>'+finishes+'</select></label></div>'+
    '<section class="smithy-preview" aria-label="Weapon stats and quote" data-smithy-preview></section></div>';
@@ -149,6 +155,7 @@ function create(callbacks){
  workshop.addEventListener('change',event=>{
   const field=event.target;
   if(field.hasAttribute('data-smithy-family')){
+   if(!categories.includes(field.value))return;
    category=field.value;updatedMessage='';refreshWorkshop();
    workshop.querySelector('[data-smithy-family]')?.focus({preventScroll:true});
   }else if(!field.hasAttribute('data-smithy-name'))updateBuilder(field);
