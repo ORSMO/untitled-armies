@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — Battle · V4.12</title>
+<title>Untitled Armies — Battle · V4.13</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -704,7 +704,7 @@ body.deployment-active .rail{display:none!important}
  <p>Rotate your phone sideways to play on the wider battlefield.</p>
 </div>
 </div>
-<script src="campaign-armory.js?v=4.12"></script>
+<script src="campaign-armory.js?v=4.13"></script>
 <script src="battle-navigation.js?v=4.10.2"></script>
 <script src="battle-deployment-ui.js?v=4.12" defer></script>
 <script>
@@ -811,7 +811,7 @@ if(!campaignMode){window.location.replace('index.html');return}
 if(!practiceMode)try{
  const result=JSON.parse(localStorage.getItem(battleResultKey)||'null');
  if(result?.sessionId===campaignSession.sessionId){
-  window.location.replace('index.html?battleReturn=1&v=4.12');return;
+  window.location.replace('index.html?battleReturn=1&v=4.13');return;
  }
 }catch(e){}
 let campaignReported=false,campaignControlMode='auto',heroPointer=null;
@@ -947,7 +947,7 @@ function campaignEquipment(slot,team){
    return kit;
   }
  }
- const loadout=window.UAArmory?.getLoadout?.(slot.faction,slot.tier);
+ const loadout=window.UAArmory?.getLoadout?.(slot.faction,slot.tier,undefined,slot.unitId);
  return armoryBattleKit(loadout)||legacyCampaignEquipment(slot.faction,slot.tier);
 }
 function setCampaignControlMode(mode){
@@ -1117,6 +1117,50 @@ function campaignFormation(team,kits){
 function campaignStat(value,fallback,min,max){
  return Number.isFinite(value)?clamp(value,min,max):fallback;
 }
+function applyCampaignWeaponStats(unit,stats){
+ const base=weaponProfiles[unit.weapon];
+ const crafted=['shortsword','sword','greatsword','spear','pike','lance'].includes(unit.weapon)&&
+  Number.isFinite(stats?.weaponReach)&&Number.isFinite(stats?.weaponWeight);
+ // A forged sidearm changes melee only; a bow with that sidearm retains
+ // its own draw speed and projectile damage.
+ unit.weaponDamage=crafted?1:campaignStat(stats?.weaponDamage,1,.85,1.15);
+ unit.weaponSpeed=crafted?1:campaignStat(stats?.weaponSpeed,1,.85,1.15);
+ if(crafted){
+  unit.forgedWeapon={
+   archetype:unit.weapon,
+   profile:{
+    ...base,
+    reach:campaignStat(stats.weaponReach,base.reach,base.reach*.50,base.reach*1.75),
+    weight:campaignStat(stats.weaponWeight,base.weight,base.weight*.30,base.weight*2),
+    damageScale:campaignStat(stats.weaponDamage,1,.60,1.60),
+    handlingScale:campaignStat(stats.weaponSpeed,1,.55,1.60)
+   }
+  };
+ }
+}
+function carriedBattleGear(unit){
+ const items=[];
+ const weapon=rangedOrder.includes(unit.ranged)?unit.ranged:unit.weapon;
+ if(weaponOrder.includes(weapon)||rangedOrder.includes(weapon))items.push({kind:'weapon',id:weapon});
+ if(unit.armor!=='naked'&&armorOrder.includes(unit.armor))items.push({kind:'armor',id:unit.armor});
+ if(shieldOrder.includes(unit.shield))items.push({kind:'shield',id:unit.shield});
+ return items;
+}
+function recoveredEnemyGear(winner){
+ if(winner!=='friend')return [];
+ const defeated=members('foe').filter(unit=>unit.dead||unit.surrendered);
+ const priority=unit=>rnd((unit.id+1)*93+campaignSession.partyId*5);
+ defeated.sort((a,b)=>priority(a)-priority(b));
+ const recovered=[];
+ for(const unit of defeated){
+  const carried=unit.battleLootKit||carriedBattleGear(unit);
+  const preferred=['weapon','armor','shield'][recovered.length];
+  const item=carried.find(entry=>entry.kind===preferred)||carried[0];
+  if(item)recovered.push({...item,quantity:1});
+  if(recovered.length===3)break;
+ }
+ return recovered;
+}
 function campaignDeploy(s,slot,team,kit){
  const {stats,...equipment}=kit;
  Object.assign(s,equipment);
@@ -1132,8 +1176,8 @@ function campaignDeploy(s,slot,team,kit){
  s.disc=campaignStat(stats?.discipline,s.disc,15,98);
  s.speed=campaignStat(stats?.speed,s.speed,32,78);
  s.stamina=s.maxStamina=campaignStat(stats?.stamina,100,70,120);
- s.weaponDamage=campaignStat(stats?.weaponDamage,1,.85,1.15);
- s.weaponSpeed=campaignStat(stats?.weaponSpeed,1,.85,1.15);
+ applyCampaignWeaponStats(s,stats);
+ if(team==='foe'&&!practiceMode)s.battleLootKit=carriedBattleGear(s);
  if(team==='friend'){
   const morale=campaignSession.playerMorale??65;
   s.disc=clamp(s.disc+(morale-65)*.24,8,100);
@@ -1184,7 +1228,8 @@ function campaignRecord(outcome){
   heroMaxHp:hero?.maxHp||5,enemyRemaining,enemySurvivors,
    heroAmmoSpent:hero?.ranged==='bow'?Math.max(0,Math.min(rangedProfiles.bow.ammo,campaignSession.inventory?.arrows||0)-(hero.ammo||0)):0,
    stonesSpent:Math.max(0,(campaignSession.inventory?.stones||0)-campaignStonesRemaining),
-  enemyInitial:campaignSession.enemyCount,originalTroops:entries.length};
+  enemyInitial:campaignSession.enemyCount,originalTroops:entries.length,
+  enemyLoot:recoveredEnemyGear(winner)};
  try{
   let previous=null;
   try{previous=JSON.parse(localStorage.getItem(battleResultKey)||'null')}catch(e){}
@@ -1197,7 +1242,7 @@ function campaignReturn(){
  if(deployment.active){cancelDeployment();return}
  if(practiceMode){window.location.href='battle-practice.html?'+battleParams.toString();return}
  campaignRecord(battleOutcome);
- if(campaignReported)window.location.href='index.html?battleReturn=1&v=4.12';
+ if(campaignReported)window.location.href='index.html?battleReturn=1&v=4.13';
 }
 let realisticBattle=false,battleOutcome=null;
  let battleCollapseSince={friend:null,foe:null};
@@ -1304,8 +1349,13 @@ let realisticBattle=false,battleOutcome=null;
   lance:{label:'Cavalry lance',weight:2.5,reach:56,power:1.23,momentum:142,speed:1.24,twoHand:false,moves:['thrust','slashRight'],cleave:1}
  };
  const weaponOrder=['shortsword','sword','greatsword','axe','spear','pike','lance'];
+ function meleeWeaponProfile(unit){
+  return unit.forgedWeapon?.archetype===unit.weapon?unit.forgedWeapon.profile:weaponProfiles[unit.weapon];
+ }
  function isPolearm(s){return !isCavalry(s)&&(s.weapon==='spear'||s.weapon==='pike')&&(!activeRangedProfile(s)||s.meleeReady);}
- function polearmMinRange(s){return s.weapon==='pike'?40:25;}
+ function polearmMinRange(s){
+  return (s.weapon==='pike'?40:25)*meleeWeaponProfile(s).reach/weaponProfiles[s.weapon].reach;
+ }
  // Secondary weapons have limited shots, physical flight and melee fallback.
  const rangedProfiles={
   bow:{label:'War bow',speed:520,range:1005,ideal:645,ammo:18,draw:.62,reload:.64,loft:46,
@@ -1746,6 +1796,9 @@ function populate(){
   commanders.friend=createCommander('friend');commanders.foe=createCommander('foe');
   if(campaignMode){
     const eq=campaignSession.equipment||{},stats=campaignSession.stats||{};
+   const design=practiceMode?null:campaignSession.heroWeapon;
+   const crafted=['sword','spear'].includes(design?.baseWeapon)&&
+    Number.isFinite(design.stats?.weaponReach)&&Number.isFinite(design.stats?.weaponWeight);
    const strength=clamp(Number(stats.strength)||5,1,40);
    commanders.friend.maxHp=6+(strength-5)*.18;
    const health=campaignSession.heroHealth??100;
@@ -1753,14 +1806,15 @@ function populate(){
     commanders.friend.speed=(56+(stats.agility||5)*4)*(campaignSession.perks?.includes('outrider')?1.12:1);
    commanders.friend.isPlayerHero=true;
    commanders.friend.campaignStance='Screened';
-    commanders.friend.weapon=({sword:'sword',axe:'axe',spear:'spear',bow:'sword'})[eq.weapon]||'sword';
-    commanders.friend.ranged=eq.weapon==='bow'&&eq.quiver==='quiver'?'bow':null;
+    commanders.friend.weapon=crafted?design.baseWeapon:(({sword:'sword',axe:'axe',spear:'spear',bow:'sword'})[eq.weapon]||'sword');
+    commanders.friend.ranged=!crafted&&eq.weapon==='bow'&&eq.quiver==='quiver'?'bow':null;
     commanders.friend.unitRole=commanders.friend.ranged?'archer':'infantry';
     commanders.friend.armor=({paddedArmor:'padded',leatherArmor:'leather',mailArmor:'mail',plateArmor:'plate'})[eq.armor]||'padded';
     commanders.friend.shield=({buckler:'buckler',roundShield:'round',kiteShield:'kite'})[eq.shield]||null;
     commanders.friend.skill=clamp(38+(stats.strength||5)*4+(campaignSession.level||1)+(campaignSession.perks?.includes('armsmaster')?10:0),35,94);
     commanders.friend.disc=clamp(38+(stats.tactics||5)*4,40,94);
     commanders.friend.leadership=clamp(35+(stats.leadership||5)*6,40,96);
+    if(crafted)applyCampaignWeaponStats(commanders.friend,design.stats);
     initializeRangedEquipment(commanders.friend);
     commanders.friend.ammo=Math.min(commanders.friend.ammo||0,campaignSession.inventory?.arrows||0);
    realisticBattle=true;
@@ -2566,7 +2620,7 @@ function cancelDeployment(){
   updateDeploymentNotice('Could not return to the encounter. Check browser storage and try again.');
   return false;
  }
- window.location.href='index.html?battleReturn=1&v=4.12';
+ window.location.href='index.html?battleReturn=1&v=4.13';
  return true;
 }
 function assignNearbyFormationSlots(slots,center,shape){
@@ -2714,7 +2768,8 @@ function planEngagements(team){
 }
 function chooseTarget(s){
  const enemies=opponents(s);
- let planned=null,dist=Infinity,urgent=null,urgentDist=weaponProfiles[s.weapon].reach*.86;
+ const weaponReach=meleeWeaponProfile(s).reach;
+ let planned=null,dist=Infinity,urgent=null,urgentDist=weaponReach*.86;
  for(const e of enemies){
   if(e.dead||e.broken||e.routed)continue;
   const d=Math.hypot(e.x-s.x,e.y-s.y);
@@ -2722,7 +2777,7 @@ function chooseTarget(s){
   if(d<urgentDist){urgent=e;urgentDist=d;}
  }
  // A real threat directly beside a soldier overrides a distant assignment.
- if(urgent&&dist>weaponProfiles[s.weapon].reach*1.4)return {target:urgent,dist:urgentDist};
+ if(urgent&&dist>weaponReach*1.4)return {target:urgent,dist:urgentDist};
  if(planned)return {target:planned,dist};
  nextEngagementPlan=0;
  let nearest=null,nearestDistance=Infinity;
@@ -2738,7 +2793,7 @@ function engagementPoint(s,target){
  const side=s.team==='friend'?-1:1;
  const flanks=[0,-.62,.62,-1.17,1.17,-1.5,1.5];
  const angle=(side<0?Math.PI:0)+flanks[s.engageSlot%flanks.length];
- const radius=weaponProfiles[s.weapon].reach*.79;
+ const radius=meleeWeaponProfile(s).reach*.79;
  const x=target.x+Math.cos(angle)*radius;
  let y=target.y+Math.sin(angle)*radius;
  if(Math.hypot(target.x-s.x,target.y-s.y)>115)y=y*.78+s.anchorY*.22;
@@ -3340,7 +3395,7 @@ function handleBrokenSoldier(s,dt){
 }
 // Move selection balances armor vulnerability, stamina, variety and groups.
 function chooseCombatMove(s,target){
- const weapon=weaponProfiles[s.weapon],available=weapon.moves;
+ const weapon=meleeWeaponProfile(s),available=weapon.moves;
  const threatArmor=target?.armor||'padded';
  let best=null,bestScore=-Infinity;
  const nearby=opponents(s).filter(e=>!e.dead&&!e.broken&&!e.routed&&Math.hypot(e.x-s.x,e.y-s.y)<weapon.reach+22).length;
@@ -3354,7 +3409,7 @@ function chooseCombatMove(s,target){
   if(m.thrust&&isPolearm(s)&&distance<polearmMinRange(s))continue;
   const cost=style.cost*m.stamina*(.60+weapon.weight*.30)*trainingEfficiency(s);
   if(s.stamina<cost)continue;
-  const raw=style.damage*weapon.power*m.mult;
+  const raw=style.damage*weapon.power*m.mult*(weapon.damageScale??1);
   const expected=mitigatedDamage(raw,threatArmor,m.damageType);
   const choiceIndex=(s.id+s.attackCount)%available.length;
   // Rotation makes the full moveset visible while armor rewards weak spots.
@@ -3373,7 +3428,7 @@ function chooseCombatMove(s,target){
 function beginAttack(s,target){
  if(s.attack||s.cooldown>0||s.guardActive||s.stagger>0||s.guardBreak>0||
     (isPolearm(s)&&s.braceReady>=.55&&s.braceThreatId!=null))return false;
- const weapon=weaponProfiles[s.weapon];
+ const weapon=meleeWeaponProfile(s);
  if(!target||Math.hypot(target.x-s.x,target.y-s.y)>weapon.reach+9)return false;
  const name=chooseCombatMove(s,target);
  if(!name)return false;
@@ -3390,7 +3445,7 @@ function beginAttack(s,target){
  const fluency=clamp((familiarity-80)/17,0,1);
  const rate=weapon.speed*(1.10-mastery*.0015-familiarity*.0008)*
    (1-fluency*.04)*(s.stamina<24?1.16:1)*(counter?.82:1)*
-   (isCavalry(s)&&s.gallop<.24?1.24:1)/(s.weaponSpeed??1);
+   (isCavalry(s)&&s.gallop<.24?1.24:1)/(weapon.handlingScale??s.weaponSpeed??1);
  const wind=move.wind*rate,active=move.active*rate,recover=move.recover*rate;
  // Precision is geometrical: poorer fighters visibly swing off-target.
  const imprecision=(100-mastery)*.0031+(100-familiarity)*.0015;
@@ -3402,7 +3457,7 @@ function beginAttack(s,target){
   // Momentum gets spent on armor and shields, NOT on dealing damage.
   // Thus several naked targets can each take the complete base damage.
   momentum:weapon.momentum*move.momentum*(move.style==='heavy'?1.12:1),
-  baseDamage:style.damage*weapon.power*move.mult*(s.weaponDamage??1),
+  baseDamage:style.damage*weapon.power*move.mult*(weapon.damageScale??s.weaponDamage??1),
   reach:weapon.reach*(move.short?.62:1)
  };
  s.cooldown=wind+active+recover+.08;
@@ -3431,7 +3486,7 @@ function shieldImpact(attacker,defender,a){
  const delta=Math.abs(Math.atan2(Math.sin(incoming-defender.faceAngle),Math.cos(incoming-defender.faceAngle)));
  const active=defender.guardActive&&delta<=shield.activeArc;
  if(!active&&delta>shield.passiveArc)return {block:0,stop:0,kind:null};
- const weapon=a.projectile?rangedProfiles[a.projectile]:weaponProfiles[attacker.weapon];
+ const weapon=a.projectile?rangedProfiles[a.projectile]:meleeWeaponProfile(attacker);
  // A neighboring shield overlaps the defender's passive shield arc, but
  // physical spacing is required and a separated fighter loses this help.
  const wall=(defender.lineKind==='shieldwall'?
@@ -3465,8 +3520,8 @@ function shieldImpact(attacker,defender,a){
   if(defender.parryAttackId!==a.id||defender.parryWindow<=0)return null;
   defender.parryAttackId=null;defender.parryWindow=0;
   const familiarity=weaponFamiliarity(defender),skill=defender.skill||45;
-  const cost=(7+weaponProfiles[attacker.weapon].weight*2.1)*trainingEfficiency(defender);
-  const resistance=weaponProfiles[defender.weapon].momentum*
+ const cost=(7+meleeWeaponProfile(attacker).weight*2.1)*trainingEfficiency(defender);
+ const resistance=meleeWeaponProfile(defender).momentum*
     (.53+skill*.0047+familiarity*.0038);
   const success=defender.stamina>=cost&&resistance>=a.momentum*.84;
   defender.stamina=clamp(defender.stamina-cost,0,defender.maxStamina);
@@ -3483,7 +3538,7 @@ function shieldImpact(attacker,defender,a){
   defender.guardActive=false;defender.guardHold=0;
   attacker.stagger=Math.max(attacker.stagger,.18+skill*.00065);
   attacker.cooldown=Math.max(attacker.cooldown,.28);
-  reactToImpact(attacker,defender,22+weaponProfiles[attacker.weapon].weight*4);
+  reactToImpact(attacker,defender,22+meleeWeaponProfile(attacker).weight*4);
   a.hits++;a.momentum=0;a.stopped=true;
   slashes.push({kind:'parry',block:'parry',x:defender.x,y:defender.y,
    a:Math.atan2(attacker.y-defender.y,attacker.x-defender.x),
@@ -3534,7 +3589,7 @@ function applyWeaponImpact(attacker,target,a){
  const afterShield=a.baseDamage*(1+elevationAdvantage)*footingPenalty*
   (1-shield.block)/defenderGroundBonus;
  const actual=mitigatedDamage(afterShield,target.armor,damageType);
- const weapon=a.projectile?rangedProfiles[a.projectile]:weaponProfiles[attacker.weapon],heavy=a.move.style==='heavy';
+ const weapon=a.projectile?rangedProfiles[a.projectile]:meleeWeaponProfile(attacker),heavy=a.move.style==='heavy';
  // Physical hits and blocks happen regardless of friendly health immunity.
  if(target.team==='foe'||target.isCommander||realismActive()){
   target.hp=Math.max(0,target.hp-actual);
@@ -3660,7 +3715,7 @@ function updateShieldGuard(s,dt){
  }
  for(const other of opponents(s)){
   if(other.dead||other.routed||other.broken||!other.attack)continue;
-  const threat=other.attack,weapon=weaponProfiles[other.weapon];
+  const threat=other.attack,weapon=meleeWeaponProfile(other);
   if(Math.hypot(other.x-s.x,other.y-s.y)>weapon.reach+17)continue;
   const angle=Math.atan2(other.y-s.y,other.x-s.x);
   const diff=Math.abs(Math.atan2(Math.sin(angle-s.faceAngle),Math.cos(angle-s.faceAngle)));
@@ -4097,7 +4152,7 @@ function separateSoldiers(){
 // can miss, and strike enemy soldiers along their path. Normal lofted shots
 // clear friendly ranks, even near the landing point; flat shots can be obstructed.
 function hasRangedAmmo(s){return !!activeRangedProfile(s)&&(infiniteAmmo||s.ammo>0);}
-function meleeThreatRange(s){return Math.max(57,weaponProfiles[s.weapon].reach+13);}
+function meleeThreatRange(s){return Math.max(57,meleeWeaponProfile(s).reach+13);}
 function rangedTimeFactor(s){
  const skill=s.skill||45,familiarity=rangedFamiliarity(s);
  return clamp(1.23-skill*.0022-familiarity*.0014,.76,1.19);
@@ -4382,7 +4437,8 @@ function canBraceCharge(rider,defender){
  const distance=Math.hypot(dx,dy);
  // Contact must occur at the pointed weapon's reach, not at the horse's
  // old trampling distance. The pike has a longer interception window.
- if(distance>(defender.weapon==='pike'?97:76)||distance<7)return false;
+ const braceReach=meleeWeaponProfile(defender).reach+(defender.weapon==='pike'?8:11);
+ if(distance>braceReach||distance<7)return false;
  const bearing=Math.atan2(dy,dx);
  const facing=Math.abs(Math.atan2(
   Math.sin(bearing-defender.faceAngle),Math.cos(bearing-defender.faceAngle)));
@@ -4397,13 +4453,15 @@ function stopChargeWithPolearm(rider,defender){
  const pike=defender.weapon==='pike';
  // The point strikes the horse: barding absorbs part of the wound.
  // An unarmored mount can be dismounted, while armor may save it.
- const wound=(pike?1.60:1.10)+(rider.gallop||0)*(pike?.90:.67);
+ const weapon=meleeWeaponProfile(defender);
+ const wound=((pike?1.60:1.10)+(rider.gallop||0)*(pike?.90:.67))*(weapon.damageScale??1);
  applyHorseDamage(rider,wound,'piercing');
  rider.stagger=Math.max(rider.stagger,pike?.73:.51);
  rider.recoveryDelay=Math.max(rider.recoveryDelay,.48);
  rider.knockVX=(rider.knockVX||0)+(rider.x-defender.x)*.50;
  rider.knockVY=(rider.knockVY||0)+(rider.y-defender.y)*.50;
- defender.stamina=Math.max(0,defender.stamina-(pike?10:8));
+ const weightRatio=weapon.weight/weaponProfiles[defender.weapon].weight;
+ defender.stamina=Math.max(0,defender.stamina-(pike?10:8)*weightRatio);
  defender.recoveryDelay=Math.max(defender.recoveryDelay,.24);
  defender.braceReady=0;defender.braceThreatId=null;
  defender.braceStops++;
@@ -4539,10 +4597,11 @@ function step(dt){
       }else{
        const slot=engagementPoint(s,target);
        const distanceToSlot=Math.hypot(slot.x-s.x,slot.y-s.y);
-       if(dist>weaponProfiles[s.weapon].reach*.92||distanceToSlot>18){
+       const weaponReach=meleeWeaponProfile(s).reach;
+       if(dist>weaponReach*.92||distanceToSlot>18){
         const clear=avoidCombatCrowd(s,slot,target);
         moveX=clear.x;moveY=clear.y;
-        pace=dist<=weaponProfiles[s.weapon].reach?.78:(!player&&enemyCommand==='attack'?1.40:1.16);
+        pace=dist<=weaponReach?.78:(!player&&enemyCommand==='attack'?1.40:1.16);
        }else{moveX=s.x;moveY=s.y;}
       }
     }else{moveX=s.x;moveY=s.y;}
@@ -4560,7 +4619,7 @@ function step(dt){
   }
   const disciplineControl=.42+s.disc/160;
   const fatiguePace=.76+.24*(s.stamina/s.maxStamina);
-  const equipment=weaponProfiles[s.weapon].weight+(shieldProfiles[s.shield]?.weight||0)+(activeRangedProfile(s)?rangedProfiles[s.ranged].weight:0);
+  const equipment=meleeWeaponProfile(s).weight+(shieldProfiles[s.shield]?.weight||0)+(activeRangedProfile(s)?rangedProfiles[s.ranged].weight:0);
   const loadPace=clamp(1-equipment*.038,.70,1);
   const fightingPace=s.stagger>0?0:s.attack?.72:s.guardActive?.73:1;
   const barding=horseArmorProfiles[s.horseArmor]||horseArmorProfiles.none;
@@ -4648,7 +4707,7 @@ function step(dt){
     // a lance or a bow. A ready lance can add a separate piercing blow.
     if(s.weapon==='lance'&&!target.dead&&!target.routed){
      const lanceHit={id:nextSwingId++,move:{style:'heavy',damageType:'piercing'},
-      baseDamage:.72+s.gallop*.66,momentum:125+s.gallop*105,hits:0,
+      baseDamage:(.72+s.gallop*.66)*(meleeWeaponProfile(s).damageScale??1),momentum:125+s.gallop*105,hits:0,
       hitIds:new Set(),counter:false,stopped:false,charge:true};
      applyWeaponImpact(s,target,lanceHit);
     }
@@ -4727,7 +4786,7 @@ function background(){ctx.fillStyle='#203b30';ctx.fillRect(0,0,W,H);const grad=c
  drawTerrain(ctx);
 }
 function weaponPose(s){
- const w=weaponProfiles[s.weapon],a=s.attack;
+ const w=meleeWeaponProfile(s),a=s.attack;
  if(!a)return {angle:s.faceAngle,length:w.reach*(isPolearm(s)?.83:.62)};
  const m=a.move,p=clamp(a.elapsed/(a.phase==='windup'?a.wind:a.phase==='active'?a.active:a.recover),0,1);
  let offset=0,length=a.reach;
