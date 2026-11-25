@@ -30,6 +30,14 @@ The immediate priority is the campaign loop: recruit, fight, recover, and improv
 - Modular axes and bows extend the same crafting and loot loop. Test bow and axe presets in Classic practice.
 - Tune armor tradeoffs and add more parts after playtesting. Individual weapon upgrades follow once the core crafting choices are balanced.
 
+## Overworld releases
+
+1. **Road reliability.** Close stale bounties, give all moving parties a fair turn at route planning, and retest town entry and pursuit in landscape. Verify player bounty payouts and existing saves.
+2. **Valdorian nobles.** Add King Edric and Lady Isolde to the town menus and the roads. Give each a home, a reason to travel, and a location that persists through saves. Test meeting the same person at their seat and on the road.
+3. **Bandit territories.** Pilot road robbers, forest raiders, and highland deserters. Give each a distinct roster and region. Test that patrols respond to threats and that clearing a road creates a period of safety.
+4. **Trade and town news.** Follow one iron delivery from a village to a smithy. Make the destination market and local news reflect a delivery or a raid.
+5. **Rollout and map readability.** Extend the tested behaviors across the realms. Check phone controls, party markers, visibility, and older saves across several campaign weeks.
+
 ## First playable milestone
 
 Recruit a few soldiers, fight a bandit party, recover the wounded, and promote survivors into two different roles. Take the resulting company into a second battle and check that the roles and formations behave as shown.
