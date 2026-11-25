@@ -115,14 +115,6 @@
  .factions-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:34dvh;gap:4px}.faction-card{padding:6px;gap:6px}.faction-flag{width:30px;height:34px;font-size:18px}.faction-card strong{font-size:10px}.faction-card small{font-size:8px;margin-top:2px}.faction-details{margin:5px 0;padding:7px}.trooptree div{padding:5px 3px;font-size:9px}
  .atlas-modal{padding:9px}.atlas-modal h2{font-size:18px}.atlas-modal>p,.atlas-hint{font-size:9px}.atlas-frame{height:48dvh;min-height:120px}.atlas-controls{margin-top:5px}.atlas-controls .btn{min-height:38px}
  .time-controls .btn{min-height:40px;padding:5px 2px;font-size:10px}
- #screenCreate .modal{width:min(800px,100%);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto auto auto auto auto auto minmax(0,1fr) auto;column-gap:12px;row-gap:2px;align-content:start}
- #screenCreate .modal>.close{position:absolute;top:8px;right:8px;float:none}
- #screenCreate .modal>.smallcaps,#screenCreate .modal>h2,#screenCreate .modal>p{grid-column:1/3}
- #screenCreate label[for="newName"]{grid-column:1;grid-row:4}#screenCreate #newName{grid-column:1;grid-row:5}
- #screenCreate label[for="originSelect"]{grid-column:2;grid-row:4}#screenCreate #originSelect{grid-column:2;grid-row:5}
- #screenCreate label[for="backgroundSelect"]{grid-column:1;grid-row:6}#screenCreate #backgroundSelect{grid-column:1;grid-row:7}
- #screenCreate .eventbox{grid-column:2;grid-row:6/8;align-self:stretch;margin:0;padding:8px}
- #screenCreate .modal-actions{grid-column:1/3;grid-row:8;margin:0}
 }
 @media(orientation:landscape) and (max-height:390px){
  .topbar{height:44px;min-height:44px}.brand{display:none}.chip{padding:4px;font-size:8px}.topbar .btn{min-height:36px;padding:4px 6px}.town-modal{height:calc(100dvh - 8px);max-height:calc(100dvh - 8px)}
@@ -390,3 +382,76 @@
 .smithy-live:empty{min-height:0;margin:0}
 @media(max-width:650px){.smithy-fields{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:540px){.smithy-layout{grid-template-columns:1fr}.smithy-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Character creation and family portraits */
+#screenCreate .create-modal{width:min(820px,100%);padding:12px}
+.create-heading{display:flex;align-items:center;justify-content:space-between;gap:7px;margin-bottom:7px}
+#screenCreate .create-heading h2{margin:0}
+.create-heading .close{float:none;min-width:44px;min-height:44px}
+.create-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.16fr);gap:8px}
+.create-identity,.create-appearance{
+ min-width:0;padding:8px;border:1px solid #546c54;border-radius:9px;background:#142c22
+}
+.create-identity{display:grid;grid-template-columns:minmax(0,1fr) minmax(68px,.44fr);gap:6px;align-content:start}
+.create-wide{grid-column:1/-1}
+.create-appearance{display:grid;grid-template-columns:minmax(72px,.7fr) minmax(0,1fr);gap:8px;align-items:center}
+.create-appearance-options{display:grid;gap:6px;min-width:0}
+#screenCreate .create-layout label{display:grid;gap:3px;min-width:0;margin:0;font-size:11px;line-height:1.15}
+#screenCreate .create-layout :is(input,select){
+ width:100%;min-width:0;min-height:44px;padding:5px 6px;font-size:16px;text-overflow:ellipsis
+}
+.create-preview{min-width:0;display:grid;justify-items:center;gap:3px}
+.create-portrait-preview{width:min(100%,124px)}
+#createPortraitAge{font-size:11px;color:#dde0be}
+.create-actions{display:flex;justify-content:flex-end;gap:6px;margin-top:8px}
+.create-actions .btn{min-height:44px;padding:6px 13px}
+.appearance-portrait{
+ display:block;position:relative;isolation:isolate;width:100%;aspect-ratio:.86;overflow:hidden;border:1px solid #987e52;border-radius:9px;
+ background:radial-gradient(ellipse at 50% 24%,#62725a,#354c3d 52%,#1a2c23);box-shadow:inset 0 0 16px #16291cbb;
+ --portrait-skin:#b88763;--portrait-hair:#2d221f
+}
+.appearance-portrait span{position:absolute;display:block}
+.portrait-cloak{left:9%;right:9%;bottom:-16%;height:57%;border-radius:48% 48% 0 0;background:linear-gradient(115deg,#69583a,#342f23 55%,#42553a);border-top:1px solid #c5ab73}
+.portrait-neck{left:42%;top:61%;width:16%;height:22%;border-radius:0 0 45% 45%;background:var(--portrait-skin);box-shadow:inset -4px -4px 9px #3a1d223d}
+.portrait-face{left:30%;top:23%;width:40%;height:48%;border-radius:46% 46% 48% 48%;background:var(--portrait-skin);box-shadow:inset -7px -8px 13px #36202543}
+.portrait-ear{top:42%;width:7%;height:12%;border-radius:45%;background:var(--portrait-skin);box-shadow:inset -2px -2px 3px #42212b45}
+.portrait-ear.left{left:26%}.portrait-ear.right{right:26%}
+.portrait-hair{left:26%;right:26%;top:16%;height:31%;border-radius:52% 48% 18% 18%;background:var(--portrait-hair);clip-path:polygon(0 16%,58% 0,100% 20%,100% 93%,86% 73%,78% 45%,46% 56%,24% 70%,7% 100%,0 60%);box-shadow:inset -5px -5px 8px #0005}
+.portrait-tail{display:none!important;top:40%;right:20%;width:16%;height:31%;border-radius:0 0 55% 50%;background:var(--portrait-hair)}
+.appearance-portrait:is(.appearance-long,.appearance-braided,.appearance-tied-back,.appearance-ponytail) .portrait-tail{display:block!important}
+.appearance-braided .portrait-tail{width:9%;right:24%;height:36%;top:45%;transform:rotate(-12deg);background:repeating-linear-gradient(152deg,var(--portrait-hair) 0 5px,#251e1d 6px 7px)}
+.appearance-tied-back .portrait-tail{width:11%;right:21%;height:14%;top:32%;border-radius:50%}
+.appearance-ponytail .portrait-tail{width:12%;right:18%;height:34%;top:29%;transform:rotate(-19deg)}
+.appearance-short .portrait-hair{top:19%;height:22%;clip-path:polygon(0 20%,40% 0,100% 15%,100% 80%,75% 55%,30% 55%,0 90%)}
+.appearance-shaved .portrait-hair{display:none}
+.appearance-wavy .portrait-hair{left:25%;right:24%;top:16%;height:34%;clip-path:polygon(0 18%,22% 6%,44% 0,64% 13%,85% 6%,100% 25%,100% 86%,83% 74%,70% 49%,45% 63%,32% 50%,15% 76%,9% 100%,0 82%)}
+.appearance-coiled .portrait-hair{top:14%;height:35%;border-radius:47% 49% 27% 30%;clip-path:polygon(0 31%,6% 9%,22% 15%,39% 0,55% 14%,68% 2%,86% 17%,100% 31%,100% 82%,86% 100%,69% 61%,46% 74%,20% 66%,11% 100%,0 82%)}
+.portrait-eye{top:45%;width:9%;height:2%;border-radius:60%;background:#291f1f}
+.portrait-eye.left{left:36%}.portrait-eye.right{right:36%}
+.portrait-nose{left:50%;top:48%;height:10%;border-left:1px solid #612f3669;border-bottom:1px solid #612f3669}
+.portrait-mouth{left:45%;top:61%;width:10%;border-top:1px solid #652f338f;border-radius:35%}
+.appearance-older .portrait-eye{box-shadow:0 2px #542b3a39,0 4px #542b3a22}
+.appearance-child .portrait-face{top:25%;height:43%;border-radius:48%}
+.portrait-clasp{bottom:8%;left:28%;width:10%;aspect-ratio:1;border-radius:50%;background:#d5b06e;border:1px solid #7c5e38}
+.house-families,.house-family-members{display:grid;gap:6px}
+.house-families{grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));margin:6px 0 10px}
+.house-family{min-width:0;border:1px solid #657355;border-radius:8px;background:#1d3327;padding:6px 8px}
+.house-family>summary{min-height:44px;padding:12px 0;color:#ecdbad;font-size:12px;font-weight:750;cursor:pointer}
+.house-family-members{grid-template-columns:repeat(auto-fit,minmax(min(100%,115px),1fr))}
+.house-family-member{display:flex;align-items:center;gap:5px;min-width:0;margin:0;padding:4px 5px;border:1px solid #53664c;border-radius:6px;background:#172b21}
+.house-family-portrait,.town-person-portrait{width:34px;flex:none}
+.house-family-meta,.town-person-family{min-width:0;color:#d6deca;font-size:10px;line-height:1.35;overflow-wrap:anywhere}
+.house-family-meta b,.house-family-meta small{display:block}
+.house-family-meta b{color:#ebd8a4}
+#screenTown .town-person-profile{display:flex;align-items:center;gap:6px;min-width:0}
+@media(max-width:500px){
+ .create-layout{grid-template-columns:1fr}
+ .create-appearance{grid-template-columns:minmax(64px,.65fr) minmax(0,1fr)}
+ .create-actions .btn{flex:1}
+}
+@media(orientation:landscape) and (max-height:390px){
+ #screenCreate .create-modal{padding:8px}
+ .create-identity,.create-appearance{padding:6px}
+ .create-heading{margin-bottom:5px}
+ .create-actions{margin-top:6px}
+}
