@@ -2,6 +2,10 @@
 
 [Party, troop trees, deployment and equipment](ROADMAP.md)
 
+## V4.13 — Smithy & battlefield loot
+
+Forge swords and spears at town, capital and castle smithies. Choose parts and a finish to tune reach, damage, handling and weight. Pay with materials and denars or use the all-gold price. Equip the finished weapon or submit it as a pattern for a compatible troop type. Victories recover equipment actually carried by defeated enemies. Sell spare gear or salvage it for materials at a smithy.
+
 ## V4.12 — Deployment & Reserves
 
 Choose **Plan deployment** before a campaign or Classic practice battle. Pick who starts, hold fit troops back in reserve, and place formations on your side of the battlefield. A company of up to 75 can field 50 troops at once. Reserves stay off the field for that battle and keep their campaign health and training. **Quick Start** uses the default lineup and starts immediately.
