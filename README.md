@@ -2,6 +2,12 @@
 
 [Party, troop trees, deployment and equipment](ROADMAP.md)
 
+## V4.18 — Prisoners and smithy workshops
+
+Take up to twelve prisoners from enemies who surrender in campaign victories. Open **Party** to release captives, or visit a **Garrison** to ransom realm soldiers in a town or capital and turn in outlaws. The game shows captives and any overflow on the battle aftermath.
+
+Open **Market** in a town or capital to fund a smithy with gold, iron, timber, and tools. Choose swords, spears, or axes and send output to the market or reserve it for the company. The smithy draws on its reserves and buys missing materials from the actual market. Withdraw net proceeds from sales, pick up finished weapons, or issue a complete batch to a compatible troop group. Workshops progress on campaign days and can wait for stock, money, buyers, or storage space.
+
 ## V4.17 — Character creation and noble families
 
 Choose your hero's name, homeland, background, age, and appearance, or roll a new look. Every new campaign generates 20 noble families with a head, partner, and two children each. See household ages, names, and looks in **The Ten Factions** and **People here** at the family seat. House heads can discuss local roads and provide retainers at their seats when present. Existing saves preserve their named leaders and active trips. The generator takes a seed, realm descriptions, houses, and seats, so it can be reused with other maps.
