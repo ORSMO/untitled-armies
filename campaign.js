@@ -3,6 +3,7 @@
 'use strict';
 const W=window.UAWorld;if(!W)throw Error('World data is missing');
 const $=id=>document.getElementById(id),F=W.factions,S=W.settlements,ARMORY=window.UAArmory,FORGE=window.UABattleForge,NOBLES=window.UANobles,CHARACTERS=window.UACampaignCharacters,CHAR_UI=window.UACharacterUI,BASE_SETTLEMENTS=S.map(site=>({prosperity:site.prosperity,garrison:site.garrison}));
+const PRISONERS=window.UAPrisoners,WORKSHOPS=window.UACampaignWorkshops;
 const KEY='ua-campaign-v1',VERSION=1,MAXPARTY=75,MAX_DEPLOYED=50,MAX_ACTIVE_WORLD_WARS=2;
 const clamp=W.clamp,dist=(a,b,x,y)=>Math.hypot(a-x,b-y),esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const canvas=$('worldCanvas'),ctx=canvas.getContext('2d'),mini=$('minimap'),mctx=mini.getContext('2d');
@@ -30,6 +31,8 @@ const ITEMS={
 };
 const TRADE_RESOURCES=['grain','timber','iron','tools','salt'];
 const FORGE_MATERIALS=['iron','timber','tools'];
+const WORKSHOP_ITEMS=['sword','spear','axe'];
+const WORKSHOP_STAKE={gold:220,materials:{iron:2,timber:2,tools:1}};
 const FORGE_GEAR_SALVAGE={
  sword:{iron:2},axe:{iron:2,timber:1},spear:{iron:1,timber:2},bow:{timber:3},
  shortsword:{iron:1},greatsword:{iron:3},pike:{iron:1,timber:3},lance:{iron:1,timber:2},
@@ -267,6 +270,7 @@ function preparePlayer(p){
  }));
  p.houseFavor=Object.fromEntries(HOUSES.map(h=>[h.id,clamp(Math.floor(Number(p.houseFavor?.[h.id])||0),0,100)]));
  p.retainerDays=Object.fromEntries(HOUSES.filter(h=>Number.isInteger(p.retainerDays?.[h.id])).map(h=>[h.id,p.retainerDays[h.id]]));
+ p.prisoners=PRISONERS.normalize(p.prisoners);
  p.inventory={arrows:24,stones:0,food:0,grain:0,timber:0,iron:0,tools:0,salt:0,...(p.inventory||{})};
  p.equipment={weapon:'sword',armor:'paddedArmor',shield:'roundShield',quiver:'quiver',...(p.equipment||{})};
  p.forge=normalizeCampaignForge(p.forge);
@@ -290,7 +294,7 @@ function saveGame(silent){
    familySeed:state.familySeed,familyVersion:CHARACTERS.GENERATOR_VERSION,legacyHouseLeaders:state.legacyHouseLeaders,
    familyProfiles:[...state.families.values()].flat().map(({id,name,age,appearance})=>({id,name,age,appearance})),
    options:state.options,speed:1,zoom:camera.zoom,visitedLandmarks:state.visitedLandmarks||[],pendingBattleId:state.pendingBattleId||null,lastEncounter:state.lastEncounter,
-   marketStocks:state.marketStocks||{},completedContracts:state.completedContracts||[],diplomacy:state.diplomacy,settlementProjects:state.settlementProjects||{},settlementState:S.map(site=>({prosperity:site.prosperity,garrison:site.garrison}))};
+   marketStocks:state.marketStocks||{},workshops:state.workshops,completedContracts:state.completedContracts||[],diplomacy:state.diplomacy,settlementProjects:state.settlementProjects||{},settlementState:S.map(site=>({prosperity:site.prosperity,garrison:site.garrison}))};
   const serialized=JSON.stringify(data),previous=localStorage.getItem(KEY);
   if(previous&&previous!==serialized){try{const older=localStorage.getItem(KEY+'-backup-1');if(older)localStorage.setItem(KEY+'-backup-2',older);localStorage.setItem(KEY+'-backup-1',previous)}catch(e){}}
   localStorage.setItem(KEY,serialized);
@@ -331,7 +335,7 @@ function startCampaign(){
    level:1,xp:0,renown:0,roster:firstTroops,quest:{id:0,progress:0,goal:3,done:false}},
    day:1,hour:8,waiting:false,waitSpeed:1,paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,
    followPartyId:null,followRepath:0,visitedLandmarks:[],pendingBattleId:null,
-   parties:[],options:{...settingsDefault},messages:[],unseen:[],lastEncounter:-100,marketStocks:{},completedContracts:[],diplomacy:createDiplomacy(),settlementProjects:{}};
+   parties:[],options:{...settingsDefault},messages:[],unseen:[],lastEncounter:-100,marketStocks:{},workshops:{},completedContracts:[],diplomacy:createDiplomacy(),settlementProjects:{}};
   state.player=preparePlayer(state.player);
   state.parties=generateParties();installFamilies();installNobles();initializeMarkets();selected={type:'settlement',id:origin*8};
  camera.zoom=.47;resetView();$('game').classList.remove('hidden');showScreen(null);resize();
@@ -355,7 +359,7 @@ function loadGame(){
    paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,
    followPartyId:null,followRepath:0,visitedLandmarks:Array.isArray(raw.visitedLandmarks)?raw.visitedLandmarks:[],pendingBattleId:raw.pendingBattleId||null,
    parties:[],options:{...settingsDefault,...raw.options},
-   messages:[],lastEncounter:Number.isFinite(raw.lastEncounter)?raw.lastEncounter:-100,marketStocks:raw.marketStocks&&typeof raw.marketStocks==='object'?raw.marketStocks:{},completedContracts:Array.isArray(raw.completedContracts)?raw.completedContracts:[],diplomacy:normalizeDiplomacy(raw.diplomacy,raw.day||1),settlementProjects:raw.settlementProjects&&typeof raw.settlementProjects==='object'?raw.settlementProjects:{}};
+   messages:[],lastEncounter:Number.isFinite(raw.lastEncounter)?raw.lastEncounter:-100,marketStocks:raw.marketStocks&&typeof raw.marketStocks==='object'?raw.marketStocks:{},workshops:WORKSHOPS.normalize(raw.workshops,S,raw.day||1),completedContracts:Array.isArray(raw.completedContracts)?raw.completedContracts:[],diplomacy:normalizeDiplomacy(raw.diplomacy,raw.day||1),settlementProjects:raw.settlementProjects&&typeof raw.settlementProjects==='object'?raw.settlementProjects:{}};
   restoreSettlementState(raw.settlementState);state.parties=generateParties();initializeMarkets();
   if(Array.isArray(raw.parties))for(const saved of raw.parties){let a=state.parties.find(v=>v.id===saved.id);
     if(!a&&Number.isInteger(saved.id)&&saved.id>=68&&['bandit','patrol','caravan'].includes(saved.kind)&&
@@ -689,6 +693,10 @@ function advanceEconomy(){
    if(TRADE_RESOURCES.includes(id)||id==='food')continue;
    const cap=market.capacity[id]||defaultMarketCapacity(id,site),restock=['arrows','stones'].includes(id)&&state.day%2===0?1:state.day%4===0?1:0;
    stock[id]=Math.min(cap,stock[id]+restock);
+  }
+  if(state.workshops[site.id]){
+   const demand=site.prosperity<20?0:site.marketTier==='hub'&&site.prosperity>=65?2:1;
+   WORKSHOPS.processDay(state.workshops,site.id,{day:state.day,market,prices:workshopPrices(site),demand});
   }
   market.lastDay=state.day;
  }
@@ -1073,6 +1081,52 @@ function townNobleAction(action,id){
   dialogue.scrollIntoView?.({block:'nearest'});
  }
 }
+function renderPrisoners(site=null){
+ const section=$(site?'townPrisoners':'partyPrisoners'),list=$(site?'townPrisonerList':'partyPrisonerList');
+ const prisoners=state.player.prisoners,count=PRISONERS.count(prisoners);
+ section.hidden=!!site&&(site.type==='village'||!count);
+ const summary='<p class="town-service-note"><b>'+count+' / '+PRISONERS.CAPACITY+'</b> prisoners</p>';
+ if(!count){list.innerHTML=summary+'<p class="subtle">Surrendering enemies can be taken prisoner after a victory.</p>';return}
+ const roles={infantry:'Infantry',archer:'Archer',cavalry:'Cavalry',horseArcher:'Horse archer'};
+ const ranks=['Recruit','Trained','Veteran'];
+ list.innerHTML=summary+prisoners.groups.map(group=>{
+  const title=group.kind==='outlaw'?'Outlaws':F[group.faction].name+' soldiers';
+  const descriptors=[ranks[group.tier],roles[group.role]].filter(Boolean).join(' · ');
+  const action=site?(group.kind==='outlaw'?'handoff':'ransom'):'release';
+  const choices=site||group.count===1?[group.count]:[1,group.count];
+  const locality=site||W.closestSettlement(state.player.x,state.player.y);
+  const buttons=choices.map(quantity=>{
+   const quote=PRISONERS.quote(prisoners,action,group.id,quantity,locality);
+   if(!quote.ok)return '<small class="subtle">'+esc(quote.reason)+'</small>';
+   const standing=quote.standing?(quote.standing>0?'+':'')+quote.standing+' standing':'';
+   const label=action==='release'?'Release '+quantity+(standing?' · '+standing:''):action==='ransom'?'Ransom · '+quote.gold+' denars':'Hand over · '+quote.gold+' denars';
+   return '<button class="btn small secondary" type="button" data-captive-action="'+action+'" data-captive-id="'+esc(group.id)+'" data-captive-quantity="'+quantity+'" data-captive-count="'+quote.expectedCount+'">'+label+'</button>';
+  }).join('');
+  return '<article class="captive-row"><span class="captive-meta"><b>'+group.count+' × '+esc(title)+'</b>'+
+   '<small>'+esc(descriptors)+'</small></span><span class="captive-actions">'+buttons+'</span></article>';
+ }).join('')+(site?'':'<p class="subtle">Ransom soldiers in a town, or take outlaws to a garrison.</p>');
+}
+function handlePrisonerClick(event,atTown){
+ const button=event.target.closest('[data-captive-action]');
+ if(!button)return false;
+ const p=state?.player,site=atTown?S[state?.currentTownId]:null;
+ if(!p||button.disabled||(atTown?!site||!smithyIsOpen(site.id):$('screenParty').classList.contains('hidden')))return true;
+ const action=button.dataset.captiveAction;
+ if(atTown?(action!=='ransom'&&action!=='handoff'):action!=='release')return true;
+ const quote=PRISONERS.apply(p.prisoners,action,button.dataset.captiveId,Number(button.dataset.captiveQuantity),
+  site||W.closestSettlement(p.x,p.y),Number(button.dataset.captiveCount));
+ if(!quote.ok){notify(quote.reason);renderPrisoners(site);return true}
+ const previous={prisoners:p.prisoners,gold:p.gold,reputation:p.reputation.slice()};
+ p.prisoners=quote.state;p.gold+=quote.gold;
+ if(quote.standing)changeStanding(quote.standingFaction,quote.standing);
+ if(!saveGame(true)){Object.assign(p,previous);notify('Could not save the prisoner decision.');return true}
+ const result=action==='release'?'Released ':action==='ransom'?'Ransomed ':'Handed over ';
+ const message=result+quote.quantity+(quote.quantity===1?' prisoner':' prisoners')+
+  (quote.gold?' · +'+quote.gold+' denars':'')+(quote.standing?' · '+(quote.standing>0?'+':'')+quote.standing+' standing':'')+'.';
+ log(message);notify(message);refreshUI();renderPrisoners(site);
+ $(site?'townPrisonerNotice':'partyPrisonerNotice').textContent=message;
+ return true;
+}
 function showTown(id){
  const site=S[id];if(!site)return;const f=F[site.faction];
  const alreadyInside=state.currentTownId===id&&!$('screenTown').classList.contains('hidden');
@@ -1091,9 +1145,9 @@ function showTown(id){
  const standing=Number(state.player.reputation[site.faction])||0;
  $('townDescription').textContent=house.name+' · '+(specialty?specialty+' production · ':'')+Math.round(site.prosperity)+' prosperity · '+standingLabel(standing)+' standing';
  const destinations=[
-  {view:'market',icon:'🛒',name:'Visit the market',detail:'Trade for food, arms, and armor.'},
+  {view:'market',icon:'🛒',name:'Visit the market',detail:workshopSite(site)?'Trade goods or manage a workshop.':'Trade for food, arms, and armor.'},
   {view:'inn',icon:'🍺',name:'Find the inn',detail:'Rest, heal, and recover the company.'},
-  {view:'garrison',icon:'🛡',name:'Visit the garrison',detail:'Recruit volunteers for your party.'},
+  {view:'garrison',icon:'🛡',name:'Visit the garrison',detail:site.type!=='village'&&PRISONERS.count(state.player.prisoners)?'Recruit soldiers or handle prisoners.':'Recruit volunteers for your party.'},
   {view:'contracts',icon:'📜',name:'Read the contract board',detail:'Find work and earn coin and renown.'},
   {view:'news',icon:'🗞',name:'Ask around',detail:'Hear what travelers say about the roads.'}
  ];
@@ -1117,6 +1171,7 @@ function showTown(id){
   actions.push({act:'retainers',id,disabled:!!retainer.reason,label:retainer.reason?'Trained retainers · '+retainer.reason:'Recruit '+retainer.count+' × '+retainer.name+' · '+retainer.count*retainer.cost+' denars · +'+wages+'/day'});
  }
  $('townGarrisonAction').innerHTML=renderQuantityAction('recruit',id)+renderActions(actions);
+ $('townPrisonerNotice').textContent='';renderPrisoners(site);
  $('townNewsText').textContent=townRumor(site);
  $('townNewsAction').innerHTML=renderActions([{act:'rumors',id,primary:true,label:'Ask for fresh news'}]);
  const market=townMarket(id);
@@ -1130,6 +1185,7 @@ function showTown(id){
   const itemDetail=it.slot?ITEM_SLOT_LABELS[it.slot]+' · '+owned+' owned':owned+(resource?' units owned':' owned');
   return '<article class="shop-item'+(resource?' resource-item':'')+'"><span class="shop-icon">'+it.icon+'</span><span><b>'+esc(it.name)+'</b><small>'+esc(itemDetail)+' · '+stockLabel+(site.specialty===item.id?' · local specialty':'')+'</small></span><span class="shop-actions"><button class="btn small" data-buy-item="'+item.id+'" '+(buyDisabled?'disabled':'')+'>'+buyLabel+'</button>'+sell+'</span></article>'
  }).join('');
+ $('townWorkshopNotice').textContent='';renderWorkshop(site);
  $('townContracts').innerHTML=renderTownContracts(id);
  if(alreadyInside){for(const [element,position] of scrollPositions){if(element)element.scrollTop=position}}
  else{
@@ -1165,6 +1221,131 @@ function townMarket(id){
  const site=S[id];if(!site)return[];const market=ensureMarket(site);
  return marketGoods(site).map(itemId=>({id:itemId,stock:market.stock[itemId]||0,capacity:market.capacity[itemId]||defaultMarketCapacity(itemId,site),price:marketPrice(site,itemId)}));
 }
+function workshopSite(site){return site?.type==='town'||site?.type==='capital'}
+function workshopPrices(site){
+ return Object.fromEntries([...FORGE_MATERIALS,...WORKSHOP_ITEMS].map(id=>[id,marketPrice(site,id)]));
+}
+function workshopMaterials(materials){
+ return FORGE_MATERIALS.filter(id=>materials[id]>0).map(id=>materials[id]+' '+id).join(', ');
+}
+function workshopCanFund(player,deposit){
+ return player.gold>=deposit.gold&&FORGE_MATERIALS.every(id=>(player.inventory[id]||0)>=(deposit.materials[id]||0));
+}
+function workshopTroopGroups(item,stock){
+ const choices=new Map(),p=state.player;
+ for(const group of p.roster){
+  const key=ARMORY.designKey(group.faction,group.tier,group.unitId);
+  if(p.forge.troops[key]||!ARMORY.allowedWeapons(group.faction,group.tier,group.unitId).includes(item))continue;
+  if(kingdomLoadout(group.faction,group.tier,group.unitId).weaponId===item)continue;
+  if(!choices.has(key))choices.set(key,{key,group,count:0,label:troopName(group)});
+  choices.get(key).count+=group.count;
+ }
+ return [...choices.values()].filter(choice=>choice.count<=stock);
+}
+function workshopButton(action,label,disabled=false,item='',quantity=0){
+ return '<button type="button" class="btn small secondary" data-workshop-action="'+action+'"'+
+  (item?' data-workshop-item="'+item+'" data-workshop-quantity="'+quantity+'"':'')+
+  (disabled?' disabled':'')+'>'+esc(label)+'</button>';
+}
+function renderWorkshop(site){
+ const section=$('townWorkshop'),list=$('townWorkshopList'),eligible=workshopSite(site);
+ section.hidden=!eligible;if(!eligible)return;
+ const p=state.player,workshop=state.workshops[site.id];
+ if(!workshop){
+  const cost=WORKSHOP_STAKE.gold+' denars, '+workshopMaterials(WORKSHOP_STAKE.materials);
+  list.innerHTML='<div class="workshop-row"><span class="workshop-actions">'+
+   workshopButton('fund','Fund smithy',!workshopCanFund(p,WORKSHOP_STAKE))+
+   '</span><span class="workshop-meta"><small>Deposit '+esc(cost)+'</small></span></div>'+
+   '<p class="subtle">Make weapons for the market or your company.</p>';
+  return;
+ }
+ const recipeId=WORKSHOP_ITEMS.includes(workshop.recipeId)?workshop.recipeId:'sword';
+ const options=WORKSHOP_ITEMS.map(id=>'<option value="'+id+'"'+(recipeId===id?' selected':'')+'>'+esc(ITEMS[id].name)+'</option>').join('');
+ const quote=WORKSHOPS.quote(recipeId,workshopPrices(site));
+ const remaining=workshopMaterials(workshop.materials)||'no materials reserved';
+ const stock=ensureMarket(site).stock;
+ const stockLine=FORGE_MATERIALS.filter(id=>quote.materials[id]>0).map(id=>stock[id]+' '+id).join(' · ');
+ const statuses={no_funds:'Deposit more denars for materials and labor.',market_shortage:'Production is waiting for materials.',market_full:'The market has no room for more weapons.',
+  no_demand:'The shop is waiting for buyers.',company_storage_full:'Pick up the finished weapons to make room.'};
+ const status=statuses[workshop.blockedReason];
+ const reason=status?'<p class="subtle">'+status+'</p>':'';
+ const pickup=WORKSHOP_ITEMS.filter(id=>workshop.companyStock[id]>0).map(id=>{
+  const quantity=workshop.companyStock[id],choices=workshopTroopGroups(id,quantity);
+  const assign=choices.length?'<label class="workshop-meta" for="workshop-unit-'+id+'">Issue to a troop group</label>'+
+   '<select id="workshop-unit-'+id+'">'+choices.map(c=>'<option value="'+esc(c.key)+'">'+esc(c.label)+' · '+c.count+' weapons</option>').join('')+'</select>'+
+   workshopButton('issue','Issue weapons',false,id,quantity):'';
+  return '<article class="workshop-row"><span class="workshop-meta"><b>'+quantity+' × '+esc(ITEMS[id].name)+'</b><small>Ready for pickup</small></span>'+
+   '<div class="workshop-actions">'+workshopButton('collect','Collect '+quantity,false,id,quantity)+assign+'</div></article>';
+ }).join('');
+ list.innerHTML='<div class="workshop-row"><span class="workshop-meta"><b>'+workshop.treasury+' denars in the smithy</b><small>'+esc(remaining)+'</small></span><span class="workshop-actions">'+
+  workshopButton('addGold','Deposit 120 denars',p.gold<120)+workshopButton('addMaterials','Deposit materials',!workshopCanFund(p,{gold:0,materials:WORKSHOP_STAKE.materials}))+'</span></div>'+
+  '<p class="subtle">Material deposit · '+esc(workshopMaterials(WORKSHOP_STAKE.materials))+'</p>'+
+  '<div class="workshop-row"><label class="workshop-meta" for="workshopRecipe">Make</label><select id="workshopRecipe">'+options+'</select></div>'+
+  '<div class="workshop-row"><label class="workshop-meta" for="workshopOutput">Send to</label><select id="workshopOutput">'+
+  '<option value="market"'+(workshop.output==='market'?' selected':'')+'>Town market</option><option value="company"'+(workshop.output==='company'?' selected':'')+'>Company pickup</option></select></div>'+
+  '<p class="subtle">Per weapon · '+esc(workshopMaterials(quote.materials))+' · '+quote.labor+' denars labor'+
+  (workshop.output==='market'?' · '+quote.ownerSharePerSale+' denar share before costs':'')+'<br>Local stock · '+esc(stockLine)+'</p>'+reason+
+  '<div class="workshop-row"><span class="workshop-meta"><b>'+Math.min(workshop.earnings,workshop.treasury).toLocaleString()+' denars to collect</b><small>'+
+  workshop.producedTotal+' made · '+workshop.soldTotal+' sold</small></span><span class="workshop-actions">'+
+  workshopButton('earnings','Collect proceeds',Math.min(workshop.earnings,workshop.treasury)<1)+'</span></div>'+pickup;
+}
+function handleWorkshopAction(event){
+ const button=event.target.closest?.('[data-workshop-action]');
+ const control=event.type==='change'&&['workshopRecipe','workshopOutput'].includes(event.target.id);
+ if(!button&&!control)return false;
+ const p=state?.player,site=S[state?.currentTownId];
+ if(!p||!workshopSite(site)||!smithyIsOpen(site.id)||button?.disabled)return true;
+ const workshops=state.workshops,workshop=workshops[site.id];
+ const before=workshop?JSON.parse(JSON.stringify(workshop)):null;
+ const playerBefore={gold:p.gold,inventory:{...p.inventory},armory:{...p.armory}};
+ const savePrevious=()=>{
+  if(before)workshops[site.id]=before;
+  else delete workshops[site.id];
+  Object.assign(p,playerBefore);
+ };
+ let result,message='';
+ const action=button?.dataset.workshopAction,item=button?.dataset.workshopItem,quantity=Number(button?.dataset.workshopQuantity);
+ if(action==='fund'&&!workshop&&workshopCanFund(p,WORKSHOP_STAKE)){
+  result=WORKSHOPS.fund(workshops,site.id,p,WORKSHOP_STAKE,state.day);
+  if(result.valid)result=WORKSHOPS.setOrder(workshops,site.id,{recipeId:'sword',output:'market'});
+  message='Smithy funded in '+site.name+'. Production starts the next campaign day.';
+ }else if(!workshop)return true;
+ else if(control){
+  result=WORKSHOPS.setOrder(workshops,site.id,{recipeId:$('workshopRecipe').value,output:$('workshopOutput').value});
+  message='Workshop order updated.';
+ }else if(action==='addGold'||action==='addMaterials'){
+  const deposit=action==='addGold'?{gold:120,materials:{}}:{gold:0,materials:WORKSHOP_STAKE.materials};
+  if(!workshopCanFund(p,deposit))return true;
+  result=WORKSHOPS.fund(workshops,site.id,p,deposit);
+  message=action==='addGold'?'Deposited 120 denars.':'Deposited materials.';
+ }else if(action==='earnings'){
+  result=WORKSHOPS.collectEarnings(workshops,site.id,p);
+  message=result.valid?'Collected '+result.amount.toLocaleString()+' denars from workshop sales.':'';
+ }else if((action==='collect'||action==='issue')&&WORKSHOP_ITEMS.includes(item)&&workshop.companyStock[item]===quantity&&quantity>0){
+  if(action==='collect'){
+   result=WORKSHOPS.collect(workshops,site.id,p,item,quantity);
+   message='Collected '+quantity+' × '+ITEMS[item].name+'.';
+  }else{
+   const key=$('workshop-unit-'+item)?.value;
+   const choice=workshopTroopGroups(item,quantity).find(c=>c.key===key);
+   if(!choice)return true;
+   const group=choice.group,kit=ARMORY.normalizeDesign(group.faction,group.tier,{weaponId:item,style:'balanced',name:ITEMS[item].name},group.unitId);
+   if(!kit)return true;
+   result=WORKSHOPS.collect(workshops,site.id,p,item,choice.count);
+   if(result.valid){p.inventory[item]-=choice.count;p.armory[key]=kit}
+   message='Issued '+choice.count+' weapons to '+choice.label+'.';
+  }
+ }
+ if(!result?.valid){
+  savePrevious();renderWorkshop(site);notify('Review the workshop’s current funds, stock, and order.');return true;
+ }
+ if(!saveGame(true)){
+  savePrevious();renderWorkshop(site);notify('Could not save the workshop change.');return true;
+ }
+ log(message);notify(message);refreshUI();renderWorkshop(site);$('townWorkshopNotice').textContent=message;
+ if(control)$(event.target.id).focus();
+ return true;
+}
 function buyItem(id){
  const it=ITEMS[id],p=state?.player,site=S[state?.currentTownId];if(!it||!p||!site)return;
  const market=ensureMarket(site),item=townMarket(site.id).find(v=>v.id===id);if(!item||item.stock<1){notify('The local market is sold out.');return}
@@ -1172,6 +1353,7 @@ function buyItem(id){
  if(it.resource&&item.stock<quantity){notify('The market needs more stock before it can sell a bundle of '+quantity+'.');return}
  if(p.gold<total){notify('Not enough denars.');return}
  p.gold-=total;market.stock[id]-=quantity;
+ if(state.workshops[site.id]&&WORKSHOP_ITEMS.includes(id))WORKSHOPS.recordPlayerPurchase(state.workshops,site.id,id,quantity);
  if(site.faction!==p.origin){setFactionRelation(p.origin,site.faction,factionRelation(p.origin,site.faction)+1);setFactionTension(p.origin,site.faction,factionTension(p.origin,site.faction)-1)}
  if(it.resource)grantItem(id,quantity);else if(id==='food')p.food+=8;else grantItem(id,id==='arrows'?12:id==='stones'?6:1);
  log('Bought '+(it.resource?quantity+' '+it.name.toLowerCase():it.name)+' in '+site.name+' for '+total+' denars.');
@@ -1515,7 +1697,7 @@ function launchCampaignBattle(party,deploymentPlanner=false){
   try{localStorage.removeItem('ua-campaign-battle-session-v1')}catch(e){}
   notify('Browser storage is needed for campaign battles.');return;
  }
- window.location.href='campaign-battle.html?campaign=1&v=4.17'+(deploymentPlanner?'&deploy=1':'');
+ window.location.href='campaign-battle.html?campaign=1&v=4.18'+(deploymentPlanner?'&deploy=1':'');
 }
 function skirmish(id,deploymentPlanner=false){
  const party=state?.parties.find(p=>p.id===id&&p.active);
@@ -1628,7 +1810,7 @@ function consumeBattleResult(){
  p.hp=clamp(Math.round(100*result.heroHp/result.heroMaxHp),14,100);
  p.inventory.arrows=Math.max(0,(p.inventory.arrows||0)-Math.max(0,Number(result.heroAmmoSpent)||0));
  p.inventory.stones=Math.max(0,(p.inventory.stones||0)-Math.max(0,Number(result.stonesSpent)||0));
- let reason;
+ let reason,captives=null;
  if(result.winner==='friend'){
    p.morale=clamp(p.morale+3-casualties.wounded*1.2-casualties.killed*3,0,100);
   if(party?.kind==='bandit'){
@@ -1649,6 +1831,8 @@ function consumeBattleResult(){
    }
   }
    const gear=collectBattleGear(result,party);
+   captives=PRISONERS.capture(p.prisoners,result,party);
+   p.prisoners=captives.state;
    reason='Victory. Recovered '+loot+' denars and earned '+exp+' experience.'+
     (gear.length?' Gear recovered: '+gear.join(', ')+'.':'');
   log(reason);
@@ -1675,6 +1859,11 @@ function consumeBattleResult(){
   casualties.killed+' killed or captured · '+casualties.wounded+' incapacitated · '+
   casualties.survivors+' returned fit · '+casualties.trained+' gained training.</p><p>Hero health '+p.hp+'% · Company morale '+Math.round(p.morale)+
   '/100. Wounded troops recover at inns.</p>';
+ if(captives&&(captives.captured||captives.overflow)){
+  const secured=captives.captured?captives.captured+' taken prisoner. ':'';
+  const released=captives.overflow?captives.overflow+' surrendered and were released.':'';
+  $('aftermathDetails').insertAdjacentHTML('beforeend','<p>'+secured+released+'</p>');
+ }
  const nearbyInn=aftermathInnSite();
  $('aftermathInn').classList.toggle('hidden',!nearbyInn);
  if(nearbyInn)$('aftermathInn').textContent='Visit the inn at '+nearbyInn.name;
@@ -2220,6 +2409,7 @@ function showParty(){
    '<div class="party-kit-actions"><button type="button" class="btn" data-edit-kit="'+index+'">⚒ Design weapon</button></div></article>';
  }).join('');
  $('partyModalContent').innerHTML=readiness+rest+(cards||'<p>No troops in your company.</p>');
+ $('partyPrisonerNotice').textContent='';renderPrisoners();
  openModal('screenParty');
 }
 function loadoutDescription(loadout){
@@ -2606,8 +2796,11 @@ $('partyModalContent').addEventListener('click',e=>{
  const edit=e.target.closest('[data-edit-kit]');
  if(edit)openArmory(state.player.roster[Number(edit.dataset.editKit)]);
 });
+$('partyPrisoners').addEventListener('click',e=>handlePrisonerClick(e,false));
 $('characterModalContent').addEventListener('click',e=>{const equip=e.target.closest('[data-equip]'),stat=e.target.closest('[data-stat]'),perk=e.target.closest('[data-perk]');if(equip)equipItem(equip.dataset.equip);else if(stat)improveStat(stat.dataset.stat);else if(perk)learnPerk(perk.dataset.perk)});
 $('screenTown').addEventListener('click',e=>{
+ if(handlePrisonerClick(e,true))return;
+ if(handleWorkshopAction(e))return;
  const audience=e.target.closest('[data-town-noble-act]');
  if(audience){townNobleAction(audience.dataset.townNobleAct,Number(audience.dataset.nobleId));return}
  if(handleQuantityClick(e))return;
@@ -2620,6 +2813,7 @@ $('screenTown').addEventListener('click',e=>{
  const abandoned=e.target.closest('[data-contract-cancel]');if(abandoned){abandonContract(abandoned.dataset.contractCancel);return}
  const contract=e.target.closest('[data-contract-accept]');if(contract)acceptContract(contract.dataset.contractAccept,state.currentTownId);
 });
+$('townWorkshop').addEventListener('change',handleWorkshopAction);
 document.querySelector('.town-nav').addEventListener('keydown',e=>{
  const current=e.target.closest('[data-town-view]');if(!current)return;
  const tabs=[...document.querySelectorAll('.town-nav [data-town-view]:not([hidden])')],index=tabs.indexOf(current);let next=index;
