@@ -55,6 +55,14 @@
 .encounter-actions #encounterLeave{grid-column:1/-1;text-align:center}
 .encounter-actions .btn.danger{background:#6c302a;border-color:#bc7965;color:#f9d6bd}
 .encounter-actions .btn.danger:hover{background:#8e4035}
+.encounter-modal [hidden]{display:none!important}
+.encounter-noble-details{display:grid;grid-template-columns:1.2fr 1.25fr minmax(65px,.6fr);gap:6px;margin:8px 0}
+.encounter-noble-details div{min-width:0;border:1px solid #7e805d;border-radius:8px;background:#243b2d;padding:7px 8px}
+.encounter-noble-details dt{color:#b8cbb6;font-size:10px}
+.encounter-noble-details dd{margin:2px 0 0;color:#f1d9a0;font-size:12px;font-weight:750;overflow-wrap:anywhere}
+#screenEncounter .encounter-modal:has(#encounterNobleDetails:not([hidden])) .encounter-actions{grid-template-columns:repeat(3,minmax(0,1fr))}
+#screenEncounter .encounter-modal:has(#encounterNobleDetails:not([hidden])) .encounter-actions .btn{min-height:44px;text-align:center}
+#screenEncounter .encounter-modal:has(#encounterNobleDetails:not([hidden])) #encounterLeave{grid-column:auto}
 .world-landmark-label{color:#f7dbb3}
 @media(max-width:600px){.encounter-rosters{gap:7px}.encounter-army{min-height:110px;padding:10px}.encounter-army strong{font-size:17px}.encounter-actions{grid-template-columns:1fr}.encounter-actions .btn{padding:10px}}
 /* Campaign 4.4: town market, character inventory, and thumb-friendly controls. */
@@ -167,8 +175,7 @@
 #screenTown .town-panel h3{margin:0 0 8px;color:#e8d5a3;font:700 17px Georgia,serif}
 #screenTown .town-panel p{max-width:70ch;margin:4px 0;color:#bacbb8;font-size:12px;line-height:1.45}
 #screenTown #townPanelOverview{background:radial-gradient(ellipse at 10% 0,#b69c5420,transparent 52%)}
-#screenTown .town-welcome-card{padding:9px 12px;border:1px solid #8b79513d;border-radius:8px;background:linear-gradient(110deg,#b39b4e12,#0b1b1633)}
-#screenTown .town-welcome-card .smallcaps,#screenTown .town-destination-heading .smallcaps{color:#d1b976;letter-spacing:.13em}
+#screenTown .town-destination-heading .smallcaps{color:#d1b976;letter-spacing:.13em}
 #screenTown .town-services-heading{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:10px 0 4px}
 #screenTown .town-services-heading h3{margin:0}
 #screenTown .town-services-heading span{color:#9fb09e;font-size:10px}
@@ -186,6 +193,20 @@
 #screenTown #townServices .town-activity-card[aria-pressed="true"],
 #screenTown #townServices .town-activity-card.is-active{border-color:#e4c77c;background:linear-gradient(135deg,#78613c,#493e2d);color:#fff0c9}
 #screenTown .town-activity-card small{color:#bdc9b5;font-size:10px;font-weight:500;line-height:1.3}
+#screenTown .town-overview:has(#townPeople:not([hidden])){display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:8px}
+#screenTown .town-overview-services{min-width:0}
+#screenTown .town-overview-services .town-services-heading{margin-top:0}
+#screenTown .town-overview:has(#townPeople:not([hidden])) #townServices{grid-template-columns:repeat(2,minmax(0,1fr))}
+#screenTown #townPeople[hidden],#screenTown #townPeopleDialogue:empty{display:none}
+#screenTown .town-people-list{display:grid;gap:5px}
+#screenTown .town-person{min-width:0;padding:7px;border:1px solid #7c7652;border-radius:8px;background:linear-gradient(145deg,#333a29,#192c24)}
+#screenTown .town-person-meta{display:grid;gap:2px;color:#f2dfaf;overflow-wrap:anywhere}
+#screenTown .town-person-meta small{color:#c1cfbc;font-size:10px;line-height:1.3}
+#screenTown .town-person-meta .town-person-status{color:#dacc9f}
+#screenTown .town-person-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,82px),1fr));gap:4px;margin-top:5px}
+#screenTown .town-person-actions .btn{min-height:44px;padding:4px;font-size:10px}
+#screenTown #townPeopleDialogue{margin:4px 0 0;padding:3px 6px;border-left:2px solid #d2b87a;background:#1a2e23}
+@media(max-width:540px){#screenTown .town-overview:has(#townPeople:not([hidden])){grid-template-columns:1fr}}
 #screenTown #townPanelMarket .market-caption,
 #screenTown #townPanelContracts .contract-caption{margin:0 0 8px;color:#cdb97c;letter-spacing:.13em}
 #screenTown #townShop{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-height:none;overflow:visible}
