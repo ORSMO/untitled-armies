@@ -113,16 +113,23 @@ function create(config={}){
   const olderAge=integer(4,maxChildAge,randomFor(seed,prefix+'child-1-age'));
   const youngerAge=integer(1,olderAge-1,randomFor(seed,prefix+'child-2-age'));
   const headGiven=pick(names.heads,randomFor(seed,prefix+'head-name'));
-  const partnerGiven=pick(names.partners,randomFor(seed,prefix+'partner-name'));
-  const childOneGiven=pick(names.children,randomFor(seed,prefix+'child-1-name'));
-  const childTwoGiven=pick(names.children,randomFor(seed,prefix+'child-2-name'));
+  const legacyLeader=preserveLegacyLeaders?String(house.leader||'').trim():'';
+  const usedNames=new Set(legacyLeader?legacyLeader.split(/\s+/):[headGiven]);
+  const takeName=(pool,role)=>{
+   const name=pick(pool.filter(candidate=>!usedNames.has(candidate)),randomFor(seed,prefix+role+'-name'));
+   usedNames.add(name);
+   return name;
+  };
+  const partnerGiven=takeName(names.partners,'partner');
+  const childOneGiven=takeName(names.children,'child-1');
+  const childTwoGiven=takeName(names.children,'child-2');
   const base={origin:house.faction,houseId:house.id,homeId:house.seatId};
   const headAppearance=randomAppearance(seed+'|'+house.id+'|head');
   const partnerAppearance=randomAppearance(seed+'|'+house.id+'|partner');
   const childOneAppearance=randomAppearance(seed+'|'+house.id+'|child-1');
   const childTwoAppearance=randomAppearance(seed+'|'+house.id+'|child-2');
   records.push(
-   {id:headId,name:preserveLegacyLeaders&&String(house.leader||'').trim()?String(house.leader):fullName(headGiven,family),age:headAge,...headAppearance,role:'head',parentIds:[],partnerId,...base},
+   {id:headId,name:legacyLeader||fullName(headGiven,family),age:headAge,...headAppearance,role:'head',parentIds:[],partnerId,...base},
    {id:partnerId,name:fullName(partnerGiven,family),age:partnerAge,...partnerAppearance,role:'partner',parentIds:[],partnerId:headId,...base},
    {id:'person-'+house.id+'-child-1',name:fullName(childOneGiven,family),age:olderAge,...childOneAppearance,role:'child',birthOrder:1,parentIds:[headId,partnerId],partnerId:null,...base},
    {id:'person-'+house.id+'-child-2',name:fullName(childTwoGiven,family),age:youngerAge,...childTwoAppearance,role:'child',birthOrder:2,parentIds:[headId,partnerId],partnerId:null,...base}
