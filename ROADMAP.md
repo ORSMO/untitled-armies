@@ -32,8 +32,8 @@ The immediate priority is the campaign loop: recruit, fight, recover, and improv
 
 ## Overworld releases
 
-1. **Road reliability.** Close stale bounties, give all moving parties a fair turn at route planning, and retest town entry and pursuit in landscape. Verify player bounty payouts and existing saves.
-2. **Valdorian nobles.** Add King Edric and Lady Isolde to the town menus and the roads. Give each a home, a reason to travel, and a location that persists through saves. Test meeting the same person at their seat and on the road.
+1. **Road reliability (V4.15).** Closed stale bounties and gave moving parties a fair turn at route planning. Verified town entry, pursuit, player bounty payouts, and existing saves.
+2. **Valdorian nobles (V4.16).** Meet King Edric and Lady Isolde at their seat, during visits, and on the roads. Their schedules and locations persist through saves.
 3. **Bandit territories.** Pilot road robbers, forest raiders, and highland deserters. Give each a distinct roster and region. Test that patrols respond to threats and that clearing a road creates a period of safety.
 4. **Trade and town news.** Follow one iron delivery from a village to a smithy. Make the destination market and local news reflect a delivery or a raid.
 5. **Rollout and map readability.** Extend the tested behaviors across the realms. Check phone controls, party markers, visibility, and older saves across several campaign weeks.
