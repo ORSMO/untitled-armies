@@ -19,7 +19,7 @@
   label{min-width:0;display:grid;gap:3px;color:var(--muted);font-size:12px;line-height:1.25}
   label[hidden]{display:none}
   .wide{grid-column:1/-1}
-  .field{grid-template-columns:2fr 1fr 1fr 1.5fr}
+  .field{grid-template-columns:1.7fr 1fr 1fr 1.3fr 1.7fr}
   select,input,button,a{font:inherit}
   select,input{width:100%;min-width:0;min-height:44px;border:1px solid var(--line);border-radius:7px;background:#0d2019;color:#edf0e2;padding:6px;font-size:16px}
   button,a{display:inline-grid;place-items:center;min-height:44px;padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:#213a2d;color:#edf0e2;text-decoration:none;font-size:14px;font-weight:700}
@@ -34,7 +34,7 @@
 <body>
 <form class="practice" id="practiceSetup" action="campaign-battle.html" method="get">
  <input type="hidden" name="practice" value="1">
- <input type="hidden" name="v" value="4.13">
+ <input type="hidden" name="v" value="4.14">
  <header>
   <h1>Practice battle</h1>
   <nav aria-label="Other modes">
@@ -116,6 +116,11 @@
      <option value="bow">Bow</option>
     </select>
    </label>
+   <label>Forge preset
+    <select name="forgePreset" id="practiceForgePreset">
+     <option value="">Use hero weapon</option>
+    </select>
+   </label>
   </fieldset>
  </main>
  <footer>
@@ -123,6 +128,7 @@
   <button type="submit" name="deploy" value="1">◇ Plan deployment</button>
  </footer>
 </form>
-<script src="battle-practice.js?v=4.13" defer></script>
+<script src="battle-forge.js?v=4.14" defer></script>
+<script src="battle-practice.js?v=4.14" defer></script>
 </body>
 </html>

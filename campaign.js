@@ -72,10 +72,15 @@ function houseFavor(house){return state?.player.houseFavor?.[house.id]||0}
 function forgeCategory(weapon){
  if(['sword','shortsword','greatsword'].includes(weapon))return 'sword';
  if(['spear','pike','lance'].includes(weapon))return 'spear';
- return null;
+ return weapon==='axe'?'axe':null;
+}
+function smithyBaseWeapon(loadout,category){
+ if(category==='bow')return ['bow','horsebow'].includes(loadout.ranged)?loadout.ranged:null;
+ return forgeCategory(loadout.weapon)===category?loadout.weapon:null;
 }
 function troopForgePreset(loadout,tier){
- const preset=loadout.weapon==='pike'?'pike-infantry':
+ const preset=loadout.weapon==='axe'?['recruit-axe','veteran-axe','heavy-axe'][tier]:
+  loadout.weapon==='pike'?'pike-infantry':
   loadout.weapon==='lance'?'cavalry-lance':
   loadout.weapon==='greatsword'?'heavy-infantry':
   loadout.weapon==='spear'?(loadout.role==='horseArcher'?'horse-archer-sidearm':tier>0&&loadout.shield?'shield-spear':'recruit-spear'):
@@ -88,7 +93,17 @@ function kingdomLoadout(faction,tier,unitId){
  const design=player?.armory?.[key],loadout=ARMORY.getLoadout(faction,tier,design,unitId);
  const build=player?.forge?.troops?.[key]||(!design&&troopForgePreset(loadout,tier));
  const weapon=build&&FORGE.resolve(build,{baseWeapon:loadout.weapon});
- return weapon?{...loadout,weaponName:weapon.name,stats:weapon.stats}:loadout;
+ const rangedBase=smithyBaseWeapon(loadout,'bow');
+ const preset=rangedBase==='horsebow'?'horsebow-mounted':tier===2?'veteran-warbow':'foot-warbow';
+ const bowBuild=rangedBase&&(player?.forge?.rangedTroops?.[key]||(!design&&FORGE.getPreset(preset)?.build));
+ const bow=bowBuild&&FORGE.resolve(bowBuild,{baseWeapon:rangedBase});
+ if(weapon){
+  loadout.stats=weapon.stats;
+  if(loadout.ranged)loadout.sidearmName=weapon.name;
+  else loadout.weaponName=weapon.name;
+ }
+ if(bow){loadout.weaponName=bow.name;loadout.rangedStats=bow.stats}
+ return loadout;
 }
 const SHOP_ITEMS=['food','sword','axe','spear','bow','paddedArmor','leatherArmor','mailArmor','plateArmor','roundShield','kiteShield','quiver','rockPouch','arrows','stones',...TRADE_RESOURCES];
 const ITEM_SLOT_LABELS={weapon:'Weapon',armor:'Armor',shield:'Shield',quiver:'Pouch / quiver'};
@@ -1046,7 +1061,7 @@ function sellFood(){
  refreshUI();saveGame(true);showTown(site.id);
 }
 function normalizeCampaignForge(raw){
- const items=[],ids=new Set(),troops={};
+ const items=[],ids=new Set(),troops={},rangedTroops={};
  let nextId=Number.isInteger(raw?.nextId)&&raw.nextId>0&&raw.nextId<=999999999?raw.nextId:1;
  for(const item of Array.isArray(raw?.items)?raw.items:[]){
   if(typeof item?.id!=='string'||!/^forge:[1-9]\d{0,8}$/.test(item.id)||ids.has(item.id))continue;
@@ -1058,11 +1073,13 @@ function normalizeCampaignForge(raw){
  for(const faction of F){
   const slots=faction.troops.map((_,tier)=>({tier})).concat(ARMORY.branchSlots(faction.id));
   for(const {tier,unitId} of slots){
-   const key=ARMORY.designKey(faction.id,tier,unitId),build=FORGE.normalizeBuild(raw?.troops?.[key]);
-   if(build&&build.category===forgeCategory(ARMORY.getLoadout(faction.id,tier,null,unitId).weapon))troops[key]=build;
+   const key=ARMORY.designKey(faction.id,tier,unitId),kit=ARMORY.getLoadout(faction.id,tier,null,unitId);
+   const weapon=FORGE.normalizeBuild(raw?.troops?.[key]),bow=FORGE.normalizeBuild(raw?.rangedTroops?.[key]);
+   if(weapon&&weapon.category!=='bow'&&smithyBaseWeapon(kit,weapon.category))troops[key]=weapon;
+   if(bow?.category==='bow'&&smithyBaseWeapon(kit,'bow'))rangedTroops[key]=bow;
   }
  }
- return {items,troops,equipped:ids.has(raw?.equipped)?raw.equipped:null,nextId};
+ return {items,troops,rangedTroops,equipped:ids.has(raw?.equipped)?raw.equipped:null,nextId};
 }
 function smithyAvailable(siteId){
  const site=S[siteId],p=state?.player;
@@ -1089,7 +1106,7 @@ function smithyQuote(build,siteId){
 function commitSmithy(message,apply){
  const p=state.player,forge=p.forge;
  const before={gold:p.gold,inventory:{...p.inventory},equipment:{...p.equipment},armory:{...p.armory},
-  forge:{...forge,items:forge.items.slice(),troops:{...forge.troops}}};
+  forge:{...forge,items:forge.items.slice(),troops:{...forge.troops},rangedTroops:{...forge.rangedTroops}}};
  apply(p);
  if(!saveGame(true)){
   Object.assign(p,before);notify('Could not save the equipment change.');return false;
@@ -1114,7 +1131,7 @@ function smithyTroopChoices(category){
  const choices=new Map();
  for(const group of state.player.roster){
   const kit=ARMORY.getLoadout(group.faction,group.tier,null,group.unitId);
-  if(forgeCategory(kit.weapon)!==category)continue;
+  if(!smithyBaseWeapon(kit,category))continue;
   const id=ARMORY.designKey(group.faction,group.tier,group.unitId);
   choices.set(id,{id,name:troopName(group)});
  }
@@ -1181,7 +1198,8 @@ function assignSmithyWeapon(siteId,id,kitId){
  const choice=row?.troopChoices.find(kit=>kit.id===kitId);
  if(!choice)return false;
  return commitSmithy('Assigned '+row.name+' to '+choice.name+'.',p=>{
-  p.forge.troops[kitId]=p.forge.items.find(item=>item.id===id).build;
+  const patterns=row.weapon.category==='bow'?p.forge.rangedTroops:p.forge.troops;
+  patterns[kitId]=p.forge.items.find(item=>item.id===id).build;
   delete p.armory[kitId];removeSmithyGear(p,row);
  });
 }
@@ -1338,7 +1356,7 @@ function launchCampaignBattle(party,deploymentPlanner=false){
   try{localStorage.removeItem('ua-campaign-battle-session-v1')}catch(e){}
   notify('Browser storage is needed for campaign battles.');return;
  }
- window.location.href='campaign-battle.html?campaign=1&v=4.13'+(deploymentPlanner?'&deploy=1':'');
+ window.location.href='campaign-battle.html?campaign=1&v=4.14'+(deploymentPlanner?'&deploy=1':'');
 }
 function skirmish(id,deploymentPlanner=false){
  const party=state?.parties.find(p=>p.id===id&&p.active);
@@ -2033,7 +2051,8 @@ function showParty(){
 }
 function loadoutDescription(loadout){
  if(!loadout)return '';
- return [ARMORY.roles[loadout.role].label,loadout.weaponName,loadout.armor+' armor',loadout.shield?loadout.shield+' shield':''].filter(Boolean).join(' · ');
+ return [ARMORY.roles[loadout.role].label,loadout.weaponName,loadout.sidearmName?loadout.sidearmName+' sidearm':'',
+  loadout.armor+' armor',loadout.shield?loadout.shield+' shield':''].filter(Boolean).join(' · ');
 }
 function selectedArmorySlot(){
  const [tier,unitId]=$('armoryTier').value.split(':');
@@ -2062,7 +2081,8 @@ function loadArmorySlot(selection=$('armoryTier').value){
  $('armoryWeapon').value=saved?.weaponId||standard.weaponId;
  $('armoryStyle').value=saved?.style||'balanced';
  $('armoryName').value=saved?.name||'';
- $('armoryReset').disabled=!saved&&!state.player.forge.troops[ARMORY.designKey(faction,tier,unitId)];
+ const key=ARMORY.designKey(faction,tier,unitId);
+ $('armoryReset').disabled=!saved&&!state.player.forge.troops[key]&&!state.player.forge.rangedTroops[key];
  previewArmory();
 }
 function openArmory(group=state?.player.roster[0]){
@@ -2085,15 +2105,18 @@ function generateWeapon(){
 }
 function assignWeapon(reset=false){
  const {faction,tier,unitId}=selectedArmorySlot(),key=ARMORY.designKey(faction,tier,unitId),player=state.player;
- const previous=player.armory[key],previousForge=player.forge.troops[key],design=ARMORY.normalizeDesign(faction,tier,armoryDraft(),unitId);
+ const previous=player.armory[key],previousForge=player.forge.troops[key],previousBow=player.forge.rangedTroops[key];
+ const design=ARMORY.normalizeDesign(faction,tier,armoryDraft(),unitId);
  if(reset)delete player.armory[key];
  else if(design)player.armory[key]=design;
  else return;
  delete player.forge.troops[key];
+ delete player.forge.rangedTroops[key];
  if(!saveGame(true)){
   if(previous)player.armory[key]=previous;
   else delete player.armory[key];
   if(previousForge)player.forge.troops[key]=previousForge;
+  if(previousBow)player.forge.rangedTroops[key]=previousBow;
   notify('Could not save the troop weapon.');return;
  }
  loadArmorySlot();
@@ -2103,9 +2126,12 @@ function showCharacter(){
  if(!state)return;const p=state.player,f=F[p.origin];
  const stats=Object.entries({strength:'Strength',agility:'Agility',tactics:'Tactics',leadership:'Leadership'}).map(([key,label])=>'<div class="attribute"><b>'+label+'</b><strong>'+p.stats[key]+'</strong><button class="btn small" data-stat="'+key+'" '+(p.statPoints?'':'disabled')+'>＋</button></div>').join('');
  const forged=currentForgedWeapon();
+ const usesBow=(forged?forged.category==='bow':p.equipment.weapon==='bow');
+ const bowStatus=usesBow?(p.equipment.quiver!=='quiver'?'Equip an arrow quiver':p.inventory.arrows>0?p.inventory.arrows+' arrows':'Out of arrows'):'';
  const slots=Object.entries(ITEM_SLOT_LABELS).map(([key,label])=>{
   const item=key==='weapon'&&forged?{name:forged.name,icon:'⚒'}:ITEMS[p.equipment[key]];
-  return '<div class="gear-slot"><small>'+label+'</small><b>'+(item?.icon||'—')+' '+esc(item?.name||'Empty')+'</b></div>';
+  return '<div class="gear-slot"><small>'+label+'</small><b>'+(item?.icon||'—')+' '+esc(item?.name||'Empty')+'</b>'+
+   (key==='weapon'&&bowStatus?'<small>'+esc(bowStatus)+'</small>':'')+'</div>';
  }).join('');
  const inventory=Object.entries({...p.inventory,food:p.food}).filter(([,count])=>count>0).map(([id,count])=>{
   const item=ITEMS[id];if(!item)return'';

@@ -68,13 +68,73 @@ const catalog={
    ]
   }
  },
+ axe:{
+  id:'axe',name:'Axe',baseWeapon:'axe',
+  baseProfile:{reach:43,damage:1.38,handling:1.38,weight:3.8},
+  baseWeapons:{
+   axe:{name:'Battle axe',profile:{reach:43,damage:1.38,handling:1.38,weight:3.8}}
+  },
+  parts:{
+   head:[
+    {id:'hatchet',name:'Hatchet head',reach:-5,damage:.93,handling:1.12,weight:-.4,cost:{gold:2,iron:1}},
+    {id:'bearded',name:'Bearded head',reach:0,damage:1,handling:1,weight:0,cost:{gold:3,iron:2}},
+    {id:'broad',name:'Broad head',reach:1,damage:1.08,handling:.94,weight:.24,cost:{gold:4,iron:2}},
+    {id:'crescent',name:'Crescent head',reach:2,damage:1.13,handling:.89,weight:.42,cost:{gold:6,iron:3,tools:1}}
+   ],
+   haft:[
+    {id:'short',name:'Short haft',reach:-3,damage:.97,handling:1.08,weight:-.18,cost:{gold:1,timber:1}},
+    {id:'standard',name:'Hickory haft',reach:0,damage:1,handling:1,weight:0,cost:{gold:2,timber:2}},
+    {id:'long',name:'Long haft',reach:4,damage:1.02,handling:.94,weight:.2,cost:{gold:3,timber:3,tools:1}},
+    {id:'reinforced',name:'Reinforced haft',reach:2,damage:1.06,handling:.93,weight:.3,cost:{gold:4,timber:2,iron:1,tools:1}}
+   ],
+   grip:[
+    {id:'cord',name:'Cord grip',reach:0,damage:.96,handling:1.08,weight:-.08,cost:{gold:1,timber:1}},
+    {id:'leather',name:'Leather wrap',reach:0,damage:1,handling:1.03,weight:0,cost:{gold:2,timber:1}},
+    {id:'twohand',name:'Two-hand wrap',reach:0,damage:1.06,handling:.98,weight:.1,cost:{gold:3,timber:2,tools:1}},
+    {id:'strapped',name:'Strapped grip',reach:0,damage:1.03,handling:1.05,weight:.08,cost:{gold:4,timber:1,iron:1,tools:1}}
+   ]
+  }
+ },
+ bow:{
+  id:'bow',name:'Bow',baseWeapon:'bow',
+  baseProfile:{range:1005,ideal:645,damage:1.28,draw:.62,reload:.64,weight:1.1,speed:520},
+  baseWeapons:{
+   bow:{name:'War bow',profile:{range:1005,ideal:645,damage:1.28,draw:.62,reload:.64,weight:1.1,speed:520,ammo:18,momentum:48,stamina:5,loft:46,twoHand:true}},
+   horsebow:{name:'Compact horse bow',profile:{range:710,ideal:420,damage:1.02,draw:.43,reload:.52,weight:.65,speed:475,ammo:24,momentum:39,stamina:3.6,loft:53,twoHand:true}}
+  },
+  parts:{
+   limbs:[
+    {id:'compact',name:'Compact limbs',range:-35,ideal:-20,damage:.93,handling:1.08,weight:-.12,cost:{gold:2,timber:1}},
+    {id:'balanced',name:'Balanced limbs',range:0,ideal:0,damage:1,handling:1,weight:0,cost:{gold:3,timber:2,tools:1}},
+    {id:'long',name:'Long limbs',range:70,ideal:45,damage:1.04,handling:.93,weight:.18,cost:{gold:4,timber:3,tools:1}},
+    {id:'war',name:'War limbs',range:45,ideal:30,damage:1.1,handling:.88,weight:.3,cost:{gold:6,timber:3,tools:2}}
+   ],
+   grip:[
+    {id:'light',name:'Light grip',range:-10,ideal:-5,damage:.97,handling:1.07,weight:-.08,cost:{gold:1,timber:1}},
+    {id:'ergonomic',name:'Ergonomic grip',range:0,ideal:0,damage:1.02,handling:1.03,weight:0,cost:{gold:2,timber:1}},
+    {id:'reinforced',name:'Reinforced grip',range:12,ideal:8,damage:1.05,handling:.96,weight:.12,cost:{gold:3,timber:2,tools:1}},
+    {id:'precision',name:'Precision grip',range:0,ideal:18,damage:1.04,handling:1,weight:.06,cost:{gold:4,timber:1,iron:1,tools:1}}
+   ],
+   string:[
+    {id:'linen',name:'Linen string',range:-15,ideal:-5,damage:.96,handling:1.05,weight:-.02,cost:{gold:1,timber:1}},
+    {id:'silk',name:'Silk string',range:20,ideal:10,damage:1.02,handling:1,weight:.02,cost:{gold:3,timber:1}},
+    {id:'waxed',name:'Waxed string',range:10,ideal:0,damage:1,handling:1.08,weight:.04,cost:{gold:3,timber:1,tools:1}},
+    {id:'braided',name:'Braided war string',range:35,ideal:20,damage:1.08,handling:.9,weight:.12,cost:{gold:5,timber:2,tools:1}}
+   ]
+  }
+ },
  finishes:[
   {id:'quick',name:'Quick',damage:.96,handling:1.08,weight:.94,cost:{gold:3,iron:0,timber:0,tools:0}},
   {id:'balanced',name:'Balanced',damage:1,handling:1,weight:1,cost:{gold:5,iron:1,timber:0,tools:0}},
   {id:'heavy',name:'Heavy',damage:1.1,handling:.91,weight:1.1,cost:{gold:8,iron:2,timber:0,tools:1}}
  ]
 };
-const baseCosts={sword:{gold:8,iron:2,timber:0,tools:1},spear:{gold:6,iron:1,timber:1,tools:1}};
+const baseCosts={
+ sword:{gold:8,iron:2,timber:0,tools:1},
+ spear:{gold:6,iron:1,timber:1,tools:1},
+ axe:{gold:10,iron:3,timber:2,tools:1},
+ bow:{gold:11,iron:0,timber:3,tools:1}
+};
 const presets=[
  {id:'recruit-sidearm',name:'Recruit’s sidearm',role:'infantry',unit:'Recruit infantry',baseWeapon:'sword',build:{category:'sword',blade:'short',guard:'plain',grip:'cord',pommel:'small',finish:'quick'}},
  {id:'shield-infantry',name:'Shield infantry sword',role:'infantry',unit:'Shield infantry',baseWeapon:'sword',build:{category:'sword',blade:'arming',guard:'cross',grip:'leather',pommel:'round',finish:'balanced'}},
@@ -86,9 +146,16 @@ const presets=[
  {id:'shield-spear',name:'Shieldwall spear',role:'infantry',unit:'Shield spearman',baseWeapon:'spear',build:{category:'spear',head:'narrow',shaft:'short',butt:'ferrule',finish:'quick'}},
  {id:'pike-infantry',name:'Long pike',role:'infantry',unit:'Pikeman',baseWeapon:'pike',build:{category:'spear',head:'narrow',shaft:'long',butt:'capped',finish:'heavy'}},
  {id:'cavalry-lance',name:'Cavalry spear',role:'cavalry',unit:'Cavalry lancer',baseWeapon:'lance',build:{category:'spear',head:'broad',shaft:'long',butt:'weighted',finish:'heavy'}},
- {id:'horse-archer-sidearm',name:'Horse archer’s spear',role:'horseArcher',unit:'Horse archer',baseWeapon:'spear',build:{category:'spear',head:'leaf',shaft:'short',butt:'plain',finish:'quick'}}
+ {id:'horse-archer-sidearm',name:'Horse archer’s spear',role:'horseArcher',unit:'Horse archer',baseWeapon:'spear',build:{category:'spear',head:'leaf',shaft:'short',butt:'plain',finish:'quick'}},
+ {id:'recruit-axe',name:'Recruit’s hand axe',role:'infantry',unit:'Axe infantry',baseWeapon:'axe',build:{category:'axe',head:'hatchet',haft:'short',grip:'cord',finish:'quick'}},
+ {id:'veteran-axe',name:'Veteran battle axe',role:'infantry',unit:'Veteran axe infantry',baseWeapon:'axe',build:{category:'axe',head:'broad',haft:'reinforced',grip:'strapped',finish:'balanced'}},
+ {id:'heavy-axe',name:'Heavy crescent axe',role:'infantry',unit:'Heavy axe infantry',baseWeapon:'axe',build:{category:'axe',head:'crescent',haft:'long',grip:'twohand',finish:'heavy'}},
+ {id:'foot-warbow',name:'Foot archer’s war bow',role:'archer',unit:'Foot archer',baseWeapon:'bow',build:{category:'bow',limbs:'long',grip:'ergonomic',string:'silk',finish:'balanced'}},
+ {id:'veteran-warbow',name:'Veteran war bow',role:'archer',unit:'Veteran archer',baseWeapon:'bow',build:{category:'bow',limbs:'war',grip:'reinforced',string:'braided',finish:'heavy'}},
+ {id:'light-archer-bow',name:'Light archer’s bow',role:'archer',unit:'Light archer',baseWeapon:'bow',build:{category:'bow',limbs:'compact',grip:'light',string:'waxed',finish:'quick'}},
+ {id:'horsebow-mounted',name:'Mounted archer’s bow',role:'horseArcher',unit:'Horse archer',baseWeapon:'horsebow',build:{category:'bow',limbs:'compact',grip:'light',string:'waxed',finish:'quick'}}
 ];
-const categories=['sword','spear'];
+const categories=['sword','spear','axe','bow'];
 const finishById=Object.fromEntries(catalog.finishes.map(item=>[item.id,item]));
 const presetById=Object.fromEntries(presets.map(item=>[item.id,item]));
 function copy(value){return JSON.parse(JSON.stringify(value))}
@@ -133,13 +200,16 @@ function resolve(input,options={}){
  const baseWeapon=requestedBase||category.baseWeapon;
  if(typeof baseWeapon!=='string'||!Object.prototype.hasOwnProperty.call(category.baseWeapons,baseWeapon))return null;
  const base=category.baseWeapons[baseWeapon];
- let reach=base.profile.reach,damageModifier=1,handlingModifier=1,weight=base.profile.weight;
+ const ranged=build.category==='bow';
+ let measure=ranged?base.profile.range:base.profile.reach,idealDelta=0;
+ let damageModifier=1,handlingModifier=1,weight=base.profile.weight;
  const cost={...baseCosts[build.category]},components=[];
  for(const [slot,id] of Object.entries(build)){
   if(slot==='category'||slot==='finish'||slot==='name')continue;
   const part=category.parts[slot].find(item=>item.id===id);
   if(!part)return null;
-  reach+=part.reach||0;
+  measure+=ranged?(part.range||0):(part.reach||0);
+  if(ranged)idealDelta+=part.ideal||0;
   damageModifier*=part.damage||1;
   handlingModifier*=part.handling||1;
   weight+=part.weight||0;
@@ -150,12 +220,24 @@ function resolve(input,options={}){
  for(const key of Object.keys(cost))cost[key]+=finish.cost?.[key]||0;
  // Keep engine-facing multipliers in the range its stat normalizer accepts.
  damageModifier=clamp(damageModifier,.86,1.14);handlingModifier=clamp(handlingModifier,.86,1.14);
- reach=Math.round(clamp(reach,28,104));weight=Number(clamp(weight,.9,4.2).toFixed(2));
+ measure=Math.round(clamp(measure,ranged?300:28,ranged?1300:104));
+ const minWeight=ranged?0.4:0.9,maxWeight=build.category==='axe'?5.2:4.2;
+ weight=Number(clamp(weight,minWeight,maxWeight).toFixed(2));
  const names=components.map(part=>part.name);
  const name=build.name||base.name+' · '+names.join(' / ')+' · '+finish.name;
  const id='forge-v1-'+build.category+'-'+baseWeapon+'-'+components.map(part=>part.id).join('-')+'-'+build.finish;
- const profile={category:build.category,baseWeapon,reach,damage:base.profile.damage*damageModifier,handling:handlingModifier,baseHandling:base.profile.handling,weight};
- const stats={weaponDamage:damageModifier,weaponSpeed:handlingModifier,weaponReach:reach,weaponWeight:weight};
+ const profile={...base.profile,category:build.category,baseWeapon,damage:base.profile.damage*damageModifier,handling:handlingModifier,baseHandling:base.profile.handling||1,weight};
+ const stats={weaponReach:measure,weaponWeight:weight};
+ if(ranged){
+  const ideal=Math.round(clamp(base.profile.ideal+idealDelta,160,measure*.92));
+  profile.range=measure;profile.ideal=ideal;
+  profile.draw=Number((base.profile.draw/handlingModifier).toFixed(3));
+  profile.reload=Number((base.profile.reload/handlingModifier).toFixed(3));
+  stats.rangedDamage=damageModifier;stats.rangedRange=measure;stats.rangedIdeal=ideal;
+  stats.rangedDraw=profile.draw;stats.rangedReload=profile.reload;stats.rangedWeight=weight;
+ }else{
+  profile.reach=measure;stats.weaponDamage=damageModifier;stats.weaponSpeed=handlingModifier;
+ }
  return {id,name,category:build.category,baseWeapon,build,parts:Object.fromEntries(components.map(part=>[part.slot,part.id])),components,finish:build.finish,profile,stats,cost};
 }
 function quote(input,options={}){

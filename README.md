@@ -2,6 +2,10 @@
 
 [Party, troop trees, deployment and equipment](ROADMAP.md)
 
+## V4.14 — Modular axes and bows
+
+Build axes from heads, hafts and grips, and bows from limbs, grips and strings. Bow parts affect projectile range, damage, draw time and stamina use. Carry an arrow quiver and arrows to shoot in campaign battles. Archer troop types can use a forged bow pattern alongside their own sidearm pattern. Classic practice offers catalog presets using its own test equipment.
+
 ## V4.13 — Smithy & battlefield loot
 
 Forge swords and spears at town, capital and castle smithies. Choose parts and a finish to tune reach, damage, handling and weight. Pay with materials and denars or use the all-gold price. Equip the finished weapon or submit it as a pattern for a compatible troop type. Victories recover equipment actually carried by defeated enemies. Sell spare gear or salvage it for materials at a smithy.

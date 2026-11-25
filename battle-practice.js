@@ -6,12 +6,16 @@ const playerFaction=document.getElementById('practiceFaction');
 const enemyFaction=document.getElementById('practiceEnemyFaction');
 const enemyRealm=document.getElementById('practiceEnemyRealm');
 const opponent=document.getElementById('practiceOpponent');
+const forgePreset=document.getElementById('practiceForgePreset');
 
 const defaultEnemyFaction=enemyFaction.value;
 enemyFaction.replaceChildren(...Array.from(playerFaction.options,option=>
  new Option(option.textContent,option.value)
 ));
 enemyFaction.value=defaultEnemyFaction;
+for(const preset of window.UABattleForge?.listPresets()||[]){
+ if(['sword','spear','axe','bow'].includes(preset.baseWeapon))forgePreset.add(new Option(preset.name,preset.id));
+}
 
 const restoredSettings=new URLSearchParams(window.location.search);
 for(const control of form.elements){
@@ -37,6 +41,7 @@ form.addEventListener('submit',event=>{
  event.preventDefault();
  if(!form.reportValidity())return;
  const settings=new URLSearchParams(new FormData(form));
+ if(!settings.get('forgePreset'))settings.delete('forgePreset');
  if(event.submitter?.name==='deploy')settings.set('deploy','1');
  window.location.assign('campaign-battle.html?'+settings.toString());
 });
