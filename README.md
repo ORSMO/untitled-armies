@@ -2,6 +2,10 @@
 
 [Party, troop trees, deployment and equipment](ROADMAP.md)
 
+## V4.15 — Road reliability
+
+Bounties close when the marked band is gone. The contract board can offer another target, and older saves clear stale bounties when loaded. Path planning takes turns across road parties, so a blocked group leaves other parties a chance to find a route.
+
 ## V4.14 — Modular axes and bows
 
 Build axes from heads, hafts and grips, and bows from limbs, grips and strings. Bow parts affect projectile range, damage, draw time and stamina use. Carry an arrow quiver and arrows to shoot in campaign battles. Archer troop types can use a forged bow pattern alongside their own sidearm pattern. Classic practice offers catalog presets using its own test equipment.
