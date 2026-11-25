@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#091512">
 <meta name="description" content="Untitled Armies: a medieval campaign sandbox. Explore the vast continent of Asterra, meet ten factions, recruit and upgrade faction troops, and build your legend.">
-<title>Untitled Armies — Asterra Campaign · V4.15</title>
-<link rel="stylesheet" href="campaign.css?v=4.15">
+<title>Untitled Armies — Asterra Campaign · V4.16</title>
+<link rel="stylesheet" href="campaign.css?v=4.16">
 </head>
 <body>
 <div id="rotateNotice" role="status" aria-live="polite">
@@ -16,7 +16,7 @@
 </div>
 <div id="game" class="hidden">
  <header class="topbar">
-   <div class="brand"><span class="crest">⚔</span><div><strong>UNTITLED ARMIES</strong><small>ASTERRA CAMPAIGN · V4.15</small></div></div>
+   <div class="brand"><span class="crest">⚔</span><div><strong>UNTITLED ARMIES</strong><small>ASTERRA CAMPAIGN · V4.16</small></div></div>
   <div class="top-center">
    <div class="chip">📜 <b id="hudDay">Day 1 · 08:00</b></div>
    <div class="chip">⚑ <b id="hudRegion">Valdorian Kingdom</b></div>
@@ -91,7 +91,7 @@
    <p class="subtle">Click roaming parties to pursue them as they move. At close range, you can talk, trade or enter battle. Ruins, shrines and camps reward exploration.</p>
   </aside>
  </div>
- <div class="footer-hint">KINGDOM STANDING · LIVING ROADS · COMMAND ARMIES · PHONE LANDSCAPE · ASTERRA CAMPAIGN V4.15 · <a href="classic.html?v=4.15">Classic Combat</a> · <a href="lab.html">Battle Lab</a></div>
+ <div class="footer-hint">KINGDOM STANDING · LIVING ROADS · COMMAND ARMIES · PHONE LANDSCAPE · ASTERRA CAMPAIGN V4.16 · <a href="classic.html?v=4.16">Classic Combat</a> · <a href="lab.html">Battle Lab</a></div>
 </div>
 <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 <section id="screenMenu" class="overlay" aria-label="Main menu">
@@ -118,10 +118,10 @@
    <button id="menuOptions" class="btn">⚙ Map & Game Settings</button>
    <button id="menuFullscreen" class="btn" type="button" aria-pressed="false">⛶ Fullscreen</button>
    <div class="section-caption">COMBAT TRAINING</div>
-   <a href="classic.html?v=4.15" class="btn" style="text-decoration:none;display:block;text-align:center;margin:7px 0">⚔ Classic 50v50 Battle Test</a>
+   <a href="classic.html?v=4.16" class="btn" style="text-decoration:none;display:block;text-align:center;margin:7px 0">⚔ Classic 50v50 Battle Test</a>
    <a href="lab.html" class="btn" style="text-decoration:none;display:block;text-align:center;margin:7px 0">⚗ Six-Arena Battle Lab</a>
    <button id="menuImport" class="btn">📥 Import Campaign Save</button>
-   <div class="menu-foot">V4.15 · Designed for phone play in landscape.</div>
+   <div class="menu-foot">V4.16 · Designed for phone play in landscape.</div>
   </div>
  </div>
 </section>
@@ -146,19 +146,25 @@
  </div>
 </section>
 <section id="screenEncounter" class="overlay hidden" aria-label="Party encounter">
- <div class="modal encounter-modal">
+ <div class="modal encounter-modal" role="dialog" aria-modal="true" aria-labelledby="encounterName">
   <div class="smallcaps">THE ROADS OF ASTERRA · ENCOUNTER</div>
   <h2 id="encounterName">Travelers ahead</h2>
   <p id="encounterIntro">You have met another party on the road.</p>
-  <div class="encounter-rosters">
+  <div class="encounter-rosters" id="encounterRoster">
    <div class="encounter-army"><span class="smallcaps">YOUR COMPANY</span><strong id="encounterOwnCount">8 soldiers</strong><p id="encounterOwnDetail"></p></div>
    <div class="encounter-army hostile"><span class="smallcaps">THE OTHER PARTY</span><strong id="encounterEnemyCount">Bandits</strong><p id="encounterEnemyDetail"></p></div>
   </div>
-  <div id="encounterDialogue" class="eventbox"><b>They await your decision.</b><p>Speak with them, fight, or leave.</p></div>
+  <dl id="encounterNobleDetails" class="encounter-noble-details" aria-label="Noble details" hidden>
+   <div><dt>Role</dt><dd id="encounterNobleRole"></dd></div>
+   <div><dt>Status</dt><dd id="encounterNobleStatus"></dd></div>
+   <div><dt>Favor</dt><dd id="encounterNobleFavor"></dd></div>
+  </dl>
+  <div id="encounterDialogue" class="eventbox" role="status"><b>They await your decision.</b><p>Speak with them, fight, or leave.</p></div>
   <div class="encounter-actions">
    <button class="btn primary" id="encounterDeploy">◇ Plan deployment</button>
    <button class="btn danger" id="encounterFight">⚔ Quick Start</button>
    <button class="btn" id="encounterTalk">💬 Speak to their leader</button>
+   <button class="btn" id="encounterNobleRoads" type="button" hidden>Ask about roads</button>
    <button class="btn" id="encounterTrade">🪙 Offer to trade</button>
    <button class="btn" id="encounterLeave">↩ Leave peacefully</button>
   </div>
@@ -222,7 +228,7 @@
   <div class="modal-actions"><button class="btn" id="exportSave">📤 Export Save</button><button class="btn" id="importSave">📥 Import Save</button></div>
   <div class="modal-actions"><button class="btn" id="restoreBackup">↶ Restore Previous Save</button><button class="btn" id="restoreOlderBackup">↶ Restore Older Backup</button></div>
   <div class="modal-actions"><button class="btn" id="pauseOptions">⚙ Map Settings</button><button class="btn" id="pauseMenu">🏰 Main Menu</button></div>
-  <div class="eventbox"><b>Combat training</b><p>Practice with the same battle rules as your campaign.</p><a href="classic.html?v=4.15">Classic 50v50</a> · <a href="lab.html">Six-Arena Lab</a></div>
+  <div class="eventbox"><b>Combat training</b><p>Practice with the same battle rules as your campaign.</p><a href="classic.html?v=4.16">Classic 50v50</a> · <a href="lab.html">Six-Arena Lab</a></div>
  </div>
 </section>
 <section id="screenParty" class="overlay hidden" aria-label="Your party">
@@ -283,12 +289,17 @@
   </nav>
   <div class="town-content">
    <section class="town-panel is-active" id="townPanelOverview" data-town-panel="overview" role="tabpanel" aria-labelledby="townTabOverview">
-    <div class="town-welcome-card">
-     <div class="smallcaps">THE TOWN SQUARE</div>
-     <p>Take a moment in town. Visit the market, find a bed at the inn, gather recruits, or hear what is happening on the roads.</p>
+    <div class="town-overview">
+     <section id="townPeople" aria-labelledby="townPeopleHeading" hidden>
+      <h3 id="townPeopleHeading">People here</h3>
+      <div id="townPeopleList" class="town-people-list"></div>
+      <p id="townPeopleDialogue" class="town-people-dialogue" role="status"></p>
+     </section>
+     <div class="town-overview-services">
+      <div class="town-services-heading"><h3>Town square</h3><span>Time stands still while you are here.</span></div>
+      <div class="town-services" id="townServices" aria-label="Town square actions"></div>
+     </div>
     </div>
-    <div class="town-services-heading"><h3>Choose what to do</h3><span>Time stands still while you are here.</span></div>
-    <div class="town-services" id="townServices" aria-label="Town square actions"></div>
    </section>
    <section class="town-panel" id="townPanelMarket" data-town-panel="market" role="tabpanel" aria-labelledby="townTabMarket" hidden>
     <div class="town-destination-heading"><div class="smallcaps market-caption">LOCAL MARKET</div><p>Buy or sell supplies, equipment and local resources. Caravans shift stock; shortages raise prices.</p></div>
@@ -324,10 +335,11 @@
 <input id="importSaveFile" type="file" accept="application/json,.json" hidden>
 <script src="world-data.js?v=4.10"></script>
 <script src="map-painter.js?v=4.10"></script>
-<script src="battle-forge.js?v=4.15"></script>
-<script src="campaign-armory.js?v=4.15"></script>
-<script src="campaign-smithy-ui.js?v=4.15"></script>
-<script src="campaign.js?v=4.15"></script>
+<script src="battle-forge.js?v=4.16"></script>
+<script src="campaign-armory.js?v=4.16"></script>
+<script src="campaign-smithy-ui.js?v=4.16"></script>
+<script src="campaign-nobles.js?v=4.16"></script>
+<script src="campaign.js?v=4.16"></script>
 </body>
 </html>
 
