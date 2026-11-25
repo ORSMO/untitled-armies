@@ -328,7 +328,12 @@ function loadGame(){
      }
     }}
   camera.zoom=clamp(raw.zoom||.47,.12,1.9);resetView();$('game').classList.remove('hidden');showScreen(null);resize();
-  selected={type:'land'};log('Campaign resumed. Your journey continues.');refreshUI();if(!consumeBattleResult())notify('Campaign loaded.');return true;
+  selected={type:'land'};log('Campaign resumed. Your journey continues.');refreshUI();
+  if(!consumeBattleResult()){
+   if(closeUnavailableBounties()){refreshUI();saveGame(true)}
+   else notify('Campaign loaded.');
+  }
+  return true;
  }catch(e){notify('Could not load this campaign save.');return false}
 }
 function showMenu(){
@@ -793,6 +798,7 @@ function chooseCaravanTrade(p){
 }
 function resolveWorldClashes(){
  const parties=state.parties;
+ let bandLost=false;
  for(const a of parties){
   if(!a.active||!['patrol','bandit'].includes(a.kind))continue;
   const target=parties.find(b=>b.id===a.targetPartyId&&b.active&&
@@ -809,7 +815,7 @@ function resolveWorldClashes(){
    const patrol=a.kind==='patrol'?a:target,raider=a.kind==='bandit'?a:target;
    if(patrol.kind==='patrol'&&raider.kind==='bandit'){
     const patrolWins=patrol.strength>=raider.strength*.78;
-    if(patrolWins){patrol.strength=Math.max(5,patrol.strength-Math.max(1,Math.ceil(raider.strength*.14)));raider.active=false;
+    if(patrolWins){patrol.strength=Math.max(5,patrol.strength-Math.max(1,Math.ceil(raider.strength*.14)));raider.active=false;bandLost=true;
      reportWorldEvent(patrol.x,patrol.y,(F[patrol.faction]?.name||'A patrol')+' patrol scattered an outlaw band on the roads.')}
     else{raider.strength=Math.max(3,raider.strength-Math.ceil(patrol.strength*.16));patrol.active=false;
      reportWorldEvent(patrol.x,patrol.y,'Outlaws overwhelmed a patrol near '+W.closestSettlement(patrol.x,patrol.y).name+'.')}
@@ -820,27 +826,42 @@ function resolveWorldClashes(){
      target.cargo=null;target.tradeTargetId=null;
      reportWorldEvent(target.x,target.y,'Bandits raided a '+F[target.faction].name+' caravan'+
       (cargo?' and stole '+cargo.quantity+' '+ITEMS[cargo.resource].name.toLowerCase():'')+'.')}
-    else{target.strength=Math.max(4,target.strength-Math.ceil(raider.strength*.12));raider.active=false;
+    else{target.strength=Math.max(4,target.strength-Math.ceil(raider.strength*.12));raider.active=false;bandLost=true;
      reportWorldEvent(target.x,target.y,'A caravan guard detail repelled bandits on the road.')}
    }
   }
   a.path=[];target.path=[];a.targetPartyId=null;target.targetPartyId=null;
  }
-}function stepParties(dt){
- // Stagger pathfinding so dozens of NPC parties cannot block the first frame.
- let routingBudget=3;
- for(const p of state.parties){
-  if(!p.active)continue;
-  const movingTarget=state.parties.find(a=>a.id===p.targetPartyId&&a.active);
+ if(bandLost&&closeUnavailableBounties())saveGame(true);
+}
+function stepParties(dt){
+ const parties=state.parties;
+ const count=parties.length;
+ if(!count)return;
+ const activeById=new Map(parties.filter(p=>p.active).map(p=>[p.id,p]));
+ for(const p of activeById.values()){
+  const movingTarget=activeById.get(p.targetPartyId);
   if(movingTarget&&p.path.length){
    const endpoint=p.path[p.path.length-1];
    if(dist(endpoint.x,endpoint.y,movingTarget.x,movingTarget.y)>310){p.path=[];p.pathIndex=0}
   }
-  if(!p.path.length||p.pathIndex>=p.path.length){
-   if(routingBudget<=0)continue;
-   routingBudget--;nextPartyDestination(p);
-  }
-  if(!p.path.length)continue;
+ }
+
+ // Limit route searches per frame, then continue from the next party.
+ // An unreachable destination still costs a turn, so it cannot block others.
+ let cursor=(state.partyRouteCursor??0)%count;
+ let routesRequested=0;
+ for(let checked=0;checked<count&&routesRequested<3;checked++){
+  const party=parties[cursor];
+  cursor=(cursor+1)%count;
+  if(!party.active||party.pathIndex<party.path.length)continue;
+  nextPartyDestination(party);
+  routesRequested++;
+ }
+ state.partyRouteCursor=cursor;
+
+ for(const p of parties){
+  if(!p.active||p.pathIndex>=p.path.length)continue;
   let budget=(p.kind==='patrol'?78:p.kind==='caravan'?61:53)*dt;
   while(budget>0&&p.pathIndex<p.path.length){
    const n=p.path[p.pathIndex],d=dist(p.x,p.y,n.x,n.y);
@@ -851,7 +872,7 @@ function resolveWorldClashes(){
   if(p.kind==='caravan')deliverCaravan(p);
  }
  resolveWorldClashes();
- const close=state.parties.find(p=>p.active&&p.kind==='bandit'&&
+ const close=parties.find(p=>p.active&&p.kind==='bandit'&&
   dist(state.player.x,state.player.y,p.x,p.y)<92);
  if(close&&(state.day+state.hour/24)-state.lastEncounter>.08&&!menuOpen){
   state.path=[];state.pathIndex=0;openEncounter(close);
@@ -1252,6 +1273,16 @@ function abandonContract(contractId){
  showTown(state.currentTownId);refreshUI();saveGame(true);
  notify('Contract abandoned.');
 }
+function closeUnavailableBounties(){
+ const p=state.player,active=p.activeContracts;
+ const remaining=active.filter(contract=>contract.type!=='bounty'||contract.partyId==null||
+  state.parties.some(party=>party.id===contract.partyId&&party.kind==='bandit'&&party.active));
+ const count=active.length-remaining.length;
+ if(!count)return false;
+ p.activeContracts=remaining;
+ const notice=count===1?'Bounty closed. The target is gone.':count+' bounties closed. Their targets are gone.';
+ log(notice);notify(notice);return true;
+}
 function completeContract(contractId){
  const p=state.player,index=p.activeContracts.findIndex(c=>c.id===contractId);if(index<0)return;
  const c=p.activeContracts.splice(index,1)[0];p.gold+=c.reward;grantXP(c.xp);p.renown+=1;
@@ -1356,7 +1387,7 @@ function launchCampaignBattle(party,deploymentPlanner=false){
   try{localStorage.removeItem('ua-campaign-battle-session-v1')}catch(e){}
   notify('Browser storage is needed for campaign battles.');return;
  }
- window.location.href='campaign-battle.html?campaign=1&v=4.14'+(deploymentPlanner?'&deploy=1':'');
+ window.location.href='campaign-battle.html?campaign=1&v=4.15'+(deploymentPlanner?'&deploy=1':'');
 }
 function skirmish(id,deploymentPlanner=false){
  const party=state?.parties.find(p=>p.id===id&&p.active);
@@ -1508,6 +1539,7 @@ function consumeBattleResult(){
   party.strength-=losses;
   party.active=party.strength>0;
  }
+ closeUnavailableBounties();
  selected={type:'land'};inspectorDirty=true;state.lastEncounter=state.day+state.hour/24;
  $('aftermathTitle').textContent=result.winner==='friend'?'⚔ Victory':
   result.winner==='retreat'?'↩ Withdrawn from battle':'⚑ Battle lost';
