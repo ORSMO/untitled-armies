@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — Battle · V4.13</title>
+<title>Untitled Armies — Battle · V4.14</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -704,7 +704,8 @@ body.deployment-active .rail{display:none!important}
  <p>Rotate your phone sideways to play on the wider battlefield.</p>
 </div>
 </div>
-<script src="campaign-armory.js?v=4.13"></script>
+<script src="campaign-armory.js?v=4.14"></script>
+<script src="battle-forge.js?v=4.14"></script>
 <script src="battle-navigation.js?v=4.10.2"></script>
 <script src="battle-deployment-ui.js?v=4.12" defer></script>
 <script>
@@ -780,6 +781,9 @@ function createPracticeSession(){
  const mix=battleParams.get('mix'),biome=battleParams.get('biome'),kind=battleParams.get('kind'),weapon=battleParams.get('weapon');
  const tiers=mix==='recruits'?[0]:mix==='veterans'?[1]:mix==='elite'?[2]:[0,0,1,1,2];
  const slotsByTier=[0,0,0];
+ const forge=window.UABattleForge,presetId=battleParams.get('forgePreset');
+ const preset=forge?.presets?.some(item=>item.id===presetId)?forge.resolvePreset?.(presetId):null;
+ const heroWeapon=['sword','spear','axe','bow'].includes(preset?.baseWeapon)?preset:null;
  return {
   playerName:'Practice commander',heroHealth:practiceNumber('health',100,1,100),
   kind:['bandit','patrol','caravan'].includes(kind)?kind:'bandit',faction:practiceNumber('enemyFaction',2,0,9),
@@ -791,7 +795,8 @@ function createPracticeSession(){
   }),
   terrainKind:['grass','forest','hills','marsh','river','desert','mountain'].includes(biome)?biome:'grass',
   mapSeed:practiceNumber('seed',0,0,49),playerMorale:65,level:1,
-  equipment:{weapon:['sword','axe','spear','bow'].includes(weapon)?weapon:'sword',armor:'paddedArmor',shield:'roundShield',quiver:'quiver'},
+  heroWeapon,
+  equipment:{weapon:heroWeapon?.baseWeapon||(['sword','axe','spear','bow'].includes(weapon)?weapon:'sword'),armor:'paddedArmor',shield:'roundShield',quiver:'quiver'},
   inventory:{arrows:24}
  };
 }
@@ -811,7 +816,7 @@ if(!campaignMode){window.location.replace('index.html');return}
 if(!practiceMode)try{
  const result=JSON.parse(localStorage.getItem(battleResultKey)||'null');
  if(result?.sessionId===campaignSession.sessionId){
-  window.location.replace('index.html?battleReturn=1&v=4.13');return;
+  window.location.replace('index.html?battleReturn=1&v=4.14');return;
  }
 }catch(e){}
 let campaignReported=false,campaignControlMode='auto',heroPointer=null;
@@ -925,7 +930,8 @@ function armoryBattleKit(loadout){
   shield:!weaponProfiles[weapon].twoHand&&!rangedProfiles[ranged]?.twoHand&&shieldOrder.includes(loadout.shield)?
    loadout.shield:null,
   horseArmor:mounted&&horseArmorProfiles[loadout.horseArmor]?.label?loadout.horseArmor:'none',
-  stats:loadout.stats
+  stats:loadout.stats,
+  rangedStats:loadout.rangedStats
  };
 }
 function campaignEquipment(slot,team){
@@ -1119,7 +1125,7 @@ function campaignStat(value,fallback,min,max){
 }
 function applyCampaignWeaponStats(unit,stats){
  const base=weaponProfiles[unit.weapon];
- const crafted=['shortsword','sword','greatsword','spear','pike','lance'].includes(unit.weapon)&&
+ const crafted=['shortsword','sword','greatsword','axe','spear','pike','lance'].includes(unit.weapon)&&
   Number.isFinite(stats?.weaponReach)&&Number.isFinite(stats?.weaponWeight);
  // A forged sidearm changes melee only; a bow with that sidearm retains
  // its own draw speed and projectile damage.
@@ -1137,6 +1143,27 @@ function applyCampaignWeaponStats(unit,stats){
    }
   };
  }
+}
+function applyCampaignRangedStats(unit,stats){
+ if(!['bow','horsebow'].includes(unit.ranged)||!stats)return;
+ const rawRange=stats.rangedRange??stats.weaponReach,rawWeight=stats.rangedWeight??stats.weaponWeight;
+ if(!Number.isFinite(rawRange)||!Number.isFinite(rawWeight))return;
+ const base=rangedProfiles[unit.ranged];
+ const range=campaignStat(rawRange,base.range,base.range*.5,base.range*1.8);
+ const weight=campaignStat(rawWeight,base.weight,base.weight*.2,base.weight*3.4);
+ const speed=campaignStat(stats.weaponSpeed,1,.55,1.60);
+ const damageScale=campaignStat(stats.rangedDamage??stats.weaponDamage,1,.55,1.65);
+ unit.forgedRanged={
+  archetype:unit.ranged,
+  profile:{
+   ...base,forged:true,range,weight,
+   ideal:campaignStat(stats.rangedIdeal,base.ideal*range/base.range,range*.25,range*.9),
+   damage:base.damage*damageScale,
+   draw:campaignStat(stats.rangedDraw,base.draw/speed,base.draw*.4,base.draw*2.2),
+   reload:campaignStat(stats.rangedReload,base.reload/speed,base.reload*.4,base.reload*2.2),
+   stamina:base.stamina*clamp(.45+.55*(weight/base.weight),.7,1.45)
+  }
+ };
 }
 function carriedBattleGear(unit){
  const items=[];
@@ -1162,7 +1189,7 @@ function recoveredEnemyGear(winner){
  return recovered;
 }
 function campaignDeploy(s,slot,team,kit){
- const {stats,...equipment}=kit;
+ const {stats,rangedStats,...equipment}=kit;
  Object.assign(s,equipment);
  s.campaignSource=slot.groupIndex;
  s.campaignSlot=slot.slot;
@@ -1177,6 +1204,7 @@ function campaignDeploy(s,slot,team,kit){
  s.speed=campaignStat(stats?.speed,s.speed,32,78);
  s.stamina=s.maxStamina=campaignStat(stats?.stamina,100,70,120);
  applyCampaignWeaponStats(s,stats);
+ applyCampaignRangedStats(s,rangedStats);
  if(team==='foe'&&!practiceMode)s.battleLootKit=carriedBattleGear(s);
  if(team==='friend'){
   const morale=campaignSession.playerMorale??65;
@@ -1226,7 +1254,7 @@ function campaignRecord(outcome){
   kind:campaignSession.kind,faction:campaignSession.faction,
   winner,seconds:t,entries,heroHp:hero?Math.max(0,hero.hp):0,
   heroMaxHp:hero?.maxHp||5,enemyRemaining,enemySurvivors,
-   heroAmmoSpent:hero?.ranged==='bow'?Math.max(0,Math.min(rangedProfiles.bow.ammo,campaignSession.inventory?.arrows||0)-(hero.ammo||0)):0,
+   heroAmmoSpent:Math.max(0,(hero?.loadedArrows||0)-(hero?.ammo||0)),
    stonesSpent:Math.max(0,(campaignSession.inventory?.stones||0)-campaignStonesRemaining),
   enemyInitial:campaignSession.enemyCount,originalTroops:entries.length,
   enemyLoot:recoveredEnemyGear(winner)};
@@ -1242,7 +1270,7 @@ function campaignReturn(){
  if(deployment.active){cancelDeployment();return}
  if(practiceMode){window.location.href='battle-practice.html?'+battleParams.toString();return}
  campaignRecord(battleOutcome);
- if(campaignReported)window.location.href='index.html?battleReturn=1&v=4.13';
+ if(campaignReported)window.location.href='index.html?battleReturn=1&v=4.14';
 }
 let realisticBattle=false,battleOutcome=null;
  let battleCollapseSince={friend:null,foe:null};
@@ -1370,6 +1398,9 @@ let realisticBattle=false,battleOutcome=null;
    damage:.35,momentum:45,stamina:4,weight:.2,color:'#aeb4a0',twoHand:false}
  };
  const rangedOrder=['bow','crossbow','javelin','horsebow'];
+ function rangedWeaponProfile(unit,archetype=unit.ranged){
+  return unit.forgedRanged?.archetype===archetype?unit.forgedRanged.profile:rangedProfiles[archetype];
+ }
  // Unit classes determine combat priorities independently of equipment.
  // Cavalry is a reserved class for the future mounted-combat update.
  const unitRoles=['infantry','archer','cavalry','horseArcher'];
@@ -1379,7 +1410,7 @@ let realisticBattle=false,battleOutcome=null;
  function activeRangedProfile(s){
   const skirmisher=campaignMode&&s.unitRole==='infantry'&&s.ranged==='javelin';
   if((!isArcher(s)&&!skirmisher)||(campaignMode&&s.ammo<=0))return null;
-  return rangedProfiles[s.ranged]||null;
+  return rangedWeaponProfile(s)||null;
  }
  function assignedRole(config,index){
   if(['archer','cavalry','horseArcher'].includes(config.unitRole))return config.unitRole;
@@ -1796,9 +1827,11 @@ function populate(){
   commanders.friend=createCommander('friend');commanders.foe=createCommander('foe');
   if(campaignMode){
     const eq=campaignSession.equipment||{},stats=campaignSession.stats||{};
-   const design=practiceMode?null:campaignSession.heroWeapon;
-   const crafted=['sword','spear'].includes(design?.baseWeapon)&&
+   const design=campaignSession.heroWeapon;
+   const craftedMelee=['sword','spear','axe'].includes(design?.baseWeapon)&&
     Number.isFinite(design.stats?.weaponReach)&&Number.isFinite(design.stats?.weaponWeight);
+   const craftedBow=design?.baseWeapon==='bow';
+   const equippedWeapon=craftedMelee||craftedBow?design.baseWeapon:eq.weapon;
    const strength=clamp(Number(stats.strength)||5,1,40);
    commanders.friend.maxHp=6+(strength-5)*.18;
    const health=campaignSession.heroHealth??100;
@@ -1806,17 +1839,20 @@ function populate(){
     commanders.friend.speed=(56+(stats.agility||5)*4)*(campaignSession.perks?.includes('outrider')?1.12:1);
    commanders.friend.isPlayerHero=true;
    commanders.friend.campaignStance='Screened';
-    commanders.friend.weapon=crafted?design.baseWeapon:(({sword:'sword',axe:'axe',spear:'spear',bow:'sword'})[eq.weapon]||'sword');
-    commanders.friend.ranged=!crafted&&eq.weapon==='bow'&&eq.quiver==='quiver'?'bow':null;
+    commanders.friend.weapon=({sword:'sword',axe:'axe',spear:'spear',bow:'sword'})[equippedWeapon]||'sword';
+    commanders.friend.ranged=equippedWeapon==='bow'&&eq.quiver==='quiver'?'bow':null;
     commanders.friend.unitRole=commanders.friend.ranged?'archer':'infantry';
     commanders.friend.armor=({paddedArmor:'padded',leatherArmor:'leather',mailArmor:'mail',plateArmor:'plate'})[eq.armor]||'padded';
     commanders.friend.shield=({buckler:'buckler',roundShield:'round',kiteShield:'kite'})[eq.shield]||null;
     commanders.friend.skill=clamp(38+(stats.strength||5)*4+(campaignSession.level||1)+(campaignSession.perks?.includes('armsmaster')?10:0),35,94);
     commanders.friend.disc=clamp(38+(stats.tactics||5)*4,40,94);
     commanders.friend.leadership=clamp(35+(stats.leadership||5)*6,40,96);
-    if(crafted)applyCampaignWeaponStats(commanders.friend,design.stats);
+    if(craftedMelee)applyCampaignWeaponStats(commanders.friend,design.stats);
+    if(craftedBow)applyCampaignRangedStats(commanders.friend,design.stats);
     initializeRangedEquipment(commanders.friend);
-    commanders.friend.ammo=Math.min(commanders.friend.ammo||0,campaignSession.inventory?.arrows||0);
+    const arrows=Math.max(0,Math.floor(Number(campaignSession.inventory?.arrows)||0));
+    commanders.friend.ammo=Math.min(commanders.friend.ammo,arrows);
+    commanders.friend.loadedArrows=commanders.friend.ammo;
    realisticBattle=true;
    document.querySelector('#terrainPreset').value=terrainPreset;
    refreshBattleRulesUI();
@@ -2620,7 +2656,7 @@ function cancelDeployment(){
   updateDeploymentNotice('Could not return to the encounter. Check browser storage and try again.');
   return false;
  }
- window.location.href='index.html?battleReturn=1&v=4.13';
+ window.location.href='index.html?battleReturn=1&v=4.14';
  return true;
 }
 function assignNearbyFormationSlots(slots,center,shape){
@@ -3486,7 +3522,7 @@ function shieldImpact(attacker,defender,a){
  const delta=Math.abs(Math.atan2(Math.sin(incoming-defender.faceAngle),Math.cos(incoming-defender.faceAngle)));
  const active=defender.guardActive&&delta<=shield.activeArc;
  if(!active&&delta>shield.passiveArc)return {block:0,stop:0,kind:null};
- const weapon=a.projectile?rangedProfiles[a.projectile]:meleeWeaponProfile(attacker);
+ const weapon=a.projectile?rangedWeaponProfile(attacker,a.projectile):meleeWeaponProfile(attacker);
  // A neighboring shield overlaps the defender's passive shield arc, but
  // physical spacing is required and a separated fighter loses this help.
  const wall=(defender.lineKind==='shieldwall'?
@@ -3589,7 +3625,7 @@ function applyWeaponImpact(attacker,target,a){
  const afterShield=a.baseDamage*(1+elevationAdvantage)*footingPenalty*
   (1-shield.block)/defenderGroundBonus;
  const actual=mitigatedDamage(afterShield,target.armor,damageType);
- const weapon=a.projectile?rangedProfiles[a.projectile]:meleeWeaponProfile(attacker),heavy=a.move.style==='heavy';
+ const weapon=a.projectile?rangedWeaponProfile(attacker,a.projectile):meleeWeaponProfile(attacker),heavy=a.move.style==='heavy';
  // Physical hits and blocks happen regardless of friendly health immunity.
  if(target.team==='foe'||target.isCommander||realismActive()){
   target.hp=Math.max(0,target.hp-actual);
@@ -4175,6 +4211,7 @@ function launchProjectile(s,target){
  if(s.stamina<profile.stamina){s.rangedCooldown=.30;return false;}
  const skill=s.skill||45,familiarity=rangedFamiliarity(s);
  const dist=Math.max(1,Math.hypot(target.x-s.x,target.y-s.y));
+ if(profile.forged&&dist>profile.range)return false;
  // Predict where the target will be when the shot arrives. Earlier aiming
  // consistently under-led moving targets, even for elite archers.
  const vx=clamp(target.vx||0,-80,80),vy=clamp(target.vy||0,-80,80);
@@ -4201,7 +4238,7 @@ function launchProjectile(s,target){
  const ox=s.x+Math.cos(angle)*12,oy=s.y+Math.sin(angle)*12;
  const projectile={
   id:-(s.id*64+s.shotCount+1),shooter:s,shooterId:s.id,team:s.team,
-  kind:s.ranged,damage:profile.damage*groundAim.damage*(s.weaponDamage??1),momentum:profile.momentum,
+  kind:s.ranged,damage:profile.damage*groundAim.damage*(profile.forged?1:s.weaponDamage??1),momentum:profile.momentum,
   x:ox,y:oy,vx:Math.cos(angle)*profile.speed,vy:Math.sin(angle)*profile.speed,
   speed:profile.speed,range:profile.range,traveled:0,
   loft:profile.loft,arcDistance:Math.max(1,Math.hypot(predictedX-ox,predictedY-oy))
@@ -4211,7 +4248,7 @@ function launchProjectile(s,target){
  s.shotCount++;s.fired++;
  s.stamina=clamp(s.stamina-profile.stamina*rangedTimeFactor(s),0,s.maxStamina);
  s.recoveryDelay=Math.max(s.recoveryDelay,.28);
- s.rangedCooldown=profile.reload*rangedTimeFactor(s)/(s.weaponSpeed??1);
+ s.rangedCooldown=profile.reload*rangedTimeFactor(s)/(profile.forged?1:s.weaponSpeed??1);
  s.rangedAim=0;s.rangedRelease=.22;
  const stats=combatLabStats(s.team);if(stats)stats.shots++;
  return true;
@@ -4219,9 +4256,9 @@ function launchProjectile(s,target){
 function beginRangedAim(s,target,dist){
  const profile=activeRangedProfile(s);
  if(!profile||!hasRangedAmmo(s)||s.rangedCooldown>0||s.attack||s.stagger>0)return false;
- if(!target||dist>profile.range-12||dist<=meleeThreatRange(s))return false;
+ if(!target||dist>profile.range-(profile.forged?0:12)||dist<=meleeThreatRange(s))return false;
  if(s.stamina<profile.stamina+2)return false;
- s.rangedAim=profile.draw*rangedTimeFactor(s)/(s.weaponSpeed??1);
+ s.rangedAim=profile.draw*rangedTimeFactor(s)/(profile.forged?1:s.weaponSpeed??1);
  s.rangedTargetId=target.id;
  s.guardActive=false;s.guardHold=0;
  return true;
@@ -4619,7 +4656,7 @@ function step(dt){
   }
   const disciplineControl=.42+s.disc/160;
   const fatiguePace=.76+.24*(s.stamina/s.maxStamina);
-  const equipment=meleeWeaponProfile(s).weight+(shieldProfiles[s.shield]?.weight||0)+(activeRangedProfile(s)?rangedProfiles[s.ranged].weight:0);
+  const equipment=meleeWeaponProfile(s).weight+(shieldProfiles[s.shield]?.weight||0)+(ranged?.weight||0);
   const loadPace=clamp(1-equipment*.038,.70,1);
   const fightingPace=s.stagger>0?0:s.attack?.72:s.guardActive?.73:1;
   const barding=horseArmorProfiles[s.horseArmor]||horseArmorProfiles.none;
