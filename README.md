@@ -2,6 +2,10 @@
 
 [Party, troop trees, deployment and equipment](ROADMAP.md)
 
+## V4.16 — Valdorian nobles
+
+Meet King Edric at Valdoria or on his visits to Redmarsh. Lady Isolde rides from Valecrown to inspect the roads toward Duskford. Both return home between trips. Open **People here** in the town overview or follow a gold crown marker to speak to the same leader on the road. Road reports describe nearby outlaws. House retainers are available at the noble's seat when they are in residence, subject to the usual favor and daily limits. Noble locations and itineraries persist in campaign saves.
+
 ## V4.15 — Road reliability
 
 Bounties close when the marked band is gone. The contract board can offer another target, and older saves clear stale bounties when loaded. Path planning takes turns across road parties, so a blocked group leaves other parties a chance to find a route.
