@@ -24,9 +24,10 @@ The immediate priority is the campaign loop: recruit, fight, recover, and improv
 
 ## 4. Weapons, armor, and loot
 
-- Expand the weapon designer with readable reach, handling, damage, and weight tradeoffs.
-- Let equipment serve as gear, sale goods, or salvage for company kits.
-- Use the existing town economy. Offer a gold alternative when armory supplies are scarce.
+- Start with modular swords and spears. Weapon parts shape reach, damage, handling, and weight. Quick, Balanced, and Heavy adjust the finished weapon.
+- Forge weapons in the smithy and reuse compatible recipes as troop patterns. Pay with materials and gold, or gold alone.
+- Recover gear from defeated enemies, then equip, sell, or salvage it. Feed recovered materials into the existing town economy.
+- Add modular axes, bows, and more parts after testing the first crafting and loot loop.
 
 ## First playable milestone
 
