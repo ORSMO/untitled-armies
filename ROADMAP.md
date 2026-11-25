@@ -27,7 +27,8 @@ The immediate priority is the campaign loop: recruit, fight, recover, and improv
 - Start with modular swords and spears. Weapon parts shape reach, damage, handling, and weight. Quick, Balanced, and Heavy adjust the finished weapon.
 - Forge weapons in the smithy and reuse compatible recipes as troop patterns. Pay with materials and gold, or gold alone.
 - Recover gear from defeated enemies, then equip, sell, or salvage it. Feed recovered materials into the existing town economy.
-- Add modular axes, bows, and more parts after testing the first crafting and loot loop.
+- Modular axes and bows extend the same crafting and loot loop. Test bow and axe presets in Classic practice.
+- Tune armor tradeoffs and add more parts after playtesting. Individual weapon upgrades follow once the core crafting choices are balanced.
 
 ## First playable milestone
 
