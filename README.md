@@ -2,6 +2,10 @@
 
 [Party, troop trees, deployment and equipment](ROADMAP.md)
 
+## V4.17 — Character creation and noble families
+
+Choose your hero's name, homeland, background, age, and appearance, or roll a new look. Every new campaign generates 20 noble families with a head, partner, and two children each. See household ages, names, and looks in **The Ten Factions** and **People here** at the family seat. House heads can discuss local roads and provide retainers at their seats when present. Existing saves preserve their named leaders and active trips. The generator takes a seed, realm descriptions, houses, and seats, so it can be reused with other maps.
+
 ## V4.16 — Valdorian nobles
 
 Meet King Edric at Valdoria or on his visits to Redmarsh. Lady Isolde rides from Valecrown to inspect the roads toward Duskford. Both return home between trips. Open **People here** in the town overview or follow a gold crown marker to speak to the same leader on the road. Road reports describe nearby outlaws. House retainers are available at the noble's seat when they are in residence, subject to the usual favor and daily limits. Noble locations and itineraries persist in campaign saves.
