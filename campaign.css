@@ -60,6 +60,10 @@
 .encounter-noble-details div{min-width:0;border:1px solid #7e805d;border-radius:8px;background:#243b2d;padding:7px 8px}
 .encounter-noble-details dt{color:#b8cbb6;font-size:10px}
 .encounter-noble-details dd{margin:2px 0 0;color:#f1d9a0;font-size:12px;font-weight:750;overflow-wrap:anywhere}
+.encounter-traveling-family{display:flex;align-items:center;flex-wrap:wrap;gap:5px 8px;padding:4px 6px;margin:6px 0;border:1px solid #657355;border-radius:8px;background:#1d3327}
+.encounter-traveling-family>:is(h3,h4,b){margin:0;color:#ead9a8;font-size:11px;line-height:1.3}
+.encounter-family-actions{display:flex;flex-wrap:wrap;min-width:0;gap:5px}
+.encounter-traveling-family :is(button,a){display:grid;place-items:center;min-width:44px;min-height:44px;max-width:100%;padding:4px 8px;font-size:11px;line-height:1.2;overflow-wrap:anywhere;text-align:center}
 #screenEncounter .encounter-modal:has(#encounterNobleDetails:not([hidden])) .encounter-actions{grid-template-columns:repeat(3,minmax(0,1fr))}
 #screenEncounter .encounter-modal:has(#encounterNobleDetails:not([hidden])) .encounter-actions .btn{min-height:44px;text-align:center}
 #screenEncounter .encounter-modal:has(#encounterNobleDetails:not([hidden])) #encounterLeave{grid-column:auto}
@@ -287,7 +291,7 @@
 
 .house-list,.party-kit-actions{display:flex;gap:8px;flex-wrap:wrap}
 .house-list{margin:6px 0 14px}
-.house-card{flex:1 1 140px;padding:8px 10px;border:1px solid #647557;border-radius:8px;background:#1e3328}
+.house-card{flex:1 1 140px;min-width:0;padding:8px 10px;border:1px solid #647557;border-radius:8px;background:#1e3328}
 .house-card small,.trooptree small{display:block;margin-top:3px;line-height:1.35}
 .armory-modal{width:min(720px,100%);max-height:calc(100dvh - 24px);overflow:auto}
 .armory-layout{display:grid;grid-template-columns:3fr 2fr;gap:12px;align-items:start}
@@ -437,13 +441,24 @@
 .house-families{grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));margin:6px 0 10px}
 .house-family{min-width:0;border:1px solid #657355;border-radius:8px;background:#1d3327;padding:6px 8px}
 .house-family>summary{min-height:44px;padding:12px 0;color:#ecdbad;font-size:12px;font-weight:750;cursor:pointer}
+.house-family>summary:focus-visible{outline:2px solid #edcf8b;outline-offset:2px;border-radius:4px}
+.house-family-tree{display:grid;gap:8px;padding:0 0 3px}
+.house-family-generation{min-width:0;padding:0 0 0 7px;border-inline-start:2px solid #657355}
+.house-family-generation>:is(.house-family-generation-label,h4,h5,label){display:block;margin:0 0 4px;color:#ead9a8;font-size:11px;line-height:1.3;font-weight:750}
 .house-family-members{grid-template-columns:repeat(auto-fit,minmax(min(100%,115px),1fr))}
+.house-family-generation>:is(.house-family-members,ul){display:grid;gap:4px;grid-template-columns:repeat(auto-fit,minmax(min(100%,115px),1fr));padding:0;margin:0;list-style:none}
+.house-family-generation>:is(.house-family-members,ul):has(.house-family-find){grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr))}
 .house-family-member{display:flex;align-items:center;gap:5px;min-width:0;margin:0;padding:4px 5px;border:1px solid #53664c;border-radius:6px;background:#172b21}
 .house-family-portrait,.town-person-portrait{width:34px;flex:none}
+.house-family-tree .house-family-portrait{width:28px}
 .house-family-meta,.town-person-family{min-width:0;color:#d6deca;font-size:10px;line-height:1.35;overflow-wrap:anywhere}
 .house-family-meta b,.house-family-meta small{display:block}
 .house-family-meta b{color:#ebd8a4}
+.house-family-tree .house-family-meta small{margin:0;font-size:10px;line-height:1.2}
+.house-family-activity{color:#a7cfa9}
+.house-family-member .house-family-find{flex:none;min-width:44px;min-height:44px;margin-inline-start:auto;padding:4px 6px;border:1px solid #718360;border-radius:6px;background:#263c2d;color:#ebd8a4;font-size:11px;font-weight:750}
 #screenTown .town-person-profile{display:flex;align-items:center;gap:6px;min-width:0}
+#screenTown .town-person>.house-family{margin-top:5px}
 @media(max-width:500px){
  .create-layout{grid-template-columns:1fr}
  .create-appearance{grid-template-columns:minmax(64px,.65fr) minmax(0,1fr)}
