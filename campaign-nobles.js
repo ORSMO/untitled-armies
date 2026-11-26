@@ -6,6 +6,7 @@ const circuits=[
  {houseId:13,purpose:'inspection',stopType:'village',firstDelay:3.25,stopDelay:3.5,homeDelay:17,speed:74,strength:18}
 ];
 const circuitByHouse=new Map(circuits.map(circuit=>[circuit.houseId,circuit]));
+const MAX_ROAMING_PER_REALM=3;
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 
 function settlement(world,id){
@@ -18,12 +19,14 @@ function friendlySite(world,record,id){
  return site?.faction===record.party.faction?site:null;
 }
 
-function availableStops(world,record,circuit,excluded){
+function availableStops(world,record,circuit,excluded,scoreStop){
  const home=settlement(world,record.homeId);
+ const priority=site=>Number(site.type===circuit.stopType)*175+
+  Number(record.holdings.includes(site.id))*100+(scoreStop?.(record,site)||0)-distance(home,site)*.17;
  return world.settlements
   .filter(site=>site.faction===record.party.faction&&site.id!==record.homeId&&!excluded.has(site.id))
-  .sort((a,b)=>Number(b.type===circuit.stopType)-Number(a.type===circuit.stopType)||
-   distance(home,a)-distance(home,b)||a.id-b.id);
+  .sort((a,b)=>circuit.pilot?Number(b.type===circuit.stopType)-Number(a.type===circuit.stopType)||
+   distance(home,a)-distance(home,b)||a.id-b.id:priority(b)-priority(a)||a.id-b.id);
 }
 
 function routeTo(world,position,site){
@@ -83,7 +86,7 @@ function restoreRecord(world,record,circuit,saved,nowHours,excluded){
  if(savedSite){
   const delay=savedSite.id===home.id?circuit.homeDelay:circuit.stopDelay;
   const next=Number.isFinite(saved.nextMoveAt)?
-   Math.max(nowHours,Math.min(nowHours+delay,saved.nextMoveAt)):nowHours+delay;
+   Math.max(nowHours,Math.min(nowHours+delay+8,saved.nextMoveAt)):nowHours+delay;
   if(savedSite.id!==home.id&&!excluded.has(savedSite.id))record.circuitSiteId=savedSite.id;
   park(record,savedSite,savedSite.id===home.id?'home':circuit.purpose,next);
   return;
@@ -98,6 +101,7 @@ function restoreRecord(world,record,circuit,saved,nowHours,excluded){
    record.lastSeenSiteId=lastSeen.id;
    record.party.x=position.x;
    record.party.y=position.y;
+   record.recovering=saved.recovering===true&&destination.id===home.id;
    if(destination.id!==home.id&&!excluded.has(destination.id))record.circuitSiteId=destination.id;
    depart(record,destination,destination.id===home.id?'return':circuit.purpose,path,nowHours);
    return;
@@ -116,41 +120,62 @@ function restoreRecord(world,record,circuit,saved,nowHours,excluded){
  park(record,home,'home',nowHours+circuit.firstDelay);
 }
 
-function create(world,houses,saved,nowHours=0){
+function memberCircuit(house,person,index){
+ const pilot=person.role==='head'&&circuitByHouse.get(house.id);
+ if(pilot)return {...pilot,pilot:true};
+ const purpose=person.role==='head'?'visit':person.role==='partner'?'supplies':
+  person.generation===-1?'visit':index%2?'inspection':'patrol';
+ const stopType=purpose==='visit'?'town':purpose==='patrol'?'castle':'village';
+ return {purpose,stopType,firstDelay:2+(house.id*13+index*7)%25,stopDelay:3+index%4,homeDelay:11+(house.id+index*3)%10,
+  speed:73+index%7,strength:12};
+}
+function create(world,houses,saved,nowHours=0,options={}){
  const records=[],taken=new Set();
  const now=Number.isFinite(nowHours)?nowHours:0;
- for(const circuit of circuits){
-  const house=houses.find(candidate=>candidate.id===circuit.houseId);
+ const previous=Array.isArray(saved)?saved.filter(Boolean):[];
+ const members=options.families?houses.flatMap(house=>(options.families.get(house.id)||[]).map((person,index)=>({house,person,index})).filter(row=>row.person.age>=18)):
+  circuits.flatMap(circuit=>{
+   const house=houses.find(candidate=>candidate.id===circuit.houseId);
+   return house?[{house,person:{id:'person-'+house.id+'-head',role:'head'},index:0}]:[];
+  });
+ for(const {house,person,index} of members){
+  const circuit=memberCircuit(house,person,index);
   const home=settlement(world,house?.seatId);
   if(!house||!home||home.faction!==house.faction)continue;
+  const id=person.role==='head'?-100-house.id:-1000-house.id*32-index;
   const record={
-   houseId:house.id,homeId:home.id,siteId:home.id,destinationId:null,lastSeenSiteId:home.id,
-   purpose:'home',circuitSiteId:null,nextMoveAt:now+circuit.firstDelay,
+   houseId:house.id,personId:person.id,homeId:home.id,siteId:home.id,destinationId:null,lastSeenSiteId:home.id,
+   purpose:'home',circuitSiteId:null,nextMoveAt:now+circuit.firstDelay,circuit,holdings:options.holdings?.(house.id)||[],cargo:null,
    party:{
-    id:-100-house.id,kind:'noble',houseId:house.id,faction:house.faction,
-    x:home.x,y:home.y,tx:home.x,ty:home.y,strength:circuit.strength,
+    id,kind:'noble',houseId:house.id,personId:person.id,faction:house.faction,
+    x:home.x,y:home.y,tx:home.x,ty:home.y,strength:options.strength?.(person.id)||circuit.strength,
     active:false,path:[],pathIndex:0
    }
   };
-  const previous=Array.isArray(saved)?saved.find(entry=>entry?.houseId===house.id):null;
-  restoreRecord(world,record,circuit,previous,now,taken);
-  if(record.circuitSiteId!==null)taken.add(record.circuitSiteId);
+  const savedRecord=previous.find(entry=>entry.personId===person.id||
+   (!entry.personId&&entry.houseId===house.id&&person.role==='head'));
+  const cargo=savedRecord?.cargo;
+  if(circuit.purpose==='supplies'&&['grain','iron','timber','salt','tools'].includes(cargo?.resource)&&
+   Number.isInteger(cargo.quantity)&&cargo.quantity>0&&cargo.quantity<=8)record.cargo={resource:cargo.resource,quantity:cargo.quantity};
+  restoreRecord(world,record,circuit,savedRecord,now,circuit.pilot?taken:new Set());
+  if(circuit.pilot&&record.circuitSiteId!==null)taken.add(record.circuitSiteId);
   records.push(record);
  }
  return records;
 }
 
-function startScheduledLeg(world,records,record,circuit,nowHours){
+function startScheduledLeg(world,records,record,circuit,nowHours,scoreStop){
  if(nowHours<record.nextMoveAt)return false;
  const home=settlement(world,record.homeId),party=record.party;
  if(record.siteId!==home.id){
   const path=routeTo(world,party,home);
   if(path){depart(record,home,'return',path,nowHours);return true}
  }else{
-  const taken=new Set(records.filter(other=>other!==record).map(other=>other.circuitSiteId));
-  const stops=availableStops(world,record,circuit,taken);
+  const taken=new Set(records.filter(other=>other!==record&&
+   (circuit.pilot?other.circuit.pilot:other.party.active)).map(other=>circuit.pilot?other.circuitSiteId:other.destinationId));
+  const stops=availableStops(world,record,circuit,taken,scoreStop);
   const known=stops.findIndex(site=>site.id===record.circuitSiteId);
-  if(known>0)stops.unshift(...stops.splice(known,1));
+  if(circuit.pilot&&known>0)stops.unshift(...stops.splice(known,1));
   for(const site of stops){
    const path=routeTo(world,party,site);
    if(!path)continue;
@@ -181,34 +206,57 @@ function advanceEscort(party,distanceBudget){
  }
 }
 
-function step(world,records,nowHours,dt){
+function step(world,records,nowHours,dt,{scoreStop,onArrival}={}){
  if(!Number.isFinite(nowHours)||!Number.isFinite(dt)||dt<0)return false;
  let changed=false;
+ const activeByRealm=new Map();
  for(const record of records){
-  const circuit=circuitByHouse.get(record.houseId);
-  if(!circuit)continue;
-  if(record.siteId!==null&&startScheduledLeg(world,records,record,circuit,nowHours))changed=true;
+  const circuit=record.circuit;
   const party=record.party;
   if(!party.active)continue;
   advanceEscort(party,circuit.speed*dt);
-  if(party.pathIndex<party.path.length)continue;
-  const destination=settlement(world,record.destinationId);
-  if(!destination)continue;
-  const home=destination.id===record.homeId;
-  park(record,destination,home?'home':circuit.purpose,nowHours+(home?circuit.homeDelay:circuit.stopDelay));
-  changed=true;
+  if(party.pathIndex>=party.path.length){
+   const destination=settlement(world,record.destinationId);
+   if(destination){
+    const home=destination.id===record.homeId;
+    const recovery=record.recovering?8:0;
+    park(record,destination,home?'home':circuit.purpose,nowHours+(home?circuit.homeDelay+recovery:circuit.stopDelay));
+    record.recovering=false;
+    onArrival?.(record,destination);
+    changed=true;
+   }
+  }
+  if(party.active)activeByRealm.set(party.faction,(activeByRealm.get(party.faction)||0)+1);
  }
+ let next=null;
+ for(const record of records){
+  if(record.siteId===null||record.nextMoveAt>nowHours||
+   (activeByRealm.get(record.party.faction)||0)>=MAX_ROAMING_PER_REALM)continue;
+  if(!next||record.nextMoveAt<next.nextMoveAt)next=record;
+ }
+ // Route searches share one departure per tick across all houses.
+ if(next&&startScheduledLeg(world,records,next,next.circuit,nowHours,scoreStop))changed=true;
  return changed;
 }
 
 function snapshot(records){
  return records.map(record=>({
-  houseId:record.houseId,homeId:record.homeId,siteId:record.siteId,
+  houseId:record.houseId,personId:record.personId,homeId:record.homeId,siteId:record.siteId,
   destinationId:record.destinationId,lastSeenSiteId:record.lastSeenSiteId,
-  purpose:record.purpose,circuitSiteId:record.circuitSiteId,nextMoveAt:record.nextMoveAt,
+  purpose:record.purpose,circuitSiteId:record.circuitSiteId,nextMoveAt:record.nextMoveAt,cargo:record.cargo,recovering:!!record.recovering,
   party:{x:record.party.x,y:record.party.y}
  }));
 }
 
-window.UANobles={create,step,snapshot};
+function sendHome(world,record,nowHours){
+ const home=settlement(world,record.homeId);
+ if(!home)return;
+ const path=routeTo(world,record.party,home);
+ if(path){
+  depart(record,home,'return',path,nowHours);
+  record.recovering=true;
+ }else park(record,home,'home',nowHours+record.circuit.homeDelay+8);
+}
+
+window.UANobles={create,step,snapshot,sendHome};
 })();

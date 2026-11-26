@@ -2,6 +2,12 @@
 
 [Party, troop trees, deployment and equipment](ROADMAP.md)
 
+## V4.19 — Living noble houses
+
+The 20 houses have 200 named members across three generations. In **The Ten Factions**, open a family's tree to see parents, partners, siblings, cousins, current locations, and retinue sizes. Use **Find** to inspect a relative's current party or settlement. Talk to relatives in **People here** or after approaching them on the road. All 140 adults have individual retinues and travel on staggered schedules. Children can be met with their parents.
+
+House holdings bring in tax and production income. The house pays to recruit and maintain its retinues, and losses on patrol persist. Stewards can take surplus goods from a family village to cover shortages at their own seat. Older saves retain their original names, appearances, and the two Valdorian pilot routes.
+
 ## V4.18 — Prisoners and smithy workshops
 
 Take up to twelve prisoners from enemies who surrender in campaign victories. Open **Party** to release captives, or visit a **Garrison** to ransom realm soldiers in a town or capital and turn in outlaws. The game shows captives and any overflow on the battle aftermath.

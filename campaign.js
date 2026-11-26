@@ -3,7 +3,7 @@
 'use strict';
 const W=window.UAWorld;if(!W)throw Error('World data is missing');
 const $=id=>document.getElementById(id),F=W.factions,S=W.settlements,ARMORY=window.UAArmory,FORGE=window.UABattleForge,NOBLES=window.UANobles,CHARACTERS=window.UACampaignCharacters,CHAR_UI=window.UACharacterUI,BASE_SETTLEMENTS=S.map(site=>({prosperity:site.prosperity,garrison:site.garrison}));
-const PRISONERS=window.UAPrisoners,WORKSHOPS=window.UACampaignWorkshops;
+const PRISONERS=window.UAPrisoners,WORKSHOPS=window.UACampaignWorkshops,NOBLE_HOUSES=window.UANobleHouses;
 const KEY='ua-campaign-v1',VERSION=1,MAXPARTY=75,MAX_DEPLOYED=50,MAX_ACTIVE_WORLD_WARS=2;
 const clamp=W.clamp,dist=(a,b,x,y)=>Math.hypot(a-x,b-y),esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const canvas=$('worldCanvas'),ctx=canvas.getContext('2d'),mini=$('minimap'),mctx=mini.getContext('2d');
@@ -77,29 +77,78 @@ function installFamilies(raw){
  state.familySeed=seed||(raw?'legacy-'+state.player.origin+'-'+state.player.name:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2));
  state.legacyHouseLeaders=!!raw&&(!seed||raw.legacyHouseLeaders===true);
  const saved=new Map((Array.isArray(raw?.familyProfiles)?raw.familyProfiles:[]).filter(p=>typeof p?.id==='string').map(p=>[p.id,p]));
- const people=CHARACTERS.create({houses:HOUSES,factions:F,seed:state.familySeed,preserveLegacyLeaders:state.legacyHouseLeaders}).map(person=>{
+ const people=CHARACTERS.create({houses:HOUSES,factions:F,seed:state.familySeed,preserveLegacyLeaders:state.legacyHouseLeaders,savedProfiles:saved}).map(person=>{
   const profile=saved.get(person.id),name=typeof profile?.name==='string'?profile.name.trim().slice(0,48):'';
-  const age=Number.isInteger(profile?.age)&&(person.role==='child'?profile.age>=1&&profile.age<18:profile.age>=18&&profile.age<=85)?profile.age:person.age;
+  const age=Number.isInteger(profile?.age)&&(person.role==='child'?profile.age>=1&&profile.age<18:profile.age>=18&&profile.age<=100)?profile.age:person.age;
   const fixedHead=state.legacyHouseLeaders&&person.role==='head';
   return {...person,name:fixedHead?person.name:name||person.name,age,
    appearance:CHARACTERS.normalizeAppearance(profile?.appearance||person.appearance||person)};
  });
+ state.people=new Map(people.map(person=>[person.id,person]));
  state.families=new Map(HOUSES.map(house=>[house.id,people.filter(person=>person.houseId===house.id)]));
 }
 function houseFamily(houseId){return state?.families?.get(houseId)||[]}
 function houseHead(houseId){return houseFamily(houseId).find(person=>person.role==='head')}
 function houseLeader(house){return house&& (houseHead(house.id)?.name||house.leader)}
 function campaignHours(){return (state.day-1)*24+state.hour}
-function installNobles(saved){
- state.nobles=NOBLES.create(W,HOUSES,saved,campaignHours());
+function installNobles(saved,treasuries){
+ state.nobleHouses=NOBLE_HOUSES.create(W,HOUSES,state.families,treasuries,state.day,resourceProduction);
+ const holdings=new Map(state.nobleHouses.houses.map(house=>[house.houseId,house.holdings]));
+ state.nobles=NOBLES.create(W,HOUSES,saved,campaignHours(),{families:state.families,
+  strength:id=>NOBLE_HOUSES.strength(state.nobleHouses,id),holdings:id=>holdings.get(id)});
+ state.noblePeople=new Map(state.nobles.map(noble=>[noble.personId,noble]));
+ state.nobleParties=new Map(state.nobles.map(noble=>[noble.party.id,noble]));
+ state.nobleDependents=new Map();
+ for(const person of state.people.values()){
+  if(state.noblePeople.has(person.id))continue;
+  const escort=state.noblePeople.get(person.parentIds[1])||state.noblePeople.get(person.parentIds[0]);
+  if(escort){
+   state.nobleDependents.set(person.id,escort);
+   (escort.dependents??=[]).push(person);
+  }
+ }
  state.parties.push(...state.nobles.map(noble=>noble.party));
 }
-function nobleByHouse(id){return state?.nobles?.find(noble=>noble.houseId===id)}
+function nobleByHouse(id){return state?.noblePeople?.get(houseHead(id)?.id)}
+function nobleForPerson(id){return state?.noblePeople?.get(id)||state?.nobleDependents?.get(id)}
 function nobleActivity(noble){
  const present=S[noble.siteId],destination=S[noble.destinationId];
  if(present)return (present.id===noble.homeId?'At ':'Visiting ')+present.name;
  if(!destination)return 'On the road';
- return (noble.purpose==='return'?'Returning to ':noble.purpose==='inspection'?'Inspecting the road to ':'Traveling to ')+destination.name;
+ const activity={return:'Returning to ',inspection:'Inspecting the road to ',supplies:'Seeking supplies at ',patrol:'Patrolling toward '};
+ return (activity[noble.purpose]||'Traveling to ')+destination.name+
+  (noble.cargo?' with '+noble.cargo.quantity+' '+noble.cargo.resource:'');
+}
+function nobleRole(person){return person.role==='partner'?'Partner · Steward':person.relationLabel||'Household member'}
+function nobleStopScore(noble,site){
+ if(noble.circuit.purpose==='supplies'&&site.type==='village'&&noble.holdings.includes(site.id)){
+  const {quantity}=nobleSupplyOffer(noble,site);
+  return 90+quantity*55;
+ }
+ if(!['inspection','patrol'].includes(noble.circuit.purpose))return 0;
+ return state.parties.reduce((danger,party)=>party.active&&party.kind==='bandit'&&dist(site.x,site.y,party.x,party.y)<910?danger+Math.min(65,party.strength*4):danger,0);
+}
+function nobleSupplyOffer(noble,site){
+ const resource=TRADE_RESOURCES.includes(site.specialty)?site.specialty:'grain';
+ const source=ensureMarket(site),target=ensureMarket(S[noble.homeId]);
+ const surplus=source.stock[resource]-Math.ceil(source.capacity[resource]*.33);
+ const shortfall=Math.ceil(target.capacity[resource]*.6)-target.stock[resource];
+ return {resource,quantity:Math.max(0,Math.min(8,Math.floor(surplus),shortfall))};
+}
+function nobleArrival(noble,site){
+ if(noble.circuit.purpose!=='supplies')return;
+ if(site.id===noble.homeId&&noble.cargo){
+  const market=ensureMarket(site),{resource,quantity}=noble.cargo;
+  const delivered=Math.min(quantity,market.capacity[resource]-market.stock[resource]);
+  if(delivered>0){
+   market.stock[resource]+=delivered;noble.cargo.quantity-=delivered;
+   if(!noble.cargo.quantity)noble.cargo=null;
+   reportWorldEvent(site.x,site.y,partyName(noble.party)+' delivered '+delivered+' '+resource+' to '+site.name+'.');
+  }
+ }else if(!noble.cargo&&site.type==='village'&&noble.holdings.includes(site.id)){
+  const offer=nobleSupplyOffer(noble,site);
+  if(offer.quantity){ensureMarket(site).stock[offer.resource]-=offer.quantity;noble.cargo=offer}
+ }
 }
 function nobleRoadReport({x,y}){
  const threats=state.parties.filter(p=>p.active&&p.kind==='bandit'&&dist(x,y,p.x,p.y)<1800);
@@ -290,7 +339,7 @@ function saveGame(silent){
  try{
   const data={version:VERSION,player:state.player,day:state.day,hour:state.hour,
    parties:state.parties.filter(p=>p.kind!=='noble').map(p=>({id:p.id,x:p.x,y:p.y,tx:p.tx,ty:p.ty,strength:p.strength,active:p.active,kind:p.kind,faction:p.faction,targetPartyId:p.targetPartyId??null,cargo:p.cargo??null,tradeTargetId:p.tradeTargetId??null})),
-   nobles:NOBLES.snapshot(state.nobles),
+   nobles:NOBLES.snapshot(state.nobles),nobleHouses:NOBLE_HOUSES.snapshot(state.nobleHouses),
    familySeed:state.familySeed,familyVersion:CHARACTERS.GENERATOR_VERSION,legacyHouseLeaders:state.legacyHouseLeaders,
    familyProfiles:[...state.families.values()].flat().map(({id,name,age,appearance})=>({id,name,age,appearance})),
    options:state.options,speed:1,zoom:camera.zoom,visitedLandmarks:state.visitedLandmarks||[],pendingBattleId:state.pendingBattleId||null,lastEncounter:state.lastEncounter,
@@ -380,7 +429,7 @@ function loadGame(){
      }
     }}
   installFamilies(raw);
-  installNobles(raw.nobles);
+  installNobles(raw.nobles,raw.nobleHouses);
   camera.zoom=clamp(raw.zoom||.47,.12,1.9);resetView();$('game').classList.remove('hidden');showScreen(null);resize();
   selected={type:'land'};log('Campaign resumed. Your journey continues.');refreshUI();
   if(!consumeBattleResult()){
@@ -433,12 +482,12 @@ function travelTo(x,y,targetId){
 }
 function partyName(p){
  if(!p)return'Unknown travelers';
- if(p.kind==='noble')return houseLeader(HOUSES[p.houseId])||'Noble escort';
+ if(p.kind==='noble')return state?.people?.get(p.personId)?.name||houseLeader(HOUSES[p.houseId])||'Noble escort';
  return p.kind==='bandit'?'Outlaw Bandits':
   (F[p.faction]?.name||'Wandering')+' '+(p.kind==='patrol'?'Patrol':'Caravan');
 }
 function partyMapLabel(p){
- return p.kind==='noble'?partyName(p):(p.kind==='bandit'?'Bandits ':p.kind==='patrol'?'Patrol ':'Caravan ')+p.strength;
+ return p.kind==='noble'?partyName(p)+' · '+p.strength:(p.kind==='bandit'?'Bandits ':p.kind==='patrol'?'Patrol ':'Caravan ')+p.strength;
 }
 function followParty(id){
  if(!state||menuOpen)return;
@@ -456,7 +505,7 @@ function updateFollow(dt){
  if(!state||state.followPartyId==null)return;
  const party=state.parties.find(p=>p.id===state.followPartyId&&p.active);
  if(!party){
-  const noble=state.nobles.find(noble=>noble.party.id===state.followPartyId);
+  const noble=state.nobleParties.get(state.followPartyId);
   const site=noble&&S[noble.siteId];
   state.followPartyId=null;state.path=[];state.pathIndex=0;
   if(site){
@@ -710,7 +759,12 @@ function dailyProvisions(){
  const baseNeed=Math.max(1,Math.ceil(rosterCount()/10));
  return Math.max(1,Math.ceil(baseNeed*(state.player.perks.includes('quartermaster')?.85:1)));
 }
-function advanceDay(){state.day++;advanceEconomy();diplomacyDay();consumeFood();replenishRoadParties()}
+function advanceDay(){
+ state.day++;advanceEconomy();
+ state.nobleHouses=NOBLE_HOUSES.advance(state.nobleHouses,W,state.day,resourceProduction);
+ for(const noble of state.nobles)noble.party.strength=NOBLE_HOUSES.strength(state.nobleHouses,noble.personId);
+ diplomacyDay();consumeFood();replenishRoadParties();
+}
 function replenishRoadParties(){
  const limits={bandit:27,patrol:21,caravan:20};
  for(const [kind,limit] of Object.entries(limits)){
@@ -907,6 +961,28 @@ function resolveWorldClashes(){
  }
  if(bandLost&&closeUnavailableBounties())saveGame(true);
 }
+function resolveNobleClashes(){
+ const now=campaignHours();
+ if(now<(state.nextNobleClashCheck||0))return;
+ state.nextNobleClashCheck=now+.2;
+ const bandits=state.parties.filter(p=>p.active&&p.kind==='bandit');
+ let changed=false;
+ for(const noble of state.nobles){
+  const party=noble.party;
+  if(!party.active||noble.recovering||noble.dependents?.length||!['patrol','inspection'].includes(noble.circuit.purpose))continue;
+  const enemy=bandits.find(p=>p.active&&dist(p.x,p.y,party.x,party.y)<57);
+  if(!enemy)continue;
+  const wins=party.strength>=enemy.strength;
+  const remaining=party.strength-Math.ceil(enemy.strength*(wins?.14:.36));
+  state.nobleHouses=NOBLE_HOUSES.setStrength(state.nobleHouses,noble.personId,remaining);
+  party.strength=NOBLE_HOUSES.strength(state.nobleHouses,noble.personId);
+  if(wins)enemy.active=false;
+  else NOBLES.sendHome(W,noble,now);
+  reportWorldEvent(enemy.x,enemy.y,partyName(party)+(wins?' drove off outlaws near ':' retreated after meeting outlaws near ')+W.closestSettlement(enemy.x,enemy.y).name+'.');
+  changed=true;
+ }
+ if(changed){closeUnavailableBounties();inspectorDirty=true;saveGame(true)}
+}
 function stepParties(dt){
  const parties=state.parties;
  const count=parties.length;
@@ -944,8 +1020,9 @@ function stepParties(dt){
   }
   if(p.kind==='caravan')deliverCaravan(p);
  }
- if(NOBLES.step(W,state.nobles,campaignHours(),dt))inspectorDirty=true;
+ if(NOBLES.step(W,state.nobles,campaignHours(),dt,{scoreStop:nobleStopScore,onArrival:nobleArrival}))inspectorDirty=true;
  resolveWorldClashes();
+ resolveNobleClashes();
  const close=parties.find(p=>p.active&&p.kind==='bandit'&&
   dist(state.player.x,state.player.y,p.x,p.y)<92);
  if(close&&(state.day+state.hour/24)-state.lastEncounter>.08&&!menuOpen){
@@ -1035,15 +1112,48 @@ function performSettlementAction(action,id,quantity=1){
  inspectorDirty=true;
  refreshUI();saveGame(true);
 }
-function familyMemberMarkup(person){
- const role=person.role==='head'?'House head':person.role==='partner'?'Partner':person.birthOrder===1?'Older child':'Younger child';
+function familyMemberMarkup(person,mode){
  const portrait=CHAR_UI?.portraitMarkup?.({...person.appearance,age:person.age},person.name+' portrait')||'';
- return '<div class="house-family-member"><span class="house-family-portrait">'+portrait+'</span>'+
-  '<div class="house-family-meta"><b>'+esc(person.name)+'</b><small>'+esc(role)+' · Age '+person.age+'</small></div></div>';
+ const noble=nobleForPerson(person.id);
+ const parents=person.generation===1?person.parentIds.map(id=>state.people.get(id)?.name).filter(Boolean):[];
+ const activity=noble?nobleActivity(noble):'At '+S[person.homeId].name;
+ const detail=person.age>=18&&noble?noble.party.strength+' in retinue':noble?'With '+partyName(noble.party):null;
+ const button=mode==='find'?'<button class="btn small house-family-find" type="button" data-family-find="'+esc(person.id)+
+  '" aria-label="Find '+esc(person.name)+' on map">Find</button>':
+  mode==='talk'?'<button class="btn small house-family-find" type="button" data-town-noble-act="speak" data-noble-person="'+esc(person.id)+
+  '" aria-label="Speak to '+esc(person.name)+'">Speak</button>':'';
+ return '<li class="house-family-member"><span class="house-family-portrait">'+portrait+'</span>'+
+  '<div class="house-family-meta"><b>'+esc(person.name)+'</b><small>'+esc(nobleRole(person))+' · Age '+person.age+'</small>'+
+  (parents.length?'<small>Parents · '+esc(parents.join(' and '))+'</small>':'')+
+  '<small class="house-family-activity">'+esc(activity+(detail?' · '+detail:''))+'</small></div>'+button+'</li>';
+}
+function familyTreeMarkup(people,mode){
+ const generations=[[-1,'Elders'],[0,'House head and siblings'],[1,'Children and cousins']];
+ return '<div class="house-family-tree">'+generations.map(([generation,label])=>{
+  const members=people.filter(person=>person.generation===generation);
+  return members.length?'<section class="house-family-generation"><h4 class="house-family-generation-label">'+label+'</h4>'+
+   '<ul class="house-family-members">'+members.map(person=>familyMemberMarkup(person,mode)).join('')+'</ul></section>':'';
+ }).join('')+'</div>';
+}
+function personSite(person){
+ const noble=nobleForPerson(person.id);
+ return noble?noble.siteId:person.homeId;
+}
+function personDialogue(person,site,roads=false){
+ const noble=nobleForPerson(person.id),house=HOUSES[person.houseId];
+ let line;
+ if(roads&&person.age>=18)line=nobleRoadReport(site);
+ else if(person.age<18)line='I’m with '+(noble?partyName(noble.party):house.name)+'.';
+ else if(person.role==='partner')line=noble?.cargo?'I’m bringing '+noble.cargo.quantity+' '+noble.cargo.resource+' back to '+S[person.homeId].name+'.':
+  'I see to supplies from our holdings. Our goods travel back to '+S[person.homeId].name+'.';
+ else if(person.role==='head')line=nobleGreeting(house.id);
+ else line='My retinue numbers '+(noble?.party.strength||1)+'. '+nobleActivity(noble)+'.';
+ return person.name+' says, “'+line+'”';
 }
 function renderTownPeople(site){
  const seated=seatHouse(site.id);
- const presentHouseIds=new Set(state.nobles.filter(noble=>noble.siteId===site.id).map(noble=>noble.houseId));
+ const people=[...state.people.values()].filter(person=>personSite(person)===site.id);
+ const presentHouseIds=new Set(people.map(person=>person.houseId));
  if(seated)presentHouseIds.add(seated.id);
  $('townPeople').hidden=!presentHouseIds.size;
  $('townPeopleHeading').textContent='People here';
@@ -1052,9 +1162,9 @@ function renderTownPeople(site){
   const house=HOUSES[id],noble=nobleByHouse(id),present=(noble?noble.siteId:house.seatId)===site.id;
   const lastSeen=S[noble?.lastSeenSiteId],offer=present?retainerOffer(site,house):null;
   const head=houseHead(id),activity=noble?nobleActivity(noble):'At '+site.name;
-  const residents=seated?.id===id?houseFamily(id).filter(person=>person.role!=='head'):[];
+  const residents=people.filter(person=>person.houseId===id&&person.role!=='head');
   const button=(action,label)=>'<button type="button" class="btn" data-town-noble-act="'+action+
-   '" data-noble-id="'+house.id+'">'+esc(label)+'</button>';
+   '" data-noble-person="'+esc(head.id)+'">'+esc(label)+'</button>';
   const actions=present?button('speak','Speak')+button('roads','Ask about roads')+
    (offer.reason?'':button('retainers','Hire '+offer.count+' · '+offer.count*offer.cost+' denars')):'';
   const detail=present?(offer.reason||'Retainers available'):lastSeen?'Last seen at '+lastSeen.name:'Awaiting word';
@@ -1063,21 +1173,21 @@ function renderTownPeople(site){
    '</span><div class="town-person-meta"><b>'+esc(houseLeader(house))+'</b><small>'+esc(house.name)+
    (head?' · Age '+head.age:'')+'</small><small class="town-person-status">'+esc(activity)+' · '+houseFavor(house)+'/16 favor</small>'+
    '<small>'+esc(detail)+'</small></div></div>'+(actions?'<div class="town-person-actions">'+actions+'</div>':'')+
-   (residents.length?'<details class="house-family"><summary>Family at this seat</summary><div class="house-family-members">'+
-    residents.map(familyMemberMarkup).join('')+'</div></details>':'')+'</article>';
+   (residents.length?'<details class="house-family"><summary>Family here · '+residents.length+'</summary>'+
+    familyTreeMarkup(residents,'talk')+'</details>':'')+'</article>';
  }).join('');
 }
-function townNobleAction(action,id){
- const house=HOUSES[id],noble=nobleByHouse(id),site=S[state?.currentTownId],p=state?.player;
- if(!site||!p||!house||(noble?noble.siteId:house.seatId)!==site.id||$('screenTown').classList.contains('hidden')||
+function townNobleAction(action,personId){
+ const person=state?.people?.get(personId),site=S[state?.currentTownId],p=state?.player;
+ if(!site||!p||!person||personSite(person)!==site.id||$('screenTown').classList.contains('hidden')||
     dist(p.x,p.y,site.x,site.y)>TOWN_ENTRY_RANGE)return;
- if(action==='retainers'){
-  if(recruitRetainers(site,house)){showTown(site.id);refreshUI();saveGame(true)}
+ if(action==='retainers'&&person.role==='head'){
+  if(recruitRetainers(site,HOUSES[person.houseId])){showTown(site.id);refreshUI();saveGame(true)}
   return;
  }
  if(action==='speak'||action==='roads'){
   const dialogue=$('townPeopleDialogue');
-  dialogue.textContent=houseLeader(house)+' says, “'+(action==='roads'?nobleRoadReport(site):nobleGreeting(id))+'”';
+  dialogue.textContent=personDialogue(person,site,action==='roads');
   dialogue.scrollIntoView?.({block:'nearest'});
  }
 }
@@ -1636,19 +1746,25 @@ function openEncounter(party){
  state.followPartyId=null;state.path=[];state.pathIndex=0;state.targetSettlement=null;
  selected={type:'party',id:party.id};inspectorDirty=true;
  const kind=party.kind;
- const noble=kind==='noble'?nobleByHouse(party.houseId):null;
+ const noble=state.nobleParties.get(party.id);
  $('encounterNobleDetails').hidden=!noble;
  $('encounterNobleRoads').hidden=!noble;
+ const family=$('encounterTravelingFamily'),guests=noble?.dependents||[];
+ family.hidden=!guests.length;
+ $('encounterFamilyActions').innerHTML=guests.map(person=>'<button class="btn small" type="button" data-encounter-person="'+esc(person.id)+
+  '" aria-label="Speak to '+esc(person.name)+'">'+esc(person.name)+'</button>').join('');
  for(const id of ['encounterRoster','encounterTrade','encounterDeploy','encounterFight'])$(id).hidden=!!noble;
  $('encounterTalk').textContent=noble?'Speak':'💬 Speak to their leader';
  $('encounterName').textContent=partyName(party);
  if(noble){
-  const house=HOUSES[noble.houseId];
-  $('encounterIntro').textContent=houseLeader(house)+' rides with '+party.strength+' guards.';
-  $('encounterNobleRole').textContent=house.name;
+  const house=HOUSES[noble.houseId],person=state.people.get(noble.personId);
+  const guards=party.strength-1;
+  $('encounterIntro').textContent=person.name+(guards?' rides with '+guards+(guards===1?' guard.':' guards.'):
+   guests.length?' travels with family.':' rides alone.');
+  $('encounterNobleRole').textContent=nobleRole(person)+' · '+house.name;
   $('encounterNobleStatus').textContent=nobleActivity(noble);
   $('encounterNobleFavor').textContent=houseFavor(house)+' / 16';
-  $('encounterDialogue').textContent='The escort makes room for you to speak.';
+  $('encounterDialogue').textContent=guards?'The escort makes room for you to speak.':person.name+' stops to speak.';
   openModal('screenEncounter');
   return;
  }
@@ -1697,7 +1813,7 @@ function launchCampaignBattle(party,deploymentPlanner=false){
   try{localStorage.removeItem('ua-campaign-battle-session-v1')}catch(e){}
   notify('Browser storage is needed for campaign battles.');return;
  }
- window.location.href='campaign-battle.html?campaign=1&v=4.18'+(deploymentPlanner?'&deploy=1':'');
+ window.location.href='campaign-battle.html?campaign=1&v=4.19'+(deploymentPlanner?'&deploy=1':'');
 }
 function skirmish(id,deploymentPlanner=false){
  const party=state?.parties.find(p=>p.id===id&&p.active);
@@ -2165,11 +2281,12 @@ function refreshInspector(){
  }else if(selected.type==='party'){
   const enemy=state.parties.find(p=>p.id===selected.id);
   if(!enemy||!enemy.active){selected={type:'land'};return refreshInspector()}
-  const noble=enemy.kind==='noble'?nobleByHouse(enemy.houseId):null;
+  const noble=state.nobleParties.get(enemy.id);
   const label=partyName(enemy);
   html='<div class="smallcaps">'+(noble?'NOBLE ESCORT':'ROAMING PARTY')+'</div><h2>'+esc(label)+'</h2><div class="banner-strip" style="background:'+(noble?'#edce88':enemy.kind==='bandit'?'#c57966':F[enemy.faction].color)+'"></div>';
   html+='<p>Party size: <b>'+enemy.strength+'</b>. Distance: '+Math.round(dist(state.player.x,state.player.y,enemy.x,enemy.y))+' map units.</p>';
-  if(noble)html+='<div class="eventbox"><b>'+esc(HOUSES[noble.houseId].name)+'</b><p>'+esc(nobleActivity(noble))+'</p></div>';
+  if(noble)html+='<div class="eventbox"><b>'+esc(HOUSES[noble.houseId].name)+'</b><p>'+esc(nobleActivity(noble))+'</p>'+
+   (noble.dependents?.length?'<p>With '+esc(noble.dependents.map(person=>person.name).join(', '))+'</p>':'')+'</div>';
   else html+='<div class="eventbox"><b>'+esc(enemy.kind==='bandit'?'Hostile raiders':'Traveling party')+'</b><p>'+
    (enemy.kind==='bandit'?'Bandits threaten the roads. Follow them to negotiate, flee, or enter a real battle.':
    (enemy.targetPartyId!=null?(enemy.kind==='patrol'?'Patrolling against nearby outlaws.':enemy.kind==='bandit'?'Hunting a merchant caravan.':'Moving between markets.'):
@@ -2294,13 +2411,21 @@ function showFactionDetails(id){
  const recent=state?.diplomacy.history.slice(0,4)||[];
  const relationList=relations.map(r=>'<span class="diplomacy-chip '+(r.war?'war':r.ally?'ally':r.tension>=40?'rivalry':r.tension>=18?'tense':'peace')+'"><b>'+esc(r.other.name)+'</b> '+(r.war?'⚔ War':r.ally?'◆ Ally':r.tension>=40?'Rivalry':r.tension>=18?'Tense':'Peace')+' · '+r.value+'</span>').join('');
  const news=recent.length?recent.map(e=>'<li><b>Day '+e.day+'</b> · '+esc(e.text)+'</li>').join(''):'<li>Trade ties and border incidents will emerge as your campaign advances.</li>';
+ const finances=new Map((state?.nobleHouses.houses||[]).map(house=>[house.houseId,house]));
  const houses=HOUSES.filter(h=>h.faction===id).map(h=>{
   const noble=nobleByHouse(h.id),family=houseFamily(h.id);
+  const economy=finances.get(h.id);
+  const retinueSize=economy?.retinues.reduce((sum,retinue)=>sum+retinue.strength,0);
+  const holdings=economy?.holdings.filter(id=>id!==h.seatId).map(id=>{
+   const site=S[id],resource=ITEMS[site.specialty]?.name;
+   return '<li>'+esc(site.name+(resource?' · '+resource:''))+'</li>';
+  }).join('');
   return '<article class="house-card"><b>'+esc(h.name)+'</b><small>'+esc(houseLeader(h))+' · '+esc(S[h.seatId].name)+'</small>'+
    (noble?'<small>'+esc(nobleActivity(noble))+'</small>':'')+
    (state?'<small>'+houseFavor(h)+' / 16 favor to recruit retainers</small>':'')+
-   (family.length?'<details class="house-family"><summary>Family · '+family.length+'</summary><div class="house-family-members">'+
-    family.map(familyMemberMarkup).join('')+'</div></details>':'')+'</article>';
+   (economy?'<small>'+economy.treasury.toLocaleString()+' denars · '+retinueSize+' in household retinues</small>':'')+
+   (holdings?'<details class="house-family"><summary>Holdings · '+(economy.holdings.length-1)+'</summary><ul>'+holdings+'</ul></details>':'')+
+   (family.length?'<details class="house-family"><summary>Family · '+family.length+'</summary>'+familyTreeMarkup(family,'find')+'</details>':'')+'</article>';
  }).join('');
  const troops=f.troops.map((name,tier)=>'<div><small>Tier '+(tier+1)+'</small><b>'+esc(name)+'</b><small>'+esc(loadoutDescription(kingdomLoadout(id,tier)))+'</small></div>').join('');
  const branches=ARMORY.branchSlots(id).filter(slot=>slot.tier===1);
@@ -2319,6 +2444,18 @@ function showFactionDetails(id){
 function openFactions(){
  $('factionGrid').innerHTML=F.map(f=>'<button class="faction-card" data-faction="'+f.id+'"><span class="faction-flag" style="background:'+f.color+'">'+esc(f.symbol)+'</span><span><strong>'+esc(f.name)+'</strong><small>'+esc(f.culture)+'</small><small>'+esc(f.trait)+'</small><small class="faction-peace">'+esc(factionDiplomacyLabel(f.id))+'</small></span></button>').join('');
  openModal('screenFactions');showFactionDetails(selectedFaction);
+}
+function findFamilyMember(id){
+ const person=state?.people?.get(id);
+ if(!person)return;
+ const noble=nobleForPerson(id),party=noble?.party,site=S[personSite(person)];
+ const position=party?.active?party:site;
+ if(!position)return;
+ modalStack=[];showScreen(null);
+ selected=party?.active?{type:'party',id:party.id}:{type:'settlement',id:site.id};
+ camera.x=position.x;camera.y=position.y;focus=false;lastMini=0;inspectorDirty=true;
+ $('sidebar').classList.add('mobile-hide');$('inspector').classList.remove('mobile-hide');
+ refreshInspector();refreshUI();
 }
 function quantityChoices(kind,id){
  if(kind==='promote')return promotionOptions(id).map(option=>({
@@ -2647,8 +2784,8 @@ function togglePause(){
 }
 button('encounterTalk',()=>{
  const p=state?.parties.find(x=>x.id===selected?.id);if(!p)return;
- const noble=p.kind==='noble'?nobleByHouse(p.houseId):null;
- if(noble){$('encounterDialogue').textContent=nobleGreeting(noble.houseId);return}
+ const noble=state.nobleParties.get(p.id);
+ if(noble){$('encounterDialogue').textContent=personDialogue(state.people.get(noble.personId),p);return}
  const line=p.kind==='bandit'?'The outlaw chief demands coin and threatens passing villagers.':
   p.kind==='caravan'?'The merchants seek a market in '+W.closestSettlement(p.x,p.y).name+'.':
   'The patrol captain warns of raiders and trouble at the border.';
@@ -2656,8 +2793,13 @@ button('encounterTalk',()=>{
 });
 button('encounterNobleRoads',()=>{
  const party=state?.parties.find(x=>x.id===selected?.id&&x.active&&x.kind==='noble');
- const noble=party&&nobleByHouse(party.houseId);
- if(noble)$('encounterDialogue').textContent=nobleRoadReport(party);
+ if(party)$('encounterDialogue').textContent=personDialogue(state.people.get(party.personId),party,true);
+});
+$('encounterFamilyActions').addEventListener('click',event=>{
+ const action=event.target.closest('[data-encounter-person]');
+ const noble=state?.nobleParties.get(selected?.id);
+ const person=action&&noble?.dependents?.find(person=>person.id===action.dataset.encounterPerson);
+ if(person)$('encounterDialogue').textContent=personDialogue(person,noble.party);
 });
 button('encounterTrade',()=>{
  const party=state?.parties.find(x=>x.id===selected?.id);if(!party||party.kind==='noble')return;
@@ -2748,6 +2890,10 @@ $('armoryWeapon').addEventListener('change',previewArmory);
 $('armoryStyle').addEventListener('change',previewArmory);
 $('armoryName').addEventListener('input',previewArmory);
 $('factionGrid').addEventListener('click',e=>{const b=e.target.closest('[data-faction]');if(b)showFactionDetails(Number(b.dataset.faction))});
+$('factionDetail').addEventListener('click',event=>{
+ const button=event.target.closest('[data-family-find]');
+ if(button)findFamilyMember(button.dataset.familyFind);
+});
 function handleQuantityClick(event){
  const button=event.target.closest('[data-quantity-step],[data-quantity-confirm]');
  if(!button)return false;
@@ -2802,7 +2948,7 @@ $('screenTown').addEventListener('click',e=>{
  if(handlePrisonerClick(e,true))return;
  if(handleWorkshopAction(e))return;
  const audience=e.target.closest('[data-town-noble-act]');
- if(audience){townNobleAction(audience.dataset.townNobleAct,Number(audience.dataset.nobleId));return}
+ if(audience){townNobleAction(audience.dataset.townNobleAct,audience.dataset.noblePerson);return}
  if(handleQuantityClick(e))return;
  const destination=e.target.closest('button[data-town-view]');
  if(destination){setTownView(destination.dataset.townView);return}
