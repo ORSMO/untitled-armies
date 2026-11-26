@@ -2,6 +2,12 @@
 
 [Party, troop trees, deployment and equipment](ROADMAP.md)
 
+## V4.21 — A fuller Asterra
+
+Asterra now has 240 settlements. Each realm gained twelve villages, three towns, and a castle. Terrain and nearby trade roads guide placement, and new settlements have roads into their local network. The original capitals, settlements, and landmarks retain their save IDs.
+
+Rivers and high ridges shape travel. Cross rivers at bridges or fords and take a pass through the highest ridges. The expansion adds fourteen bridges, three mountain passes, and new watchtowers, roadside camps, ruins, and groves. The map reveals local markers as you zoom and gives priority to selected places and major centers when labels would overlap.
+
 ## V4.20 — Settlement roles and supply roads
 
 The first settlement screen shows its role and two main actions. Capitals have a Great Hall for the ruling household, holdings, and store reports. Town trades reflect local resources, smithing towns attract iron deliveries, and major markets buy more workshop output.

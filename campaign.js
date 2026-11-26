@@ -11,8 +11,10 @@ const clamp=W.clamp,dist=(a,b,x,y)=>Math.hypot(a-x,b-y),esc=v=>String(v).replace
 const canvas=$('worldCanvas'),ctx=canvas.getContext('2d'),mini=$('minimap'),mctx=mini.getContext('2d');
 let state=null,selected=null,selectedFaction=6,modalStack=[],focus=true,camera={x:3870,y:5320,zoom:.47},keys=new Set(),drag=null,last=0,lastHud=0,lastMini=0,lastSave=0,toastUntil=0,menuOpen=true,miniBase=null,view={w:900,h:600},inspectorDirty=true;
 const mapPointers=new Map();
+const shownSettlementLabels=new Set();
 let mapPinch=null;
 const TOWN_ENTRY_RANGE=155,LANDMARK_RANGE=145;
+function withinReach(a,b,range){return dist(a.x,a.y,b.x,b.y)<=range&&W.travelLine(a.x,a.y,b.x,b.y)}
 const OUTLAW_CAMP_NAMES=new Set(['Larkwood Camp','Fallen Banner Camp','Three Oaks Camp']);
 const OUTLAW_CAMPS=W.landmarks.filter(place=>place.kind==='camp'&&OUTLAW_CAMP_NAMES.has(place.name));
 const screens=['screenMenu','screenCreate','screenFactions','screenAtlas','screenOptions','screenPause','screenParty','screenCharacter','screenTown','screenLandmark','screenEncounter','screenAftermath','screenArmory'];
@@ -380,7 +382,8 @@ function startCampaign(){
  const age=Number($('newAge').value),appearance=CHAR_UI?.readAppearance();
  const cap=F[origin].capital;
  // Spawn near each faction's gates and within immediate recruiting range.
- const x=cap[0]+45,y=cap[1]+45;
+ const start={x:cap[0]+45,y:cap[1]+45};
+ const {x,y}=W.stablePosition(start.x,start.y)||start;
  const money=background==='merchant'?1250:background==='soldier'?650:900;
  const firstTroops=background==='soldier'?
   [{faction:origin,tier:0,count:5},{faction:origin,tier:1,count:3}]:
@@ -393,7 +396,8 @@ function startCampaign(){
    parties:[],options:{...settingsDefault},messages:[],unseen:[],lastEncounter:-100,marketStocks:{},workshops:{},completedContracts:[],diplomacy:createDiplomacy(),settlementProjects:{}};
   state.player=preparePlayer(state.player);
   state.parties=generateParties();installFamilies();installNobles();initializeMarkets();refreshBanditCamps(true);
-  launchCorridor('patrol');launchCorridor('shipment');selected={type:'settlement',id:origin*8};
+  launchCorridor('patrol');launchCorridor('shipment');
+  selected={type:'settlement',id:S.find(site=>site.faction===origin&&site.type==='capital').id};
  camera.zoom=.47;resetView();$('game').classList.remove('hidden');showScreen(null);resize();
  log('Your story begins beneath the banners of '+F[origin].name+'.');
  log('Your first task: recruit three volunteers from a settlement.');
@@ -405,12 +409,8 @@ function loadGame(){
   const raw=JSON.parse(localStorage.getItem(KEY));if(!raw||raw.version!==VERSION||!raw.player)throw Error('Wrong save version');
    const p=raw.player;if(!Number.isFinite(p.x)||!Number.isFinite(p.y)||!Number.isFinite(p.gold)||!Array.isArray(p.roster))throw Error('Corrupt data');preparePlayer(p);
   p.x=clamp(p.x,0,W.WIDTH);p.y=clamp(p.y,0,W.HEIGHT);
-  // Saved character locations survive the V4.1 geography rebuild.
-  // If new water now covers an old saved position, reach the nearest land.
-  if(!W.tileAt(p.x,p.y).walk){
-   const land=W.nearestWalk(Math.floor(p.x/W.TILE),Math.floor(p.y/W.TILE));
-   if(land){p.x=(land.x+.5)*W.TILE;p.y=(land.y+.5)*W.TILE}
-  }
+  const accessible=W.stablePosition(p.x,p.y);
+  if(accessible)Object.assign(p,accessible);
   state={version:VERSION,player:p,day:raw.day||1,hour:Number.isFinite(raw.hour)?raw.hour:8,waiting:false,waitSpeed:1,
    paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,targetLandmark:null,
    corridor:CORRIDORS.normalize(raw.corridor,raw.day||1),banditCamps:restoreBanditCamps(raw.banditCamps,raw.day||1),escortPartyId:null,
@@ -431,10 +431,8 @@ function loadGame(){
       if(!S[a.tradeTargetId]||!S[cargo.from]||!['food',...TRADE_RESOURCES].includes(cargo.resource)||
          !Number.isInteger(cargo.quantity)||cargo.quantity<1)a.cargo=null;
      }
-     if(!W.tileAt(a.x,a.y).walk){
-      const land=W.nearestWalk(Math.floor(a.x/W.TILE),Math.floor(a.y/W.TILE));
-      if(land){a.x=(land.x+.5)*W.TILE;a.y=(land.y+.5)*W.TILE}
-     }
+     const accessible=W.stablePosition(a.x,a.y);
+     if(accessible)Object.assign(a,accessible);
     }}
   if(state.parties.some(p=>p.id===raw.escortPartyId&&p.active&&CORRIDORS.mission(state.corridor,p.id)?.kind==='shipment')){
    state.escortPartyId=raw.escortPartyId;state.followPartyId=raw.escortPartyId;
@@ -481,8 +479,13 @@ function zoomAt(mult,sx=view.w/2,sy=view.h/2){
 }
 function travelTo(x,y,targetId,landmarkId=null){
  if(!state||menuOpen)return;
- if(targetId!=null&&dist(state.player.x,state.player.y,x,y)<=TOWN_ENTRY_RANGE){arriveSettlement(targetId);return}
- if(landmarkId!=null&&dist(state.player.x,state.player.y,x,y)<=LANDMARK_RANGE){arriveLandmark(landmarkId);return}
+ if(targetId!=null&&withinReach(state.player,{x,y},TOWN_ENTRY_RANGE)){arriveSettlement(targetId);return}
+ if(landmarkId!=null&&withinReach(state.player,{x,y},LANDMARK_RANGE)){arriveLandmark(landmarkId);return}
+ if(targetId==null&&landmarkId==null&&!W.isPassable(x,y)){
+  const barrier=W.obstacleAt(x,y);
+  notify(barrier==='river'?'Cross the river at a bridge or ford.':barrier==='ridge'?'Take a road through a mountain pass.':'The water blocks travel here.');
+  return;
+ }
  const route=W.findPath(state.player.x,state.player.y,x,y);
  if(!route.length){notify('No traversable route found.');return}
  stopWaiting();
@@ -538,8 +541,8 @@ function updateFollow(dt){
  }
  const distance=dist(state.player.x,state.player.y,party.x,party.y);
  const escort=state.escortPartyId===party.id;
- if(distance<=143&&!escort){state.path=[];state.pathIndex=0;openEncounter(party);return}
- if(escort&&distance<=68){state.path=[];state.pathIndex=0;return}
+ if(distance<=143&&!escort&&withinReach(state.player,party,143)){state.path=[];state.pathIndex=0;openEncounter(party);return}
+ if(escort&&distance<=68&&withinReach(state.player,party,68)){state.path=[];state.pathIndex=0;return}
  state.followRepath-=dt;
  if(state.followRepath>0&&state.pathIndex<state.path.length)return;
  // Aim a few route segments ahead: the target continues moving while
@@ -559,7 +562,7 @@ function walkPlayer(dx,dy,dt){
  const p=state.player,mag=Math.hypot(dx,dy);if(mag<.0001)return false;
  const spd=147*W.walkingSpeed(p.x,p.y)*dt*(p.perks.includes('outrider')?1.12:1);
  const x=clamp(p.x+dx/mag*spd,15,W.WIDTH-15),y=clamp(p.y+dy/mag*spd,15,W.HEIGHT-15);
- if(!W.tileAt(x,y).walk)return false;
+ if(!W.isPassable(x,y))return false;
  const d=dist(p.x,p.y,x,y);p.x=x;p.y=y;advanceTime(d);
  return true;
 }
@@ -605,8 +608,9 @@ function recordDiplomacy(text){
  const d=state.diplomacy;d.history.unshift({day:state.day,text});d.history=d.history.slice(0,12);log('Day '+state.day+': '+text);
  if(state.day%3===0)notify(text);
 }
-function factionResourceTotal(faction,resource){
- return S.filter(site=>site.faction===faction).reduce((n,site)=>n+(state.marketStocks[site.id]?.stock?.[resource]||0),0);
+function factionAverageStock(faction,resource){
+ const sites=S.filter(site=>site.faction===faction);
+ return sites.reduce((total,site)=>total+(state.marketStocks[site.id]?.stock?.[resource]||0),0)/Math.max(1,sites.length);
 }
 function declareWar(a,b){
  const d=state.diplomacy,activeFor=id=>d.wars.filter(w=>w.a===id||w.b===id).length;
@@ -659,7 +663,7 @@ function diplomacyDay(){
   const incident=chooseDiplomaticIncident(d);
   if(incident){
    const {a,b,key,affinity}=incident;
-   const relation=factionRelation(a,b),heat=factionTension(a,b),shortage=Math.min(factionResourceTotal(a,'grain'),factionResourceTotal(b,'grain'))<30;
+   const relation=factionRelation(a,b),heat=factionTension(a,b),shortage=Math.min(factionAverageStock(a,'grain'),factionAverageStock(b,'grain'))<4;
    const goodwill=W.hash(state.day,911)+affinity*.8>(shortage?1.2:.97);
    if(goodwill){
     setFactionRelation(a,b,relation+13);setFactionTension(a,b,heat-12);
@@ -915,18 +919,18 @@ function stepTravel(dt){
   const next=state.path[state.pathIndex],d=dist(p.x,p.y,next.x,next.y);
   if(d<2){state.pathIndex++;continue}
   const delta=Math.min(d,budget),x=p.x+(next.x-p.x)/d*delta,y=p.y+(next.y-p.y)/d*delta;
-  if(!W.tileAt(x,y).walk){state.path=[];state.pathIndex=0;notify('The road ahead is blocked.');break}
+  if(!W.isPassable(x,y)){state.path=[];state.pathIndex=0;notify('The road ahead is blocked.');break}
   p.x=x;p.y=y;traversed+=delta;budget-=delta;
   if(delta>=d-1)state.pathIndex++;else break;
  }
  if(traversed)advanceTime(traversed);
  if(state.targetSettlement!=null){
   const site=S[state.targetSettlement];
-  if(dist(p.x,p.y,site.x,site.y)<=TOWN_ENTRY_RANGE){arriveSettlement(site.id);return}
+  if(withinReach(p,site,TOWN_ENTRY_RANGE)){arriveSettlement(site.id);return}
  }
  if(state.targetLandmark!=null){
   const place=W.landmarks[state.targetLandmark];
-  if(dist(p.x,p.y,place.x,place.y)<=LANDMARK_RANGE){arriveLandmark(place.id);return}
+  if(withinReach(p,place,LANDMARK_RANGE)){arriveLandmark(place.id);return}
  }
  if(state.pathIndex>=state.path.length&&state.path.length){
   state.path=[];state.pathIndex=0;state.targetSettlement=null;state.targetLandmark=null;inspectorDirty=true;
@@ -1047,7 +1051,7 @@ function resolveWorldClashes(){
   const target=parties.find(b=>b.id===a.targetPartyId&&b.active&&
    ((a.kind==='patrol'&&b.kind==='bandit')||(a.kind==='bandit'&&b.kind==='caravan')||
     (a.kind==='patrol'&&b.kind==='patrol'&&factionsAtWar(a.faction,b.faction))));
-  if(!target||dist(a.x,a.y,target.x,target.y)>64)continue;
+  if(!target||!withinReach(a,target,64))continue;
   if(a.kind==='patrol'&&target.kind==='patrol'){
    const war=state.diplomacy.wars.find(w=>w.a===Math.min(a.faction,target.faction)&&w.b===Math.max(a.faction,target.faction));
    const winner=a.strength>=target.strength? a:target,loser=winner===a?target:a;
@@ -1088,7 +1092,7 @@ function resolveNobleClashes(){
  for(const noble of state.nobles){
   const party=noble.party;
   if(!party.active||noble.recovering||noble.dependents?.length||!['patrol','inspection'].includes(noble.circuit.purpose))continue;
-  const enemy=bandits.find(p=>p.active&&dist(p.x,p.y,party.x,party.y)<57);
+  const enemy=bandits.find(p=>p.active&&withinReach(p,party,57));
   if(!enemy)continue;
   const wins=party.strength>=enemy.strength;
   const remaining=party.strength-Math.ceil(enemy.strength*(wins?.14:.36));
@@ -1143,7 +1147,7 @@ function stepParties(dt){
  const convoy=state.parties.find(p=>p.id===state.escortPartyId&&p.active);
  if(convoy&&!menuOpen&&(state.day+state.hour/24)-state.lastEncounter>.018){
   const threat=parties.find(p=>p.active&&p.kind==='bandit'&&p.targetPartyId===convoy.id&&
-   dist(p.x,p.y,convoy.x,convoy.y)<265&&dist(p.x,p.y,state.player.x,state.player.y)<155);
+   withinReach(p,convoy,265)&&withinReach(p,state.player,155));
   if(threat){openEncounter(threat);return}
  }
  resolveWorldClashes();
@@ -1151,7 +1155,7 @@ function stepParties(dt){
  updateCorridorArrivals();
  refreshBanditCamps(false);
  const close=parties.find(p=>p.active&&p.kind==='bandit'&&
-  dist(state.player.x,state.player.y,p.x,p.y)<92);
+  withinReach(state.player,p,92));
  if(close&&(state.day+state.hour/24)-state.lastEncounter>.08&&!menuOpen){
   state.path=[];state.pathIndex=0;openEncounter(close);
  }
@@ -1194,7 +1198,7 @@ function fieldRest(){
 function performSettlementAction(action,id,quantity=1){
  const site=S[id],p=state.player;
  if(!site)return;
- if(dist(p.x,p.y,site.x,site.y)>TOWN_ENTRY_RANGE){notify('Travel closer to enter '+site.name+'.');return}
+ if(!withinReach(p,site,TOWN_ENTRY_RANGE)){notify('Travel to the gates of '+site.name+'.');return}
  if(action==='recruit'){
   const terms=recruitmentTerms(site),number=Number(quantity);
   if(!terms.access){notify('The local authorities will not enlist you while your standing is outlawed.');return}
@@ -1936,7 +1940,7 @@ function upgradeRoster(index,quantity=1,optionId){
  notify('Promoted '+number+' · '+option.name);refreshUI();saveGame(true);return true;
 }
 function openEncounter(party){
- if(!state||!party?.active||menuOpen)return;
+ if(!state||!party?.active||menuOpen||!withinReach(state.player,party,155))return;
  state.followPartyId=null;state.path=[];state.pathIndex=0;state.targetSettlement=null;state.targetLandmark=null;
  if(party.kind!=='bandit')state.escortPartyId=null;
  selected={type:'party',id:party.id};inspectorDirty=true;
@@ -2015,12 +2019,12 @@ function launchCampaignBattle(party,deploymentPlanner=false){
   try{localStorage.removeItem('ua-campaign-battle-session-v1')}catch(e){}
   notify('Browser storage is needed for campaign battles.');return;
  }
- window.location.href='campaign-battle.html?campaign=1&v=4.20'+(deploymentPlanner?'&deploy=1':'');
+ window.location.href='campaign-battle.html?campaign=1&v=4.21'+(deploymentPlanner?'&deploy=1':'');
 }
 function skirmish(id,deploymentPlanner=false){
  const party=state?.parties.find(p=>p.id===id&&p.active);
  if(!party||party.kind==='noble'||CORRIDORS.mission(state.corridor,id))return;
- if(dist(state.player.x,state.player.y,party.x,party.y)>155){followParty(id);return}
+ if(!withinReach(state.player,party,155)){followParty(id);return}
  launchCampaignBattle(party,deploymentPlanner);
 }
 function applyTroopBattleResult(result,session){
@@ -2104,7 +2108,7 @@ function consumeBattleResult(){
   }
   clearBattleRecords();
   const party=state.parties.find(p=>p.id===session.partyId&&p.active);
-  if(party&&dist(state.player.x,state.player.y,party.x,party.y)<=155)openEncounter(party);
+  if(party&&withinReach(state.player,party,155))openEncounter(party);
   else notify('Deployment cancelled.');
   return true;
  }
@@ -2199,14 +2203,15 @@ function settlementGlyphRadius(site){
 }
 function settlementMapVisible(site,zoom){
  if(site.type==='capital'||site.marketTier==='hub')return true;
- return zoom>=(site.type==='village'?.20:.15);
+ return zoom>=(site.type==='village'?.30:site.type==='castle'?.15:.20);
 }
 function settlementLabelVisible(site,zoom){
  if(!state.options.labels)return false;
  if(site.type==='capital')return true;
  if(site.marketTier==='hub')return zoom>=.20;
- return zoom>=(site.type==='village'?.35:.26);
+ return zoom>=(site.type==='village'?.51:.32);
 }
+function landmarkMapVisible(place,zoom){return zoom>=(place.kind==='pass'?.18:.26)}
 function chooseSelection(x,y){
  const local=toScreen(x,y);
  let hit=null,nearest=Infinity;
@@ -2224,14 +2229,14 @@ function chooseSelection(x,y){
  for(const s of S){
   if(!settlementMapVisible(s,camera.zoom))continue;
   const glyph=settlementGlyphRadius(s);
-  const hasLabel=settlementLabelVisible(s,camera.zoom);
+  const hasLabel=shownSettlementLabels.has(s.id);
   consider('settlement',s,Math.max(22,(glyph+7)*camera.zoom),glyph+21,hasLabel?s.name:'');
  }
  for(const p of state.parties)if(p.active){
   const label=camera.zoom>.38?partyMapLabel(p):'';
   consider('party',p,Math.max(21,16*camera.zoom),26,label);
  }
- if(camera.zoom>.23)for(const place of W.landmarks||[]){
+ for(const place of W.landmarks)if(landmarkMapVisible(place,camera.zoom)){
   consider('landmark',place,Math.max(21,18*camera.zoom),31,camera.zoom>.51?place.name:'');
  }
  selected=hit||{type:'land',x,y};inspectorDirty=true;
@@ -2292,6 +2297,8 @@ function drawLocations(){
   ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold 44px Georgia,serif';
   for(const f of F){ctx.fillStyle=colorAlpha(f.color,.8);ctx.fillText(f.name.toUpperCase(),f.capital[0],f.capital[1]+360)}
  }
+ shownSettlementLabels.clear();
+ const labels=[];
  for(const s of S){
   if(!settlementMapVisible(s,camera.zoom)||!inView(s.x,s.y,190))continue;
   const f=F[s.faction],r=settlementGlyphRadius(s);
@@ -2300,16 +2307,23 @@ function drawLocations(){
   paintSettlementMarker(ctx,s,r);
   if(s.type==='capital')drawFlag(s.x+r+3,s.y,f);
   if(s.type==='village')drawVillageSpecialty(s,r);
-  if(settlementLabelVisible(s,camera.zoom)){
-   const major=s.type==='capital'||s.marketTier==='hub';
-   ctx.font=(major?'bold ':'600 ')+Math.max(major?23:19,(major?12:10)/camera.zoom)+'px Georgia,serif';
-   ctx.textAlign='center';ctx.textBaseline='top';ctx.lineWidth=2/camera.zoom;ctx.strokeStyle='#0b1b17eb';
-   ctx.strokeText(s.name,s.x,s.y+r+11);
-   ctx.fillStyle=s.marketTier==='hub'?'#ffdc94':'#fff2d2';ctx.fillText(s.name,s.x,s.y+r+11);
-  }
+  if(isSel&&state.options.labels||settlementLabelVisible(s,camera.zoom))labels.push({site:s,r,priority:isSel?0:s.type==='capital'?1:s.marketTier==='hub'?2:s.type==='village'?4:3});
+ }
+ const space=[];
+ labels.sort((a,b)=>a.priority-b.priority||a.site.id-b.site.id);
+ for(const {site:s,r,priority} of labels){
+  const major=priority<=2;
+  ctx.font=(major?'bold ':'600 ')+Math.max(major?23:19,(major?12:10)/camera.zoom)+'px Georgia,serif';
+  const point=toScreen(s.x,s.y+r+11),half=s.name.length*(major?3.8:3.3);
+  const bounds={left:point.x-half,right:point.x+half,top:point.y,bottom:point.y+(major?17:14)};
+  if(space.some(b=>bounds.left<b.right&&bounds.right>b.left&&bounds.top<b.bottom&&bounds.bottom>b.top))continue;
+  space.push(bounds);shownSettlementLabels.add(s.id);
+  ctx.textAlign='center';ctx.textBaseline='top';ctx.lineWidth=2/camera.zoom;ctx.strokeStyle='#0b1b17eb';
+  ctx.strokeText(s.name,s.x,s.y+r+11);
+  ctx.fillStyle=s.marketTier==='hub'?'#ffdc94':'#fff2d2';ctx.fillText(s.name,s.x,s.y+r+11);
  }
  // Discoverable world locations add life between settlements.
- if(camera.zoom>.23)for(const place of W.landmarks||[]){
+ for(const place of W.landmarks)if(landmarkMapVisible(place,camera.zoom)){
   if(!inView(place.x,place.y,110))continue;
   const explored=state.visitedLandmarks.includes(place.id);
   const outlaw=state.banditCamps[place.id]?.partyId!=null;
@@ -2462,6 +2476,7 @@ function landmarkRole(place){
  return {watchtower:['Watchtower','Survey the roads and locate outlaw parties.'],
   camp:['Roadside rest','Make camp here and recover while time passes.'],
   ford:['River ford','A shallow crossing gives you another way across the river.'],
+  pass:['Mountain pass','This gap is a route through the high ridge.'],
   ruins:['Ruins','Search the remains for supplies and coin.'],
   grove:['Woodland grove','Search for local materials and food.'],
   shrine:['Shrine','Visit the shrine to lift the company’s morale.']}[place.kind];
@@ -2500,8 +2515,8 @@ function renderLandmark(place,scouted=false){
   const rest=fieldRestPreview(),threat=landmarkThreats(place,235)[0];
   const reason=threat?'Outlaws nearby':rest.reason;
   actions.push({act:'restAtLandmark',primary:true,label:reason||'Camp · 2 provisions · 6 hours',disabled:!!reason});
- }else if(place.kind==='ford'&&W.fordCrossings.has(place.id)){
-  actions.push({act:'crossFord',primary:true,label:'Cross to the other bank'});
+ }else if((place.kind==='ford'||place.kind==='pass')&&landmarkCrossing(place)){
+  actions.push({act:'crossLandmark',primary:true,label:place.kind==='ford'?'Cross to the other bank':'Cross the mountain pass'});
  }
  if(!visited&&!raiders)actions.push({act:'searchLandmark',primary:!actions.length,label:place.kind==='shrine'?'Visit shrine':'Search this place'});
  if(visited)detail+='<p>You have already searched this site.</p>';
@@ -2522,8 +2537,13 @@ function searchLandmark(place){
  notify(place.name+' explored · +'+food+' food · +'+found+' '+resource+' · +'+gold+' denars · +20 XP');
  inspectorDirty=true;refreshUI();saveGame(true);renderLandmark(place);
 }
-function crossFord(place){
- const crossing=W.fordCrossings.get(place.id);if(!crossing)return;
+function landmarkCrossing(place){
+ if(place.kind==='ford')return W.fordCrossings.get(place.id);
+ const pass=W.passPoints.find(point=>point.name===place.name&&point.x===place.x&&point.y===place.y);
+ return pass?.route?.map(i=>({x:(i%W.COLS+.5)*W.TILE,y:((i/W.COLS|0)+.5)*W.TILE}));
+}
+function crossLandmark(place){
+ const crossing=landmarkCrossing(place);if(!crossing)return;
  const p=state.player,first=crossing[0],last=crossing.at(-1);
  const directions=dist(p.x,p.y,first.x,first.y)<=dist(p.x,p.y,last.x,last.y)?crossing:[...crossing].reverse();
  const bank=directions[0],route=W.findPath(p.x,p.y,bank.x,bank.y);
@@ -2566,7 +2586,7 @@ function refreshInspector(){
  const box=$('inspectorContent');let html='';
  if(selected.type==='settlement'){
   const site=S[selected.id],f=F[site.faction],distance=Math.round(dist(state.player.x,state.player.y,site.x,site.y));
-  const close=dist(state.player.x,state.player.y,site.x,site.y)<=TOWN_ENTRY_RANGE;
+  const close=withinReach(state.player,site,TOWN_ENTRY_RANGE);
   const role=PLACE_ROLES.get(placeRoles,site.id);
   html='<div class="smallcaps">'+esc(role.title)+' · '+esc(f.name)+'</div><h2>'+esc(site.name)+'</h2><div class="banner-strip" style="background:'+f.color+'"></div>';
   html+='<p>'+esc(settlementRoleText(site))+'</p>';
@@ -2590,7 +2610,7 @@ function refreshInspector(){
    (enemy.kind==='bandit'?'Bandits threaten the roads. Follow them to negotiate, flee, or enter a real battle.':
    (enemy.targetPartyId!=null?(enemy.kind==='patrol'?'Patrolling against nearby outlaws.':enemy.kind==='bandit'?'Hunting a merchant caravan.':'Moving between markets.'):
     'You can speak, trade or challenge this party after catching it.'))+'</p></div>';
-  const nearby=dist(state.player.x,state.player.y,enemy.x,enemy.y)<=155;
+  const nearby=withinReach(state.player,enemy,155);
   html+=renderActions([{act:'travelParty',id:enemy.id,
    label:state.followPartyId===enemy.id?'◎ Following · route updating':'➤ Follow moving party',primary:true},
    ...(mission?.kind==='shipment'?[{act:'escortConvoy',id:enemy.id,label:'Escort to Redmarsh'}]:[]),
@@ -2604,7 +2624,7 @@ function refreshInspector(){
    '<h2>'+esc(place.icon)+' '+esc(place.name)+'</h2>'+
    '<div class="banner-strip" style="background:#bda66f"></div>'+
    '<p>'+esc(description)+' · '+d+' map units</p>';
-  const close=dist(state.player.x,state.player.y,place.x,place.y)<=LANDMARK_RANGE;
+  const close=withinReach(state.player,place,LANDMARK_RANGE);
   html+=renderActions([{act:'travelLandmark',id:place.id,label:close?'Open '+role.toLowerCase():'➤ Travel to '+place.name,primary:true}]);
  }else{
   const p=state.player,land=W.tileAt(p.x,p.y),region=currentRegion();
@@ -3134,11 +3154,11 @@ button('landmarkClose',closeModal);
 $('landmarkActions').addEventListener('click',e=>{
  const action=e.target.closest('[data-act]'),place=W.landmarks[state?.currentLandmarkId];
  if(!action||action.disabled||!place||$('screenLandmark').classList.contains('hidden')||
-  dist(state.player.x,state.player.y,place.x,place.y)>LANDMARK_RANGE)return;
+  !withinReach(state.player,place,LANDMARK_RANGE))return;
  switch(action.dataset.act){
   case 'scoutRoads':renderLandmark(place,true);break;
   case 'restAtLandmark':if(!landmarkThreats(place,235).length&&fieldRest())renderLandmark(place);break;
-  case 'crossFord':crossFord(place);break;
+  case 'crossLandmark':crossLandmark(place);break;
   case 'searchLandmark':{
    const camp=state.banditCamps[place.id];
    if(!camp?.partyId)searchLandmark(place);
@@ -3449,6 +3469,8 @@ function init(){
    if(typeof raw[key]==='boolean')settingsDefault[key]=raw[key];
  }catch(e){}
  const options=$('originSelect');options.innerHTML=F.map(f=>'<option value="'+f.id+'">'+esc(f.name)+'</option>').join('');
+ $('menuSettlementCount').textContent=S.length;
+ $('menuLandmarkCount').textContent=W.landmarks.length;
  options.value='6';
  $('game').classList.add('hidden');showScreen('screenMenu');refreshContinue();
  resize();requestAnimationFrame(frame);

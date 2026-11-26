@@ -115,15 +115,16 @@ function drawRoads(ctx,w,l,r,t,b,zoom){
  ctx.restore();
 }
 function drawBridges(ctx,w,l,r,t,b,zoom){
- if(!w.bridgePoints||zoom<.27)return;
+ if(!w.bridgePoints||zoom<.21)return;
  ctx.save();ctx.lineCap='round';
  for(const bridge of w.bridgePoints){
   if(bridge.x<l-80||bridge.x>r+80||bridge.y<t-80||bridge.y>b+80)continue;
   ctx.save();ctx.translate(bridge.x,bridge.y);ctx.rotate(bridge.angle);
-  ctx.fillStyle='#554938e0';ctx.fillRect(-26,-10,52,20);
-  ctx.fillStyle='#e5d3a9e7';ctx.fillRect(-26,-6,52,12);
+  const length=Math.max(52,(bridge.tiles?.length||1)*w.TILE+8),half=length/2;
+  ctx.fillStyle='#554938e0';ctx.fillRect(-half,-10,length,20);
+  ctx.fillStyle='#e5d3a9e7';ctx.fillRect(-half,-6,length,12);
   ctx.strokeStyle='#463d2bc6';ctx.lineWidth=2;
-  for(let k=-22;k<=22;k+=11){ctx.beginPath();ctx.moveTo(k,-6);ctx.lineTo(k,6);ctx.stroke()}
+  for(let k=-half+5;k<half;k+=12){ctx.beginPath();ctx.moveTo(k,-6);ctx.lineTo(k,6);ctx.stroke()}
   ctx.restore();
  }
  ctx.restore();

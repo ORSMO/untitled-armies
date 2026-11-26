@@ -105,6 +105,7 @@ function geographicSample(x,y){
 function tileIndex(tx,ty){return ty*COLS+tx}
 const tiles=new Array(COLS*ROWS),roads=new Uint8Array(COLS*ROWS);
 const roadTier=new Uint8Array(COLS*ROWS);
+let travelBlocked=null,connectedLand=null;
 for(let ty=0;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){
  const x=(tx+.5)*TILE,y=(ty+.5)*TILE;
  const g=geographicSample(x,y);
@@ -117,7 +118,24 @@ for(let ty=0;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){
 }
 function atGrid(tx,ty){return tx>=0&&ty>=0&&tx<COLS&&ty<ROWS?tileIndex(tx,ty):-1}
 function tileAt(x,y){return tiles[tileIndex(clamp(Math.floor(x/TILE),0,COLS-1),clamp(Math.floor(y/TILE),0,ROWS-1))]}
-function walkable(tx,ty){const i=atGrid(tx,ty);return i>=0&&tiles[i].walk}
+function passable(id){return id>=0&&tiles[id].walk&&!travelBlocked?.[id]}
+function walkable(tx,ty){return passable(atGrid(tx,ty))}
+function isPassable(x,y){return walkable(Math.floor(x/TILE),Math.floor(y/TILE))}
+function travelLine(ax,ay,bx,by){
+ const steps=Math.max(1,Math.ceil(Math.hypot(bx-ax,by-ay)/(TILE/4)));
+ for(let i=0;i<=steps;i++)if(!isPassable(ax+(bx-ax)*i/steps,ay+(by-ay)*i/steps))return false;
+ return true;
+}
+function obstacleAt(x,y){
+ const id=atGrid(Math.floor(x/TILE),Math.floor(y/TILE));
+ if(id<0||!tiles[id].walk)return 'water';
+ return travelBlocked?.[id]===1?'river':travelBlocked?.[id]===2?'ridge':null;
+}
+function diagonalOpen(x,y,dx,dy){
+ if(!dx||!dy)return true;
+ const first=atGrid(x+dx,y),second=atGrid(x,y+dy);
+ return passable(first)&&passable(second)&&tiles[first].kind!=='river'&&tiles[second].kind!=='river';
+}
 function nearestWalk(tx,ty){
  if(walkable(tx,ty))return{x:tx,y:ty};
  for(let r=1;r<45;r++){
@@ -340,7 +358,7 @@ function findTilePath(startX,startY,endX,endY,roadMode=false){
  const end=nearestWalk(clamp(Math.floor(endX/TILE),0,COLS-1),clamp(Math.floor(endY/TILE),0,ROWS-1));
  if(!end)return[];
  const start=atGrid(sx,sy),goal=atGrid(end.x,end.y);
- if(!tiles[start].walk)return[];
+ if(!passable(start))return[];
  if(start===goal)return [start];
  const g=new Float32Array(tiles.length);g.fill(Infinity);
  const came=new Int32Array(tiles.length);came.fill(-1);
@@ -353,10 +371,7 @@ function findTilePath(startX,startY,endX,endY,roadMode=false){
   const tx=id%COLS,ty=(id/COLS)|0;
   for(const [dx,dy] of directions){
    const nx=tx+dx,ny=ty+dy,next=atGrid(nx,ny);
-   if(next<0||!tiles[next].walk||closed[next])continue;
-   if(dx&&dy&&(!walkable(tx+dx,ty)||!walkable(tx,ty+dy)||
-     tiles[atGrid(tx+dx,ty)].kind==='river'||
-     tiles[atGrid(tx,ty+dy)].kind==='river'))continue;
+   if(!passable(next)||closed[next]||!diagonalOpen(tx,ty,dx,dy))continue;
    const ng=g[id]+(dx&&dy?1.414:1)*terrainTravelCost(next,id,roadMode);
    if(ng<g[next]){g[next]=ng;came[next]=id;h.push(next,ng+heuristic(nx,ny))}
   }
@@ -708,9 +723,111 @@ for(const place of landmarks.filter(place=>place.kind==='ford')){
  usedFords.add(best);Object.assign(place,best.center,{faction:best.owner});
  fordCrossings.set(place.id,best.route);
 }
+function connectedTerrain(origin){
+ const connected=new Uint8Array(tiles.length),queue=new Int32Array(tiles.length);
+ const start=atGrid(Math.floor(origin.x/TILE),Math.floor(origin.y/TILE));
+ let count=1;
+ queue[0]=start;connected[start]=1;
+ for(let i=0;i<count;i++){
+  const id=queue[i],x=id%COLS,y=(id/COLS)|0;
+  for(const [dx,dy] of directions){
+   const next=atGrid(x+dx,y+dy);
+   if(!passable(next)||connected[next]||!diagonalOpen(x,y,dx,dy))continue;
+   queue[count++]=next;connected[next]=1;
+  }
+ }
+ return connected;
+}
+const crossingLayout=window.UAWorldCrossings?.create({tiles,roads,bridgePoints,fordCrossings,settlements,TILE,COLS,ROWS});
+const passPoints=crossingLayout?.passPoints||[];
+if(crossingLayout){
+ travelBlocked=crossingLayout.blocked;
+ bridgePoints.splice(0,bridgePoints.length,...crossingLayout.bridgePoints);
+ connectedLand=connectedTerrain(settlements[0]);
+}
+function reachedLand(tx,ty){
+ const id=atGrid(tx,ty);
+ return id>=0&&(connectedLand?!!connectedLand[id]:passable(id));
+}
+function stablePosition(x,y){
+ if(reachedLand(Math.floor(x/TILE),Math.floor(y/TILE)))return null;
+ const tx=clamp(Math.floor(x/TILE),0,COLS-1),ty=clamp(Math.floor(y/TILE),0,ROWS-1);
+ let nearest=null,gap=Infinity;
+ for(let row=0;row<ROWS;row++)for(let col=0;col<COLS;col++){
+  if(!reachedLand(col,row))continue;
+  const d=(row-ty)**2+(col-tx)**2;
+  if(d<gap){gap=d;nearest={x:(col+.5)*TILE,y:(row+.5)*TILE}}
+ }
+ return nearest;
+}
+const extraSettlements=window.UASettlementExpansion?.create({
+ width:WIDTH,height:HEIGHT,tileSize:TILE,factions,settlements,tileAt,roads,landmarks,reachable:reachedLand
+ })||[];
+const extraClusters=new Map();
+for(const site of extraSettlements){
+ settlements.push(site);
+ const anchor=settlements[site.roadAnchorId];
+ connect(site,anchor,site.roadKind);
+ if(site.type!=='village')continue;
+ const key=anchor.id+':'+site.specialty;
+ if(!extraClusters.has(key)){
+  const cluster={id:villageClusters.length,faction:site.faction,specialty:site.specialty,villageIds:[]};
+  villageClusters.push(cluster);extraClusters.set(key,cluster);
+ }
+ const cluster=extraClusters.get(key);
+ cluster.villageIds.push(site.id);site.villageClusterId=cluster.id;
+}
+const newHubs=extraSettlements.filter(site=>site.type==='town').map(site=>{
+ const catchment=extraSettlements.reduce((sum,other)=>other.type==='village'&&other.faction===site.faction?
+  sum+Math.max(0,1-Math.hypot(site.x-other.x,site.y-other.y)/950):sum,0);
+ return {site,catchment};
+}).sort((a,b)=>b.catchment-a.catchment||a.site.id-b.site.id);
+for(const {site} of newHubs){
+ if(marketHubs.length>=8)break;
+ if(marketHubs.some(hub=>hub.faction===site.faction||Math.hypot(site.x-hub.x,site.y-hub.y)<1350))continue;
+ site.marketTier='hub';marketHubs.push(site);
+}
+function addRoadsideLandmarks(){
+ const discoveries=[
+  ['watchtower','♜',['Alder Signal','Crowfen Watch','Gale Post','Eastfold Beacon']],
+  ['camp','♧',['Hearthstone Rest','Crosswind Lodge','Foxrun Waystop','Willowfire Camp']],
+  ['ruins','⌂',['Weathered Gate','Fallen Aqueduct','Lantern Abbey','Ashvault Ruins']],
+  ['grove','♣',['Stillwater Glade','Foxberry Hollow','Mistwood Circle','Birchveil Grove']]
+ ];
+ const candidates=[];
+ const gap=(a,b)=>(a.x-b.x)**2+(a.y-b.y)**2;
+ for(let ty=3;ty<ROWS-3;ty+=2)for(let tx=3;tx<COLS-3;tx+=2){
+  const i=tileIndex(tx,ty),t=tiles[i];
+  if(!reachedLand(tx,ty)||t.owner<0||['river','mountain','snow'].includes(t.kind))continue;
+  const point={x:(tx+.5)*TILE,y:(ty+.5)*TILE};
+  if(settlements.some(s=>gap(point,s)<208**2))continue;
+  const separation=landmarks.reduce((near,v)=>Math.min(near,gap(point,v)),Infinity);
+  if(separation<310**2)continue;
+  const nearRoad=[i,i-1,i+1,i-COLS,i+COLS].some(id=>roads[id]);
+  candidates.push({...point,t,nearRoad,separation,variation:hash(tx*17,ty*19)});
+ }
+ for(const [kind,icon,names] of discoveries)for(const name of names){
+  let best=null,score=-Infinity;
+  for(const p of candidates){
+   if(p.separation<310**2||kind==='camp'&&!p.nearRoad||
+    kind==='grove'&&!['forest','taiga','rainforest'].includes(p.t.kind)||
+    kind==='watchtower'&&(!p.nearRoad||!['hills','grass','steppe'].includes(p.t.kind)))continue;
+   const points=Math.min(1100,Math.sqrt(p.separation))+(kind==='watchtower'?p.t.e*330:0)+p.variation*120;
+   if(points>score){score=points;best=p}
+  }
+  if(!best)continue;
+  landmarks.push({id:landmarks.length,kind,icon,name,x:best.x,y:best.y,faction:best.t.owner});
+  for(const p of candidates)p.separation=Math.min(p.separation,gap(p,best));
+ }
+}
+if(extraSettlements.length){
+ for(const pass of passPoints)landmarks.push({id:landmarks.length,kind:'pass',icon:'⇄',name:pass.name,
+  x:pass.x,y:pass.y,faction:factionAt(pass.x,pass.y)});
+ addRoadsideLandmarks();
+}
 function walkingSpeed(x,y){
  const i=tileIndex(clamp(Math.floor(x/TILE),0,COLS-1),clamp(Math.floor(y/TILE),0,ROWS-1)),t=tiles[i];
- if(!t.walk)return 0;
+ if(!passable(i))return 0;
  return (roads[i]?1.44:1)/Math.sqrt(biomeCost[t.kind]||1.25);
 }
 function getSettlement(id){return settlements[id]||null}
@@ -723,7 +840,7 @@ function closestSettlement(x,y,factionId){
  return best;
 }
 window.UAWorld={WIDTH,HEIGHT,TILE,COLS,ROWS,factions,wars,settlements,marketHubs,villageClusters,resourceStyles,
- roadSegments,roadLinks,roadTier,roads,bridgePoints,riverPaths,borderPaths,coastPaths,landmarks,fordCrossings,flow,downhill,
- tiles,palette,biomeCost,tileAt,tileIndex,factionAt,findPath,walkingSpeed,
+ roadSegments,roadLinks,roadTier,roads,bridgePoints,passPoints,riverPaths,borderPaths,coastPaths,landmarks,fordCrossings,flow,downhill,
+ tiles,palette,biomeCost,tileAt,tileIndex,factionAt,findPath,walkingSpeed,isPassable,travelLine,obstacleAt,stablePosition,
  closestSettlement,getSettlement,nearestWalk,clamp,hash,noise,fractal};
 })();
