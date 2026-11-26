@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — Battle · V4.18</title>
+<title>Untitled Armies — Battle · V4.19</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -704,8 +704,8 @@ body.deployment-active .rail{display:none!important}
  <p>Rotate your phone sideways to play on the wider battlefield.</p>
 </div>
 </div>
-<script src="campaign-armory.js?v=4.18"></script>
-<script src="battle-forge.js?v=4.18"></script>
+<script src="campaign-armory.js?v=4.19"></script>
+<script src="battle-forge.js?v=4.19"></script>
 <script src="battle-navigation.js?v=4.10.2"></script>
 <script src="battle-deployment-ui.js?v=4.12" defer></script>
 <script>
@@ -816,7 +816,7 @@ if(!campaignMode){window.location.replace('index.html');return}
 if(!practiceMode)try{
  const result=JSON.parse(localStorage.getItem(battleResultKey)||'null');
  if(result?.sessionId===campaignSession.sessionId){
-  window.location.replace('index.html?battleReturn=1&v=4.18');return;
+  window.location.replace('index.html?battleReturn=1&v=4.19');return;
  }
 }catch(e){}
 let campaignReported=false,campaignControlMode='auto',heroPointer=null;
@@ -1272,7 +1272,7 @@ function campaignReturn(){
  if(deployment.active){cancelDeployment();return}
  if(practiceMode){window.location.href='battle-practice.html?'+battleParams.toString();return}
  campaignRecord(battleOutcome);
- if(campaignReported)window.location.href='index.html?battleReturn=1&v=4.18';
+ if(campaignReported)window.location.href='index.html?battleReturn=1&v=4.19';
 }
 let realisticBattle=false,battleOutcome=null;
  let battleCollapseSince={friend:null,foe:null};
@@ -2658,7 +2658,7 @@ function cancelDeployment(){
   updateDeploymentNotice('Could not return to the encounter. Check browser storage and try again.');
   return false;
  }
- window.location.href='index.html?battleReturn=1&v=4.18';
+ window.location.href='index.html?battleReturn=1&v=4.19';
  return true;
 }
 function assignNearbyFormationSlots(slots,center,shape){
