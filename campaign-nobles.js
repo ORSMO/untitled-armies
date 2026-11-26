@@ -71,6 +71,8 @@ function depart(record,site,purpose,path,nowHours){
 function storedPosition(world,party){
  if(!Number.isFinite(party?.x)||!Number.isFinite(party?.y))return null;
  if(party.x<0||party.y<0||party.x>=world.WIDTH||party.y>=world.HEIGHT)return null;
+ const accessible=world.stablePosition?.(party.x,party.y);
+ if(accessible)return accessible;
  if(world.tileAt?.(party.x,party.y)?.walk===false)return null;
  return {x:party.x,y:party.y};
 }
