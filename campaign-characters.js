@@ -94,10 +94,15 @@ function randomAppearance(seed){
   hairStyle:pick(appearanceCatalog.hairStyle,rng).id
  };
 }
+function savedAge(profiles,id,min,max,fallback){
+ const profile=profiles instanceof Map?profiles.get(id):Array.isArray(profiles)?profiles.find(person=>person?.id===id):null;
+ return Number.isInteger(profile?.age)&&profile.age>=min&&profile.age<=max?profile.age:fallback;
+}
 function fullName(given,family){return family?given+' '+family:given}
 function create(config={}){
  const houses=Array.isArray(config.houses)?config.houses:[],factions=Array.isArray(config.factions)?config.factions:[];
  const seed=seedKey(config.seed),preserveLegacyLeaders=config.preserveLegacyLeaders===true;
+ const savedProfiles=config.savedProfiles;
  const records=[],seen=new Set();
  for(const house of houses){
   if(!house||!Number.isInteger(house.id)||seen.has(house.id)||!Number.isInteger(house.faction)||
@@ -106,12 +111,36 @@ function create(config={}){
   const faction=factions.find(item=>item.id===house.faction),names=resolveNames(faction);
   const family=String(house.name||'').replace(/^house\s+/i,'').trim();
   const prefix='house:'+house.id+':';
-  const headId='person-'+house.id+'-head',partnerId='person-'+house.id+'-partner';
-  const headAge=integer(30,64,randomFor(seed,prefix+'head-age'));
-  const partnerAge=integer(Math.max(24,headAge-12),Math.min(66,headAge+12),randomFor(seed,prefix+'partner-age'));
+  const idFor=slot=>'person-'+house.id+'-'+slot;
+  const headId=idFor('head'),partnerId=idFor('partner'),motherId=idFor('parent-1'),fatherId=idFor('parent-2');
+  const siblingId=idFor('sibling'),siblingPartnerId=idFor('sibling-partner');
+  const childOneId=idFor('child-1'),childTwoId=idFor('child-2');
+  const cousinOneId=idFor('cousin-1'),cousinTwoId=idFor('cousin-2');
+  const generatedHeadAge=integer(30,64,randomFor(seed,prefix+'head-age'));
+  const headAge=savedAge(savedProfiles,headId,30,64,generatedHeadAge);
+  const generatedPartnerAge=integer(Math.max(24,headAge-12),Math.min(66,headAge+12),randomFor(seed,prefix+'partner-age'));
+  const partnerAge=savedAge(savedProfiles,partnerId,Math.max(24,headAge-12),Math.min(66,headAge+12),generatedPartnerAge);
   const maxChildAge=Math.min(17,headAge-16,partnerAge-16);
   const olderAge=integer(4,maxChildAge,randomFor(seed,prefix+'child-1-age'));
   const youngerAge=integer(1,olderAge-1,randomFor(seed,prefix+'child-2-age'));
+  const siblingAgeMin=Math.max(34,headAge-8),siblingAgeMax=Math.min(64,headAge+8);
+  const generatedSiblingAge=integer(siblingAgeMin,siblingAgeMax,randomFor(seed,prefix+'sibling-age'));
+  const siblingAge=savedAge(savedProfiles,siblingId,siblingAgeMin,siblingAgeMax,generatedSiblingAge);
+  const siblingPartnerAgeMin=Math.max(34,siblingAge-12),siblingPartnerAgeMax=Math.min(66,siblingAge+12);
+  const generatedSiblingPartnerAge=integer(siblingPartnerAgeMin,siblingPartnerAgeMax,randomFor(seed,prefix+'sibling-partner-age'));
+  const siblingPartnerAge=savedAge(savedProfiles,siblingPartnerId,siblingPartnerAgeMin,siblingPartnerAgeMax,generatedSiblingPartnerAge);
+  const oldestAdultChild=Math.max(headAge,siblingAge),parentMin=oldestAdultChild+18,parentMax=Math.min(85,oldestAdultChild+35);
+  const generatedParentOneAge=integer(parentMin,parentMax,randomFor(seed,prefix+'parent-1-age'));
+  const parentOneAge=savedAge(savedProfiles,fatherId,parentMin,parentMax,generatedParentOneAge);
+  const generatedParentTwoAge=parentOneAge-integer(0,Math.min(8,parentOneAge-parentMin),randomFor(seed,prefix+'parent-2-age'));
+  const parentTwoAge=savedAge(savedProfiles,motherId,parentMin,Math.min(parentMax,parentOneAge),generatedParentTwoAge);
+  const maxAdultCousinAge=Math.min(24,siblingAge-16,siblingPartnerAge-16);
+  const generatedAdultCousinAge=integer(18,maxAdultCousinAge,randomFor(seed,prefix+'cousin-1-age'));
+  const adultCousinAge=savedAge(savedProfiles,cousinOneId,18,maxAdultCousinAge,generatedAdultCousinAge);
+  const youngCousinMaxAge=Math.min(17,adultCousinAge-1,siblingAge-16,siblingPartnerAge-16);
+  const generatedYoungCousinAge=integer(1,youngCousinMaxAge,randomFor(seed,prefix+'cousin-2-age'));
+  const youngCousinAge=savedAge(savedProfiles,cousinTwoId,1,youngCousinMaxAge,generatedYoungCousinAge);
+  const headBirthOrder=headAge>=siblingAge?1:2,siblingBirthOrder=headBirthOrder===1?2:1;
   const headGiven=pick(names.heads,randomFor(seed,prefix+'head-name'));
   const legacyLeader=preserveLegacyLeaders?String(house.leader||'').trim():'';
   const usedNames=new Set(legacyLeader?legacyLeader.split(/\s+/):[headGiven]);
@@ -123,16 +152,36 @@ function create(config={}){
   const partnerGiven=takeName(names.partners,'partner');
   const childOneGiven=takeName(names.children,'child-1');
   const childTwoGiven=takeName(names.children,'child-2');
+  const parentOneGiven=takeName(names.heads,'parent-1');
+  const parentTwoGiven=takeName(names.partners,'parent-2');
+  const siblingIsAunt=randomFor(seed,prefix+'sibling-role')()<.5;
+  const siblingGiven=takeName(siblingIsAunt?names.partners:names.heads,'sibling');
+  const siblingPartnerGiven=takeName(siblingIsAunt?names.heads:names.partners,'sibling-partner');
+  const cousinOneGiven=takeName(names.children,'cousin-1');
+  const cousinTwoGiven=takeName(names.children,'cousin-2');
   const base={origin:house.faction,houseId:house.id,homeId:house.seatId};
   const headAppearance=randomAppearance(seed+'|'+house.id+'|head');
   const partnerAppearance=randomAppearance(seed+'|'+house.id+'|partner');
   const childOneAppearance=randomAppearance(seed+'|'+house.id+'|child-1');
   const childTwoAppearance=randomAppearance(seed+'|'+house.id+'|child-2');
+  const parentOneAppearance=randomAppearance(seed+'|'+house.id+'|parent-1');
+  const parentTwoAppearance=randomAppearance(seed+'|'+house.id+'|parent-2');
+  const siblingAppearance=randomAppearance(seed+'|'+house.id+'|sibling');
+  const siblingPartnerAppearance=randomAppearance(seed+'|'+house.id+'|sibling-partner');
+  const cousinOneAppearance=randomAppearance(seed+'|'+house.id+'|cousin-1');
+  const cousinTwoAppearance=randomAppearance(seed+'|'+house.id+'|cousin-2');
+  const parentIds=[motherId,fatherId];
   records.push(
-   {id:headId,name:legacyLeader||fullName(headGiven,family),age:headAge,...headAppearance,role:'head',parentIds:[],partnerId,...base},
-   {id:partnerId,name:fullName(partnerGiven,family),age:partnerAge,...partnerAppearance,role:'partner',parentIds:[],partnerId:headId,...base},
-   {id:'person-'+house.id+'-child-1',name:fullName(childOneGiven,family),age:olderAge,...childOneAppearance,role:'child',birthOrder:1,parentIds:[headId,partnerId],partnerId:null,...base},
-   {id:'person-'+house.id+'-child-2',name:fullName(childTwoGiven,family),age:youngerAge,...childTwoAppearance,role:'child',birthOrder:2,parentIds:[headId,partnerId],partnerId:null,...base}
+   {id:headId,name:legacyLeader||fullName(headGiven,family),age:headAge,...headAppearance,role:'head',generation:0,relationToHead:'head',relationLabel:'Head of house',birthOrder:headBirthOrder,parentIds,partnerId,...base},
+   {id:partnerId,name:fullName(partnerGiven,family),age:partnerAge,...partnerAppearance,role:'partner',generation:0,relationToHead:'partner',relationLabel:'Partner',parentIds:[],partnerId:headId,...base},
+   {id:childOneId,name:fullName(childOneGiven,family),age:olderAge,...childOneAppearance,role:'child',generation:1,relationToHead:'child',relationLabel:'Child',birthOrder:1,parentIds:[headId,partnerId],partnerId:null,...base},
+   {id:childTwoId,name:fullName(childTwoGiven,family),age:youngerAge,...childTwoAppearance,role:'child',generation:1,relationToHead:'child',relationLabel:'Child',birthOrder:2,parentIds:[headId,partnerId],partnerId:null,...base},
+   {id:motherId,name:fullName(parentTwoGiven,family),age:parentTwoAge,...parentTwoAppearance,role:'parent',generation:-1,relationToHead:'mother',relationLabel:'Mother',parentIds:[],partnerId:fatherId,...base},
+   {id:fatherId,name:fullName(parentOneGiven,family),age:parentOneAge,...parentOneAppearance,role:'parent',generation:-1,relationToHead:'father',relationLabel:'Father',parentIds:[],partnerId:motherId,...base},
+   {id:siblingId,name:fullName(siblingGiven,family),age:siblingAge,...siblingAppearance,role:'sibling',generation:0,relationToHead:'sibling',relationLabel:siblingIsAunt?'Sibling · Aunt':'Sibling · Uncle',birthOrder:siblingBirthOrder,parentIds,partnerId:siblingPartnerId,...base},
+   {id:siblingPartnerId,name:fullName(siblingPartnerGiven,family),age:siblingPartnerAge,...siblingPartnerAppearance,role:'sibling-partner',generation:0,relationToHead:'sibling-partner',relationLabel:siblingIsAunt?'Uncle by marriage':'Aunt by marriage',parentIds:[],partnerId:siblingId,...base},
+   {id:cousinOneId,name:fullName(cousinOneGiven,family),age:adultCousinAge,...cousinOneAppearance,role:'cousin',generation:1,relationToHead:'cousin',relationLabel:'Cousin',birthOrder:1,parentIds:[siblingId,siblingPartnerId],partnerId:null,...base},
+   {id:cousinTwoId,name:fullName(cousinTwoGiven,family),age:youngCousinAge,...cousinTwoAppearance,role:'child',generation:1,relationToHead:'cousin',relationLabel:'Cousin',birthOrder:2,parentIds:[siblingId,siblingPartnerId],partnerId:null,...base}
   );
  }
  return records;
