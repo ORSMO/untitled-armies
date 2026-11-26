@@ -2,6 +2,12 @@
 
 [Party, troop trees, deployment and equipment](ROADMAP.md)
 
+## V4.22 — Bandit hideouts
+
+New campaigns place five hideouts across Asterra. Timber Archers, Road Robbers, Highland Deserters, Marsh Runners, and Steppe Riders have their own terrain and combat gear. Each level-one hideout starts with three bands. Raiders target nearby caravans and vulnerable villages, then carry the loot back to their camp.
+
+A camp's accumulated gold and goods raise it up to level five. Each level adds a band slot and increases party strength, gear quality, and raid range. Select a camp to see its territory, then travel to it to inspect the guards and stash or attack in a tactical battle. Victory scatters its bands and recovers its stockpile. A new level-one hideout can appear elsewhere six days later.
+
 ## V4.21 — A fuller Asterra
 
 Asterra now has 240 settlements. Each realm gained twelve villages, three towns, and a castle. Terrain and nearby trade roads guide placement, and new settlements have roads into their local network. The original capitals, settlements, and landmarks retain their save IDs.
