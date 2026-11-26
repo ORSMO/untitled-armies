@@ -2,6 +2,14 @@
 
 [Party, troop trees, deployment and equipment](ROADMAP.md)
 
+## V4.20 — Settlement roles and supply roads
+
+The first settlement screen shows its role and two main actions. Capitals have a Great Hall for the ruling household, holdings, and store reports. Town trades reflect local resources, smithing towns attract iron deliveries, and major markets buy more workshop output.
+
+Valecrown guards the Duskford–Redmarsh grain route. Patrols use castle defenders and grain, and survivors return to the garrison. Convoys take grain from Duskford and deliver it to Redmarsh if they reach the market. Find the route in any of the three settlements. Escorting the convoy lets you battle nearby raiders and earn a reward on delivery. Local news records deliveries and losses.
+
+Landmark journeys open an interaction when you arrive. Scout from watchtowers, rest at roadside camps, cross rivers at fords, or track raiders from outlaw camps. Defeated camp bands take four days to regroup.
+
 ## V4.19 — Living noble houses
 
 The 20 houses have 200 named members across three generations. In **The Ten Factions**, open a family's tree to see parents, partners, siblings, cousins, current locations, and retinue sizes. Use **Find** to inspect a relative's current party or settlement. Talk to relatives in **People here** or after approaching them on the road. All 140 adults have individual retinues and travel on staggered schedules. Children can be met with their parents.

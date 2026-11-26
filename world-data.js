@@ -674,6 +674,40 @@ for(let i=0;i<55;i++){
   name:type.names[Math.floor(i/landmarkKinds.length)]||type.kind,x:chosen.x,y:chosen.y,
   faction:tileAt(chosen.x,chosen.y).owner});
 }
+const fordCrossings=new Map(),usedFords=new Set();
+const crossingPoints=[];
+for(let y=2;y<ROWS-2;y++)for(let x=2;x<COLS-2;x++){
+ const tile=tiles[tileIndex(x,y)];
+ if(tile.kind!=='river'||!tile.walk||roads[tileIndex(x,y)])continue;
+ const center={x:(x+.5)*TILE,y:(y+.5)*TILE};
+ if(bridgePoints.some(p=>Math.hypot(p.x-center.x,p.y-center.y)<TILE*3))continue;
+ for(const [dx,dy] of [[1,0],[0,1]]){
+  const route=[center];
+  for(const sign of [-1,1])for(let n=1;n<=2;n++){
+   const tx=x+sign*n*dx,ty=y+sign*n*dy,bank=tiles[tileIndex(tx,ty)];
+   if(!bank?.walk)break;
+   const point={x:(tx+.5)*TILE,y:(ty+.5)*TILE};
+   if(sign<0)route.unshift(point);else route.push(point);
+   if(bank.kind!=='river')break;
+  }
+  if(route.length>=3&&route[0]!==center&&route.at(-1)!==center&&
+   tileAt(route[0].x,route[0].y).kind!=='river'&&tileAt(route.at(-1).x,route.at(-1).y).kind!=='river'){
+   crossingPoints.push({center,route,owner:tile.owner});break;
+  }
+ }
+}
+for(const place of landmarks.filter(place=>place.kind==='ford')){
+ let best=null,score=Infinity;
+ for(const crossing of crossingPoints){
+  const {center,owner}=crossing;
+  if(usedFords.has(crossing)||[...usedFords].some(other=>Math.hypot(center.x-other.center.x,center.y-other.center.y)<TILE*4))continue;
+  const distance=Math.hypot(center.x-place.x,center.y-place.y)+(owner===place.faction?0:360);
+  if(distance<score){score=distance;best=crossing}
+ }
+ if(!best)continue;
+ usedFords.add(best);Object.assign(place,best.center,{faction:best.owner});
+ fordCrossings.set(place.id,best.route);
+}
 function walkingSpeed(x,y){
  const i=tileIndex(clamp(Math.floor(x/TILE),0,COLS-1),clamp(Math.floor(y/TILE),0,ROWS-1)),t=tiles[i];
  if(!t.walk)return 0;
@@ -689,7 +723,7 @@ function closestSettlement(x,y,factionId){
  return best;
 }
 window.UAWorld={WIDTH,HEIGHT,TILE,COLS,ROWS,factions,wars,settlements,marketHubs,villageClusters,resourceStyles,
- roadSegments,roadLinks,roadTier,roads,bridgePoints,riverPaths,borderPaths,coastPaths,landmarks,flow,downhill,
+ roadSegments,roadLinks,roadTier,roads,bridgePoints,riverPaths,borderPaths,coastPaths,landmarks,fordCrossings,flow,downhill,
  tiles,palette,biomeCost,tileAt,tileIndex,factionAt,findPath,walkingSpeed,
  closestSettlement,getSettlement,nearestWalk,clamp,hash,noise,fractal};
 })();
