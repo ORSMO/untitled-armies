@@ -5,10 +5,37 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#091512">
 <meta name="description" content="Untitled Armies: a medieval campaign sandbox. Explore the vast continent of Asterra, meet ten factions, recruit and upgrade faction troops, and build your legend.">
-<title>Untitled Armies — Asterra Campaign · V4.23</title>
+<title>Untitled Armies — Asterra Campaign · V4.24</title>
 <link rel="stylesheet" href="campaign.css?v=4.22">
+<style>
+.battle-return #screenMenu,.battle-return .mobile-timebar{display:none}
+#battleReturnStatus,#battleReturnRetry[hidden]{display:none}
+.battle-return #battleReturnStatus{
+ position:fixed;inset:0;display:grid;place-content:center;justify-items:center;gap:12px;visibility:hidden;pointer-events:none;
+ color:#e7dbc0;font:600 .9rem system-ui;animation:show-battle-return-status 0s .3s forwards
+}
+.battle-return #battleReturnRetry{pointer-events:auto;min-height:44px}
+@keyframes show-battle-return-status{to{visibility:visible}}
+</style>
+<script>
+if(new URLSearchParams(location.search).get('battleReturn')==='1'){
+ const root=document.documentElement;
+ root.classList.add('battle-return');
+ document.addEventListener('DOMContentLoaded',()=>{
+  if(!root.classList.contains('battle-return'))return;
+  document.getElementById('battleReturnMessage').textContent='Could not load the campaign.';
+  const retry=document.getElementById('battleReturnRetry');
+  retry.href=location.href;
+  retry.hidden=false;
+ },{once:true});
+}
+</script>
 </head>
 <body>
+<div id="battleReturnStatus">
+ <span id="battleReturnMessage" role="status">Returning to campaign…</span>
+ <a id="battleReturnRetry" class="btn" hidden>Retry</a>
+</div>
 <div id="rotateNotice" role="status" aria-live="polite">
  <div class="rotate-phone" aria-hidden="true">▱<span>↻</span></div>
  <strong>Turn your phone sideways</strong>
@@ -16,7 +43,7 @@
 </div>
 <div id="game" class="hidden">
  <header class="topbar">
-   <div class="brand"><span class="crest">⚔</span><div><strong>UNTITLED ARMIES</strong><small>ASTERRA CAMPAIGN · V4.23</small></div></div>
+   <div class="brand"><span class="crest">⚔</span><div><strong>UNTITLED ARMIES</strong><small>ASTERRA CAMPAIGN · V4.24</small></div></div>
   <div class="top-center">
    <div class="chip">📜 <b id="hudDay">Day 1 · 08:00</b></div>
    <div class="chip">⚑ <b id="hudRegion">Valdorian Kingdom</b></div>
@@ -91,7 +118,7 @@
    <p class="subtle">Click roaming parties to pursue them as they move. At close range, you can talk, trade or enter battle. Ruins, shrines and camps reward exploration.</p>
   </aside>
  </div>
- <div class="footer-hint">KINGDOM STANDING · LIVING ROADS · COMMAND ARMIES · PHONE LANDSCAPE · ASTERRA CAMPAIGN V4.23 · <a href="classic.html?v=4.22">Classic Combat</a> · <a href="lab.html">Battle Lab</a></div>
+ <div class="footer-hint">KINGDOM STANDING · LIVING ROADS · COMMAND ARMIES · PHONE LANDSCAPE · ASTERRA CAMPAIGN V4.24 · <a href="classic.html?v=4.22">Classic Combat</a> · <a href="lab.html">Battle Lab</a></div>
 </div>
 <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 <section id="screenMenu" class="overlay" aria-label="Main menu">
@@ -121,7 +148,7 @@
    <a href="classic.html?v=4.22" class="btn" style="text-decoration:none;display:block;text-align:center;margin:7px 0">⚔ Classic 50v50 Battle Test</a>
    <a href="lab.html" class="btn" style="text-decoration:none;display:block;text-align:center;margin:7px 0">⚗ Six-Arena Battle Lab</a>
    <button id="menuImport" class="btn">📥 Import Campaign Save</button>
-   <div class="menu-foot">V4.23 · Designed for phone play in landscape.</div>
+   <div class="menu-foot">V4.24 · Designed for phone play in landscape.</div>
   </div>
  </div>
 </section>
@@ -413,7 +440,7 @@
 <script src="campaign-corridors.js?v=4.22"></script>
 <script src="campaign-bandit-profiles.js?v=4.22"></script>
 <script src="campaign-bandit-camps.js?v=4.22"></script>
-<script src="campaign.js?v=4.23"></script>
+<script src="campaign.js?v=4.24"></script>
 </body>
 </html>
 
