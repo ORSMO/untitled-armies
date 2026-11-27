@@ -2060,7 +2060,7 @@ function launchCampaignBattle(party,deploymentPlanner=false){
   try{localStorage.removeItem('ua-campaign-battle-session-v1')}catch(e){}
   notify('Browser storage is needed for campaign battles.');return;
  }
- window.location.href='campaign-battle.html?campaign=1&v=4.23'+(deploymentPlanner?'&deploy=1':'');
+ window.location.href='campaign-battle.html?campaign=1&v=4.24'+(deploymentPlanner?'&deploy=1':'');
 }
 function skirmish(id,deploymentPlanner=false){
  const party=state?.parties.find(p=>p.id===id&&p.active);
@@ -3653,12 +3653,17 @@ function init(){
  $('menuSettlementCount').textContent=S.length;
  $('menuLandmarkCount').textContent=W.landmarks.length+'+';
  options.value='6';
- $('game').classList.add('hidden');showScreen('screenMenu');refreshContinue();
- resize();requestAnimationFrame(frame);
- if(window.location?.search?.includes('battleReturn=1')){
-  if(loadGame()&&window.history?.replaceState)
-   window.history.replaceState({},'',window.location.pathname);
+ const returnFromBattle=document.documentElement.classList.contains('battle-return');
+ if(returnFromBattle&&loadGame()){
+  drawWorld(performance.now());
+  try{window.history?.replaceState({},'',window.location.pathname)}catch(e){}
+ }else{
+  if(returnFromBattle)state=null;
+  $('game').classList.add('hidden');showScreen('screenMenu');refreshContinue();
+  resize();
  }
+ document.documentElement.classList.remove('battle-return');
+ requestAnimationFrame(frame);
 }
 init();
 window.UACampaignDebug={getState:()=>state,getCamera:()=>camera,newCampaign:startCampaign,loadGame,saveGame,
