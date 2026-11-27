@@ -14,7 +14,7 @@ let state=null,selected=null,selectedFaction=6,modalStack=[],focus=true,camera={
 const mapPointers=new Map();
 const shownSettlementLabels=new Set();
 let mapPinch=null;
-const TOWN_ENTRY_RANGE=155,LANDMARK_RANGE=145;
+const TOWN_ENTRY_RANGE=155,LANDMARK_RANGE=145,PARTY_ENCOUNTER_RANGE=155,ESCORT_GAP=68;
 function withinReach(a,b,range){return dist(a.x,a.y,b.x,b.y)<=range&&W.travelLine(a.x,a.y,b.x,b.y)}
 const screens=['screenMenu','screenCreate','screenFactions','screenAtlas','screenOptions','screenPause','screenParty','screenCharacter','screenTown','screenLandmark','screenEncounter','screenAftermath','screenArmory'];
 const settingsDefault={borders:true,labels:true,roads:true,minimap:true,follow:true};
@@ -350,7 +350,7 @@ function saveGame(silent){
    familyProfiles:[...state.families.values()].flat().map(({id,name,age,appearance})=>({id,name,age,appearance})),
    options:state.options,speed:1,zoom:camera.zoom,visitedLandmarks:state.visitedLandmarks||[],pendingBattleId:state.pendingBattleId||null,lastEncounter:state.lastEncounter,
    marketStocks:state.marketStocks||{},workshops:state.workshops,corridor:state.corridor,hideouts:state.hideouts,villageRaidDays:state.villageRaidDays,
-   escortPartyId:state.escortPartyId,completedContracts:state.completedContracts||[],diplomacy:state.diplomacy,settlementProjects:state.settlementProjects||{},settlementState:S.map(site=>({prosperity:site.prosperity,garrison:site.garrison}))};
+   escortPartyId:state.escortPartyId,interruptedFollowId:state.interruptedFollowId,completedContracts:state.completedContracts||[],diplomacy:state.diplomacy,settlementProjects:state.settlementProjects||{},settlementState:S.map(site=>({prosperity:site.prosperity,garrison:site.garrison}))};
   const serialized=JSON.stringify(data),previous=localStorage.getItem(KEY);
   if(previous&&previous!==serialized){try{const older=localStorage.getItem(KEY+'-backup-1');if(older)localStorage.setItem(KEY+'-backup-2',older);localStorage.setItem(KEY+'-backup-1',previous)}catch(e){}}
   localStorage.setItem(KEY,serialized);
@@ -389,7 +389,7 @@ function startCampaign(){
    level:1,xp:0,renown:0,roster:firstTroops,quest:{id:0,progress:0,goal:3,done:false}},
    day:1,hour:8,waiting:false,waitSpeed:1,paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,targetLandmark:null,
    corridor:CORRIDORS.normalize(null,1),hideouts:null,villageRaidDays:{},escortPartyId:null,
-   followPartyId:null,followRepath:0,visitedLandmarks:[],pendingBattleId:null,
+   followPartyId:null,followRouteTarget:null,followRepath:0,interruptedFollowId:null,visitedLandmarks:[],pendingBattleId:null,
    parties:[],options:{...settingsDefault},messages:[],unseen:[],lastEncounter:-100,marketStocks:{},workshops:{},completedContracts:[],diplomacy:createDiplomacy(),settlementProjects:{}};
   state.player=preparePlayer(state.player);
   state.parties=generateParties();installFamilies();installNobles();initializeMarkets();installHideouts();syncHideouts(true);
@@ -411,7 +411,8 @@ function loadGame(){
   state={version:VERSION,player:p,day:raw.day||1,hour:Number.isFinite(raw.hour)?raw.hour:8,waiting:false,waitSpeed:1,
    paused:false,pausedManual:false,path:[],pathIndex:0,targetSettlement:null,targetLandmark:null,
    corridor:CORRIDORS.normalize(raw.corridor,raw.day||1),hideouts:null,villageRaidDays:raw.villageRaidDays||{},escortPartyId:null,
-   followPartyId:null,followRepath:0,visitedLandmarks:Array.isArray(raw.visitedLandmarks)?raw.visitedLandmarks:[],pendingBattleId:raw.pendingBattleId||null,
+   followPartyId:null,followRouteTarget:null,followRepath:0,
+   interruptedFollowId:Number.isSafeInteger(raw.interruptedFollowId)?raw.interruptedFollowId:null,visitedLandmarks:Array.isArray(raw.visitedLandmarks)?raw.visitedLandmarks:[],pendingBattleId:raw.pendingBattleId||null,
    parties:[],options:{...settingsDefault,...raw.options},
    messages:[],lastEncounter:Number.isFinite(raw.lastEncounter)?raw.lastEncounter:-100,marketStocks:raw.marketStocks&&typeof raw.marketStocks==='object'?raw.marketStocks:{},workshops:WORKSHOPS.normalize(raw.workshops,S,raw.day||1),completedContracts:Array.isArray(raw.completedContracts)?raw.completedContracts:[],diplomacy:normalizeDiplomacy(raw.diplomacy,raw.day||1),settlementProjects:raw.settlementProjects&&typeof raw.settlementProjects==='object'?raw.settlementProjects:{}};
   restoreSettlementState(raw.settlementState);state.parties=generateParties();initializeMarkets();
@@ -502,8 +503,7 @@ function partyName(p){
  const mission=state&&CORRIDORS.mission(state.corridor,p.id);
  if(mission)return mission.kind==='patrol'?'Valecrown road patrol':'Duskford grain convoy';
  if(p.kind==='bandit')return banditProfile(p).name;
- return
-  (F[p.faction]?.name||'Wandering')+' '+(p.kind==='patrol'?'Patrol':'Caravan');
+ return (F[p.faction]?.name||'Wandering')+' '+(p.kind==='patrol'?'Patrol':'Caravan');
 }
 function partyMapLabel(p){
  const mission=CORRIDORS.mission(state.corridor,p.id);
@@ -514,13 +514,13 @@ function partyMapLabel(p){
 function followParty(id,escort=false){
  if(!state||menuOpen)return;
  const party=state.parties.find(p=>p.id===id&&p.active);
- if(!party){notify('That party is no longer on the roads.');return}
+ if(!party&&!state.nobleParties.has(id)){notify('That party is no longer on the roads.');return}
  stopWaiting();
  state.followPartyId=id;state.escortPartyId=escort?id:null;
- state.followRepath=0;state.targetSettlement=null;state.targetLandmark=null;state.path=[];state.pathIndex=0;
+ state.followRouteTarget=null;state.followRepath=0;state.targetSettlement=null;state.targetLandmark=null;state.path=[];state.pathIndex=0;
  selected={type:'party',id};focus=true;inspectorDirty=true;
  updateFollow(0);
- if(state.followPartyId===id)notify(state.pausedManual?'Resume time to follow '+partyName(party)+'.':(escort?'Escorting ':'Following ')+partyName(party)+'.');
+ if(state.followPartyId===id&&state.followRouteTarget!==false)notify(state.pausedManual?'Resume time to follow '+partyName(party)+'.':(escort?'Escorting ':'Following ')+partyName(party)+'.');
  refreshUI();
 }
 function updateFollow(dt){
@@ -536,24 +536,38 @@ function updateFollow(dt){
   }else notify('You lost the party you were following.');
   return;
  }
- const distance=dist(state.player.x,state.player.y,party.x,party.y);
- const escort=state.escortPartyId===party.id;
- if(distance<=143&&!escort&&withinReach(state.player,party,143)){state.path=[];state.pathIndex=0;openEncounter(party);return}
- if(escort&&distance<=68&&withinReach(state.player,party,68)){state.path=[];state.pathIndex=0;return}
- state.followRepath-=dt;
- if(state.followRepath>0&&state.pathIndex<state.path.length)return;
- // Aim a few route segments ahead: the target continues moving while
- // the player travels. Reroute periodically instead of only once.
- const lead=party.path.length?
-  party.path[Math.min(party.path.length-1,party.pathIndex+3)]:party;
- let route=W.findPath(state.player.x,state.player.y,lead.x,lead.y);
- if(!route.length&&lead!==party)route=W.findPath(state.player.x,state.player.y,party.x,party.y);
- if(route.length){state.path=route;state.pathIndex=0}
- else if(state.pathIndex>=state.path.length){
-  state.followPartyId=null;state.escortPartyId=null;state.path=[];state.pathIndex=0;inspectorDirty=true;
-  notify('No traversable route to '+partyName(party)+'.');
+ if(meetFollowedParty(party))return;
+ const player=state.player,previous=state.followRouteTarget;
+ const destination={x:party.x,y:party.y};
+ const direct=withinReach(player,party,W.TILE*5);
+ if(direct){
+  // Steering to the live position avoids circling the center of the target's tile.
+  const closeEscort=state.escortPartyId===party.id&&withinReach(player,party,ESCORT_GAP);
+  state.path=closeEscort?[]:[destination];
+  state.pathIndex=0;state.followRouteTarget=null;state.followRepath=0;
+  return;
  }
- state.followRepath=1.25;
+ state.followRepath=Math.max(0,state.followRepath-dt);
+ if(state.followRepath>0)return;
+ const moving=state.pathIndex<state.path.length;
+ if(moving&&previous&&dist(previous.x,previous.y,party.x,party.y)<W.TILE*1.5)return;
+ const route=W.findPath(player.x,player.y,party.x,party.y);
+ state.followRepath=route.length?.65:1.25;
+ if(route.length){
+  const next=route[1];
+  // When the next tile is straight ahead, keep advancing on a replan.
+  state.pathIndex=next&&(route[0].x===next.x||route[0].y===next.y)&&W.travelLine(player.x,player.y,next.x,next.y)?1:0;
+  state.path=route;state.followRouteTarget=destination;
+ }else if(!moving&&previous!==false){
+  state.followRouteTarget=false;
+  notify('No route to '+partyName(party)+' right now.');
+ }
+}
+function meetFollowedParty(party){
+ if(menuOpen||!party?.active||state.followPartyId!==party.id||state.escortPartyId===party.id||
+  !withinReach(state.player,party,PARTY_ENCOUNTER_RANGE))return false;
+ openEncounter(party);
+ return true;
 }
 function walkPlayer(dx,dy,dt){
  const p=state.player,mag=Math.hypot(dx,dy);if(mag<.0001)return false;
@@ -921,6 +935,7 @@ function stepTravel(dt){
   if(delta>=d-1)state.pathIndex++;else break;
  }
  if(traversed)advanceTime(traversed);
+ if(state.followPartyId!=null&&meetFollowedParty(state.parties.find(party=>party.id===state.followPartyId)))return;
  if(state.targetSettlement!=null){
   const site=S[state.targetSettlement];
   if(withinReach(p,site,TOWN_ENTRY_RANGE)){arriveSettlement(site.id);return}
@@ -1157,6 +1172,7 @@ function stepParties(dt){
  }
  updateCorridorArrivals();
  if(NOBLES.step(W,state.nobles,campaignHours(),dt,{scoreStop:nobleStopScore,onArrival:nobleArrival}))inspectorDirty=true;
+ if(state.followPartyId!=null&&meetFollowedParty(parties.find(party=>party.id===state.followPartyId)))return;
  const convoy=state.parties.find(p=>p.id===state.escortPartyId&&p.active);
  if(convoy&&!menuOpen&&(state.day+state.hour/24)-state.lastEncounter>.018){
   const threat=parties.find(p=>p.active&&p.kind==='bandit'&&p.targetPartyId===convoy.id&&
@@ -1170,7 +1186,7 @@ function stepParties(dt){
  const close=parties.find(p=>p.active&&p.kind==='bandit'&&
   withinReach(state.player,p,92));
  if(close&&(state.day+state.hour/24)-state.lastEncounter>.08&&!menuOpen){
-  state.path=[];state.pathIndex=0;openEncounter(close);
+  openEncounter(close,true);
  }
 }
 function questText(){
@@ -1952,8 +1968,9 @@ function upgradeRoster(index,quantity=1,optionId){
  log('Promoted '+number+' troops into '+option.name+'.');
  notify('Promoted '+number+' · '+option.name);refreshUI();saveGame(true);return true;
 }
-function openEncounter(party){
- if(!state||!party?.active||menuOpen||!withinReach(state.player,party,155))return;
+function openEncounter(party,resumeFollow=false){
+ if(!state||!party?.active||menuOpen||!withinReach(state.player,party,PARTY_ENCOUNTER_RANGE))return;
+ state.interruptedFollowId=resumeFollow&&state.followPartyId!==party.id?state.followPartyId:null;
  state.followPartyId=null;state.path=[];state.pathIndex=0;state.targetSettlement=null;state.targetLandmark=null;
  if(party.kind!=='bandit')state.escortPartyId=null;
  selected={type:'party',id:party.id};inspectorDirty=true;
@@ -2043,7 +2060,7 @@ function launchCampaignBattle(party,deploymentPlanner=false){
   try{localStorage.removeItem('ua-campaign-battle-session-v1')}catch(e){}
   notify('Browser storage is needed for campaign battles.');return;
  }
- window.location.href='campaign-battle.html?campaign=1&v=4.22'+(deploymentPlanner?'&deploy=1':'');
+ window.location.href='campaign-battle.html?campaign=1&v=4.23'+(deploymentPlanner?'&deploy=1':'');
 }
 function skirmish(id,deploymentPlanner=false){
  const party=state?.parties.find(p=>p.id===id&&p.active);
@@ -2263,8 +2280,7 @@ function settlementLabelVisible(site,zoom){
  return zoom>=(site.type==='village'?.51:.32);
 }
 function landmarkMapVisible(place,zoom){return zoom>=((place.kind==='pass'||place.kind==='hideout')?.18:.26)}
-function chooseSelection(x,y){
- const local=toScreen(x,y);
+function mapTarget(local){
  let hit=null,nearest=Infinity;
  function consider(type,entity,radius,labelOffset=0,label=''){
   const marker=toScreen(entity.x,entity.y);
@@ -2285,11 +2301,15 @@ function chooseSelection(x,y){
  }
  for(const p of state.parties)if(p.active){
   const label=camera.zoom>.38?partyMapLabel(p):'';
-  consider('party',p,Math.max(21,16*camera.zoom),26,label);
+  consider('party',p,Math.max(22,16*camera.zoom),20,label);
  }
  for(const place of campaignLandmarks())if(landmarkMapVisible(place,camera.zoom)){
   consider('landmark',place,Math.max(21,18*camera.zoom),31,camera.zoom>.51?place.name:'');
  }
+ return hit;
+}
+function chooseSelection(point,hit=mapTarget(point)){
+ const world=toWorld(point.x,point.y),x=clamp(world.x,0,W.WIDTH),y=clamp(world.y,0,W.HEIGHT);
  selected=hit||{type:'land',x,y};inspectorDirty=true;
  if(hit?.type==='settlement'){const site=S[hit.id];travelTo(site.x,site.y,site.id)}
  else if(hit?.type==='party')followParty(hit.id);
@@ -2470,7 +2490,8 @@ function refreshUI(){
  $('hudGold').textContent=p.gold.toLocaleString();
  $('hudFood').textContent=String(p.food);
  const traveling=hasTravelOrder(),running=state.waiting||traveling&&!state.pausedManual;
- const action=state.waiting?'Stop waiting':traveling?(state.pausedManual?'Resume travel':'Pause travel'):'Wait here';
+ const action=state.waiting?'Stop waiting':state.followPartyId!=null?
+  (state.pausedManual?'Resume following':'Pause following'):traveling?(state.pausedManual?'Resume travel':'Pause travel'):'Wait here';
  $('hudPause').textContent=(running?'⏸ ':'▶ ')+action;
  $('mobilePause').textContent=running?'Ⅱ':'▶';
  for(const id of ['hudPause','mobilePause']){
@@ -2495,7 +2516,8 @@ function refreshUI(){
  $('mapCoordinates').textContent=near&&dist(p.x,p.y,near.x,near.y)<300?
   'Near '+near.name+' · '+region.name:region.name+' · '+Math.floor(p.x)+', '+Math.floor(p.y);
  $('travelText').textContent=state.waiting?'Waiting here · '+state.waitSpeed+'×':state.followPartyId!=null?
-  (state.escortPartyId===state.followPartyId?'Escorting ':'Following ')+partyName(state.parties.find(p=>p.id===state.followPartyId))+' · updating route':
+  (state.pausedManual?'Paused · ':state.followRouteTarget===false?'No route · ':state.escortPartyId===state.followPartyId?'Escorting ':'Following ')+
+   partyName(state.parties.find(p=>p.id===state.followPartyId)):
   state.path.length?(state.pausedManual?'Route ready · resume to travel':'Traveling · '+Math.max(0,state.path.length-state.pathIndex)+' route steps remaining'):
   'Tap to travel · Drag to pan · Pinch to zoom';
  $('minimapHolder').classList.toggle('hidden',!state.options.minimap);
@@ -2758,7 +2780,7 @@ function refreshInspector(){
    (enemy.kind==='bandit'?'Bandits threaten the roads. Follow them to negotiate, flee, or enter a real battle.':
    (enemy.targetPartyId!=null?(enemy.kind==='patrol'?'Patrolling against nearby outlaws.':enemy.kind==='bandit'?'Hunting a merchant caravan.':'Moving between markets.'):
     'You can speak, trade or challenge this party after catching it.'))+'</p></div>';
-  const nearby=withinReach(state.player,enemy,155);
+  const nearby=withinReach(state.player,enemy,PARTY_ENCOUNTER_RANGE);
   html+=renderActions([{act:'travelParty',id:enemy.id,
    label:state.followPartyId===enemy.id?'◎ Following · route updating':'➤ Follow moving party',primary:true},
    ...(mission?.kind==='shipment'?[{act:'escortConvoy',id:enemy.id,label:'Escort to Redmarsh'}]:[]),
@@ -3280,15 +3302,22 @@ button('encounterTrade',()=>{
 });
 button('encounterFight',()=>{if(selected?.id!=null)skirmish(selected.id)});
 button('encounterDeploy',()=>{if(selected?.id!=null)skirmish(selected.id,true)});
+function resumeInterruptedFollow(){
+ const id=state.escortPartyId??state.interruptedFollowId;
+ state.interruptedFollowId=null;
+ if(id!=null)followParty(id,state.escortPartyId===id);
+}
 function leaveEncounter(){
- state.lastEncounter=state.day+state.hour/24;state.followPartyId=state.escortPartyId;
+ state.lastEncounter=state.day+state.hour/24;
  state.path=[];state.pathIndex=0;closeModal();notify('You leave the party behind.');
+ resumeInterruptedFollow();
 }
 button('encounterLeave',leaveEncounter);
-button('aftermathContinue',()=>{state.followPartyId=state.escortPartyId;showScreen(null);refreshUI()});
+button('aftermathContinue',()=>{showScreen(null);resumeInterruptedFollow();refreshUI()});
 button('aftermathInn',()=>{
  const town=aftermathInnSite();
  if(!town)return;
+ state.interruptedFollowId=null;
  showScreen(null);showTown(town.id);setTownView('inn');
 });
 button('menuFullscreen',toggleFullscreen);
@@ -3508,15 +3537,15 @@ function mapPinchBounds(){
  const [a,b]=mapPointers.values();
  return {x:(a.x+b.x)/2,y:(a.y+b.y)/2,distance:Math.max(1,dist(a.x,a.y,b.x,b.y))};
 }
-function startMapDrag(point,moved){
- drag={...point,cx:camera.x,cy:camera.y,moved};
+function startMapDrag(point,moved,tapRadius=7){
+ drag={...point,cx:camera.x,cy:camera.y,moved,tapRadius,hit:moved?null:mapTarget(point)};
 }
 canvas.addEventListener('pointerdown',event=>{
  if(!state||menuOpen||event.button!==0||mapPointers.size>=2)return;
  const point=mapPoint(event);
  canvas.setPointerCapture(event.pointerId);
  mapPointers.set(event.pointerId,point);
- if(mapPointers.size===1){startMapDrag(point,false);return}
+ if(mapPointers.size===1){startMapDrag(point,false,event.pointerType==='touch'?14:7);return}
  const bounds=mapPinchBounds();
  mapPinch={distance:bounds.distance,zoom:camera.zoom,anchor:toWorld(bounds.x,bounds.y)};
  drag=null;focus=false;
@@ -3534,7 +3563,7 @@ canvas.addEventListener('pointermove',event=>{
  }
  if(!drag)return;
  const dx=point.x-drag.x,dy=point.y-drag.y;
- if(Math.hypot(dx,dy)>7)drag.moved=true;
+ if(Math.hypot(dx,dy)>drag.tapRadius)drag.moved=true;
  if(drag.moved){
   camera.x=clamp(drag.cx-dx/camera.zoom,0,W.WIDTH);
   camera.y=clamp(drag.cy-dy/camera.zoom,0,W.HEIGHT);
@@ -3552,9 +3581,9 @@ function finishMapPointer(event){
  drag=null;
  if(event.type!=='pointerup'||!start||start.moved||!state||menuOpen)return;
  const point=mapPoint(event);
- if(dist(point.x,point.y,start.x,start.y)>7)return;
- const position=toWorld(point.x,point.y);
- chooseSelection(clamp(position.x,0,W.WIDTH),clamp(position.y,0,W.HEIGHT));
+ if(dist(point.x,point.y,start.x,start.y)>start.tapRadius)return;
+ // Resolve the marker from the beginning of the tap, even if it moved while held.
+ chooseSelection(point,start.hit);
  refreshUI();
 }
 canvas.addEventListener('pointerup',finishMapPointer);

@@ -2,6 +2,10 @@
 
 [Party, troop trees, deployment and equipment](ROADMAP.md)
 
+## V4.23 — Following moving parties
+
+A tap follows the party you pressed, even if its marker moves before you lift your finger. Your company keeps updating its route to the party’s current position and opens the encounter when you reach it. If another band interrupts the chase, leaving the encounter resumes the original pursuit.
+
 ## V4.22 — Bandit hideouts
 
 New campaigns place five hideouts across Asterra. Timber Archers, Road Robbers, Highland Deserters, Marsh Runners, and Steppe Riders have their own terrain and combat gear. Each level-one hideout starts with three bands. Raiders target nearby caravans and vulnerable villages, then carry the loot back to their camp.
