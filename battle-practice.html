@@ -34,7 +34,7 @@
 <body>
 <form class="practice" id="practiceSetup" action="campaign-battle.html" method="get">
  <input type="hidden" name="practice" value="1">
- <input type="hidden" name="v" value="4.22">
+ <input type="hidden" name="v" value="4.25">
  <header>
   <h1>Practice battle</h1>
   <nav aria-label="Other modes">
@@ -80,6 +80,15 @@
      <option value="caravan">Merchant caravan</option>
     </select>
    </label>
+   <label id="practiceBandits">Bandit type
+    <select name="bandit" id="practiceBanditType">
+     <option value="">Mixed outlaws</option><option value="roadside">Road Robbers</option><option value="woodland">Timber Archers</option>
+     <option value="ridge">Highland Deserters</option><option value="marsh">Marsh Runners</option><option value="steppe">Steppe Riders</option>
+    </select>
+   </label>
+   <label id="practiceCampLevel" hidden>Camp level
+    <input type="number" name="campLevel" min="1" max="5" value="3" inputmode="numeric" required>
+   </label>
    <label id="practiceEnemyRealm">Realm
     <select name="enemyFaction" id="practiceEnemyFaction">
      <option value="2">Ironhold Clans</option>
@@ -100,6 +109,7 @@
      <option value="river">Shallow river</option>
      <option value="desert">Rocky outcrop</option>
      <option value="mountain">Mountain ridge</option>
+     <option value="mixed">Mixed terrain</option>
     </select>
    </label>
    <label>Map seed (0–49)
@@ -129,6 +139,6 @@
  </footer>
 </form>
 <script src="battle-forge.js?v=4.22" defer></script>
-<script src="battle-practice.js?v=4.22" defer></script>
+<script src="battle-practice.js?v=4.25" defer></script>
 </body>
 </html>

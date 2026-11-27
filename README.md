@@ -2,6 +2,12 @@
 
 [Party, troop trees, deployment and equipment](ROADMAP.md)
 
+## V4.25 — Terrain and battlefield tactics
+
+Campaign battles and Classic 50v50 use the same seven seeded battlefield types. Crests, woodland edges, gaps between rocks, and shallow fords give formations distinct routes. The commander weighs marching cost, frontage, enemy pressure, and firing lines before assigning infantry, archers, cavalry, and horse archers their own positions. Formations narrow through tight ground and spread out when they reach room.
+
+Use **Map** during battle or deployment to see the whole field. Friendly AI routes appear on that view, and you can tap there when placing a formation. Manual orders still take priority. Classic practice can field the same bandit types and camp levels as the campaign without changing a save.
+
 ## V4.23 — Following moving parties
 
 A tap follows the party you pressed, even if its marker moves before you lift your finger. Your company keeps updating its route to the party’s current position and opens the encounter when you reach it. If another band interrupts the chase, leaving the encounter resumes the original pursuit.
