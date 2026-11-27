@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0e1816">
-<title>Untitled Armies — Battle · V4.22</title>
+<title>Untitled Armies — Battle · V4.25</title>
 <style>
 :root{color-scheme:dark;--paper:#ecf5e6;--muted:#97aaa1;--accent:#8fecbe;--card:#182725;--edge:#365247}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0c1514;color:var(--paper);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overscroll-behavior:none}
@@ -215,6 +215,9 @@ body.campaign-battle #minimap,
 body.campaign-battle #commanderPanel,body.campaign-battle #enemyPanel,
 body.campaign-battle #armorPanel,body.campaign-battle #equipmentBackdrop{display:none!important}
 body.campaign-battle #battleOutcomeRestart{display:none}
+#campaignGroundToggle{min-width:44px}
+#campaignGroundToggle[aria-pressed="true"]{background:#294638}
+body.battlefield-overview #campaignTouchControls{display:none!important}
 body.campaign-battle #campaignBattleReturn{display:inline-block!important}
 body.campaign-battle.battle-finished #campaignBattleBanner,
 body.campaign-battle.battle-finished .rail,
@@ -364,6 +367,7 @@ body.deployment-active .rail{display:none!important}
        <button type="button" data-battle-speed="2" aria-label="Double battle speed" aria-pressed="false">2×</button>
        <button type="button" data-battle-speed="3" aria-label="Triple battle speed" aria-pressed="false">3×</button>
       </div>
+      <button type="button" id="campaignGroundToggle" aria-label="Show battlefield overview" aria-pressed="false">Map</button>
       <button type="button" id="campaignArmyOrdersToggle" aria-expanded="false" aria-controls="campaignArmyOrders">Orders</button>
       <button type="button" id="campaignControlToggle" class="campaign-manual-button" aria-label="Manual hero control" aria-pressed="false">Auto</button>
       <button type="button" id="campaignBattleExit">Withdraw</button>
@@ -708,6 +712,9 @@ body.deployment-active .rail{display:none!important}
 <script src="battle-forge.js?v=4.22"></script>
 <script src="campaign-bandit-profiles.js?v=4.22"></script>
 <script src="battle-navigation.js?v=4.10.2"></script>
+<script src="battle-terrain.js?v=4.25"></script>
+<script src="battle-terrain-routing.js?v=4.25"></script>
+<script src="battle-tactics.js?v=4.25"></script>
 <script src="battle-deployment-ui.js?v=4.12" defer></script>
 <script>
 (()=>{
@@ -754,7 +761,8 @@ let W=0,H=0,VW=0,VH=0,t=0,last=0,selected=false,mode='idle',friends=[],foes=[],s
  let commanders={friend:null,foe:null};
  function newBrain(personality='tactical',intent='adaptive',lineStyle='auto'){
   return {personality,intent,lineStyle,phase:'advance',orders:{infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'},
-    elapsed:0,next:0,lastChange:-20,decisions:0,news:'Reading battlefield',reserveCalls:0,flankCalls:0};
+    elapsed:0,next:0,lastChange:-20,decisions:0,news:'Reading battlefield',reserveCalls:0,flankCalls:0,
+    terrainPlan:null,tactics:null,marches:new Map()};
  }
  let commanderBrains={friend:newBrain('tactical'),foe:newBrain('aggressive')};
  // As General you override a role indefinitely, until explicitly released.
@@ -782,6 +790,7 @@ function createPracticeSession(){
  const mix=battleParams.get('mix'),biome=battleParams.get('biome'),kind=battleParams.get('kind'),weapon=battleParams.get('weapon');
  const tiers=mix==='recruits'?[0]:mix==='veterans'?[1]:mix==='elite'?[2]:[0,0,1,1,2];
  const slotsByTier=[0,0,0];
+ const bandit=kind==='bandit'?window.UACampaignBanditProfiles.get(battleParams.get('bandit')):null;
  const forge=window.UABattleForge,presetId=battleParams.get('forgePreset');
  const preset=forge?.presets?.some(item=>item.id===presetId)?forge.resolvePreset?.(presetId):null;
  const heroWeapon=['sword','spear','axe','bow'].includes(preset?.baseWeapon)?preset:null;
@@ -789,12 +798,14 @@ function createPracticeSession(){
   playerName:'Practice commander',heroHealth:practiceNumber('health',100,1,100),
   kind:['bandit','patrol','caravan'].includes(kind)?kind:'bandit',faction:practiceNumber('enemyFaction',2,0,9),
   enemyCount:practiceNumber('enemyCount',50,1,50),
+  ...(bandit?{banditProfileId:bandit.id,banditCampLevel:practiceNumber('campLevel',3,1,5),
+   banditName:bandit.name,banditSeed:practiceNumber('seed',0,0,49)}:{}),
   deploymentPool:true,
   troops:Array.from({length:count},(_,index)=>{
    const tier=tiers[index%tiers.length];
    return {faction:origin,tier,groupIndex:tier,slot:slotsByTier[tier]++};
   }),
-  terrainKind:['grass','forest','hills','marsh','river','desert','mountain'].includes(biome)?biome:'grass',
+  terrainKind:['grass','forest','hills','marsh','river','desert','mountain','mixed'].includes(biome)?biome:'grass',
   mapSeed:practiceNumber('seed',0,0,49),playerMorale:65,level:1,
   heroWeapon,
   equipment:{weapon:heroWeapon?.baseWeapon||(['sword','axe','spear','bow'].includes(weapon)?weapon:'sword'),armor:'paddedArmor',shield:'roundShield',quiver:'quiver'},
@@ -819,7 +830,7 @@ if(!campaignMode){window.location.replace('index.html');return}
 if(!practiceMode)try{
  const result=JSON.parse(localStorage.getItem(battleResultKey)||'null');
  if(result?.sessionId===campaignSession.sessionId){
-  window.location.replace('index.html?battleReturn=1&v=4.24');return;
+  window.location.replace('index.html?battleReturn=1&v=4.25');return;
  }
 }catch(e){}
 let campaignReported=false,campaignControlMode='auto',heroPointer=null;
@@ -850,7 +861,7 @@ const deployment={
 const troopRoutes=new WeakMap();
 const campaignMarches=new Map();
 const campaignFormations=new Map();
-let battleRocks=[],routeBudget=0,formationDestination=null;
+let battleRocks=[],routeBudget=0,formationDestination=null,battlefieldOverview=false;
 let campaignStonesRemaining=Math.max(0,Number(campaignSession.inventory?.stones)||0);
 let battleMessageTimer;
 const heroKeys=new Set();
@@ -880,7 +891,7 @@ function heroCanAct(){
  return hero&&!hero.dead&&!hero.routed&&!hero.broken&&!hero.surrendered;
 }
 function canControlHero(){
- return campaignControlMode==='manual'&&heroCanAct()&&!campaignOrdersOpen&&!formationDestination&&!battleOutcome&&
+ return campaignControlMode==='manual'&&heroCanAct()&&!battlefieldOverview&&!campaignOrdersOpen&&!formationDestination&&!battleOutcome&&
   !portrait.matches&&!document.hidden&&!deployment.active;
 }
 function showBattleMessage(message,duration=0){
@@ -1072,17 +1083,32 @@ function planAutoHero(hero,target,dist){
  const footTroops=healthy.filter(unit=>!isCavalry(unit));
  const screen=frontInfantry.length?frontInfantry:infantry.length?infantry:footTroops.length?footTroops:healthy.length?healthy:allies;
  const line=troopCenter(screen,home('friend'));
- const flanked=target&&dist<125&&target.x<line.x-25;
+ const enemy=squadStates.friend?.enemyCenter||target||home('foe');
+ const heading=formationHeading(line,enemy,0),dx=Math.cos(heading),dy=Math.sin(heading);
+ const flanked=target&&dist<125&&(target.x-line.x)*dx+(target.y-line.y)*dy< -25;
  const fallingBack=wounded||flanked;
  hero.campaignStance=fallingBack?'Falling back':'Screened';
- const x=clamp(line.x-(fallingBack?160:72),22,W-22);
- let y=clamp(line.y,24,H-24);
- if(fallingBack&&target&&dist<180){
-  const side=target.y<line.y?1:-1;
-  y=clamp(line.y+side*90,24,H-24);
+ const gap=fallingBack?158:72;
+ const side=fallingBack&&target&&dist<180?((target.x-line.x)*(-dy)+(target.y-line.y)*dx<0?1:-1)*70:0;
+ let x=line.x-dx*gap-dy*side,y=line.y-dy*gap+dx*side;
+ if(fallingBack&&dist<180&&target){
+  const ahead=Math.max(0,(x-hero.x)*dx+(y-hero.y)*dy);
+  x-=dx*ahead;y-=dy*ahead;
  }
- // A low-health hero already behind the rear line never moves forward to it under threat.
- return {command:'defend',x:fallingBack&&dist<180?Math.min(x,hero.x):x,y,disengage:fallingBack};
+ return {command:'defend',x:clamp(x,22,W-22),y:clamp(y,24,H-24),disengage:fallingBack};
+}
+function planEnemyCommander(commander,dist){
+ const state=squadStates.foe;
+ if(!state)return null;
+ const groups=state.groups;
+ const cover=[groups.infantry,groups.cavalry,groups.archer,groups.horseArcher].find(group=>group.count);
+ if(!cover)return null;
+ const heading=formationHeading(cover.center,state.enemyCenter,Math.PI);
+ const fallingBack=commander.hp<commander.maxHp*.30&&dist<150;
+ const gap=fallingBack?142:66;
+ const x=clamp(cover.center.x-Math.cos(heading)*gap,22,W-22);
+ const y=clamp(cover.center.y-Math.sin(heading)*gap,24,H-24);
+ return {command:'defend',x,y,disengage:fallingBack};
 }
 function throwCampaignRock(){
  if(!canControlHero()||campaignSession.equipment?.quiver!=='rockPouch'||campaignStonesRemaining<1)return;
@@ -1216,9 +1242,32 @@ function campaignDeploy(s,slot,team,kit){
  }
  initializeRangedEquipment(s);initMount(s);
 }
+function separateDeploymentPositions(positions,kits){
+ const placed=[];
+ for(const [index,point] of positions.entries()){
+  const mounted=['cavalry','horseArcher'].includes(kits[index].unitRole);
+  const clearance=mounted?16:12;
+  const fits=position=>battleNavigation.segmentClear(position,position,battleRocks,clearance)&&
+   placed.every(other=>Math.hypot(other.x-position.x,other.y-position.y)>=(mounted||other.mounted?31:22));
+  let position=point;
+  if(!fits(point)){
+   position=null;
+   for(let radius=25;!position&&radius<=350;radius+=25){
+    for(let direction=0;direction<16;direction++){
+     const angle=direction*Math.PI/8;
+     const candidate={x:clamp(point.x+Math.cos(angle)*radius,24,W-24),y:clamp(point.y+Math.sin(angle)*radius,24,H-24)};
+     if(fits(candidate)){position=candidate;break}
+    }
+   }
+   position=position||battleNavigation.projectPoint(point,battleRocks,{minX:24,minY:24,maxX:W-24,maxY:H-24},clearance)||point;
+  }
+  positions[index]=position;placed.push({...position,mounted});
+ }
+}
 function deployCampaignArmy(team,roster){
  const kits=roster.map(slot=>campaignEquipment(slot,team));
  const positions=campaignFormation(team,kits);
+ separateDeploymentPositions(positions,kits);
  return roster.map((slot,index)=>{
   const unit=create(team,index,positions[index]);
   campaignDeploy(unit,slot,team,kits[index]);
@@ -1227,7 +1276,7 @@ function deployCampaignArmy(team,roster){
 }
 function campaignEnemyRoster(){
  const count=clamp(Math.floor(campaignSession.enemyCount)||1,1,50);
- if(!practiceMode&&campaignSession.kind==='bandit'&&campaignSession.banditProfileId){
+ if(campaignSession.kind==='bandit'&&campaignSession.banditProfileId){
   const profiles=window.UACampaignBanditProfiles;
   return profiles.generate({profileId:campaignSession.banditProfileId,terrainKind:campaignSession.terrainKind,
    campLevel:campaignSession.banditCampLevel,partyStrength:count,seed:campaignSession.banditSeed}).slots;
@@ -1280,7 +1329,7 @@ function campaignReturn(){
  if(deployment.active){cancelDeployment();return}
  if(practiceMode){window.location.href='battle-practice.html?'+battleParams.toString();return}
  campaignRecord(battleOutcome);
- if(campaignReported)window.location.href='index.html?battleReturn=1&v=4.24';
+ if(campaignReported)window.location.href='index.html?battleReturn=1&v=4.25';
 }
 let realisticBattle=false,battleOutcome=null;
  let battleCollapseSince={friend:null,foe:null};
@@ -1734,7 +1783,9 @@ function home(team){return {x:team==='friend'?clamp(W*.30,107,W*.39):clamp(W*.74
 function create(team,i,p){const discipline=team==='friend'?Math.round(27+rnd(i+12)*69):Math.round(29+rnd(i+67)*58);const soldier={id:nextId++,team,x:p.x,y:p.y,tx:p.x,ty:p.y,anchorX:p.x,anchorY:p.y,disc:discipline,...equipmentFor(team,i),attack:null,braceReady:0,braceThreatId:null,braceStops:0,braceCount:0,lastCommanderOrder:null,currentCommanderOrder:'attack',pendingCommanderOrder:null,gallop:0,chargeCooldown:0,chargeHits:0,guardActive:false,guardHold:0,guardBreak:0,stagger:0,knockVX:0,knockVY:0,shieldRecoil:0,impactLean:0,guardBreakFlash:0,stress:team==='friend'?0:Math.round(4+rnd(i+101)*10),surrendered:false,woundedOut:false,fatal:false,brokenAt:-1,rallies:0,hp:3,maxHp:3,stamina:100,maxStamina:100,recoveryDelay:0,attackCount:0,speed:42+rnd(i+44)*20,phase:i*2.04,cooldown:rnd(i+13)*.35,decision:1.5+rnd(i+16)*1.3,broken:false,dead:false,routed:false,vx:0,vy:0,facing:team==='friend'?1:-1,faceAngle:team==='friend'?0:Math.PI,targetId:null,engageSlot:0,escapeAngle:0,hitFlash:0};setFighterTraining(soldier,team,i);initializeRangedEquipment(soldier);initMount(soldier);return soldier;}
 function createCommander(team){
   const h=home(team),rear=team==='friend'?-1:1;
-  const c=create(team,50,{x:clamp(h.x+rear*125,30,W-30),y:clamp(h.y-40,30,H-30)});
+  const post={x:clamp(h.x+rear*125,30,W-30),y:clamp(h.y-40,30,H-30)};
+  const position=battleNavigation.projectPoint(post,battleRocks,{minX:30,minY:30,maxX:W-30,maxY:H-30},12)||post;
+  const c=create(team,50,position);
   Object.assign(c,{isCommander:true,unitRole:'infantry',weapon:'sword',
    shield:'round',armor:'mail',ranged:null,leadership:team==='friend'?84:76,
    experience:'veteran',skill:76,disc:92,stamina:100,maxStamina:100,
@@ -1880,6 +1931,7 @@ function populate(){
   }
   commanderBrains.friend=newBrain(commanderBrains.friend.personality,commanderBrains.friend.intent,commanderBrains.friend.lineStyle);
   commanderBrains.foe=newBrain(commanderBrains.foe.personality,commanderBrains.foe.intent,commanderBrains.foe.lineStyle);
+  commanderBrains.foe.next=.65;
   generalOrders={all:null,infantry:null,archer:null,cavalry:null,horseArcher:null,reserve:null};selectedGroup='all';
   if(deployment.active)layoutDeployment();
   slashes=[];projectiles=[];groundedShots=[];selected=false;mode='idle';marker=null;focusArmy();updateUI();updateEnemyUI();updateCommanderUI();
@@ -1935,7 +1987,6 @@ function updateSquadState(team){
     s.squadSlotRole=role;
     s.squadOffsetX=clamp(s.anchorX-center.x,-Math.min(W*.18,130),Math.min(W*.18,130));
     s.squadOffsetY=clamp(s.anchorY-center.y,-Math.min(H*.40,190),Math.min(H*.40,190));
-    s.squadFlankDone=false;
    }
   }
   const stragglers=troops.filter(s=>Math.hypot(
@@ -1986,12 +2037,7 @@ function updateSquadState(team){
  const fewerTop=enemy.filter(s=>s.y<enemyCenter.y).length;
  const fewerBottom=enemy.length-fewerTop;
  const flankSide=fewerBottom<fewerTop?1:fewerTop<fewerBottom?-1:team==='friend'?1:-1;
- const ownCenter=own.length?{
-  x:own.reduce((n,u)=>n+u.x,0)/own.length,
-  y:own.reduce((n,u)=>n+u.y,0)/own.length
- }:fallback;
- const terrainObjective=terrainStrategicPlan(team,ownCenter,enemyCenter,own);
- squadStates[team]={groups,enemyCenter,terrainObjective,pressure,initialInfantryCount:initialInfantry,
+ squadStates[team]={groups,enemyCenter,pressure,initialInfantryCount:initialInfantry,
   archerPressure:archers.length?pressed/archers.length:0,
   reserveReleased:release,flankSide,enemyArchers:enemy.filter(e=>isArcher(e)).length,
   cohesion:own.length?squadRoles.reduce((n,r)=>n+groups[r].cohesion*groups[r].count,0)/own.length:1};
@@ -2033,8 +2079,7 @@ function manualInfantryWall(){
 }
 function isManualLineAssault(s){
  if(s.team!=='friend'||typeof generalOrders==='undefined')return false;
- const manual=(s.squadReserve&&generalOrders.reserve)||
-  generalOrders[s.unitRole]||generalOrders.all;
+ const manual=manualOrderFor(s);
  return manual==='attack'&&s.unitRole==='infantry'&&!!manualInfantryWall();
 }
 function lineMarch(s,state,group,dist,x,y,pace){
@@ -2069,10 +2114,13 @@ function lineMarch(s,state,group,dist,x,y,pace){
   pace:dist>125?Math.min(pace,intent==='aggressive'?1.24:
   style==='shieldwall'?.95:intent==='ordered'?.99:1.04):pace};
 }
+function manualOrderFor(s){
+ const order=(s.squadReserve&&generalOrders.reserve)||generalOrders[s.unitRole]||generalOrders.all;
+ return order==='ai'?null:order;
+}
 function isManualSquadOrder(s){
  if(s.team==='friend'&&typeof generalOrders!=='undefined')
-  return !!(generalOrders.all||generalOrders[s.unitRole]||
-   (s.squadReserve&&generalOrders.reserve));
+  return !!manualOrderFor(s);
  if(s.team==='foe'&&typeof enemyCommand!=='undefined')
   return enemyCommand!=='auto';
  return false;
@@ -2091,31 +2139,6 @@ function squadMovement(s,command,target,dist,x,y,pace){
  if(!manual&&s.unitRole==='infantry'&&s.squadReserve&&!state.reserveReleased){
   return {x:clamp(ownInfantry.center.x-forward*Math.min(95,W*.17),22,W-22),
    y:clamp(ownInfantry.center.y+s.squadOffsetY*.70,22,H-22),pace:.91};
- }
- // Seize useful terrain before engaging: the squad marches to a hilltop,
- // sheltered woodland or the friendly bank of a crossing. Once enemies are
- // close, individual combat and the existing physical formation take over.
- const strategic=(typeof commanderBrains!=='undefined'?
-  commanderBrains[s.team]?.terrainPlan:state.terrainObjective);
- if(!manual&&strategic&&!s.terrainPositionHeld&&
-   dist>Math.max(115,Math.min(180,W*.20))&&
-   (s.unitRole==='infantry'||s.unitRole==='archer')){
-  const behind=s.unitRole==='archer'?forward*Math.min(54,W*.105):0;
-  const goalX=clamp(strategic.x-behind+(s.squadOffsetX||0)*.30,20,W-20);
-  const goalY=clamp(strategic.y+(s.squadOffsetY||0)*.55,20,H-20);
-  if(Math.hypot(s.x-goalX,s.y-goalY)>Math.min(40,H*.14)){
-   const objective={x:goalX,y:goalY,pace:1.08};
-   // Keep the infantry front connected even while seizing the hill or
-   // approaching a river, rather than racing in one soldier at a time.
-   return s.unitRole==='infantry'?
-    (lineMarch(s,state,group,dist,goalX,goalY,1.08)||objective):
-    objective;
-  }
-  if(!s.terrainPositionHeld){
-   s.terrainPositionHeld=true;
-   const stat=combatLabStats(s.team);
-   if(stat)stat.terrainPositions++;
-  }
  }
  // Carry a two-rank moving wall toward contact, then relax structure to
  // allow thrusts, blocks, body spacing and local initiative.
@@ -2144,39 +2167,13 @@ function squadMovement(s,command,target,dist,x,y,pace){
    pace=Math.max(pace,1.08);
   }
  }
- // Mounted troops move to a flank waypoint first, then commit to a
- // real charge pass using the horse acceleration/turning physics.
- const tacticalFlank=typeof commanderBrains!=='undefined'?
-  commanderBrains[s.team]?.phase==='flank':
-  state.groups.cavalry.count>=3&&state.groups.infantry.count>=3&&
-   state.enemyArchers>=3;
- if(isCavalry(s)&&tacticalFlank&&group.count>=3&&dist>100){
-  const side=state.flankSide;
-  const flankY=clamp(state.enemyCenter.y+side*Math.min(175,H*.34),26,H-26);
-  const flankX=clamp(state.enemyCenter.x-forward*Math.min(155,W*.19),26,W-26);
-  if(!s.squadFlankDone){
-   if(Math.hypot(s.x-flankX,s.y-flankY)<Math.min(58,H*.20)){
-    s.squadFlankDone=true;
-    s.squadFlankArrivals=(s.squadFlankArrivals||0)+1;
-    const stat=combatLabStats(s.team);if(stat)stat.flankArrivals++;
-   }else return {x:flankX,y:flankY,pace:1.17};
-  }
- }else if(!tacticalFlank)s.squadFlankDone=false;
- // Cavalry avoid taking a full-speed charge across a bog or forest. Their
- // route uses actual turn radius and speed, and a detour is rejected when
- // the geography makes going around more expensive than a cautious ford.
- if(isCavalry(s)&&dist>110&&s.regroupUntil<=t){
-  const route=terrainRouteWaypoint(s,x,y);
-  if(route&&Math.hypot(route.x-s.x,route.y-s.y)>34)
-   return {x:route.x,y:route.y,pace:1.21};
- }
  return {x,y,pace};
 }
 function allocateSquadReserves(team){
  const teamUnits=team==='friend'?friends:foes;
  teamUnits.forEach(s=>{
   s.squadReserve=false;s.squadSlotRole=null;
-  s.squadInitialInfantry=false;s.squadFlankDone=false;s.terrainPositionHeld=false;
+  s.squadInitialInfantry=false;
   s.lineKind='loose';s.lineSupport=0;s.squadLineIndex=null;
  });
  const infantry=teamUnits.filter(s=>s.unitRole==='infantry');
@@ -2201,146 +2198,181 @@ function setCommanderAnchors(team,orders){
  for(let i=0;i<troops.length;i++){
   const u=troops[i];if(u.dead||u.broken||u.routed)continue;
   // Autonomous formation changes never rewrite a standing General order.
-  if(team==='friend'&&(generalOrders.all||generalOrders[u.unitRole]||
-    (u.squadReserve&&generalOrders.reserve)))continue;
+  if(team==='friend'&&manualOrderFor(u))continue;
   const order=orders[u.unitRole]||'attack';
   if(order==='retreat'){
    // Retreat moves toward the team's side while still preserving each slot.
    u.anchorX=clamp(rear.x+(slots[i].x-center.x),24,W-24);
    u.anchorY=clamp(rear.y+(slots[i].y-center.y),24,H-24);
   }else if(order==='defend'){
-   const brain=commanderBrains[team],site=brain?.terrainPlan;
-   const occupy=site&&['seizeGround','holdGround','guardCrossing'].includes(brain.phase);
-   if(occupy){
-    const offsetX=(slots[i]?.x||center.x)-center.x;
-    const offsetY=(slots[i]?.y||center.y)-center.y;
-    const archerRear=u.unitRole==='archer'?(team==='friend'?-52:52):0;
-    u.anchorX=clamp(site.x+offsetX+archerRear,24,W-24);
-    u.anchorY=clamp(site.y+offsetY,24,H-24);
-   }else{u.anchorX=slots[i].x;u.anchorY=slots[i].y;}
+   u.anchorX=slots[i].x;u.anchorY=slots[i].y;
   }
   if(order==='defend'||order==='retreat'){
    u.tx=u.anchorX;u.ty=u.anchorY;
   }
  }
 }
+const attackOrders={infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'};
+const defensiveOrders={
+ hold:{infantry:'defend',archer:'attack',cavalry:'defend',horseArcher:'attack'},
+ skirmish:{infantry:'defend',archer:'attack',cavalry:'attack',horseArcher:'attack'},
+ protect:{infantry:'defend',archer:'retreat',cavalry:'attack',horseArcher:'retreat'},
+ reinforce:{infantry:'attack',archer:'defend',cavalry:'attack',horseArcher:'attack'},
+ withdraw:{infantry:'retreat',archer:'retreat',cavalry:'retreat',horseArcher:'retreat'}
+};
+
 function decideCommander(team,dt){
  const brain=commanderBrains[team],leader=commanders[team];
  brain.elapsed+=dt;
  if(brain.elapsed<brain.next)return;
- brain.next=brain.elapsed+1.35+(100-(leader?.leadership||60))*.008;
+ brain.next=brain.elapsed+1.65+(100-(leader?.leadership||60))*.006;
  brain.decisions++;
  if(!leader||leader.dead||leader.routed||leader.broken){
-  brain.phase='leaderless';brain.news='Commander lost — soldiers act independently';
-  brain.orders={infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'};
+  brain.phase='leaderless';brain.news='Commander lost · troops fight independently';
+  brain.orders=attackOrders;brain.tactics=null;brain.terrainPlan=null;brain.marches.clear();
   updateCommanderUI();return;
  }
  const troops=living(team==='friend'?friends:foes);
  const enemies=living(team==='friend'?foes:friends);
- const a=troopCenter(troops,home(team));
- const b=troopCenter(enemies,home(team==='friend'?'foe':'friend'));
- const distance=Math.hypot(a.x-b.x,a.y-b.y);
- const archerUnits=troops.filter(u=>isArcher(u));
- const cavalryUnits=troops.filter(u=>isCavalry(u));
- const enemyArchers=enemies.filter(u=>isArcher(u));
- const pressured=archerUnits.filter(u=>enemies.some(e=>
-  Math.hypot(e.x-u.x,e.y-u.y)<155)).length;
- const threatened=archerUnits.length&&pressured/archerUnits.length>.25;
- const ratio=troops.length/Math.max(1,enemies.length);
- const panicRate=troops.length?troops.filter(u=>u.stress>67).length/troops.length:1;
- const ammo=archerUnits.reduce((n,u)=>n+(infiniteAmmo?18:u.ammo),0);
+ const ownCenter=troopCenter(troops,home(team)),enemyCenter=troopCenter(enemies,home(team==='friend'?'foe':'friend'));
  const tactical=squadStates[team];
- const chosenGround=terrainStrategicPlan(team,a,b,troops);
- const previousGround=brain.terrainPlan;
- brain.terrainPlan=chosenGround;
- const movedGround=chosenGround&&(!previousGround||
-  Math.hypot(chosenGround.x-previousGround.x,chosenGround.y-previousGround.y)>40);
- const endangeredFront=tactical?.pressure||0;
- const endangeredBows=tactical?.archerPressure||0;
- if(tactical&&!tactical.reserveReleased&&(endangeredFront>.32||
-    endangeredBows>.26||ratio<.78)){
-  tactical.reserveReleased=true;brain.reserveCalls++;
- }
- let phase='hold';
- if(ratio<.58||panicRate>.43)phase='withdraw';
- else if(endangeredFront>.38&&troops.some(u=>u.squadReserve))phase='reinforce';
- else if(threatened)phase='protect';
- // The General's strategic directive sets the commander's goal, while
- // leadership, pressure, terrain and casualties still influence tactics.
- else if(brain.intent==='hold'){
-  phase=chosenGround&&chosenGround.score>2.5?
-   (chosenGround.type==='water'||chosenGround.type==='mud'?
-    'guardCrossing':'holdGround'):'hold';
- }
- else if(brain.intent==='ordered')phase='orderedAdvance';
- else if(brain.intent==='aggressive')phase='press';
+ const archers=troops.filter(unit=>isArcher(unit)&&hasRangedAmmo(unit));
+ const rangedPressure=archers.filter(unit=>enemies.some(enemy=>Math.hypot(enemy.x-unit.x,enemy.y-unit.y)<135)).length;
+ const ratio=troops.length/Math.max(1,enemies.length);
+ const panic=troops.filter(unit=>unit.stress>70).length/Math.max(1,troops.length);
+ const distance=Math.hypot(enemyCenter.x-ownCenter.x,enemyCenter.y-ownCenter.y);
+ const linePressure=tactical?.pressure||0;
+ const bowsThreatened=rangedPressure>=Math.max(1,Math.ceil(archers.length*.28));
+ const useReserve=tactical&&!tactical.reserveReleased&&(linePressure>.38||bowsThreatened||ratio<.72);
+ if(useReserve){tactical.reserveReleased=true;brain.reserveCalls++}
+
+ let phase='advance';
+ if((ratio<.54&&panic>.32)||panic>.60)phase='withdraw';
+ else if(bowsThreatened&&tactical?.groups.infantry.count>=2)phase='protect';
+ else if(useReserve&&linePressure>.38)phase='reinforce';
+ else if(brain.intent==='hold')phase='hold';
  else if(brain.intent==='skirmish')phase='skirmish';
- else if(chosenGround&&chosenGround.score>2.5&&distance>175){
-  const ford=chosenGround.type==='water'||chosenGround.type==='mud';
-  phase=ford&&brain.elapsed>18?'forceCrossing':
-   ford?'guardCrossing':
-   Math.hypot(a.x-chosenGround.x,a.y-chosenGround.y)>85?
-    'seizeGround':'holdGround';
+ else if(brain.intent==='ordered')phase='orderedAdvance';
+ else if(brain.intent==='aggressive'||brain.personality==='aggressive'&&distance<360)phase='press';
+ else if(troops.filter(isCavalry).length>=3&&distance<620)phase='flank';
+ // Keep a battlefield plan long enough to execute it. Withdrawals and
+ // threatened archers can interrupt once there is a reason to act.
+ const urgent=['withdraw','protect','reinforce'].includes(phase);
+ if(phase!==brain.phase&&!urgent&&brain.elapsed-brain.lastChange<3.3)phase=brain.phase;
+ if(phase==='leaderless')phase='advance';
+
+ const groups={};
+ const bounds={minX:20,minY:20,maxX:W-20,maxY:H-20};
+ for(const role of squadRoles){
+  const units=troops.filter(unit=>unit.unitRole===role&&!isManualSquadOrder(unit)&&
+   (!unit.squadReserve||tactical?.reserveReleased||urgent));
+  const center=troopCenter(units,ownCenter);
+  groups[role]={troops:units,count:units.length,center:units.length?
+   battleNavigation.projectPoint(center,battleRocks,bounds,role==='cavalry'||role==='horseArcher'?31:21)||center:center,
+   cohesion:tactical?.groups[role].cohesion??1};
  }
- else if(distance>360)phase='advance';
- else if(cavalryUnits.length>3&&enemyArchers.length>3&&distance<570)phase='flank';
- else if(brain.personality==='aggressive'&&ratio>.70)phase='press';
- else if(brain.personality==='defensive')phase='hold';
- else if(ratio>1.35&&distance<310)phase='press';
- // Commit to a plan; urgent withdrawal/protection can interrupt it.
- const urgent=phase==='withdraw'||phase==='protect'||phase==='reinforce'||
-  phase==='guardCrossing'&&chosenGround?.score>4;
- if(phase!==brain.phase&&brain.elapsed-brain.lastChange<4&&!urgent)
-  phase=brain.phase;
+ const planCenter=battleNavigation.projectPoint(ownCenter,battleRocks,bounds,21)||ownCenter;
+ const tactics=window.UABattleTactics.plan({field:terrainField,routing:terrainRouting,team,groups,ownCenter:planCenter,
+  enemies,enemyCenter,phase,intent:brain.intent,personality:brain.personality,
+  profileId:team==='foe'?campaignSession.banditProfileId:null,previous:brain.tactics});
+ const orders={...(defensiveOrders[phase]||attackOrders)};
+ for(const [role,plan] of Object.entries(tactics?.roles||{}))orders[role]=plan.order;
  if(phase!==brain.phase){
   brain.phase=phase;brain.lastChange=brain.elapsed;
-  const plans={
-   advance:{infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'},
-   orderedAdvance:{infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'},
-   skirmish:{infantry:'defend',archer:'attack',cavalry:'attack',horseArcher:'attack'},
-   press:{infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'},
-   hold:{infantry:'defend',archer:'attack',cavalry:'defend',horseArcher:'attack'},
-   seizeGround:{infantry:'defend',archer:'defend',cavalry:'attack',horseArcher:'attack'},
-   holdGround:{infantry:'defend',archer:'defend',cavalry:'attack',horseArcher:'attack'},
-   guardCrossing:{infantry:'defend',archer:'defend',cavalry:'attack',horseArcher:'attack'},
-   forceCrossing:{infantry:'attack',archer:'attack',cavalry:'attack',horseArcher:'attack'},
-   protect:{infantry:'defend',archer:'retreat',cavalry:'attack',horseArcher:'retreat'},
-   flank:{infantry:'defend',archer:'attack',cavalry:'attack',horseArcher:'attack'},
-   reinforce:{infantry:'attack',archer:'defend',cavalry:'attack',horseArcher:'attack'},
-   withdraw:{infantry:'retreat',archer:'retreat',cavalry:'retreat',horseArcher:'retreat'}
-  };
-  brain.orders=plans[phase]||plans.advance;
   if(phase==='flank')brain.flankCalls++;
-  setCommanderAnchors(team,brain.orders);
- }else if(movedGround&&chosenGround&&
-  ['seizeGround','holdGround','guardCrossing'].includes(phase)){
-  // Even when the phase stays the same, changing the chosen defensive
-  // position requires refreshed anchors, never sudden teleportation.
-  setCommanderAnchors(team,brain.orders);
  }
- brain.news=phase==='orderedAdvance'?'Advancing as a protected, ordered front':
-  phase==='skirmish'?'Infantry screen holding while mobile troops skirmish':
-  phase==='advance'?'Approaching the enemy':
-  phase==='press'?'Pressing the attack':
-  phase==='hold'?'Holding a disciplined line':
-  phase==='seizeGround'?'Marching to '+chosenGround?.type+' strongpoint':
-  phase==='holdGround'?'Holding '+chosenGround?.type+' high-value ground':
-  phase==='guardCrossing'?'Defending the dry approach to '+chosenGround?.type:
-  phase==='forceCrossing'?'Crossing '+chosenGround?.type+' under orders':
-  phase==='protect'?'Protecting threatened archers':
-  phase==='flank'?'Cavalry routing around an exposed wing':
-  phase==='reinforce'?'Sending reserves into the threatened line':
-  'Ordered withdrawal';
- if(archerUnits.length&&ammo===0)brain.news+=' · archers out of ammunition';
+ if(squadRoles.some(role=>orders[role]!==brain.orders[role]))setCommanderAnchors(team,orders);
+ brain.orders=orders;
+ brain.tactics=tactics;brain.terrainPlan=tactics?.objective||null;
+ installTerrainMarches(brain,groups);
+ brain.news=phase==='withdraw'?'Falling back to regroup':
+  phase==='protect'?'Infantry covering threatened archers':
+  phase==='reinforce'?'Reserves supporting the line':
+  tactics?.objective?.name?(tactics.objective.use==='defend'?'Holding ':
+   tactics.objective.use==='woodlandHold'?'Screening from ':'Using ')+tactics.objective.name:
+  phase==='skirmish'?'Skirmishing behind the line':
+  phase==='hold'?'Holding position':phase==='press'?'Pressing the attack':'Advancing';
  updateCommanderUI();
+}
+
+function installTerrainMarches(brain,groups){
+ const next=new Map();
+ for(const [role,plan] of Object.entries(brain.tactics?.roles||{})){
+  const route=plan.route?.waypoints;
+  const group=groups[role];
+  if(!route?.length||!group?.count)continue;
+  const previous=brain.marches.get(role);
+  if(previous?.plan.id===plan.id&&previous.plan.order===plan.order&&
+     Math.hypot(previous.plan.goal.x-plan.goal.x,previous.plan.goal.y-plan.goal.y)<60&&
+     Math.hypot(previous.anchor.x-group.center.x,previous.anchor.y-group.center.y)<170){
+   previous.plan={...previous.plan,facing:plan.facing};
+   previous.orderedUnits=group.troops;
+   next.set(role,previous);
+   continue;
+  }
+  next.set(role,{plan,anchor:{...group.center},path:route,index:0,orderedUnits:group.troops,settled:false,heading:null});
+ }
+ brain.marches=next;
+}
+function marchSlot(march,index,count,columns,spacing,heading){
+ const column=index%columns,row=Math.floor(index/columns),rows=Math.ceil(count/columns);
+ const rowSize=Math.min(columns,count-row*columns);
+ const front=((rows-1)*.5-row)*spacing,side=(column-(rowSize-1)*.5)*spacing;
+ const dx=Math.cos(heading),dy=Math.sin(heading);
+ return {x:clamp(march.anchor.x+dx*front-dy*side,18,W-18),
+  y:clamp(march.anchor.y+dy*front+dx*side,18,H-18)};
+}
+function advanceTerrainMarches(dt){
+ const targets=new Map();
+ for(const team of ['friend','foe']){
+  for(const [role,march] of commanderBrains[team].marches){
+   const units=march.orderedUnits.filter(unit=>marchReadyTroop(unit)&&unit.unitRole===role&&!isManualSquadOrder(unit));
+   if(!units.length)continue;
+   const point=march.path[march.index];
+   const dx=point?point.x-march.anchor.x:0,dy=point?point.y-march.anchor.y:0;
+   const gap=Math.hypot(dx,dy);
+   const desired=gap>3?Math.atan2(dy,dx):march.plan.facing;
+   march.heading??=desired;
+   const angle=desired-march.heading;
+   march.heading+=clamp(Math.atan2(Math.sin(angle),Math.cos(angle)),-dt*1.2,dt*1.2);
+   const heading=march.heading;
+   const mounted=role==='cavalry'||role==='horseArcher';
+   const spacing=mounted?39:role==='archer'?27:23;
+   const preferred=Math.ceil(Math.sqrt(units.length*(role==='infantry'?2.8:2.1)));
+   const width=point?.width??march.plan.destinationWidth??march.path[march.path.length-1].width;
+   const columns=clamp(Math.floor((width-17)/spacing)+1||1,1,preferred);
+   const slots=units.map((unit,index)=>({unit,...marchSlot(march,index,units.length,columns,spacing,heading)}));
+   // Keep the leading ranks together. A stuck straggler can catch up without
+   // bricking the march, and a narrow approach pulls the line into deeper ranks.
+   const close=slots.filter(slot=>Math.hypot(slot.x-slot.unit.x,slot.y-slot.unit.y)<spacing*1.7).length;
+   const center=troopCenter(units,march.anchor);
+   const inFormation=close>=Math.max(1,Math.ceil(units.length*.54));
+   if(point&&(inFormation||Math.hypot(center.x-march.anchor.x,center.y-march.anchor.y)<spacing*.82)){
+    const speed=troopMarchSpeed*.88*terrainSpeed(units[0],march.anchor.x,march.anchor.y);
+    const travel=speed*dt;
+    if(gap<=travel){march.anchor={x:point.x,y:point.y};march.index++}
+    else{march.anchor.x+=dx/gap*travel;march.anchor.y+=dy/gap*travel}
+   }
+   const settled=!point&&close>=Math.ceil(units.length*.70);
+   if(settled&&!march.settled){
+    march.settled=true;
+    const stat=combatLabStats(team);if(stat)stat.terrainPositions++;
+   }
+   for(const [index,unit] of units.entries()){
+    const slot=marchSlot(march,index,units.length,columns,spacing,heading);
+    targets.set(unit,{...slot,heading,order:march.plan.order,settled:march.settled});
+   }
+  }
+ }
+ return targets;
 }
 function resolveCombatCommand(s){
    if(s.isCommander)return campaignMode&&s.isPlayerHero&&campaignControlMode==='manual'?'defend':campaignMode?'attack':'defend';
  const role=s.unitRole||'infantry';
  if(s.team==='foe'&&enemyCommand!=='auto')return enemyCommand;
  if(s.team==='friend'){
-  const manual=(s.squadReserve&&generalOrders.reserve)||generalOrders[role]||generalOrders.all;
-  if(manual&&manual!=='ai')return manual; // The General's authority is immediate.
+  const manual=manualOrderFor(s);
+  if(manual)return manual; // The General's authority is immediate.
  }
  const brain=commanderBrains[s.team],leader=commanders[s.team];
  const intended=brain?.orders[role]||'attack';
@@ -2666,7 +2698,7 @@ function cancelDeployment(){
   updateDeploymentNotice('Could not return to the encounter. Check browser storage and try again.');
   return false;
  }
- window.location.href='index.html?battleReturn=1&v=4.24';
+ window.location.href='index.html?battleReturn=1&v=4.25';
  return true;
 }
 function assignNearbyFormationSlots(slots,center,shape){
@@ -2787,6 +2819,7 @@ function returnToCommander(group){
  if(group==='all')generalOrders={all:null,infantry:null,archer:null,cavalry:null,horseArcher:null,reserve:null};
  else if(campaignMode&&(generalOrders.all||(group==='reserve'&&generalOrders.infantry)))generalOrders[group]='ai';
  else generalOrders[group]=null;
+ commanderBrains.friend.next=0;
  mode='idle';selected=false;updateUI();updateCommanderUI();
 }
 
@@ -3865,73 +3898,33 @@ function moveMount(s,x,y,dt,mult=1){
  if(step>2&&traveled<step*.45)s.mountSpeed=Math.min(s.mountSpeed,12);
  s.facing=Math.cos(s.mountHeading)>=0?1:-1;
 }
-// V3.4 deterministic terrain is data shared by Classic and Battle Lab.
-// The eventual campaign can generate these same battlefield records.
+// Campaign and 50v50 practice use the same seeded field and tactics.
 const campaignTerrain={forest:'forest',taiga:'forest',rainforest:'forest',
-  marsh:'mud',river:'river',hills:'ridge',mountain:'ridge',snow:'ridge',tundra:'ridge',
-  desert:'rocks',scrub:'rocks',steppe:'plain',grass:'plain',sea:'river'};
-let terrainPreset=campaignMode?(campaignTerrain[campaignSession.terrainKind]||'plain'):'plain',terrainZones=[];
+ marsh:'mud',river:'river',hills:'ridge',mountain:'ridge',snow:'ridge',tundra:'ridge',
+ desert:'rocks',scrub:'rocks',steppe:'plain',grass:'plain',sea:'river',mixed:'mixed'};
+let terrainPreset=campaignTerrain[campaignSession.terrainKind]||'plain';
+let terrainField,terrainRouting,terrainSurface,terrainZones=[];
 const terrainModes=['plain','ridge','forest','mud','river','rocks','mixed'];
-const terrainLabels={plain:'Open plain',ridge:'Hill and ridge',forest:'Forest',mud:'Muddy ground',river:'Shallow river',rocks:'Rocky outcrop',mixed:'Mixed terrain'};
-function campaignMapLayout(seed,preset){
- let state=(seed+1)*0x6d2b79f5;
- const rand=()=>{state|=0;state=state+0x6d2b79f5|0;let v=Math.imul(state^state>>>15,1|state);v=v+Math.imul(v^v>>>7,61|v)^v;return((v^v>>>14)>>>0)/4294967296};
- const zone=(kind,cx,cy,rx,ry)=>({kind,x:W*cx,y:H*cy,rx:Math.max(12,W*rx),ry:Math.max(12,H*ry)});
- const zones=[],spot=()=>[.21+rand()*.58,.20+rand()*.60];
- const scatter=(kind,count,rx,ry)=>{for(let i=0;i<count;i++){const [x,y]=spot();zones.push(zone(kind,x,y,rx*(.65+rand()*.7),ry*(.65+rand()*.7)))}};
- if(preset==='forest'){scatter('forest',3+seed%3,.10,.22);scatter('hill',1,.15,.20);scatter('rock',1,.028,.06)}
- else if(preset==='ridge'){for(let i=0;i<2+seed%3;i++){const x=.28+i*.19+(rand()-.5)*.08,y=.30+rand()*.40;zones.push(zone('hill',x,y,.12+rand()*.09,.25+rand()*.13))}scatter('forest',1+seed%2,.09,.12);scatter('rock',1,.025,.05)}
- else if(preset==='mud'){scatter('mud',3+seed%2,.12,.16);scatter('water',1,.06,.23);scatter('forest',1,.08,.12)}
- else if(preset==='river'){const bend=(rand()-.5)*.24;for(let i=0;i<5;i++)zones.push(zone('water',.27+i*.115,.27+i*.105+Math.sin(i*.9+seed)*bend,.085,.22));scatter('mud',2,.12,.12);scatter('hill',1,.11,.12)}
- else if(preset==='rocks'){scatter('rock',5+seed%3,.026,.055);scatter('hill',1+seed%2,.12,.12)}
- else if(preset==='mixed'){scatter('hill',1+seed%2,.13,.16);scatter('forest',2,.09,.13);scatter('mud',1,.1,.12);scatter('rock',2,.022,.05)}
- else{scatter('hill',1+seed%2,.12,.12);scatter('forest',1,.08,.11);if(seed%3===0)scatter('rock',1,.02,.04)}
- return zones;
-}
+const terrainLabels={plain:'Open plain',ridge:'Hill and ridge',forest:'Forest',mud:'Muddy ground',river:'River and fords',rocks:'Rocky outcrop',mixed:'Mixed terrain'};
 function setTerrain(preset){
  terrainPreset=terrainModes.includes(preset)?preset:'plain';
- if(campaignMode){
-  const seed=Math.abs(Math.floor(campaignSession.mapSeed)||0)%50;
-  terrainZones=campaignMapLayout(seed,terrainPreset);
-  battleRocks=terrainZones.filter(zone=>zone.kind==='rock');
-  return;
- }
- const z=(kind,cx,cy,rx,ry)=>({kind,x:W*cx,y:H*cy,rx:Math.max(12,W*rx),ry:Math.max(12,H*ry)});
- const river=z('water',.51,.51,.080,.73);
- terrainZones=terrainPreset==='ridge'?[z('hill',.31,.52,.25,.46)]:
- terrainPreset==='forest'?[z('forest',.52,.49,.21,.47)]:
- terrainPreset==='mud'?[z('mud',.49,.49,.23,.46)]:
- terrainPreset==='river'?[river]:
- terrainPreset==='rocks'?[z('rock',.50,.51,.075,.22)]:
- terrainPreset==='mixed'?[
-  z('hill',.30,.48,.21,.41),z('forest',.64,.32,.15,.26),
-  z('mud',.52,.73,.18,.18),z('rock',.50,.39,.045,.13)
- ]:[];
+ const seed=Math.abs(Math.floor(campaignSession.mapSeed)||0)%50;
+ terrainField=window.UABattleTerrain.create({width:W,height:H,preset:terrainPreset,seed,
+  approach:campaignSession.terrainApproach,road:campaignSession.terrainRoad});
+ terrainRouting=window.UABattleTerrainRouting.create(terrainField,battleNavigation);
+ terrainZones=terrainField.zones;
+ battleRocks=terrainField.rocks;
+ terrainSurface=null;
 }
-function ellipseStrength(x,y,z){
- const a=(x-z.x)/z.rx,b=(y-z.y)/z.ry,d=a*a+b*b;
- return d<1?1-d:0;
-}
-function terrainAt(x,y){
- let elevation=0,forest=0,mud=0,water=0;
- for(const z of terrainZones){
-  if(z.kind==='rock')continue;
-  const influence=ellipseStrength(x,y,z);
-  if(z.kind==='hill')elevation=Math.max(elevation,2*influence);
-  else if(z.kind==='forest')forest=Math.max(forest,influence);
-  else if(z.kind==='mud')mud=Math.max(mud,influence);
-  else if(z.kind==='water')water=Math.max(water,influence);
- }
- return {elevation,forest,mud,water};
-}
+function terrainAt(x,y){return terrainField.sample(x,y)}
 function terrainSpeed(s,x=s.x,y=s.y){
- const a=terrainAt(x,y),horse=isCavalry(s)&&(!campaignMode||s.isCommander);
- return clamp(1-a.forest*(horse?.59:.24)-a.mud*(horse?.72:.50)-
-  a.water*(horse?.81:.65),.15,1);
+ const a=terrainAt(x,y);
+ // Troops march at a common pace. Horses lose charge momentum on bad ground.
+ return clamp(1-a.forest*.24-a.mud*.50-a.water*.72-a.slope*.22,.16,1);
 }
 function terrainFatigue(s,x=s.x,y=s.y){
  const a=terrainAt(x,y);
- return 1+a.mud*(isCavalry(s)?3.0:1.7)+a.water*(isCavalry(s)?3.8:2.2);
+ return 1+a.mud*(isCavalry(s)?3.0:1.7)+a.water*(isCavalry(s)?3.8:2.2)+a.slope*.65;
 }
 // Return parametric first contact with an ellipse on a path (0..1).
 function ellipseHit(ax,ay,bx,by,z,extra=0){
@@ -3946,21 +3939,7 @@ function ellipseHit(ax,ay,bx,by,z,extra=0){
  const t=(-B-Math.sqrt(disc))/(2*A);
  return t>=0&&t<=1?t:null;
 }
-function terrainSteer(s,x,y){
- if(campaignMode&&battleNavigation)return campaignRoutePoint(s,{x,y});
- for(const z of terrainZones){
-  if(z.kind!=='rock')continue;
-  const clearance=isCavalry(s)?13:9;
-  const hit=ellipseHit(s.x,s.y,x,y,z,clearance);
-  if(hit===null)continue;
-  // Choose a side deterministically and continue beyond the outcrop.
-  const side=s.y<z.y? -1:s.y>z.y?1:(s.id%2===0?-1:1);
-  const nearX=z.x+(s.x<z.x?-.30: .30)*(z.rx+clearance);
-  const nearY=z.y+side*(z.ry+clearance+16);
-  return {x:clamp(nearX,15,W-15),y:clamp(nearY,15,H-15)};
- }
- return {x,y};
-}
+function terrainSteer(s,x,y){return campaignRoutePoint(s,{x,y})}
 function campaignRoutePoint(unit,goal){
  const clearance=isCavalry(unit)?15:11;
  if(!battleRocks.length||battleNavigation.segmentClear(unit,goal,battleRocks,clearance)){
@@ -4009,68 +3988,6 @@ function terrainResolve(s,oldX,oldY,slide=false){
   }
  }
 }
-// A commander scores actual ground before issuing an order. Prefer high
-// positions, covered archery, dry cavalry lanes, and defending a crossing.
-// This is intentionally shared with the Six-Arena squad AI.
-function terrainStrategicPlan(team,ownCenter,enemyCenter,roster){
- if(!terrainZones.length||!roster.length)return null;
- const forward=team==='friend'?1:-1;
- const infantry=roster.filter(s=>s.unitRole==='infantry').length;
- const ranged=roster.filter(s=>s.unitRole==='archer').length;
- const cavalry=roster.filter(s=>isCavalry(s)).length;
- const candidates=[];
- for(const z of terrainZones){
-  let x=z.x,y=z.y,type=z.kind,base=0;
-  if(z.kind==='hill'){base=4.8+Math.min(4,ranged*.25);x=z.x-forward*z.rx*.09;}
-  if(z.kind==='forest'){base=3.4+Math.min(3,ranged*.18);x=z.x-forward*z.rx*.16;}
-  if(z.kind==='rock'){base=3.0+Math.min(3,infantry*.13);x=z.x-forward*(z.rx+52);}
-  if(z.kind==='water'){base=4.4+Math.min(3,infantry*.15);x=z.x-forward*(z.rx+42);}
-  if(z.kind==='mud'){base=3.0+Math.min(3,cavalry*.13);x=z.x-forward*(z.rx+55);}
-  x=clamp(x,28,W-28);y=clamp(y,30,H-30);
-  const a=terrainAt(x,y);
-  const dist=Math.hypot(x-ownCenter.x,y-ownCenter.y);
-  const enemyDist=Math.hypot(x-enemyCenter.x,y-enemyCenter.y);
-  // No magical cross-map relocation. Positions behind the enemy are poor
-  // choices unless already occupied, and marches have a real opportunity cost.
-  const beyondEnemy=(x-enemyCenter.x)*forward>25;
-  const score=base+a.elevation*2.2+a.forest*(ranged>0?1.4:.4)-
-   (a.mud+a.water)*(cavalry>0?5:2.4)-
-   dist/Math.max(110,W*.14)-
-   (beyondEnemy?9:0)-(enemyDist<70?1.5:0);
-  if(score>1.8&&dist<Math.max(130,W*.36))
-   candidates.push({x,y,type,score,enemyDist});
- }
- candidates.sort((a,b)=>b.score-a.score);
- return candidates[0]||null;
-}
-function terrainRouteWaypoint(s,goalX,goalY){
- if(!terrainZones.length||!isCavalry(s))return null;
- const dist=Math.hypot(goalX-s.x,goalY-s.y);
- if(dist<105)return null;
- for(const z of terrainZones){
-  if(!['mud','water','forest','hill'].includes(z.kind))continue;
-  if(z.kind==='hill'){
-   // Charging the face of an occupied ridge is costly. Try a lateral
-   // approach if the rider is on lower ground and the enemy stands above.
-   const enemyHeight=terrainAt(goalX,goalY).elevation;
-   const ownHeight=terrainAt(s.x,s.y).elevation;
-   if(enemyHeight<.85||enemyHeight-ownHeight<.52)continue;
-  }
-  const ix=ellipseHit(s.x,s.y,goalX,goalY,z);
-  if(ix===null||ellipseStrength(s.x,s.y,z)>.35)continue;
-  // A wide flooded bank can be outflanked along its shallow ends.
-  const extra=21;
-  const top=clamp(z.y-z.ry-extra,25,H-25),bottom=clamp(z.y+z.ry+extra,25,H-25);
-  const yy=Math.abs(s.y-top)<Math.abs(s.y-bottom)?top:bottom;
-  const routeX=clamp(z.x+(s.x<z.x?-.3:.3)*z.rx,26,W-26);
-  const length=Math.hypot(routeX-s.x,yy-s.y);
-  // Don't send a rider on a giant detour if the battlefield has no
-  // usable passage; crossing slowly is then the realistic choice.
-  if(length>Math.max(135,dist*1.60))continue;
-  return {x:routeX,y:yy,kind:z.kind};
- }
- return null;
-}
 function terrainRangedFactor(attacker,target){
  const a=terrainAt(attacker.x,attacker.y),d=terrainAt(target.x,target.y);
  // Height helps aim and piercing power; forest gives concealment.
@@ -4083,8 +4000,8 @@ function terrainRangedFactor(attacker,target){
 function drawTerrain(g){
  for(const z of terrainZones){
   g.save();g.translate(z.x,z.y);g.scale(z.rx,z.ry);
-  const fill={hill:'#90a87f5b',forest:'#142f2399',mud:'#6654439e',water:'#598ba9a6',rock:'#697776ed'}[z.kind];
-  g.fillStyle=fill;g.strokeStyle=z.kind==='water'?'#a1cde8b6':'#d0debf42';
+  const fill={hill:'#90a87f5b',forest:'#142f2399',mud:'#6654439e',water:'#598ba9a6',ford:'#a8b588bf',rock:'#697776ed'}[z.kind];
+  g.fillStyle=fill;g.strokeStyle=z.kind==='water'?'#a1cde8b6':z.kind==='ford'?'#e0deacaa':'#d0debf42';
   g.lineWidth=1.5/Math.max(10,z.rx);g.beginPath();g.ellipse(0,0,1,1,0,0,Math.PI*2);g.fill();g.stroke();g.restore();
   if(z.kind==='hill'){
    for(let k=1;k<=3;k++){
@@ -4099,6 +4016,9 @@ function drawTerrain(g){
    }
   }else if(z.kind==='rock'){
    g.fillStyle='#a4b0a8c7';g.beginPath();g.ellipse(z.x-z.rx*.13,z.y-z.ry*.10,z.rx*.66,z.ry*.70,-.23,0,Math.PI*2);g.fill();
+  }else if(z.kind==='ford'){
+   g.strokeStyle='#f1dfacbd';g.lineWidth=2.4;g.setLineDash([9,8]);
+   g.beginPath();g.moveTo(z.x-z.rx*.87,z.y);g.lineTo(z.x+z.rx*.87,z.y);g.stroke();g.setLineDash([]);
   }else if(z.kind==='water'){
    g.strokeStyle='#cce8ed55';g.lineWidth=2;
    for(let k=-2;k<=2;k++){g.beginPath();g.moveTo(z.x-z.rx*.70,z.y+k*z.ry*.27);
@@ -4268,28 +4188,40 @@ function beginRangedAim(s,target,dist){
  if(!profile||!hasRangedAmmo(s)||s.rangedCooldown>0||s.attack||s.stagger>0)return false;
  if(!target||dist>profile.range-(profile.forged?0:12)||dist<=meleeThreatRange(s))return false;
  if(s.stamina<profile.stamina+2)return false;
+ if(!clearAimedShot(s,target)){
+  target=replacementRangedTarget(s,null);
+  if(!target){s.rangedCooldown=.32;return false}
+ }
  s.rangedAim=profile.draw*rangedTimeFactor(s)/(profile.forged?1:s.weaponSpeed??1);
  s.rangedTargetId=target.id;
  s.guardActive=false;s.guardHold=0;
  return true;
 }
+function clearAimedShot(shooter,target){
+ const cache=shooter.aimedSight;
+ if(cache&&cache.id===target.id&&t<cache.until&&
+    Math.hypot(cache.x-shooter.x,cache.y-shooter.y)+Math.hypot(cache.tx-target.x,cache.ty-target.y)<18)return cache.clear;
+ const clear=terrainRouting.clearShot(shooter,target);
+ shooter.aimedSight={id:target.id,x:shooter.x,y:shooter.y,tx:target.x,ty:target.y,until:t+.21,clear};
+ return clear;
+}
 function isViableRangedTarget(s,e){
  if(!e||e.dead||e.broken||e.routed)return false;
  const profile=activeRangedProfile(s);if(!profile)return false;
  const d=Math.hypot(e.x-s.x,e.y-s.y);
- return d>meleeThreatRange(s)&&d<=profile.range;
+ return d>meleeThreatRange(s)&&d<=profile.range&&clearAimedShot(s,e);
 }
 function replacementRangedTarget(s,preferred){
  // Keep a drawn bow ready when a target dies/respawns or moves away.
  // Prefer the currently assigned soldier, then another shootable enemy.
  if(isViableRangedTarget(s,preferred))return preferred;
- let best=null,closest=Infinity;
- for(const enemy of opponents(s)){
-  if(!isViableRangedTarget(s,enemy))continue;
-  const dist=Math.hypot(enemy.x-s.x,enemy.y-s.y);
-  if(dist<closest){best=enemy;closest=dist;}
- }
- return best;
+ const range=activeRangedProfile(s)?.range||0;
+ const nearby=opponents(s).filter(enemy=>enemy!==preferred&&marchReadyTroop(enemy))
+  .map(enemy=>({enemy,distance:Math.hypot(enemy.x-s.x,enemy.y-s.y)}))
+  .filter(({distance})=>distance>meleeThreatRange(s)&&distance<=range)
+  .sort((a,b)=>a.distance-b.distance);
+ // Limit sight tests through dense cover. Aim again after the formation moves.
+ return nearby.slice(0,8).find(({enemy})=>clearAimedShot(s,enemy))?.enemy||null;
 }
 function advanceRangedAim(s,target,dt){
  if(!s.rangedAim)return;
@@ -4520,14 +4452,15 @@ function stopChargeWithPolearm(rider,defender){
 }
 function step(dt){
  routeBudget=6;
- decideCommander('friend',dt);decideCommander('foe',dt);
  if(t>=nextEngagementPlan){
   planEngagements('friend');
   planEngagements('foe');
   updateSquadState('friend');updateSquadState('foe');
   nextEngagementPlan=t+.65;
  }
- const marchTargets=campaignMode?advanceCampaignMarches(dt):null;
+ decideCommander('friend',dt);decideCommander('foe',dt);
+ const terrainTargets=advanceTerrainMarches(dt);
+ const marchTargets=advanceCampaignMarches(dt);
  for(const s of [...members('friend'),...members('foe')]){
   s.orderMoveX=0;s.orderMoveY=0;
   if(s.dead||s.routed)continue;s.cooldown-=dt;s.decision-=dt;s.hitFlash=Math.max(0,s.hitFlash-dt);
@@ -4561,7 +4494,7 @@ function step(dt){
    const breakingPoint=stressBalance.breakingBase+s.disc*stressBalance.disciplineResistance+rnd(s.id+23)*5;
    if(s.stress>breakingPoint){panic(s);continue;}
   }else{s.stress=0;}
-  const heroPlan=autoHero?planAutoHero(s,target,dist):null;
+  const heroPlan=autoHero?planAutoHero(s,target,dist):s.isCommander?planEnemyCommander(s,dist):null;
   if(autoHero&&s.routed)continue;
   const player=s.team==='friend',command=heroPlan?.command||resolveCombatCommand(s);
   updatePolearmBrace(s,dt,command);
@@ -4660,6 +4593,11 @@ function step(dt){
   }
   const tactical=squadMovement(s,command,target,dist,moveX,moveY,pace);
   moveX=tactical.x;moveY=tactical.y;pace=tactical.pace;
+  const terrainOrder=terrainTargets.get(s);
+  const usesTerrainOrder=terrainOrder?.order===command&&
+   (command==='retreat'||(dist>meleeThreatRange(s)&&s.braceThreatId==null&&
+    (command==='defend'||!terrainOrder.settled)));
+  if(usesTerrainOrder){moveX=terrainOrder.x;moveY=terrainOrder.y;pace=1}
   if(heroPlan?.x!==undefined){
    moveX=heroPlan.x;moveY=heroPlan.y;
    pace=heroPlan.disengage?1.22:1;
@@ -4704,7 +4642,7 @@ function step(dt){
     dt*(terrainFatigue(s)-1)*2.0,0,100);
    // Charge momentum reflects *actual forward speed* and horse fatigue.
    const ground=terrainAt(s.x,s.y);
-   const groundCharge=clamp(1-ground.mud*.84-ground.water*.94-ground.forest*.69,.05,1);
+   const groundCharge=clamp(1-ground.mud*.84-ground.water*.94-ground.forest*.69-ground.slope*.42,.05,1);
    const strideFactor=clamp((speed-34)/68,0,1)*groundCharge;
    s.gallop=clamp(s.gallop+clamp(
     (s.horseStamina>13?strideFactor:0)-s.gallop,-dt*1.9,dt*1.25),0,1);
@@ -4773,7 +4711,7 @@ function step(dt){
     s.recoveryDelay=Math.max(s.recoveryDelay,.32);
    }
   }
-  updateFacing(s,target,target?Math.hypot(target.x-s.x,target.y-s.y):Infinity,dt*(s.stagger>0?.38:1),march?.heading);
+  updateFacing(s,target,target?Math.hypot(target.x-s.x,target.y-s.y):Infinity,dt*(s.stagger>0?.38:1),march?.heading??(usesTerrainOrder?terrainOrder.heading:undefined));
   if(command==='attack'&&target&&hasRangedAmmo(s)&&dist>meleeThreatRange(s))
    turnToward(s,Math.atan2(target.y-s.y,target.x-s.x),dt);
   if(command==='stop'||command==='retreat'){
@@ -4808,30 +4746,44 @@ function step(dt){
  }
 }
 function drawCommanderTerrainPlans(){
- if(!terrainZones.length)return;
- for(const team of ['foe','friend']){
-  const commander=commanders[team],brain=commanderBrains[team];
-  const pos=brain?.terrainPlan;
-  if(!commander||commander.dead||!pos||!['seizeGround','holdGround','guardCrossing'].includes(brain.phase))continue;
-  const color=team==='friend'?'#ffe4a0':'#f7aa9a';
-  ctx.save();
-  ctx.lineWidth=2;ctx.setLineDash([5,6]);ctx.strokeStyle=color+'bb';
-  ctx.beginPath();ctx.arc(pos.x,pos.y,24,0,Math.PI*2);ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.strokeStyle=color;ctx.beginPath();ctx.moveTo(pos.x,pos.y-34);
-  ctx.lineTo(pos.x,pos.y-57);ctx.stroke();
-  ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(pos.x,pos.y-57);
-  ctx.lineTo(pos.x+19,pos.y-51);ctx.lineTo(pos.x,pos.y-45);
-  ctx.fill();
-  ctx.restore();
+ const brain=commanderBrains.friend;
+ const objective=brain?.terrainPlan;
+ if(!objective||!commanders.friend||commanders.friend.dead)return;
+ const color='#ffe4a0';
+ const scale=battlefieldOverview?overviewTransform().scale:1;
+ ctx.save();ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=2/scale;
+ ctx.setLineDash([5/scale,6/scale]);
+ if(battlefieldOverview)for(const [role,march] of brain.marches){
+  if(selectedGroup!=='all'&&selectedGroup!==role)continue;
+  const active=march.orderedUnits.some(unit=>marchReadyTroop(unit)&&!isManualSquadOrder(unit));
+  if(!active||march.index>=march.path.length)continue;
+  ctx.globalAlpha=role==='infantry'?.75:.48;
+  ctx.beginPath();ctx.moveTo(march.anchor.x,march.anchor.y);
+  for(let i=march.index;i<march.path.length;i++)ctx.lineTo(march.path[i].x,march.path[i].y);
+  ctx.stroke();
  }
+ ctx.globalAlpha=.85;
+ ctx.beginPath();ctx.arc(objective.x,objective.y,(battlefieldOverview?6:22)/scale,0,Math.PI*2);ctx.stroke();
+ ctx.restore();
 }
-function background(){ctx.fillStyle='#203b30';ctx.fillRect(0,0,W,H);const grad=ctx.createLinearGradient(0,0,W,H);grad.addColorStop(0,'#355746');grad.addColorStop(.45,'#29483a');grad.addColorStop(1,'#244538');ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
- ctx.beginPath();for(let x=.5;x<=W;x+=cell){ctx.moveTo(x,0);ctx.lineTo(x,H)}for(let y=.5;y<=H;y+=cell){ctx.moveTo(0,y);ctx.lineTo(W,y)}ctx.lineWidth=.7;ctx.strokeStyle='#c3e2b22a';ctx.stroke();
- ctx.strokeStyle='#d9f5cd24';ctx.setLineDash([3,8]);ctx.beginPath();ctx.moveTo(W*.5,0);ctx.lineTo(W*.5,H);ctx.stroke();ctx.setLineDash([]);
- ctx.fillStyle='#bdffb508';for(let i=0;i<65;i++)ctx.fillRect((i*137.3+21)%W,(i*283.7+37)%H,1.5,2);
- drawTerrain(ctx);
+function battlefieldTexture(){
+ if(terrainSurface)return terrainSurface;
+ const layer=document.createElement('canvas');
+ layer.width=Math.ceil(W*.6);layer.height=Math.ceil(H*.6);
+ const g=layer.getContext('2d');
+ g.scale(layer.width/W,layer.height/H);
+ const gradient=g.createLinearGradient(0,0,W,H);
+ gradient.addColorStop(0,'#355746');gradient.addColorStop(.45,'#29483a');gradient.addColorStop(1,'#244538');
+ g.fillStyle=gradient;g.fillRect(0,0,W,H);
+ g.beginPath();
+ for(let x=.5;x<=W;x+=cell){g.moveTo(x,0);g.lineTo(x,H)}
+ for(let y=.5;y<=H;y+=cell){g.moveTo(0,y);g.lineTo(W,y)}
+ g.lineWidth=.7;g.strokeStyle='#c3e2b222';g.stroke();
+ drawTerrain(g);
+ terrainSurface=layer;
+ return layer;
 }
+function background(){ctx.drawImage(battlefieldTexture(),0,0,W,H)}
 function weaponPose(s){
  const w=meleeWeaponProfile(s),a=s.attack;
  if(!a)return {angle:s.faceAngle,length:w.reach*(isPolearm(s)?.83:.62)};
@@ -5037,10 +4989,44 @@ function drawUnit(s){if(s.routed)return;
  ctx.fillStyle=s.stamina<25?'#eea86d':'#7fd7da';
  ctx.fillRect(x-10,y+14,20*clamp(s.stamina/s.maxStamina,0,1),3);
 }
+function overviewTransform(){
+ const scale=Math.min(VW/W,VH/H);
+ return {scale,x:(VW-W*scale)*.5,y:(VH-H*scale)*.5};
+}
+function battlefieldPoint(clientX,clientY){
+ const area=canvas.getBoundingClientRect(),x=clientX-area.left,y=clientY-area.top;
+ if(!battlefieldOverview)return {x:camera.x+x,y:camera.y+y};
+ const view=overviewTransform();
+ const point={x:(x-view.x)/view.scale,y:(y-view.y)/view.scale};
+ return point.x>=0&&point.x<=W&&point.y>=0&&point.y<=H?point:null;
+}
+function drawOverview(){
+ const scale=overviewTransform().scale;
+ const fontSize=10/scale;
+ ctx.font='700 '+fontSize+'px system-ui';
+ ctx.textAlign='center';ctx.textBaseline='bottom';ctx.lineWidth=3/scale;
+ for(const feature of terrainField.features){
+  if(!['ford','crest'].includes(feature.type))continue;
+  const label=feature.type==='ford'?'Ford':'Ridge';
+  ctx.strokeStyle='#172c25';ctx.strokeText(label,feature.x,feature.y-10/scale);
+  ctx.fillStyle=feature.type==='ford'?'#f1ddae':'#e7edd3';ctx.fillText(label,feature.x,feature.y-10/scale);
+ }
+ for(const team of ['foe','friend']){
+  ctx.fillStyle=team==='friend'?'#6be7b0':'#f0847b';
+  for(const unit of members(team)){
+   if(unit.dead||unit.routed)continue;
+   ctx.beginPath();ctx.arc(unit.x,unit.y,(unit.isCommander?4:2)/scale,0,Math.PI*2);ctx.fill();
+  }
+ }
+}
 function draw(){
  if(!VW)return;
  ctx.clearRect(0,0,VW,VH);
- ctx.save();ctx.translate(-camera.x,-camera.y);
+ ctx.save();
+ if(battlefieldOverview){
+  const view=overviewTransform();
+  ctx.translate(view.x,view.y);ctx.scale(view.scale,view.scale);
+ }else ctx.translate(-camera.x,-camera.y);
  background();drawCommanderTerrainPlans();if(marker){const age=t-marker.when;if(age<1.3){ctx.beginPath();ctx.arc(marker.x,marker.y,14+age*11,0,2*Math.PI);ctx.strokeStyle='rgba(211,255,218,'+(1-age/1.3)*.6+')';ctx.lineWidth=2;ctx.stroke();}else marker=null;}
  if(deployment.active){
   const zone=deploymentZone(),width=zone.maxX-zone.minX,height=zone.maxY-zone.minY;
@@ -5051,6 +5037,7 @@ function draw(){
   ctx.setLineDash([10,7]);ctx.strokeRect(zone.minX,zone.minY,width,height);
   ctx.restore();
  }
+ if(battlefieldOverview){drawOverview();ctx.restore();return}
  // Selection means selected soldiers are highlighted, but never hides their stats or swords.
  for(const s of foes)drawUnit(s);for(const s of friends)drawUnit(s);
  for(const team of ['foe','friend'])if(commanders[team])drawUnit(commanders[team]);
@@ -5088,7 +5075,7 @@ function drawMinimap(){
   // identify slopes, cover and obstacles before issuing a formation order.
   for(const z of terrainZones){
    mctx.fillStyle={hill:'#9fc38695',forest:'#28664aaa',mud:'#78644caa',
-    water:'#65a8ceae',rock:'#bdc3c0e0'}[z.kind]||'#627d65';
+    water:'#65a8ceae',ford:'#d7c88dcf',rock:'#bdc3c0e0'}[z.kind]||'#627d65';
    mctx.beginPath();
    mctx.ellipse(z.x/W*mw,z.y/H*mh,Math.max(2,z.rx/W*mw),
     Math.max(2,z.ry/H*mh),0,0,Math.PI*2);mctx.fill();
@@ -5217,7 +5204,8 @@ function updateCampaignArmyOrders(){
   orders.length?orders.map(([group,order])=>{
    const label=armyGroupButtons.find(button=>button.dataset.campaignGroup===group).textContent;
    return label+' · '+armyOrderName[order];
-  }).join(' / '):'Troops follow commander AI.';
+  }).join(' / '):commanderBrains.friend.marches.get(selectedGroup)?.plan.name||
+   commanderBrains.friend.news;
  const status=document.querySelector('#campaignOrderStatus');
  if(status.textContent!==message)status.textContent=message;
 }
@@ -5236,6 +5224,20 @@ function setCampaignOrdersOpen(open){
  if(campaignOrdersOpen)updateCampaignArmyOrders();
 }
 armyToggle.addEventListener('click',()=>setCampaignOrdersOpen(!campaignOrdersOpen));
+const groundToggle=document.querySelector('#campaignGroundToggle');
+function setBattlefieldOverview(active){
+ battlefieldOverview=active;
+ clearHeroInput();
+ document.body.classList.toggle('battlefield-overview',active);
+ groundToggle.setAttribute('aria-pressed',String(active));
+ groundToggle.setAttribute('aria-label',active?'Return to hero view':'Show battlefield overview');
+ groundToggle.textContent=active?'Hero':'Map';
+ draw();
+}
+groundToggle.addEventListener('click',()=>{
+ setCampaignOrdersOpen(false);
+ setBattlefieldOverview(!battlefieldOverview);
+});
 for(const button of armyGroupButtons)button.addEventListener('click',()=>{
  selectedGroup=button.dataset.campaignGroup;
  formationSelect.value=campaignFormations.get(selectedGroup)||'current';
@@ -5290,6 +5292,7 @@ for(const button of armyOrderButtons)button.addEventListener('click',()=>{
 });
 document.querySelector('#campaignControlToggle').addEventListener('click',()=>{
  setCampaignOrdersOpen(false);
+ setBattlefieldOverview(false);
  setCampaignControlMode(campaignControlMode==='auto'?'manual':'auto');
 });
 document.querySelector('#campaignThrowRock').addEventListener('click',throwCampaignRock);
@@ -5300,6 +5303,7 @@ window.addEventListener('keydown',e=>{
  if(e.key==='Escape'&&campaignOrdersOpen){
   setCampaignOrdersOpen(false);armyToggle.focus();return;
  }
+ if(e.key==='Escape'&&battlefieldOverview){setBattlefieldOverview(false);return}
  if(!canControlHero())return;
  const input=e.key.toLowerCase(),key=movementKeys[input]||input;
  if(key===' '&&e.target instanceof HTMLButtonElement)return;
@@ -5336,8 +5340,8 @@ canvas.addEventListener('pointerup',e=>{
  if(!placement||placement.pointerId!==e.pointerId)return;
  cancelFormationPlacement();
  if(battleOutcome||Math.hypot(e.clientX-placement.x,e.clientY-placement.y)>22)return;
- const area=canvas.getBoundingClientRect();
- if(beginCampaignMarch('move',{x:camera.x+e.clientX-area.left,y:camera.y+e.clientY-area.top},placement.group)){
+ const point=battlefieldPoint(e.clientX,e.clientY);
+ if(point&&beginCampaignMarch('move',point,placement.group)){
   mode='move';updateUI();
  }
 });
@@ -5354,7 +5358,7 @@ canvas.addEventListener('pointermove',e=>{
  if(!pointer||pointer.id!==e.pointerId)return;
  const dx=e.clientX-pointer.x,dy=e.clientY-pointer.y;
  if(Math.hypot(dx,dy)>8)pointer.dragged=true;
- if(!pointer.dragged)return;
+ if(!pointer.dragged||battlefieldOverview)return;
  camera.x=clamp(pointer.cx-dx,0,Math.max(0,W-VW));
  camera.y=clamp(pointer.cy-dy,0,Math.max(0,H-VH));
  draw();
@@ -5364,8 +5368,8 @@ canvas.addEventListener('pointerup',e=>{
  if(!pointer||pointer.id!==e.pointerId)return;
  deployment.pointer=null;
  if(pointer.dragged||deployment.placing===null)return;
- const area=canvas.getBoundingClientRect();
- placeDeploymentGroup(deployment.placing,{x:camera.x+e.clientX-area.left,y:camera.y+e.clientY-area.top});
+ const point=battlefieldPoint(e.clientX,e.clientY);
+ if(point)placeDeploymentGroup(deployment.placing,point);
 });
 function clearDeploymentPointer(e){
  if(deployment.pointer?.id===e.pointerId)deployment.pointer=null;

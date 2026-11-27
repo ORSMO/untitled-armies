@@ -6,6 +6,8 @@ const playerFaction=document.getElementById('practiceFaction');
 const enemyFaction=document.getElementById('practiceEnemyFaction');
 const enemyRealm=document.getElementById('practiceEnemyRealm');
 const opponent=document.getElementById('practiceOpponent');
+const banditType=document.getElementById('practiceBanditType');
+const banditField=document.getElementById('practiceBandits'),campLevel=document.getElementById('practiceCampLevel');
 const forgePreset=document.getElementById('practiceForgePreset');
 
 const defaultEnemyFaction=enemyFaction.value;
@@ -32,9 +34,15 @@ for(const control of form.elements){
 }
 
 function updateOpponent(){
- enemyRealm.hidden=opponent.value==='bandit';
+ const outlaws=opponent.value==='bandit';
+ enemyRealm.hidden=outlaws;
+ banditField.hidden=!outlaws;
+ banditType.disabled=!outlaws;
+ campLevel.hidden=!outlaws||!banditType.value;
+ campLevel.querySelector('input').disabled=campLevel.hidden;
 }
 opponent.addEventListener('change',updateOpponent);
+banditType.addEventListener('change',updateOpponent);
 updateOpponent();
 
 form.addEventListener('submit',event=>{

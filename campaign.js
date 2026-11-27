@@ -2039,7 +2039,11 @@ function launchCampaignBattle(party,deploymentPlanner=false){
  }
  const sessionId='battle-'+Date.now().toString(36)+'-'+Math.floor(Math.random()*1e7).toString(36);
  const battlePoint=party.campAssaultId!=null?party:state.player;
- const tile=W.tileAt(battlePoint.x,battlePoint.y),battleSeed=Math.abs((party.id*31+Math.floor(battlePoint.x/90)*17+Math.floor(battlePoint.y/90)*13+state.day*7)%50);
+ const tile=W.tileAt(battlePoint.x,battlePoint.y);
+ const tileX=Math.floor(battlePoint.x/W.TILE),tileY=Math.floor(battlePoint.y/W.TILE);
+ const battleSeed=Math.floor(W.hash(Math.floor(tileX/3),Math.floor(tileY/3))*50);
+ const terrainRoad=W.roadTier[W.tileIndex(tileX,tileY)]||0;
+ const terrainApproach=Math.sign(party.y-state.player.y);
   const camp=party.campAssaultId!=null?CAMPS.lookup(state.hideouts,party.campAssaultId):banditCampForParty(party.id);
  const session={status:'active',sessionId,partyId:party.id,kind:party.kind,
   ...(party.kind==='bandit'?{banditProfileId:banditProfile(party).id,banditCampLevel:camp?.level||1,
@@ -2047,7 +2051,7 @@ function launchCampaignBattle(party,deploymentPlanner=false){
   faction:party.faction,enemyCount:Math.min(MAX_DEPLOYED,party.strength),
    playerName:state.player.name,heroHealth:state.player.hp,playerMorale:state.player.morale,level:state.player.level,troops,
    equipment:state.player.equipment,heroWeapon:currentForgedWeapon(),inventory:state.player.inventory,stats:state.player.stats,perks:state.player.perks,
-   terrainKind:tile.kind,battleX:battlePoint.x,battleY:battlePoint.y,mapSeed:battleSeed,
+   terrainKind:tile.kind,terrainRoad,terrainApproach,battleX:battlePoint.x,battleY:battlePoint.y,mapSeed:battleSeed,
    deploymentPool:true,deploymentPlanner};
  const previousBattle=state.pendingBattleId;
  try{localStorage.setItem('ua-campaign-battle-session-v1',JSON.stringify(session))}
@@ -2060,7 +2064,7 @@ function launchCampaignBattle(party,deploymentPlanner=false){
   try{localStorage.removeItem('ua-campaign-battle-session-v1')}catch(e){}
   notify('Browser storage is needed for campaign battles.');return;
  }
- window.location.href='campaign-battle.html?campaign=1&v=4.24'+(deploymentPlanner?'&deploy=1':'');
+ window.location.href='campaign-battle.html?campaign=1&v=4.25'+(deploymentPlanner?'&deploy=1':'');
 }
 function skirmish(id,deploymentPlanner=false){
  const party=state?.parties.find(p=>p.id===id&&p.active);
